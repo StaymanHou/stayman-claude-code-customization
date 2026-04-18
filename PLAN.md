@@ -451,3 +451,97 @@ Also deferred: vision revision loop, reflect after product:context completion.
 - Vision revision loop
 - Reflect after product:context
 - Relaxed verify-human rules based on usage patterns
+
+---
+
+## Experiment: Subagent-Per-Step Orchestration (Option 2 — parked)
+
+We currently run orchestration **in the parent context** via `/session-start` (option 1). This works but grows the main context over long workflows.
+
+If context bloat becomes a real problem, revisit option 2: each workflow step runs inside its own short-lived subagent spawn. Parent owns only the orchestration loop.
+
+### Why it's hard
+`Agent` is a one-shot tool. A subagent that pauses for human input can't be resumed — it just returns. The parent then has to spawn a *new* subagent with the user's answer, rebuilding context each time. Saw this in live testing: subagent asked scoping questions, returned, parent got answer, had to respawn from scratch with the same skill — which re-ran `product-vision` and lost mid-step state.
+
+### Minimum viable design
+**One subagent = one skill invocation.** No chaining inside a subagent. The parent `/session-start` runs a dispatcher loop that spawns one step, parses a structured return, collects any needed human input, then spawns the next step.
+
+**Structured return protocol.** Subagents emit a fenced `orchestration` JSON block as the last content of their response:
+
+```json
+{
+  "transition_id": "P2",
+  "next_skill": "product-roadmap",
+  "state_file_path": "docs/product/vision.md",
+  "needs_human_input": false,
+  "question_to_user": null,
+  "summary": "Drafted vision doc covering audience, physics scope, mission types, WWII setting.",
+  "done": false
+}
+```
+
+Fields: `transition_id`, `next_skill` (null iff done/paused), `state_file_path`, `needs_human_input`, `question_to_user` (required iff needs_human_input), `summary` (1–2 sentences), `done`.
+
+**Parent loop (pseudocode):**
+```
+state = { workflow, next_skill, context_summary, pending_answers, state_file_path, history }
+persist to workflow/.session.md
+
+loop:
+  spawn Agent(subagent_type=<workflow>-workflow,
+              prompt=spawn_prompt(state))
+  parse orchestration block from output
+  if malformed: retry once with stricter prompt, then pause + notify-human
+  if needs_human_input: notify-human, collect answer, append to pending_answers
+  append summary to history
+  if done: break, clean up .session.md
+  state.next_skill = next_skill; persist
+```
+
+**Spawn prompt skeleton:**
+```
+You are running ONE step of the <workflow> workflow in single-step orchestration mode.
+STEP TO RUN: <skill-name>
+WORKFLOW: <product|feature|task|incident>
+STATE FILE: <path>
+PRIOR CONTEXT SUMMARY: <short paragraph>
+RECENT HUMAN ANSWERS: <verbatim replies, or "none">
+
+Procedure:
+1. Read the state file(s) you need.
+2. Run the <skill-name> skill via the Skill tool.
+3. Emit the orchestration JSON block described in PLAN.md (tagged `orchestration`).
+4. STOP. Do not invoke the next skill.
+```
+
+### Cross-level transitions under this model
+- **SURFACE note-and-continue:** next_skill stays in same workflow; no pause.
+- **SURFACE pause-and-escalate:** next_skill=null, done=false, needs_human_input=true.
+- **ESCALATE:** next_skill=null, done=true, summary describes handoff.
+- **REDIRECT:** next_skill is a skill in a different workflow; parent tracks "return workflow."
+- **Back-loops:** next_skill points at the earlier skill; parent spawns it with the back-loop reason in RECENT HUMAN ANSWERS.
+
+### Failure modes
+| Symptom | Handling |
+|---------|----------|
+| Missing orchestration block | Retry once with strict prompt prefix. Then pause. |
+| Multiple blocks emitted | Parse last one. |
+| Invalid transition_id | Pause, surface to user. |
+| `next_skill` mismatches transition | Prefer next_skill; log hint into next spawn. |
+| done=true with pending SURFACE | Process surface first, then terminate. |
+
+### Trade-offs vs option 1
+| | Option 1 (current) | Option 2 (experiment) |
+|--|--|--|
+| Parent context growth | Linear with workflow length | Small — only summaries |
+| Spawn count | 0 | 1 per step (6 for product, 3+ per phase for feature) |
+| Wall time | Faster | Slower (spawn overhead per step) |
+| Implementation complexity | Low | High — JSON protocol, retry logic, resume hydration |
+| Resume semantics | Per-skill boundary | Orchestration-loop boundary (finer-grained) |
+
+### When to revisit
+- If a full product + feature workflow regularly hits `/compact` boundaries mid-run.
+- If long feature workflows (4+ phases) visibly slow down the main agent.
+- If we want finer-grained resume (mid-orchestration, not just mid-skill).
+
+Until then: option 1.

@@ -11,7 +11,9 @@ This machine has a state-machine-driven workflow system installed (skills + orch
 
 Or `/session-start` to get routed, `/session-pause` and `/session-resume` for cross-session continuity.
 
-**Orchestrator subagents** (`product-workflow`, `feature-workflow`, `task-workflow`, `incident-workflow`) own their full state machine and know every valid transition. **Delegate to the matching orchestrator when** the user is about to run a multi-step workflow, asks "what's next" mid-workflow, or needs help recovering from a back-loop. For single-step requests, invoke the skill directly.
+**Orchestrator procedures** (`agents/<workflow>-workflow/AGENTS.md`) describe how to drive each workflow end-to-end — happy path, back-loops, and which moments require a human pause. `/session-start` reads the matching orchestrator file and runs the workflow **in the current conversation** (not via a subagent spawn), invoking each skill via the Skill tool and pausing only at real decision points (spec/plan review, verify-human, back-loops, triage severity, etc.).
+
+Running an entry-point slash command directly (e.g., `/product-vision`) stays single-step — no auto-chain. Use `/session-start` when you want end-to-end orchestration.
 
 **Per-project layout** (not shared between projects):
 ```

@@ -26,7 +26,16 @@ Test runner requires `claude` CLI, `jq`, and `bc` on PATH. Results are written t
 ### Two kinds of artifacts
 
 - **Skills** (`skills/<name>/SKILL.md`) — one per workflow step. Each skill's prompt encodes the **valid transitions** out of the corresponding state. The model is expected to pick a transition at the end of the skill and tell the user which slash command to invoke next.
-- **Agents** (`agents/<name>/AGENTS.md`) — one orchestrator per workflow group (product, feature, task, incident). Each agent preloads the full set of skills for its workflow via the `skills:` frontmatter and owns the state-machine view.
+- **Agents** (`agents/<name>/AGENTS.md`) — one orchestrator per workflow group (product, feature, task, incident). Each agent holds the full state-machine view and an **Orchestration Procedure** section that `/session-start` reads as an instruction set. These files are reference documents, not Agent-spawned subagents.
+
+### Two invocation paths — single-step vs end-to-end
+
+- **Direct slash command** (e.g., `/product-vision`) — runs exactly one skill, then tells the user the next slash command. Single-step, no chaining. Use when you want to invoke a specific state or resume work.
+- **`/session-start`** — classifies the work, gets one confirmation, then **drives the workflow in the current conversation** by loading the matching orchestrator's Orchestration Procedure and invoking each skill via the Skill tool. Pauses only at human-input points defined by the procedure. Use when you want to drive a full workflow end-to-end.
+
+Why in-context and not via Agent spawn: the `Agent` tool is one-shot — a subagent that pauses for human input can't be resumed, which forced each human pause to respawn a fresh subagent and lose mid-step state. Running orchestration in the parent keeps the user dialogue continuous. An experimental subagent-per-step design is parked in `PLAN.md` → "Experiment: Subagent-Per-Step Orchestration" if context growth ever becomes a problem.
+
+Keep both paths working: never bake auto-chain logic into individual skill prompts (that would break single-step invocation). Orchestration behavior lives in the orchestrator AGENTS.md files, invoked by reference from `/session-start`.
 
 ### The state machine lives in three places — keep them in sync
 

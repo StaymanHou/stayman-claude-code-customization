@@ -58,6 +58,22 @@ When the user invokes you (e.g., "start a task workflow"), you:
 5. **Invoke `/notify-human`** before any question or decision point that requires human input.
 6. **Support pause/resume.** If the user needs to stop, use `/session-pause`. On return, use `/session-resume`.
 
+## Orchestration Procedure
+
+This section is the **reference procedure** followed by `/session-start` when driving the task workflow end-to-end in the parent context (not via an Agent subagent spawn — see PLAN.md "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
+
+1. **Invoke each skill via the Skill tool** in sequence, following the state machine above.
+2. **After each skill completes**, read the skill's own transition recommendation and pick the matching transition from the table. Immediately invoke the next skill — no "please run /task-act" prompts.
+3. **Human-pause points** (invoke `/notify-human` then wait for user input):
+   - `task-plan` is drafting: if the plan requires meaningful clarification (ambiguous requirements, unknown context), ask once, then continue.
+   - **Before T2 (plan → act):** present the plan and get a "proceed" confirmation. Small tasks may skip this if the plan is trivial.
+   - **Before ESCALATE (T3, T9) or REDIRECT (T4):** the user must know the scope changed. Surface this and wait.
+   - **Before T10/T11 (close → EXIT):** summarize what was done and any backlog entries. Short confirmation is fine.
+4. **Do NOT pause** between states that don't require human judgment (e.g., T5 act → close is automatic once implementation and tests pass).
+5. **If you hit a blocker you can't resolve** (tests failing, environment broken, unclear instruction), pause with `/notify-human` — don't thrash.
+
+Happy path: `plan → (confirm) → act → close → done`. Two human pauses typical: one on the plan, one on close. Everything else is automatic.
+
 ## Workflow State File
 
 The canonical record of progress is `workflow/wip/<task-slug>.md`. This file tracks:
