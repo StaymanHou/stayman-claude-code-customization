@@ -1,0 +1,87 @@
+group: session
+scenarios:
+  - id: S1
+    name: "session:start routes bug fix to task workflow"
+    skill: session-start
+    args: "Fix the off-by-one error in the pagination component"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S1
+      contains_any:
+        - "/task-plan"
+        - "task"
+      not_contains:
+        - "/feature-spec"
+        - "/product-vision"
+        - "/incident-report"
+    max_retries: 2
+
+  - id: S2
+    name: "session:start routes complex feature to feature:spec"
+    skill: session-start
+    args: >
+      Build a real-time collaborative editing system with conflict
+      resolution, presence indicators, offline sync, and multi-cursor
+      support. Needs new WebSocket infrastructure, CRDT implementation,
+      and UI components for presence and cursors.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S2
+      contains_any:
+        - "/feature-spec"
+      not_contains:
+        - "/task-plan"
+        - "/feature-plan"
+    max_retries: 2
+
+  - id: S3
+    name: "session:start routes simple feature to feature:plan"
+    skill: session-start
+    args: "Add a tooltip to the settings icon showing the keyboard shortcut Ctrl+K"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S3
+      contains_any:
+        - "/feature-plan"
+      not_contains:
+        - "/feature-spec"
+        - "/product-vision"
+    max_retries: 2
+
+  - id: S4
+    name: "session:start routes incident to incident:report"
+    skill: session-start
+    args: "Production is down! Users getting 500 errors on the main API"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S4
+      contains_any:
+        - "/incident-report"
+        - "incident"
+      not_contains:
+        - "/task-plan"
+        - "/feature-spec"
+    max_retries: 2
+
+  - id: S5
+    name: "session:start routes product initiative to product:vision"
+    skill: session-start
+    args: >
+      I want to build a completely new product — an AI-powered code
+      review tool that integrates with GitHub. Need to plan the whole
+      thing from vision to architecture to implementation.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S5
+      contains_any:
+        - "/product-vision"
+        - "product"
+      not_contains:
+        - "/feature-spec"
+        - "/task-plan"
+    max_retries: 2

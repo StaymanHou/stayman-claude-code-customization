@@ -1,0 +1,216 @@
+group: product
+scenarios:
+  # P1 is ENTRY → vision (always). Tested via session-start routing in session.yaml.
+
+  - id: P2
+    name: "product:vision → roadmap after vision created"
+    skill: product-vision
+    args: "A developer tool that generates API documentation from code comments and type annotations"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: P2
+      contains_any:
+        - "/product-roadmap"
+      not_contains:
+        - "/product-research"
+        - "/product-arch"
+    max_retries: 2
+
+  - id: P3
+    name: "product:roadmap → research after phases defined"
+    skill: product-roadmap
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-vision-done.md
+    expect:
+      transition_id: P3
+      contains_any:
+        - "/product-research"
+      not_contains:
+        - "/product-arch"
+        - "/product-wbs"
+    max_retries: 2
+
+  - id: P4
+    name: "product:research back-loops to roadmap when assumptions invalidated"
+    skill: product-research
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-roadmap-done.md
+    system_prompt_extra: |
+      Your research found that the PoC phase assumed Python AST parsing would
+      work for all Python code, but decorators and metaclasses require a
+      fundamentally different approach. The PoC scope in the roadmap needs
+      to be narrowed to only handle simple functions and classes. Phase 1
+      assumptions are invalid.
+    expect:
+      transition_id: P4
+      contains_any:
+        - "/product-roadmap"
+        - "back-loop"
+        - "roadmap"
+      not_contains:
+        - "/product-arch"
+    max_retries: 2
+
+  - id: P5
+    name: "product:research → arch when research confirms roadmap"
+    skill: product-research
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-roadmap-done.md
+    system_prompt_extra: |
+      Research confirms: Python ast module handles docstring extraction well.
+      Sphinx is too heavy for PoC. A custom Markdown renderer is the right
+      approach. All roadmap assumptions hold. Ready to define architecture.
+    expect:
+      transition_id: P5
+      contains_any:
+        - "/product-arch"
+      not_contains:
+        - "/product-roadmap"
+    max_retries: 2
+
+  - id: P6
+    name: "product:arch back-loops to research when unknowns found"
+    skill: product-arch
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-research-done.md
+    system_prompt_extra: |
+      While defining the architecture, you realized you need to decide
+      between a file-watcher approach (fsnotify) vs a git-hook approach
+      for the auto-sync feature in Phase 2. This choice affects the PoC
+      architecture because the file structure needs to support it. You
+      don't have enough information to decide — need more research.
+    expect:
+      transition_id: P6
+      contains_any:
+        - "/product-research"
+        - "back-loop"
+        - "research"
+      not_contains:
+        - "/product-wbs"
+    max_retries: 2
+
+  - id: P7
+    name: "product:arch → wbs when architecture defined"
+    skill: product-arch
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-research-done.md
+    system_prompt_extra: |
+      Architecture is fully defined: Python 3.12, ast module for parsing,
+      custom Markdown renderer, Click CLI. All components are clear.
+      No unknowns remain. Ready to break down into work packages.
+    expect:
+      transition_id: P7
+      contains_any:
+        - "/product-wbs"
+      not_contains:
+        - "/product-research"
+    max_retries: 2
+
+  - id: P8
+    name: "product:wbs back-loops to arch when gaps found"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-arch-done.md
+    system_prompt_extra: |
+      While decomposing into work packages, you realized the architecture
+      doesn't specify how to handle output format selection (Markdown vs
+      HTML vs JSON). This is an architectural decision that affects multiple
+      work packages. Need to revisit architecture first.
+    expect:
+      transition_id: P8
+      contains_any:
+        - "/product-arch"
+        - "back-loop"
+        - "architectural"
+      not_contains:
+        - "/product-context"
+    max_retries: 2
+
+  - id: P9
+    name: "product:wbs → context when WBS complete"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-arch-done.md
+    system_prompt_extra: |
+      The WBS is complete with 4 work packages: AST Parser, Markdown
+      Renderer, CLI Interface, and Watch Mode. All dependencies are
+      mapped. No architectural gaps found. Ready to generate project context.
+    expect:
+      transition_id: P9
+      contains_any:
+        - "/product-context"
+      not_contains:
+        - "/product-arch"
+    max_retries: 2
+
+  - id: P10
+    name: "product:context exits to feature workflow"
+    skill: product-context
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-wbs-done.md
+    expect:
+      transition_id: P10
+      contains_any:
+        - "/feature-spec"
+        - "/feature-plan"
+        - "feature"
+      not_contains:
+        - "/product-vision"
+    max_retries: 2
+
+  # P11 and P12 are SURFACE-IN transitions — tested by verifying source
+  # workflow's SURFACE output. We test the receiving side here.
+
+  - id: P11
+    name: "product:wbs accepts SURFACE-IN for new work"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-wbs-done.md
+    system_prompt_extra: |
+      A SURFACE note arrived from feature:build. During feature implementation,
+      the team discovered that a caching layer is needed between the parser
+      and renderer for performance. This was not in the original WBS. You
+      need to add it as a new work package and evaluate dependencies.
+    expect:
+      transition_id: P11
+      contains_any:
+        - "work package"
+        - "WBS"
+        - "WP"
+        - "add"
+      not_contains:
+        - "/product-arch"
+    max_retries: 2
+
+  - id: P12
+    name: "product:arch accepts SURFACE-IN for architectural gap"
+    skill: product-arch
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/product-arch-done.md
+    system_prompt_extra: |
+      A SURFACE note arrived from feature:build. During implementation,
+      the team discovered that the CLI architecture doesn't support
+      plugin extensions, but a user-contributed plugin was identified as
+      critical for adoption. This requires an architectural change to
+      add a plugin system.
+    expect:
+      transition_id: P12
+      contains_any:
+        - "architecture"
+        - "plugin"
+        - "design"
+      not_contains:
+        - "/product-wbs"
+        - "/product-context"
+    max_retries: 2

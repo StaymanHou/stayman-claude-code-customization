@@ -1,0 +1,206 @@
+group: task
+scenarios:
+  # T1 is ENTRY → plan (always). Tested via session-start routing in session.yaml.
+
+  - id: T2
+    name: "task:plan → act when plan is clear"
+    skill: task-plan
+    args: "Add a loading spinner to the login button while auth request is in flight"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: T2
+      contains_any:
+        - "/task-act"
+      not_contains:
+        - "/feature-spec"
+        - "/feature-research"
+        - "ESCALATE"
+    max_retries: 2
+
+  - id: T3
+    name: "task:plan escalates to feature:spec when too large"
+    skill: task-plan
+    args: >
+      Redesign the authentication system to support OAuth2, SAML, and
+      passwordless login. Need new user model fields, three new API
+      endpoints, a token refresh mechanism, and migration scripts for
+      existing users. Also need to update all existing session handling.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: T3
+      contains_any:
+        - "/feature-spec"
+        - "ESCALATE"
+      not_contains:
+        - "/task-act"
+    max_retries: 2
+
+  - id: T4
+    name: "task:plan redirects to research when unknowns exist"
+    skill: task-plan
+    args: >
+      Integrate the Stripe Billing API for metered usage tracking.
+      I'm not sure which Stripe API version to use, what the webhook
+      payload format is, or whether we need Stripe Connect for our
+      multi-tenant setup.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: T4
+      contains_any:
+        - "/feature-research"
+        - "REDIRECT"
+        - "research"
+      not_contains:
+        - "/task-act"
+    max_retries: 2
+
+  - id: T5
+    name: "task:act → close when implementation complete"
+    skill: task-act
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-act-complete.md
+    system_prompt_extra: |
+      All implementation steps in the plan are already marked complete.
+      Tests pass. There are no issues or discoveries.
+    expect:
+      transition_id: T5
+      contains_any:
+        - "/task-close"
+      not_contains:
+        - "/task-plan"
+        - "SURFACE"
+        - "ESCALATE"
+    max_retries: 2
+
+  - id: T6
+    name: "task:act back-loops to plan when re-plan needed"
+    skill: task-act
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-plan-clear.md
+    system_prompt_extra: |
+      While implementing the loading spinner, you discover that the LoginForm
+      component was recently refactored to use a state machine pattern. The
+      plan assumed direct state management with useState. The entire plan
+      needs to be revised to work with the new state machine pattern.
+    expect:
+      transition_id: T6
+      contains_any:
+        - "/task-plan"
+        - "re-plan"
+        - "back-loop"
+      not_contains:
+        - "/task-close"
+        - "ESCALATE"
+    max_retries: 2
+
+  - id: T7
+    name: "task:act surfaces to feature:spec on bigger discovery"
+    skill: task-act
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-plan-clear.md
+    system_prompt_extra: |
+      While implementing the spinner, you discover that the entire form
+      validation system is broken across all forms, not just login.
+      Every form component has the same bug. This is much bigger than
+      the current task but doesn't block your spinner work.
+    expect:
+      transition_id: T7
+      contains_any:
+        - "SURFACE"
+        - "feature:spec"
+        - "backlog"
+      not_contains:
+        - "ESCALATE"
+        - "/task-close"
+    max_retries: 2
+
+  - id: T8
+    name: "task:act surfaces to product:wbs on new work item"
+    skill: task-act
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-plan-clear.md
+    system_prompt_extra: |
+      While implementing the spinner, you notice the project has no
+      centralized loading state management. Every component handles
+      loading independently. This should be a new work package in the
+      WBS — a shared loading context provider. Doesn't block current
+      task though.
+    expect:
+      transition_id: T8
+      contains_any:
+        - "SURFACE"
+        - "product:wbs"
+        - "backlog"
+      not_contains:
+        - "ESCALATE"
+    max_retries: 2
+
+  - id: T9
+    name: "task:act escalates to feature:spec when scope grows"
+    skill: task-act
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-plan-clear.md
+    system_prompt_extra: |
+      The "loading spinner" task has ballooned. You've discovered that
+      to properly show loading states, you need: a new loading context
+      provider, a reusable Spinner component library, integration with
+      the error boundary system, retry logic for failed requests, and
+      loading skeletons for 12 different page layouts. This is clearly
+      a feature, not a task. Estimated 500+ lines of new code.
+    expect:
+      transition_id: T9
+      contains_any:
+        - "/feature-spec"
+        - "ESCALATE"
+      not_contains:
+        - "/task-close"
+        - "/task-plan"
+    max_retries: 2
+
+  - id: T10
+    name: "task:close exits normally with no significant learnings"
+    skill: task-close
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-act-complete.md
+    system_prompt_extra: |
+      The task was straightforward. Implementation went exactly as planned.
+      No surprises, no wrong assumptions, no unexpected discoveries.
+    expect:
+      transition_id: T10
+      contains_any:
+        - "complete"
+        - "done"
+        - "EXIT"
+      not_contains:
+        - "/session-reflect"
+        - "significant learning"
+    max_retries: 2
+
+  - id: T11
+    name: "task:close recommends reflect when learnings occurred"
+    skill: task-close
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-act-learnings.md
+    system_prompt_extra: |
+      During this task, several wrong assumptions were corrected and
+      undocumented behavior was discovered. The Redis connection pool
+      configuration was completely undocumented and the session TTL was
+      hardcoded in 3 places.
+    expect:
+      transition_id: T11
+      contains_any:
+        - "/session-reflect"
+        - "reflect"
+        - "learning"
+      not_contains: []
+    max_retries: 2

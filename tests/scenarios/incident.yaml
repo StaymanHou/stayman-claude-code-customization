@@ -1,0 +1,223 @@
+group: incident
+scenarios:
+  # I1 is ENTRY → report (always). Tested via session-start routing in session.yaml.
+
+  - id: I2
+    name: "incident:report → triage after report filed"
+    skill: incident-report
+    args: "Users are getting 500 errors on /api/v2/users since the 14:15 deployment. Error rate at 15%."
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: I2
+      contains_any:
+        - "/incident-triage"
+      not_contains:
+        - "/incident-investigate"
+        - "/incident-mitigate"
+    max_retries: 2
+
+  - id: I3
+    name: "incident:triage → investigate when severity assessed"
+    skill: incident-triage
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-report-filed.md
+    system_prompt_extra: |
+      The human confirms: this is a P1 — major feature broken, many users
+      affected, no workaround available. This needs investigation.
+    expect:
+      transition_id: I3
+      contains_any:
+        - "/incident-investigate"
+      not_contains:
+        - "/incident-resolve"
+    max_retries: 2
+
+  - id: I4
+    name: "incident:triage fast-closes false alarm"
+    skill: incident-triage
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-report-filed.md
+    system_prompt_extra: |
+      The human confirms: this is a false alarm. The 500 errors are from
+      the legacy monitoring probe hitting a deprecated endpoint. The probe
+      has already been updated. No real users were affected.
+    expect:
+      transition_id: I4
+      contains_any:
+        - "/incident-resolve"
+        - "fast-close"
+        - "false alarm"
+      not_contains:
+        - "/incident-investigate"
+    max_retries: 2
+
+  - id: I5
+    name: "incident:investigate self-loops when more data needed"
+    skill: incident-investigate
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-triaged.md
+    system_prompt_extra: |
+      You have checked the application logs and see NoneType errors in the
+      serializer, but you haven't yet verified which specific field is null,
+      which users are affected, or whether the migration ran correctly.
+      You need to check the database and the deployment logs before you can
+      confirm the root cause.
+    expect:
+      transition_id: I5
+      contains_any:
+        - "more data"
+        - "continue"
+        - "investigate"
+        - "self-loop"
+      not_contains:
+        - "/incident-mitigate"
+        - "/incident-resolve"
+    max_retries: 2
+
+  - id: I6
+    name: "incident:investigate → mitigate when root cause found"
+    skill: incident-investigate
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-triaged.md
+    system_prompt_extra: |
+      After thorough investigation, you have confirmed the root cause:
+      the new serializer expects a profile_image_url field, but users
+      created before the migration don't have it. NoneType error when
+      serializing. The fix is to add a default value fallback.
+    expect:
+      transition_id: I6
+      contains_any:
+        - "/incident-mitigate"
+      not_contains:
+        - "/incident-resolve"
+    max_retries: 2
+
+  - id: I7
+    name: "incident:investigate → resolve when false alarm discovered"
+    skill: incident-investigate
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-triaged.md
+    system_prompt_extra: |
+      After investigation, you discovered this is actually a false alarm.
+      The 500 errors were caused by a load test running against production
+      by mistake. The load test has been stopped and error rates returned
+      to normal immediately. No code bug exists.
+    expect:
+      transition_id: I7
+      contains_any:
+        - "/incident-resolve"
+        - "false alarm"
+      not_contains:
+        - "/incident-mitigate"
+    max_retries: 2
+
+  - id: I8
+    name: "incident:mitigate back-loops to investigate when fix fails"
+    skill: incident-mitigate
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-rootcause-found.md
+    system_prompt_extra: |
+      You applied the default value fallback fix and deployed it, but
+      the error rate only dropped from 15% to 10%. There are still 500
+      errors happening. The original root cause was only part of the
+      problem — there must be another issue. Need more investigation.
+    expect:
+      transition_id: I8
+      contains_any:
+        - "/incident-investigate"
+        - "back-loop"
+      not_contains:
+        - "/incident-resolve"
+    max_retries: 2
+
+  - id: I9
+    name: "incident:mitigate → resolve when fix works"
+    skill: incident-mitigate
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-rootcause-found.md
+    system_prompt_extra: |
+      The hotfix was deployed at 15:00. Error rate dropped to 0% by 15:05.
+      It has been 30 minutes of monitoring with zero errors. The fix is
+      confirmed working and stable.
+    expect:
+      transition_id: I9
+      contains_any:
+        - "/incident-resolve"
+      not_contains:
+        - "/incident-investigate"
+    max_retries: 2
+
+  - id: I10
+    name: "incident:resolve always triggers reflect"
+    skill: incident-resolve
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-mitigated.md
+    system_prompt_extra: |
+      The incident is fully resolved. Monitoring period passed with no
+      regressions. The hotfix is stable.
+    expect:
+      transition_id: I10
+      contains_any:
+        - "/session-reflect"
+        - "reflect"
+      not_contains: []
+    max_retries: 2
+
+  - id: I11
+    name: "incident:resolve surfaces small fix to task:plan"
+    skill: incident-resolve
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-mitigated.md
+    system_prompt_extra: |
+      The incident is resolved, but the hotfix was a quick default value
+      patch. The proper fix is to run a data migration to backfill
+      profile_image_url for all existing users. This is a small, scoped
+      task — not an architectural change.
+    expect:
+      transition_id: I11
+      contains_any:
+        - "task:plan"
+        - "SURFACE"
+        - "backlog"
+      not_contains:
+        - "feature:spec"
+    max_retries: 2
+
+  - id: I12
+    name: "incident:resolve surfaces architectural fix to feature:spec"
+    skill: incident-resolve
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-mitigated.md
+    system_prompt_extra: |
+      The incident revealed a systemic problem: the serialization layer has
+      no null-safety guarantees anywhere. Every serializer assumes all fields
+      are present. This needs an architectural fix — a serializer base class
+      with default value handling, and all 30+ serializers need updating.
+    expect:
+      transition_id: I12
+      contains_any:
+        - "feature:spec"
+        - "SURFACE"
+        - "architectural"
+      not_contains:
+        - "task:plan"
+    max_retries: 2

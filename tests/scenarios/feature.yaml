@@ -1,0 +1,545 @@
+group: feature
+scenarios:
+  # F1 and F2 are ENTRY routing — tested via session-start in session.yaml.
+  # We also test them explicitly here by invoking the skills directly.
+
+  - id: F1
+    name: "feature:spec entered for complex feature"
+    skill: feature-spec
+    args: >
+      Build a real-time collaborative editing system with conflict resolution,
+      presence indicators, offline sync, and multi-cursor support.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: F1
+      contains_any:
+        - "spec"
+        - "specification"
+      not_contains: []
+    max_retries: 2
+
+  - id: F3
+    name: "feature:spec → research when unknowns exist"
+    skill: feature-spec
+    args: "Real-time collaboration feature"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-spec-unknowns.md
+    system_prompt_extra: |
+      The spec has multiple open questions: which real-time protocol
+      (WebSocket vs SSE vs WebTransport), how to handle conflict resolution
+      (OT vs CRDT), and acceptable latency for presence. These must be
+      researched before planning.
+    expect:
+      transition_id: F3
+      contains_any:
+        - "/feature-research"
+      not_contains:
+        - "/feature-plan"
+    max_retries: 2
+
+  - id: F4
+    name: "feature:spec → plan when spec is clear"
+    skill: feature-spec
+    args: "User notification preferences"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-spec-clear.md
+    system_prompt_extra: |
+      The specification is complete. No open questions. All acceptance
+      criteria are clear. No unknowns to research.
+    expect:
+      transition_id: F4
+      contains_any:
+        - "/feature-plan"
+      not_contains:
+        - "/feature-research"
+    max_retries: 2
+
+  - id: F5
+    name: "feature:research → plan when research complete"
+    skill: feature-research
+    args: "WebSocket vs SSE for real-time collaboration"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-spec-unknowns.md
+    system_prompt_extra: |
+      Research is complete. Findings: WebSocket is the right choice for
+      bidirectional real-time editing. CRDT (Yjs library) handles conflict
+      resolution. 100ms latency is acceptable for presence. All questions
+      answered. The spec remains valid.
+    expect:
+      transition_id: F5
+      contains_any:
+        - "/feature-plan"
+      not_contains:
+        - "/feature-spec"
+    max_retries: 2
+
+  - id: F6
+    name: "feature:research back-loops to spec when spec is wrong"
+    skill: feature-research
+    args: "WebSocket vs SSE for real-time collaboration"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-spec-unknowns.md
+    system_prompt_extra: |
+      Research reveals a critical problem: the spec assumed we could use a
+      simple WebSocket server, but the existing infrastructure is behind a
+      load balancer that doesn't support sticky sessions. The spec needs to
+      be revised to account for a pub/sub architecture instead of direct
+      WebSocket connections.
+    expect:
+      transition_id: F6
+      contains_any:
+        - "/feature-spec"
+        - "back-loop"
+        - "spec"
+      not_contains:
+        - "/feature-plan"
+    max_retries: 2
+
+  - id: F7
+    name: "feature:plan → build (phase 1)"
+    skill: feature-plan
+    args: "User notification preferences"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-spec-clear.md
+    expect:
+      transition_id: F7
+      contains_any:
+        - "/feature-build"
+      not_contains:
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F8
+    name: "feature:build → verify-auto when phase complete"
+    skill: feature-build
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-phase1.md
+    system_prompt_extra: |
+      All Phase 1 steps are complete: notification_preferences table created,
+      CRUD endpoints implemented, default preferences added on user creation.
+      All code changes are done for this phase.
+    expect:
+      transition_id: F8
+      contains_any:
+        - "/feature-verify-auto"
+      not_contains:
+        - "/feature-plan"
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F9
+    name: "feature:verify-auto back-loops to build when tests fail"
+    skill: feature-verify-auto
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      Test results: 20 tests passed, 3 FAILED.
+      - test_create_preferences: AssertionError expected 201 got 400
+      - test_update_preferences: KeyError 'email_enabled'
+      - test_default_preferences: AssertionError missing default for 'sms'
+      These are code bugs in the implementation, not spec problems.
+    expect:
+      transition_id: F9
+      contains_any:
+        - "/feature-build"
+      not_contains:
+        - "/feature-verify-human"
+        - "/feature-spec"
+    max_retries: 2
+
+  - id: F10
+    name: "feature:verify-auto → verify-human when tests pass"
+    skill: feature-verify-auto
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      Test results: 24 tests passed, 0 failed. Linting clean. Type
+      checking clean. All automated checks pass.
+    expect:
+      transition_id: F10
+      contains_any:
+        - "/feature-verify-human"
+      not_contains:
+        - "/feature-build"
+        - "/feature-spec"
+    max_retries: 2
+
+  - id: F11
+    name: "feature:verify-human skips to verify-codify with reasoning"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-auto-passed.md
+    system_prompt_extra: |
+      Phase 1 is purely backend API work — database table and REST
+      endpoints. There is no UI, no user-facing interface to manually
+      test. Full automated test coverage exists for all endpoints.
+      The human confirms there is nothing to manually test.
+    expect:
+      transition_id: F11
+      contains_any:
+        - "/feature-verify-codify"
+        - "nothing to manually test"
+        - "skip"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F12
+    name: "feature:verify-human back-loops to build when human rejects"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-auto-passed.md
+    system_prompt_extra: |
+      The human tested the API endpoints and found issues:
+      - The PATCH endpoint doesn't validate that category names exist
+      - The GET endpoint returns 200 with empty body instead of 404 for
+        non-existent users
+      - The response format doesn't match the documented API contract
+      Human rejects this phase.
+    expect:
+      transition_id: F12
+      contains_any:
+        - "/feature-build"
+        - "back-loop"
+      not_contains:
+        - "/feature-verify-codify"
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F13
+    name: "feature:verify-human → verify-codify when approved"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-auto-passed.md
+    system_prompt_extra: |
+      The human verified the API endpoints:
+      - GET /preferences returns correct defaults for new users
+      - PATCH /preferences updates correctly
+      - Invalid category returns 400
+      All happy paths work. Human approves.
+    expect:
+      transition_id: F13
+      contains_any:
+        - "/feature-verify-codify"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F14
+    name: "feature:verify-codify back-loops when tests reveal issues"
+    skill: feature-verify-codify
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-human-approved.md
+    system_prompt_extra: |
+      While writing comprehensive tests, you discovered that concurrent
+      PATCH requests to the same user's preferences cause a race condition.
+      The human didn't catch this because they tested sequentially. This
+      is a real bug that the human should verify the fix for.
+    expect:
+      transition_id: F14
+      contains_any:
+        - "/feature-verify-human"
+        - "back-loop"
+      not_contains:
+        - "/feature-build"
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F15
+    name: "feature:verify-codify → build (next phase) when more phases"
+    skill: feature-verify-codify
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-human-approved.md
+    system_prompt_extra: |
+      Comprehensive tests written and all pass. Phase 1 (Backend API) is
+      fully verified. Phase 2 (Frontend Settings UI) still remains.
+    expect:
+      transition_id: F15
+      contains_any:
+        - "/feature-build"
+        - "phase 2"
+        - "next phase"
+      not_contains:
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F16
+    name: "feature:verify-codify → ship when all phases done"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      All comprehensive tests written and passing. Both Phase 1 and Phase 2
+      are fully verified. No more phases remain. Feature is ready to ship.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "/feature-ship"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F17
+    name: "feature:ship → finalize"
+    skill: feature-ship
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      All cleanup done. No temporary files. Tests pass. PR is ready.
+    expect:
+      transition_id: F17
+      contains_any:
+        - "/feature-finalize"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F18
+    name: "feature:finalize → refactor when tech debt found"
+    skill: feature-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-with-debt.md
+    system_prompt_extra: |
+      Documentation is updated. But during review, the following tech debt
+      was identified: duplicated validation logic, N+1 query, and copy-pasted
+      test helpers. These should be cleaned up.
+    expect:
+      transition_id: F18
+      contains_any:
+        - "/feature-refactor"
+        - "tech debt"
+      not_contains:
+        - "/session-reflect"
+    max_retries: 2
+
+  - id: F19
+    name: "feature:finalize exits with reflect when no debt"
+    skill: feature-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-no-debt.md
+    system_prompt_extra: |
+      Documentation updated. Code reviewed. No tech debt identified.
+      Feature is clean and complete.
+    expect:
+      transition_id: F19
+      contains_any:
+        - "/session-reflect"
+        - "reflect"
+        - "complete"
+      not_contains:
+        - "/feature-refactor"
+    max_retries: 2
+
+  - id: F20
+    name: "feature:refactor → plan (cleanup-only constraint)"
+    skill: feature-refactor
+    args: "Deduplicate validation logic and fix N+1 query"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-with-debt.md
+    system_prompt_extra: |
+      The refactor is complex — it touches the validation layer in both
+      frontend and backend, requires extracting a shared validation module,
+      and the N+1 fix requires a query rewrite affecting 3 endpoints.
+      This needs a plan before executing.
+    expect:
+      transition_id: F20
+      contains_any:
+        - "/feature-plan"
+        - "plan"
+        - "cleanup"
+      not_contains:
+        - "/feature-spec"
+    max_retries: 2
+
+  - id: F21
+    name: "feature:refactor exits with reflect when complete"
+    skill: feature-refactor
+    args: "Fix copy-pasted test helpers"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-with-debt.md
+    system_prompt_extra: |
+      The refactor is simple: extract create_test_preferences() into a
+      shared conftest.py fixture. This is a 10-line change in 5 files.
+      Done — tests all pass. No further refactoring needed.
+    expect:
+      transition_id: F21
+      contains_any:
+        - "/session-reflect"
+        - "reflect"
+        - "complete"
+      not_contains:
+        - "/feature-plan"
+    max_retries: 2
+
+  - id: F22
+    name: "feature:build redirects to research on unknown"
+    skill: feature-build
+    args: "phase 2 — payment integration"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-phase1.md
+    system_prompt_extra: |
+      While implementing the notification preferences UI, you discover
+      that the project uses a custom design system component library
+      that is undocumented. You cannot figure out how to create a toggle
+      switch component without understanding the library's API. This
+      requires research before continuing.
+    expect:
+      transition_id: F22
+      contains_any:
+        - "/feature-research"
+        - "REDIRECT"
+        - "research"
+      not_contains:
+        - "/feature-verify-auto"
+    max_retries: 2
+
+  - id: F23
+    name: "feature:build back-loops to plan when plan is wrong"
+    skill: feature-build
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-phase1.md
+    system_prompt_extra: |
+      While implementing, you discover the plan missed a critical step:
+      the notification_preferences table needs a foreign key to a
+      notification_categories table that doesn't exist yet. The plan
+      needs to be revised to add category management as a prerequisite.
+    expect:
+      transition_id: F23
+      contains_any:
+        - "/feature-plan"
+        - "back-loop"
+        - "re-plan"
+      not_contains:
+        - "/feature-verify-auto"
+        - "/feature-research"
+    max_retries: 2
+
+  - id: F24
+    name: "feature:verify-auto back-loops to spec when spec is wrong"
+    skill: feature-verify-auto
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      Tests reveal a fundamental spec problem: the acceptance criteria say
+      "changes save immediately" but the test for concurrent saves shows
+      the database can't handle the write volume. The spec assumed a simple
+      save model, but the actual requirement needs eventual consistency
+      with optimistic locking. The spec itself needs revision.
+    expect:
+      transition_id: F24
+      contains_any:
+        - "/feature-spec"
+        - "spec"
+      not_contains:
+        - "/feature-build"
+        - "/feature-verify-human"
+    max_retries: 2
+
+  - id: F25
+    name: "feature:build surfaces to product:wbs (note-and-continue)"
+    skill: feature-build
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-phase1.md
+    system_prompt_extra: |
+      While implementing preferences, you notice that the project has no
+      audit logging system. Every preference change should be logged for
+      compliance, but there's no audit module in the WBS. This doesn't
+      block your current work — you can add preferences without audit
+      logging — but it should be tracked as new work.
+    expect:
+      transition_id: F25
+      contains_any:
+        - "SURFACE"
+        - "product:wbs"
+        - "backlog"
+        - "note-and-continue"
+      not_contains:
+        - "ESCALATE"
+        - "pause"
+    max_retries: 2
+
+  - id: F26
+    name: "feature:build surfaces to product:arch (pause-and-escalate)"
+    skill: feature-build
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-phase1.md
+    system_prompt_extra: |
+      While implementing the preferences API, you discover that the
+      database is PostgreSQL but the architecture spec says the notification
+      delivery system will use MongoDB for event storage. The preferences
+      table needs to reference notification events, but you can't design
+      the foreign key relationship without knowing whether to use cross-DB
+      references or denormalize. This is an architectural blocker — you
+      cannot continue implementation without this decision.
+    expect:
+      transition_id: F26
+      contains_any:
+        - "SURFACE"
+        - "product:arch"
+        - "pause"
+        - "escalate"
+        - "blocker"
+      not_contains:
+        - "note-and-continue"
+    max_retries: 2
+
+  # F27 (ANY → incident:report) is impractical to test — requires simulating breakage.
+  # F28 (SURFACE-IN → spec) tested from task workflow's ESCALATE output.
+
+  - id: F28
+    name: "feature:spec accepts SURFACE-IN from task escalation"
+    skill: feature-spec
+    args: "Loading state management system"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      This feature was escalated from a task (T9). The original task was
+      "Add a loading spinner to the login button" but it grew into a full
+      loading state management system needing: a context provider, component
+      library, error boundary integration, retry logic, and 12 skeleton
+      layouts. The task was closed and escalated here.
+    expect:
+      transition_id: F28
+      contains_any:
+        - "spec"
+        - "escalat"
+      not_contains: []
+    max_retries: 2
