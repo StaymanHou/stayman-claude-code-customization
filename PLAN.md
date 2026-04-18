@@ -437,14 +437,16 @@ Also deferred: vision revision loop, reflect after product:context completion.
 3. Create `incident-workflow` agent ✅
 4. Test incident → surface → task/feature — deferred to real usage
 
-### Phase 6: Session & Polish ✅ (skills complete, hooks/testing deferred)
+### Phase 6: Session & Polish ✅ (skills complete, hooks deferred)
 1. Port `session-reflect` with auto-trigger hooks ✅ (skill done; hooks deferred to real usage tuning)
 2. Port `session-store-learning` with `~/.claude/` write support ✅
 3. Add lightweight workflow state hook — deferred to real usage tuning
-4. End-to-end testing across all workflows — deferred to real usage
-5. Write README.md — deferred
+4. End-to-end testing across all workflows ✅ (63 scenarios in tests/run-tests.sh)
+5. Write README.md ✅
 
 ### Future Phases
+- **Auto-trigger hook for reflect:** settings.json hook that detects completion of feature:finalize, feature:refactor, or incident:resolve and auto-prompts `/session-reflect`. Currently skills only suggest it — hook would enforce it at the harness level.
+- **Lightweight workflow state hook:** PreToolUse hook that reads `workflow/wip/` state and warns (or blocks via exit code 2) when a skill invocation doesn't match the current state. Best tuned after real usage reveals which out-of-order mistakes are common.
 - Hierarchy of facts system
 - Vision revision loop
 - Reflect after product:context
