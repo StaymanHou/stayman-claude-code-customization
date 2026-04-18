@@ -23,9 +23,9 @@ Also entered via:
 ## Procedure
 
 ### 1. Review Inputs
-- Read the WIP file for vision, roadmap, and research findings
-- If entering from WBS back-loop (P8), read the specific gaps identified
-- If entering from SURFACE-IN (P12), read the surface note for context
+- Read `docs/product/vision.md`, `docs/product/roadmap.md`, and `docs/product/research.md`
+- If entering from WBS back-loop (P8), read `docs/product/wbs.md` for the specific gaps identified
+- If entering from SURFACE-IN (P12), read the surface note in `workflow/backlog.md` for context
 
 ### 2. Scope Definition
 - Explicitly state which phase this architecture is for (PoC, MVP, V1, etc.)
@@ -33,10 +33,16 @@ Also entered via:
 - **Forward Compatibility:** Ensure current choices don't make future phases impossible
 
 ### 3. Define Architecture
-Add to the WIP file:
+Create `docs/product/arch.md` (or update it in place if returning via a back-loop — bump `updated:` and append a `## Revision <YYYY-MM-DD>` section):
 
 ```markdown
-## Architecture
+---
+stage: arch
+state: in-progress
+updated: <YYYY-MM-DD>
+---
+
+# Architecture
 
 **Phase:** <which phase>
 
@@ -57,7 +63,7 @@ Add to the WIP file:
 ```
 
 ### 4. Evaluate Next Step
-- If architecture is solid → recommend `/product-wbs` (P7)
-- If unknowns emerged → document them, recommend `/product-research` (P6)
+- If architecture is solid → set `state: complete` in the frontmatter, recommend `/product-wbs` (P7)
+- If unknowns emerged → document them, recommend `/product-research` (P6). The research skill will bump `docs/product/research.md` back to `state: in-progress`.
 
 **Context:** {{args}}

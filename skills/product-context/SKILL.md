@@ -19,12 +19,12 @@ This is the **terminal state** of the product workflow.
 ## Procedure
 
 ### 1. Gather Inputs
-Read the WIP file for all product artifacts:
-- Vision (purpose, audience, metrics)
-- Roadmap (phases, milestones)
-- Research (tech stack, trade-offs)
-- Architecture (system design, data flow)
-- WBS (work packages, dependencies)
+Read the product docs from `docs/product/`:
+- `vision.md` (purpose, audience, metrics)
+- `roadmap.md` (phases, milestones)
+- `research.md` (tech stack, trade-offs)
+- `arch.md` (system design, data flow)
+- `wbs.md` (work packages, dependencies)
 
 ### 2. Generate Project CLAUDE.md
 Create or update `.claude/CLAUDE.md` in the project root with:
@@ -61,10 +61,25 @@ Create or update `.claude/CLAUDE.md` in the project root with:
 <Important architectural and product decisions with rationale>
 ```
 
-### 3. Archive Product Artifacts
-- Update the WIP file state to `context (complete)`
-- Move to `workflow/archive/`
-- Ensure the WBS and roadmap remain accessible (copy key sections into CLAUDE.md or keep in `docs/`)
+### 3. Finalize Product Docs
+- Product docs stay in place under `docs/product/` — they are durable reference material, not ephemeral WIP, so they are **not** archived.
+- Create `docs/product/context.md` summarizing the generated `.claude/CLAUDE.md` and noting the active roadmap phase:
+
+```markdown
+---
+stage: context
+state: complete
+updated: <YYYY-MM-DD>
+---
+
+# Context
+
+Project CLAUDE.md generated at `.claude/CLAUDE.md`.
+
+**Active phase:** <current roadmap phase>
+**First feature:** <first milestone to pick up>
+```
+- Set `state: complete` on every other file in `docs/product/` that is still `in-progress`.
 
 ### 4. Transition to Feature Workflow
 - Identify the first milestone from the roadmap

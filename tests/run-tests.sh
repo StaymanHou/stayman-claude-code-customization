@@ -97,6 +97,7 @@ run_test() {
   local contains_any; contains_any=$(parse_scenario_nested "$yaml_file" "$index" "expect" "contains_any")
   local not_contains; not_contains=$(parse_scenario_nested "$yaml_file" "$index" "expect" "not_contains")
   local fixture_wip; fixture_wip=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "wip")
+  local fixture_product_dir; fixture_product_dir=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "product_dir")
 
   # Apply filters
   if [ -n "$FILTER_IDS" ]; then
@@ -128,11 +129,15 @@ ${extra_prompt}"
 
   # Build temp project dir with fixtures
   local tmpdir; tmpdir=$(mktemp -d)
-  mkdir -p "$tmpdir/.claude" "$tmpdir/workflow/wip"
+  mkdir -p "$tmpdir/.claude" "$tmpdir/workflow/wip" "$tmpdir/docs/product"
   cp "$FIXTURES_DIR/CLAUDE.md" "$tmpdir/.claude/CLAUDE.md" 2>/dev/null || true
 
   if [ -n "$fixture_wip" ] && [ -f "$SCRIPT_DIR/$fixture_wip" ]; then
     cp "$SCRIPT_DIR/$fixture_wip" "$tmpdir/workflow/wip/"
+  fi
+
+  if [ -n "$fixture_product_dir" ] && [ -d "$SCRIPT_DIR/$fixture_product_dir" ]; then
+    cp "$SCRIPT_DIR/$fixture_product_dir"/*.md "$tmpdir/docs/product/" 2>/dev/null || true
   fi
 
   local attempt=0

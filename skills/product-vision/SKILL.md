@@ -27,14 +27,16 @@ Engage with the user to establish:
 - **Core Principles:** Guiding values for the product
 
 ### 2. Create Vision Document
-Create `workflow/wip/<product-name>.md` with:
+Product docs live under `docs/product/` with one file per stage (flat layout, one product per codebase). Create `docs/product/vision.md`:
 
 ```markdown
-# Product: <name>
+---
+stage: vision
+state: in-progress
+updated: <YYYY-MM-DD>
+---
 
-**Workflow:** product
-**State:** vision
-**Created:** <YYYY-MM-DD>
+# Vision — <product name>
 
 ## Vision
 <core problem and proposed solution>
@@ -50,7 +52,7 @@ Create `workflow/wip/<product-name>.md` with:
 ```
 
 ### 3. Hand Off
-- Update state to `vision (complete)`
+- Set `state: complete` in the frontmatter
 - Tell user to run `/product-roadmap` to break the vision into phases
 
 **STOP** — do NOT start roadmapping yet.

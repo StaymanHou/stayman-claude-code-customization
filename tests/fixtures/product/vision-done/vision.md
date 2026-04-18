@@ -1,8 +1,10 @@
-# Product: DocGen — API Documentation Generator
+---
+stage: vision
+state: complete
+updated: 2026-04-10
+---
 
-**Workflow:** product
-**State:** vision (complete)
-**Created:** 2026-04-10
+# Vision — DocGen (API Documentation Generator)
 
 ## Vision
 Generate API documentation automatically from code comments and type annotations.

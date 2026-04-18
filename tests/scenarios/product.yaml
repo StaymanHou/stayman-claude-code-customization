@@ -22,7 +22,7 @@ scenarios:
     skill: product-roadmap
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-vision-done.md
+      product_dir: fixtures/product/vision-done
     expect:
       transition_id: P3
       contains_any:
@@ -37,7 +37,7 @@ scenarios:
     skill: product-research
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-roadmap-done.md
+      product_dir: fixtures/product/roadmap-done
     system_prompt_extra: |
       Your research found that the PoC phase assumed Python AST parsing would
       work for all Python code, but decorators and metaclasses require a
@@ -59,7 +59,7 @@ scenarios:
     skill: product-research
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-roadmap-done.md
+      product_dir: fixtures/product/roadmap-done
     system_prompt_extra: |
       Research confirms: Python ast module handles docstring extraction well.
       Sphinx is too heavy for PoC. A custom Markdown renderer is the right
@@ -77,7 +77,7 @@ scenarios:
     skill: product-arch
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-research-done.md
+      product_dir: fixtures/product/research-done
     system_prompt_extra: |
       While defining the architecture, you realized you need to decide
       between a file-watcher approach (fsnotify) vs a git-hook approach
@@ -99,7 +99,7 @@ scenarios:
     skill: product-arch
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-research-done.md
+      product_dir: fixtures/product/research-done
     system_prompt_extra: |
       Architecture is fully defined: Python 3.12, ast module for parsing,
       custom Markdown renderer, Click CLI. All components are clear.
@@ -117,7 +117,7 @@ scenarios:
     skill: product-wbs
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-arch-done.md
+      product_dir: fixtures/product/arch-done
     system_prompt_extra: |
       While decomposing into work packages, you realized the architecture
       doesn't specify how to handle output format selection (Markdown vs
@@ -138,7 +138,7 @@ scenarios:
     skill: product-wbs
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-arch-done.md
+      product_dir: fixtures/product/arch-done
     system_prompt_extra: |
       The WBS is complete with 4 work packages: AST Parser, Markdown
       Renderer, CLI Interface, and Watch Mode. All dependencies are
@@ -156,7 +156,7 @@ scenarios:
     skill: product-context
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-wbs-done.md
+      product_dir: fixtures/product/wbs-done
     expect:
       transition_id: P10
       contains_any:
@@ -175,7 +175,7 @@ scenarios:
     skill: product-wbs
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-wbs-done.md
+      product_dir: fixtures/product/wbs-done
     system_prompt_extra: |
       A SURFACE note arrived from feature:build. During feature implementation,
       the team discovered that a caching layer is needed between the parser
@@ -197,7 +197,7 @@ scenarios:
     skill: product-arch
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/product-arch-done.md
+      product_dir: fixtures/product/arch-done
     system_prompt_extra: |
       A SURFACE note arrived from feature:build. During implementation,
       the team discovered that the CLI architecture doesn't support

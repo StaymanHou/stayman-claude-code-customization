@@ -1,10 +1,14 @@
-# Product: DocGen
+---
+stage: research
+state: complete
+updated: 2026-04-10
+---
 
-**Workflow:** product
-**State:** research (complete)
-**Created:** 2026-04-10
+# Research
 
-## Research Findings
+**Phase Focus:** Phase 1 (PoC)
+
+## Findings
 - AST parsing with `ast` module is sufficient for PoC
 - Sphinx + autodoc is the dominant tool but heavy
 - Lightweight alternative: custom Markdown renderer

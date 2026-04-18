@@ -22,7 +22,7 @@ Also entered via:
 ## Procedure
 
 ### 1. Identify Phase Focus
-- Read the WIP file for vision and roadmap
+- Read `docs/product/vision.md` and `docs/product/roadmap.md`
 - Determine the current/next active phase from the roadmap
 - Focus research on that specific phase's needs
 
@@ -36,10 +36,16 @@ Also entered via:
 - Use web search for up-to-date information — online official docs override model knowledge
 
 ### 3. Document Findings
-Add to the WIP file:
+Create `docs/product/research.md`:
 
 ```markdown
-## Research
+---
+stage: research
+state: in-progress
+updated: <YYYY-MM-DD>
+---
+
+# Research
 
 **Phase Focus:** <which phase this research supports>
 
@@ -57,8 +63,8 @@ Add to the WIP file:
 ```
 
 ### 4. Evaluate Next Step
-- If findings are solid and roadmap holds → recommend `/product-arch` (P5)
-- If findings invalidate roadmap assumptions → document what changed and why, recommend `/product-roadmap` (P4)
+- If findings are solid and roadmap holds → set `state: complete` in the frontmatter, recommend `/product-arch` (P5)
+- If findings invalidate roadmap assumptions → document what changed and why, recommend `/product-roadmap` (P4). The roadmap skill will bump `docs/product/roadmap.md` back to `state: in-progress`.
 - If arriving from arch back-loop (P6), evaluate whether the new findings affect the architecture or the roadmap
 
 **Focus Areas:** {{args}}

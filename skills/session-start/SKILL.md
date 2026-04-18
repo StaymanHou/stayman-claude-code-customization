@@ -33,4 +33,7 @@ All must hold:
 3. Otherwise, ask what they want to work on today.
 4. Recommend the appropriate workflow and entry skill.
 5. If recommending Feature, evaluate the small/simple criteria and suggest `/feature-spec` or `/feature-plan` accordingly.
-6. Check `workflow/wip/` for any active work — mention it if found.
+6. Check for any active work and mention it if found:
+   - `workflow/.session.md` — an explicitly paused session (recommend `/session-resume`)
+   - `workflow/wip/` — any active feature/task/incident files
+   - `docs/product/` — any product doc with frontmatter `state: in-progress`

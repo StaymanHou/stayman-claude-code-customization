@@ -21,15 +21,21 @@ Also entered via:
 ## Procedure
 
 ### 1. Review Vision
-Read the product WIP file in `workflow/wip/` for the vision document.
+Read `docs/product/vision.md`.
 
 ### 2. Create Roadmap
-Break the vision into logical phases with clear milestones:
+Break the vision into logical phases with clear milestones.
 
-Add to the WIP file:
+Create `docs/product/roadmap.md`:
 
 ```markdown
-## Roadmap
+---
+stage: roadmap
+state: in-progress
+updated: <YYYY-MM-DD>
+---
+
+# Roadmap
 
 ### Phase 1: <name> (e.g., PoC, Prototype)
 **Goal:** <what this phase proves or delivers>
@@ -52,12 +58,13 @@ Each phase should have:
 
 ### 3. Handle Back-Loop (if from P4)
 If research invalidated assumptions:
-- Document what changed and why
+- Set `state: in-progress` and bump `updated:` in the frontmatter
+- Append a `## Revision <YYYY-MM-DD>` section documenting what changed and why
 - Revise affected phases
 - Note which assumptions were corrected
 
 ### 4. Hand Off
-- Update state to `roadmap (complete)`
+- Set `state: complete` in the frontmatter
 - Tell user to run `/product-research` to investigate technical solutions for the next phase
 
 **Context:** {{args}}

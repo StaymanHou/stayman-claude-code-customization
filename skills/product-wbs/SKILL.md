@@ -22,14 +22,20 @@ Also entered via:
 ## Procedure
 
 ### 1. Review Inputs
-- Read the WIP file for vision, roadmap, research, and architecture
-- If entering from SURFACE-IN (P11), read the surface note and integrate the new work item
+- Read `docs/product/vision.md`, `docs/product/roadmap.md`, `docs/product/research.md`, `docs/product/arch.md`
+- If entering from SURFACE-IN (P11), read the surface note in `workflow/backlog.md` and integrate the new work item
 
 ### 2. Decompose into Work Packages
-Add to the WIP file:
+Create `docs/product/wbs.md` (or update in place if returning via back-loop/SURFACE-IN):
 
 ```markdown
-## Work Breakdown Structure
+---
+stage: wbs
+state: in-progress
+updated: <YYYY-MM-DD>
+---
+
+# Work Breakdown Structure
 
 ### WP1: <name>
 **Description:** <what this covers>
@@ -61,7 +67,7 @@ If new work was surfaced from a lower level:
 - Note the source of the surface item
 
 ### 5. Evaluate Next Step
-- If WBS is complete and architecture holds → recommend `/product-context` (P9)
-- If decomposition reveals architectural gaps → document them, recommend `/product-arch` (P8)
+- If WBS is complete and architecture holds → set `state: complete` in the frontmatter, recommend `/product-context` (P9)
+- If decomposition reveals architectural gaps → document them, recommend `/product-arch` (P8). The arch skill will bump `docs/product/arch.md` back to `state: in-progress`.
 
 **Scope:** {{args}}

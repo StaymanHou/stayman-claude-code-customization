@@ -51,7 +51,11 @@ cd ~/Personal/projects/my-claude-code-customization
 ./install.sh
 ```
 
-The install script creates per-skill and per-agent symlinks from the source repo to `~/.claude/skills/` and `~/.claude/agents/`. It's idempotent — safe to re-run.
+The install script:
+- Creates per-skill and per-agent symlinks from this repo to `~/.claude/skills/` and `~/.claude/agents/`.
+- Injects the contents of [`CLAUDE.snippet.md`](CLAUDE.snippet.md) into `~/.claude/CLAUDE.md` between `<!-- BEGIN/END claude-workflow-system -->` markers. This primes every Claude Code session with the workflow entry points, orchestrator subagents, and the `notify-human` mandate. A one-time `.bak` is written on first modification.
+
+It's idempotent — safe to re-run: subsequent runs refresh the block between markers rather than appending again. **To opt out of the injected block, don't re-run `install.sh`** — the block you already have is yours to edit or delete. Any `install.sh` invocation will reassert the canonical block.
 
 ### Configuration
 
@@ -134,11 +138,23 @@ Each project using this workflow system has its own state (not symlinked):
 ```
 <project-root>/
 ├── .claude/CLAUDE.md          # Project-specific rules
-└── workflow/
+│
+├── docs/product/              # Strategic, long-lived product docs (one product per repo)
+│   ├── vision.md              # Each file has frontmatter: stage, state, updated
+│   ├── roadmap.md
+│   ├── research.md
+│   ├── arch.md
+│   ├── wbs.md
+│   └── context.md
+│
+└── workflow/                  # Transient execution state
     ├── backlog.md             # SURFACE notes
-    ├── wip/                   # Active work items
-    └── archive/               # Completed work items
+    ├── .session.md            # Single-file session pointer for /session-pause and /session-resume
+    ├── wip/                   # Active feature/task/incident items
+    └── archive/               # Completed feature/task/incident items
 ```
+
+Product docs stay in `docs/product/` for the life of the project — they are reference material, not WIP. Back-loops in the product workflow edit the earlier stage's file in place (bumping `state` back to `in-progress` and appending a revision section).
 
 ## Reference
 
