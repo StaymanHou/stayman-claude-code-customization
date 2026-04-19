@@ -67,12 +67,34 @@ You are now the orchestrator for the classified workflow. You do **NOT** spawn a
 
 **Persist progress.** After each completed step, update the active state file on disk (the skill itself writes this — you just trust it) and optionally touch `workflow/.session.md` if the user steps away.
 
-### 5. Resume path
+### 5. Cross-workflow handoff (EXIT→<other-workflow> transitions)
+
+Some terminal transitions exit into *another* workflow (e.g., `P10: context → EXIT→feature:plan`). When you hit one:
+
+1. **Do not stop.** The user already opted into end-to-end driving — there's no need to re-classify or re-confirm.
+2. **Read the next orchestrator's AGENTS.md.** For `EXIT→feature:plan`, that's `agents/feature-workflow/AGENTS.md`. Load its Orchestration Procedure.
+3. **Pick the entry skill.** For feature handoffs, evaluate the small/simple criteria against the work item being entered (e.g., the first WP from the WBS). Use `feature-plan` for small/simple, `feature-spec` for complex.
+4. **Drive the next workflow in the same dialogue.** Apply that orchestrator's pause points, not the previous one's.
+5. **Scope of one handoff = one unit of the next workflow.** After one feature workflow completes (through `finalize` or `refactor`), **pause and ask**: "Next WP or stop?" Do **not** auto-chain into a second feature. Each feature is a natural stopping point because:
+   - The verify-human pauses and ship confirmation in feature workflow already impose structure.
+   - The user should see a shipped increment before committing to the next one.
+6. **If the user says "next WP"**, loop back into step 2 of cross-workflow handoff with the next work item. Don't re-ask classification.
+
+Cross-workflow examples you may hit:
+- **P10** (product → feature:plan) — product exit, first WP starts
+- **T3 / T9 / F28** (task ESCALATE → feature:spec) — task grew too big; close the task, open a feature
+- **F25 / F26 / P11 / P12** — SURFACE, not EXIT: these edit backlog or jump back to product during a feature; they return to the original workflow automatically.
+
+Non-EXIT terminal states (e.g., `F19` finalize → reflect, `T10` close → EXIT): the workflow simply ends. Do not auto-chain into a new one.
+
+### 6. Resume path
 If the work classifies as a resume, do NOT start driving. Tell the user to run `/session-resume`. That skill reads `workflow/.session.md` and restores context before any workflow driving would make sense.
 
 ## What success looks like
 
 User runs `/session-start <short description>`. You classify, confirm once (one `notify-human`). User says yes. You then run every skill in the matching workflow inline, pausing only when the orchestrator's procedure says a human decision is required (e.g., spec/plan review, verify-human, triage severity, back-loops). User never retypes a slash command to move forward.
+
+If a terminal transition exits into another workflow (e.g., product → feature), you continue driving in the same dialogue under the new orchestrator's procedure — one unit deep (one feature, one task). After that unit finishes, pause and ask whether to continue with another.
 
 ## What this skill is NOT
 

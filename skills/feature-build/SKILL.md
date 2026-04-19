@@ -29,7 +29,7 @@ You are in the **feature** workflow at the **build** state.
 - Identify which phase to work on (the next incomplete one)
 
 ### 2. Environment Check
-- Read `.claude/CLAUDE.md` for environment rules
+- Read the project `CLAUDE.md` at the root for environment rules (also `.claude/CLAUDE.md` if present)
 - **Docker Rule:** If the project mandates Docker, ALL commands MUST run inside the container
 
 ### 3. Implement the Current Phase

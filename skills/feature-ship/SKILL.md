@@ -25,7 +25,7 @@ You are in the **feature** workflow at the **ship** state.
 ### 2. Final Verification
 - Run the full test suite one last time
 - Ensure all linters and checks pass
-- Respect Docker rules from `.claude/CLAUDE.md`
+- Respect Docker rules from the project `CLAUDE.md`
 
 ### 3. Release Prep
 - Prepare the commit(s) or PR for merging into the main branch

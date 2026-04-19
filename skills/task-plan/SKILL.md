@@ -30,7 +30,7 @@ Before planning, scan `workflow/backlog.md` (if it exists) for:
 Mention any relevant backlog items to the user.
 
 ### 2. Context Discovery
-- Read `.claude/CLAUDE.md` for project-specific rules
+- Read the project `CLAUDE.md` at the root for project-specific rules (also check `.claude/CLAUDE.md` if present — that path is for agent-only overrides)
 - Search for relevant files, existing patterns, documentation
 - Understand the scope and constraints
 

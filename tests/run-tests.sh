@@ -130,7 +130,7 @@ ${extra_prompt}"
   # Build temp project dir with fixtures
   local tmpdir; tmpdir=$(mktemp -d)
   mkdir -p "$tmpdir/.claude" "$tmpdir/workflow/wip" "$tmpdir/docs/product"
-  cp "$FIXTURES_DIR/CLAUDE.md" "$tmpdir/.claude/CLAUDE.md" 2>/dev/null || true
+  cp "$FIXTURES_DIR/CLAUDE.md" "$tmpdir/CLAUDE.md" 2>/dev/null || true
 
   if [ -n "$fixture_wip" ] && [ -f "$SCRIPT_DIR/$fixture_wip" ]; then
     cp "$SCRIPT_DIR/$fixture_wip" "$tmpdir/workflow/wip/"

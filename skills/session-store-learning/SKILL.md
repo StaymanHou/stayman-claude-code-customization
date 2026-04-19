@@ -27,7 +27,7 @@ Evaluate the input learning from `{{args}}` or from the most recent reflection.
 | Type | When | Location |
 |------|------|----------|
 | **Ignore** | Trivial, one-off, or already known | Don't store |
-| **Context Rule** | Critical convention or constraint | Global: `~/.claude/CLAUDE.md` / Project: `.claude/CLAUDE.md` |
+| **Context Rule** | Critical convention or constraint | Global: `~/.claude/CLAUDE.md` / Project: `CLAUDE.md` (root) |
 | **Memory** | Reusable insight about user, project, or approach | Global: `~/.claude/projects/*/memory/` / Project: `.claude/memory/` |
 | **Skill** | Complex procedural expertise worth codifying | Global: `~/.claude/skills/<name>/` / Project: `.claude/skills/<name>/` |
 

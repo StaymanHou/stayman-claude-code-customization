@@ -40,7 +40,7 @@ You are in the **feature** workflow at the **refactor** state.
 ### 3. Execute (if simple)
 - Make changes incrementally
 - Run tests after each change to ensure no behavioral changes
-- Respect Docker rules from `.claude/CLAUDE.md`
+- Respect Docker rules from the project `CLAUDE.md`
 
 ### 4. Scope Guard
 During refactoring, if you discover something that is NOT cleanup:

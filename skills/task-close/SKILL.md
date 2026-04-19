@@ -24,7 +24,7 @@ You are in the **task** workflow at the **close** state.
 
 ### 2. Update Documentation
 - Update relevant docs to reflect changes (only if changes warrant it — don't add docs for trivial fixes)
-- Update `.claude/CLAUDE.md` if any new patterns or critical rules were discovered during this task
+- Update the project `CLAUDE.md` (root) if any new patterns or critical rules were discovered during this task
 
 ### 3. Full Backlog Review
 Scan `workflow/backlog.md` for ALL unresolved items (not just high-priority). For each:

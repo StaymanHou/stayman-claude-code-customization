@@ -28,7 +28,7 @@ You are in the **incident** workflow at the **mitigate** state.
 
 ### 3. Implement
 - Apply the fix using standard development tools
-- Respect Docker rules and deployment workflows from `.claude/CLAUDE.md`
+- Respect Docker rules and deployment workflows from the project `CLAUDE.md`
 - Make changes atomic and reversible where possible
 
 ### 4. Verify

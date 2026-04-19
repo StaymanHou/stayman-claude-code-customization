@@ -31,7 +31,7 @@ You are in the **incident** workflow at the **investigate** state.
 
 ### 3. Investigate
 - Use available tools to gather evidence
-- Respect Docker rules from `.claude/CLAUDE.md`
+- Respect Docker rules from the project `CLAUDE.md`
 - **Be skeptical.** Verify assumptions. Distinguish:
   - **Observed Facts:** Things you can prove with evidence
   - **Hypotheses:** Theories that still need verification

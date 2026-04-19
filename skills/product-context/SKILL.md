@@ -1,6 +1,6 @@
 ---
 name: product-context
-description: "Product workflow: generate the project's .claude/CLAUDE.md context file and transition to feature workflow"
+description: "Product workflow: generate the project's CLAUDE.md context file and transition to feature workflow"
 argument-hint: <optional additional instructions>
 ---
 
@@ -27,7 +27,9 @@ Read the product docs from `docs/product/`:
 - `wbs.md` (work packages, dependencies)
 
 ### 2. Generate Project CLAUDE.md
-Create or update `.claude/CLAUDE.md` in the project root with:
+Create or update **`CLAUDE.md` at the project root** with the content below. This file is project documentation — it's checked in, visible in the file tree, and read by both humans and Claude Code. Do NOT write it to `.claude/CLAUDE.md` (that path is reserved for agent-only overrides a user may add separately).
+
+If a `CLAUDE.md` already exists at the project root, preserve any user-authored sections and merge — don't overwrite.
 
 ```markdown
 # <Project Name>
@@ -63,7 +65,7 @@ Create or update `.claude/CLAUDE.md` in the project root with:
 
 ### 3. Finalize Product Docs
 - Product docs stay in place under `docs/product/` — they are durable reference material, not ephemeral WIP, so they are **not** archived.
-- Create `docs/product/context.md` summarizing the generated `.claude/CLAUDE.md` and noting the active roadmap phase:
+- Create `docs/product/context.md` summarizing the generated root `CLAUDE.md` and noting the active roadmap phase:
 
 ```markdown
 ---
@@ -74,7 +76,7 @@ updated: <YYYY-MM-DD>
 
 # Context
 
-Project CLAUDE.md generated at `.claude/CLAUDE.md`.
+Project CLAUDE.md generated at `CLAUDE.md` (project root).
 
 **Active phase:** <current roadmap phase>
 **First feature:** <first milestone to pick up>

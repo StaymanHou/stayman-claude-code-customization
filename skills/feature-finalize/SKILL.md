@@ -20,7 +20,7 @@ You are in the **feature** workflow at the **finalize** state.
 
 ### 1. Update Documentation
 - Update relevant docs to reflect the new feature (API docs, setup guides, etc.)
-- Update `.claude/CLAUDE.md` if new patterns or critical rules were discovered
+- Update the project `CLAUDE.md` (root) if new patterns or critical rules were discovered
 - Update `docs/product/wbs.md` and `docs/product/roadmap.md` to reflect the completed feature (check off milestones, mark WPs done). Bump `updated:` in frontmatter.
 
 ### 2. Full Backlog Review
