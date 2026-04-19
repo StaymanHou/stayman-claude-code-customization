@@ -27,13 +27,14 @@ Also entered via:
 - Focus research on that specific phase's needs
 
 ### 2. Conduct Research
-- Search for libraries, tools, and frameworks relevant to the phase deliverables
+- **MANDATORY: run web search.** Do NOT skip this step. Model training knowledge lags real-world library releases, deprecations, and best-practice shifts — and product research happens only once per project (plus rare revisions), so the cost of one extra search is trivial against the cost of recommending a stale stack. If you find yourself reasoning "I already know this space well," run the search anyway.
+- Search for libraries, tools, and frameworks relevant to the phase deliverables. Use multiple searches covering: current stable versions, recent alternatives/competitors, known issues / deprecations / abandonment.
 - **Phase-appropriate choices:** Prioritize simplicity for PoC, scalability for V1, etc.
 - Evaluate options based on:
   - Ease of implementation for the current phase
   - Ecosystem support and community
   - Compatibility with long-term vision (avoid architectural dead-ends)
-- Use web search for up-to-date information — online official docs override model knowledge
+- Online official docs override model knowledge when they conflict.
 
 ### 3. Document Findings
 Create `docs/product/research.md`:
@@ -59,7 +60,7 @@ updated: <YYYY-MM-DD>
 - <identified risk>
 
 ### References
-- <links to docs, repos>
+- <links to docs, repos — MUST include URLs visited during web search; empty section indicates research was not actually conducted>
 ```
 
 ### 4. Evaluate Next Step
