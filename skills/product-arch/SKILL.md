@@ -52,6 +52,17 @@ updated: <YYYY-MM-DD>
 - Database: <choice> — <why>
 - Infrastructure: <choice> — <why>
 
+### Dev Environment
+**REQUIRED section.** Pick exactly one:
+
+- **Docker-based (default):** Document the setup:
+  - Services: <e.g., `app`, `db`, `worker` — what each is for>
+  - Canonical command prefix: <e.g., `docker compose exec app`>
+  - First-run bootstrap: <e.g., `docker compose build && docker compose up -d`>
+  - Every command during development (build, run, test, lint, migrate, CLI tools, REPLs — everything except `git` and file/dir operations) runs through the prefix above.
+
+- **Host-based (opt-out — requires written justification):** Record why Docker was rejected (e.g., "static-site generator, single binary, no services"). If in doubt, choose Docker-based.
+
 ### System Design
 <component descriptions or MermaidJS diagrams>
 
