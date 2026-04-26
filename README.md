@@ -21,7 +21,7 @@ Lower-level workflows can **surface** discoveries upward (e.g., a task discovers
 |-----------|-------|-------------|
 | **Skills** | 30 | One per workflow step, plus `notify-human` |
 | **Agents** | 4 | Orchestrators: product, feature, task, incident |
-| **Transitions** | 63 | Defined in `workflow/transitions.yaml` |
+| **Transitions** | 63 | Defined in `docs/product/transitions.md` |
 | **Install script** | 1 | Idempotent symlink setup |
 
 ### Skills by Workflow
@@ -159,4 +159,4 @@ Product docs stay in `docs/product/` for the life of the project — they are re
 
 ## Reference
 
-See [PLAN.md](PLAN.md) for the complete architecture specification, all 63 state machine transitions, and the SURFACE/ESCALATE/REDIRECT mechanism details.
+See [docs/product/transitions.md](docs/product/transitions.md) for all 63 state machine transitions, the SURFACE/ESCALATE/REDIRECT mechanism details, and the subagent-per-step experiment.

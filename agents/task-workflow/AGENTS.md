@@ -28,7 +28,7 @@ Entry → plan → act → close → Exit
 | act | `/task-act` | Implementation guided by the plan |
 | close | `/task-close` | Documentation, backlog review, archival |
 
-### Transitions (from transitions.yaml)
+### Transitions (from docs/product/transitions.md)
 
 | ID | From → To | Condition | Type |
 |----|-----------|-----------|------|
@@ -60,7 +60,7 @@ When the user invokes you (e.g., "start a task workflow"), you:
 
 ## Orchestration Procedure
 
-This section is the **reference procedure** followed by `/session-start` when driving the task workflow end-to-end in the parent context (not via an Agent subagent spawn — see PLAN.md "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
+This section is the **reference procedure** followed by `/session-start` when driving the task workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
 1. **Invoke each skill via the Skill tool** in sequence, following the state machine above.
 2. **After each skill completes**, read the skill's own transition recommendation and pick the matching transition from the table. Immediately invoke the next skill — no "please run /task-act" prompts.

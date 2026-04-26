@@ -117,7 +117,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 
 ## Orchestration Procedure
 
-This section is the **reference procedure** followed by `/session-start` when driving the feature workflow end-to-end in the parent context (not via an Agent subagent spawn — see PLAN.md "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
+This section is the **reference procedure** followed by `/session-start` when driving the feature workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
 1. **Invoke each skill via the Skill tool** in sequence, following the state machine and per-phase loop.
 2. **After each skill completes**, read its transition recommendation and pick the matching transition from the table. Immediately invoke the next skill — no "please run /feature-build" prompts.

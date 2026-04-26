@@ -33,13 +33,13 @@ Test runner requires `claude` CLI, `jq`, and `bc` on PATH. Results are written t
 - **Direct slash command** (e.g., `/product-vision`) — runs exactly one skill, then tells the user the next slash command. Single-step, no chaining. Use when you want to invoke a specific state or resume work.
 - **`/session-start`** — classifies the work, gets one confirmation, then **drives the workflow in the current conversation** by loading the matching orchestrator's Orchestration Procedure and invoking each skill via the Skill tool. Pauses only at human-input points defined by the procedure. Use when you want to drive a full workflow end-to-end.
 
-Why in-context and not via Agent spawn: the `Agent` tool is one-shot — a subagent that pauses for human input can't be resumed, which forced each human pause to respawn a fresh subagent and lose mid-step state. Running orchestration in the parent keeps the user dialogue continuous. An experimental subagent-per-step design is parked in `PLAN.md` → "Experiment: Subagent-Per-Step Orchestration" if context growth ever becomes a problem.
+Why in-context and not via Agent spawn: the `Agent` tool is one-shot — a subagent that pauses for human input can't be resumed, which forced each human pause to respawn a fresh subagent and lose mid-step state. Running orchestration in the parent keeps the user dialogue continuous. An experimental subagent-per-step design is documented in `docs/product/transitions.md` → "Experiment: Subagent-Per-Step Orchestration" if context growth ever becomes a problem.
 
 Keep both paths working: never bake auto-chain logic into individual skill prompts (that would break single-step invocation). Orchestration behavior lives in the orchestrator AGENTS.md files, invoked by reference from `/session-start`.
 
 ### The state machine lives in three places — keep them in sync
 
-1. `workflow/transitions.yaml` — canonical machine-readable definition (63 transitions, IDs like `P1`, `F8`, `T2`, `I3`).
+1. `docs/product/transitions.md` — authoritative definition (63 transitions, IDs like `P1`, `F8`, `T2`, `I3`) plus architecture narrative and cross-level mechanism docs.
 2. Per-skill `SKILL.md` — each skill lists the transitions *out of its state* in prose, referencing the same IDs.
 3. `tests/scenarios/*.yaml` — scenarios assert a specific transition ID fires for a given input.
 
@@ -47,7 +47,7 @@ If you add, remove, or reword a transition, update all three. The tests use the 
 
 ### State persistence is per-project, not here
 
-Skills read and write state **in whatever project the user is currently in** — not in this repo. This repo's own `workflow/` directory only contains `transitions.yaml`.
+Skills read and write state **in whatever project the user is currently in** — not in this repo. This repo's own `workflow/` directory holds no WIP files.
 
 Two locations, different purposes:
 
@@ -60,11 +60,11 @@ Two locations, different purposes:
 
 Back-loops in the product workflow (P4, P6, P8) edit an earlier stage's file in place — bump `updated:`, set `state: in-progress`, append a `## Revision <date>` section. Files are not deleted on back-loops.
 
-This repo itself dogfoods the system: `docs/product/vision.md` is the vision for the workflow system. The repo's own `workflow/` directory holds only `transitions.yaml` — no WIP files.
+This repo itself dogfoods the system: `docs/product/vision.md` is the vision for the workflow system. The repo's own `workflow/` directory holds no WIP files — all strategic and architectural docs live in `docs/product/`.
 
 ### Enforcement model
 
-State transitions are **advisory**, not hard-blocked. The skill prompts tell the model what the valid next states are; there are no hooks that prevent invalid transitions. This is intentional (see `PLAN.md` → "Architecture Decisions"). Back-loops (`type: back-loop`) require the model to document *what changed and why* before re-entering an earlier state.
+State transitions are **advisory**, not hard-blocked. The skill prompts tell the model what the valid next states are; there are no hooks that prevent invalid transitions. This is intentional — see `docs/product/transitions.md` → "Design Principles" for rationale. Back-loops (`type: back-loop`) require the model to document *what changed and why* before re-entering an earlier state.
 
 ### Cross-level mechanisms
 
@@ -83,4 +83,4 @@ The `notify-human` skill sends Telegram messages before the model asks the user 
 - `install.sh` is idempotent. Re-run after adding or renaming a skill/agent directory — it will create new symlinks and update any whose target has changed.
 - Skill frontmatter fields: `name` (matches the directory), `description`, optional `argument-hint`.
 - Agent frontmatter includes a `skills:` list — this must match the directories that exist under `skills/`.
-- When the PR description references a transition, use the ID from `transitions.yaml` (e.g. "Fixes F12 back-loop wording"), not the state names alone.
+- When the PR description references a transition, use the ID from `docs/product/transitions.md` (e.g. "Fixes F12 back-loop wording"), not the state names alone.
