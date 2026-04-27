@@ -78,6 +78,10 @@ Three ways one workflow interacts with another — understand the distinction be
 
 The `notify-human` skill sends Telegram messages before the model asks the user a question. The global `~/.claude/CLAUDE.md` mandates calling it before any substantive human input. Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` env vars in `~/.claude/settings.json`; skip silently if unset.
 
+## Product Workflow Notes
+
+This repo dogfoods the product workflow but **skips `/product-context`** — the project already has a hand-maintained `CLAUDE.md` (this file) that serves the same purpose. The product workflow is considered complete after `/product-wbs`.
+
 ## Conventions
 
 - `install.sh` is idempotent. Re-run after adding or renaming a skill/agent directory — it will create new symlinks and update any whose target has changed.
