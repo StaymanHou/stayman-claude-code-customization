@@ -11,10 +11,10 @@ You are an expert QA Engineer running automated verification.
 ## State Machine Context
 
 You are in the **feature** workflow at the **verify-auto** state.
-This is the first step of the per-phase verification loop: `build → verify-auto → verify-human → verify-codify`.
+This is the first step of the per-phase verification loop: `build → verify-auto → verify-self → verify-human → verify-codify`.
 
 **Valid transitions from here:**
-- **F10 → verify-human:** Tests pass → tell user to run `/feature-verify-human`
+- **F10 → verify-self:** Tests pass → tell user to run `/feature-verify-self <dev-url>`
 - **F9 → build (back-loop):** Tests fail → document failures, tell user to run `/feature-build` to fix
 - **F24 → spec (back-loop):** Tests reveal the spec was wrong → document what's wrong, tell user to run `/feature-spec`
 
@@ -34,8 +34,8 @@ This is the first step of the per-phase verification loop: `build → verify-aut
 ### 3. Evaluate Results
 
 **All tests pass (F10):**
-- Update WIP state to `verify-auto (passed)`
-- Tell user to run `/feature-verify-human` for manual verification
+- Update WIP tree: mark `verify-auto` node `[x]`, update `## Current Node`
+- Tell user to run `/feature-verify-self <dev-url>` for live-system self-verification (user must supply the URL)
 
 **Tests fail (F9):**
 - Document which tests failed and why

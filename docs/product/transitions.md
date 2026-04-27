@@ -109,13 +109,15 @@ Back-loop guard applies to: P4, P6, P8.
 ## Feature Workflow
 
 ```
-States:  spec, research, plan, build, verify-auto, verify-human,
-         verify-codify, ship, finalize, refactor
+States:  spec, research, plan, build, verify-auto, verify-self,
+         verify-human, verify-codify, ship, finalize, refactor
 Entry:   spec (complex) or plan (small/simple)
 Terminal: finalize or refactor (both → auto-trigger reflect)
 ```
 
-**Per-phase loop:** `plan` decomposes a milestone into phases. The loop `build → verify-auto → verify-human → verify-codify` executes once per phase. After all phases complete → ship.
+**Per-phase loop:** `plan` decomposes a milestone into phases. The loop `build → verify-auto → verify-self → verify-human → verify-codify` executes once per phase. After all phases complete → ship.
+
+**verify-self:** Agent spawns a one-shot subagent with Playwright/curl tools to observe the running system against the phase's Observable Outcomes. Blocking failures return to build; cosmetic failures are noted but don't block. The subagent is one-shot — all inputs must be in the spawn prompt (dev URL, Observable Outcomes, severity taxonomy). Human checklist in verify-human is pre-filtered: items the agent already confirmed are excluded.
 
 **Small/simple criteria** (all must hold to skip spec and go straight to plan):
 1. No new data models or API endpoints
@@ -135,7 +137,9 @@ Terminal: finalize or refactor (both → auto-trigger reflect)
 | F7 | plan | build | Plan created with phases (starts phase 1) |
 | F8 | build | verify-auto | Phase implementation complete |
 | F9 | verify-auto | build | Back-loop: tests fail |
-| F10 | verify-auto | verify-human | Tests pass |
+| F10 | verify-auto | verify-self | Tests pass → user runs `/feature-verify-self <dev-url>` |
+| F10b | verify-self | verify-human | All blocking outcomes pass (cosmetic issues noted) |
+| F9b | verify-self | build | Back-loop: blocking observable outcome failed |
 | F11 | verify-human | verify-codify | Nothing for human to test — agent presents reasoning, human confirms skip |
 | F12 | verify-human | build | Back-loop: human rejects |
 | F13 | verify-human | verify-codify | Human approves happy path |
@@ -153,7 +157,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect)
 | F25 | build | SURFACE→product:wbs | Discovered module/component not in WBS (note-and-continue) |
 | F26 | build | SURFACE→product:arch | Architectural change needed (pause-and-escalate) |
 | F27 | ANY | incident:report | Something breaks |
-| F28 | SURFACE-IN | spec | Task escalated to feature |
+| F28 | SURFACE-IN | spec | Task/incident escalated to feature |
 
 ---
 
@@ -161,9 +165,11 @@ Terminal: finalize or refactor (both → auto-trigger reflect)
 
 ```
 States:  plan → act → close
-Entry:   plan
+Entry:   plan (peer workflow — not spawned by feature workflow)
 Terminal: close
 ```
+
+**Peer model:** Task is an independent entry point (like incident), not a sub-workflow of feature. The feature workflow does not spawn tasks. Tasks escalate *upward* to feature when scope grows — never downward. Use task for atomic, well-scoped changes; use feature for anything with multiple phases or a verify loop.
 
 | ID | From | To | Condition |
 |----|------|----|-----------|

@@ -16,7 +16,7 @@ You are an expert QA Engineer guiding the human through manual verification.
 ## State Machine Context
 
 You are in the **feature** workflow at the **verify-human** state.
-This is the second step of the per-phase verification loop: `build → verify-auto → verify-human → verify-codify`.
+This is the third step of the per-phase verification loop: `build → verify-auto → verify-self → verify-human → verify-codify`.
 
 **Valid transitions from here:**
 - **F13 → verify-codify:** Human approves → tell user to run `/feature-verify-codify`
@@ -34,7 +34,10 @@ Review the current phase and determine if there are user-facing changes that nee
 - Only proceed to verify-codify (F11) if the human confirms
 
 ### 2. Create Verification Checklist
-For each user-facing change in this phase, create a step-by-step checklist:
+
+**Pre-filter:** Read `verify-self` results from the WIP tree. Items already `[x]` in verify-self do NOT appear in the human checklist — the agent already confirmed them. Items marked `UNVERIFIED` (Playwright unavailable) DO appear, annotated "agent could not verify — check manually." Cosmetic failures from verify-self appear as low-priority notes, not blockers.
+
+For each remaining user-facing change, create a step-by-step checklist:
 
 ```markdown
 ## Manual Verification — Phase <N>

@@ -192,3 +192,23 @@ Tasks are simpler — no per-phase verification loop, no observable outcomes sec
 - Incident-workflow skills — unaffected.
 - `session-*` skills — unaffected. The Work Tree is carried transparently through pause/resume because it lives in the WIP file.
 - `install.sh` — no new files, no new symlinks needed for Phases 1–2.
+
+## Revision 2026-04-27
+
+Three design decisions revised after WBS completion:
+
+### verify-self runs as a subagent (not in parent context)
+
+`feature-verify-self` spawns a one-shot `Agent` with Playwright/curl tools. Playwright output (snapshots, console logs, network requests) stays in the subagent's context — parent context stays lean across multi-phase features. Trade-off accepted: the subagent is one-shot and cannot ask the user questions mid-verify. All inputs (dev URL, Observable Outcomes, severity taxonomy) must be baked into the spawn prompt. The dev URL is supplied by the user as an argument when invoking `/feature-verify-self <url>` — no magic derivation.
+
+### Work Tree has no depth cap — recursive as needed
+
+The 4-level maximum is removed. The tree can nest as deeply as the feature requires. The practical guidance ("prefer splitting wide phases into siblings over deep nesting") remains, but it is advisory, not enforced. This aligns with the task workflow peer model: tasks no longer map to a "lighter" variant — they use the same tree format, just without Observable Outcomes and the verify loop.
+
+### Task workflow is a peer entry point, not a sub-workflow
+
+The feature workflow no longer spawns tasks. Task is an independent entry point like incident. Escalation is one-way upward only (task → feature when scope grows). The feature workflow's previous ability to hand work down to tasks is removed — if work belongs at task scope, the user starts a task directly. This simplifies the cross-level mechanism: SURFACE and ESCALATE still exist, but no downward delegation.
+
+### Tree grammar lives in CLAUDE.snippet.md (global)
+
+The Work Tree format spec (schema, status vocabulary, rules) is defined once in `CLAUDE.snippet.md`, injected into `~/.claude/CLAUDE.md` at install time. Individual skill SKILL.md files do not duplicate the spec — they reference it by behavior (e.g., "update Current Node on exit"). This is the single source of truth for all sessions across all projects.

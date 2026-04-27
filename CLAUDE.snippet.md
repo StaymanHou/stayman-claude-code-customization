@@ -24,6 +24,60 @@ workflow/archive/      # completed items
 workflow/.session.md   # single-file pause pointer
 ```
 
+## Work Tree Format (GLOBAL)
+
+Every feature WIP file uses the Work Tree format. All skills that read or write WIP files must understand and maintain this structure.
+
+### Schema
+
+```markdown
+## Work Tree
+- [ ] Phase 1: <name>  <!-- status: in-progress -->
+  **Observable outcomes:**
+  - Browser: <declarative outcome>
+  - HTTP: <declarative outcome>
+  - CLI: <declarative outcome>
+  - [ ] P1.1 <impl task>  <!-- status: in-progress -->
+  - [ ] P1.2 <impl task>  <!-- status: NOT-STARTED -->
+  - [ ] verify-auto  <!-- status: NOT-STARTED -->
+  - [ ] verify-self  <!-- status: NOT-STARTED -->
+  - [ ] verify-human  <!-- status: NOT-STARTED -->
+    - [ ] <check item>  <!-- status: NOT-STARTED -->
+  - [ ] verify-codify  <!-- status: NOT-STARTED -->
+
+- [ ] Phase 2: <name>  <!-- status: NOT-STARTED; depends on Phase 1 -->
+  ...
+
+## Current Node
+- **Path:** <Feature > Phase > specific node>
+- **Active scope:** <node IDs currently in focus>
+- **Blocked:** <node IDs blocked and why>
+- **Unvisited:** <phases not yet started>
+- **Open discoveries:** <none | summary>
+
+## Discoveries
+<!-- Format: [SURFACED-<date>] <target node> — <summary>
+     Each entry is also logged to workflow/backlog.md -->
+```
+
+### Status vocabulary
+
+| Tag | Meaning |
+|-----|---------|
+| `NOT-STARTED` | Planned, not yet reached |
+| `in-progress` | Agent actively working this node |
+| `FAILED` | Failure reported; must resolve before parent advances |
+| `BLOCKED: depends on <node>` | Cannot proceed until named node resolves |
+| `SURFACED: <summary>` | Discovery attached here; also logged to backlog |
+| `[x]` (no tag) | Complete — all children also `[x]` |
+
+### Rules
+- **No depth cap** — nest as needed, but prefer splitting wide phases into sibling phases over nesting deeper than Feature > Phase > Verification group > Leaf
+- **Parent completion** — a parent's checkbox may only be `[x]` when ALL children are `[x]`
+- **Current Node is authoritative** — written on every skill exit, read first on every skill entry; if it diverges from the tree, the tree wins and Current Node is rewritten
+- **Observable outcomes at plan time** — written by `feature-plan`, read by `feature-verify-self`; never written post-hoc
+- **Tree update on every exit** — every skill that touches a WIP file must update leaf statuses AND Current Node before handing off
+
 ## Pre-risky-action checklist (GLOBAL)
 
 **Before running any destructive-capable CLI** — scaffolders (`create-*`, `npm create *`), initializers (`*-init`, `yo *`), codegen tools that write to the working directory, or anything with an `--overwrite` / `--force` flag — run through this checklist:
