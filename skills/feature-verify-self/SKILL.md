@@ -22,6 +22,17 @@ This is the second step of the per-phase verification loop: `build → verify-au
 - **F10b → verify-human:** All blocking issues resolved (or none found) → tell user to run `/feature-verify-human`
 - **F9b → build (back-loop):** Blocking issue found that agent can fix → document it, tell user to run `/feature-build`
 
+## Severity Taxonomy
+
+Use this taxonomy consistently when classifying failures. It is also embedded in the subagent prompt.
+
+| Severity | Definition | Examples |
+|----------|-----------|---------|
+| **BLOCKING** | The feature cannot be considered working. A human handed this would immediately reject it. | Blank page or white screen; JS console error on load; application crash; missing required element (form field, button, nav link); broken navigation (404, redirect loop); auth failure (can't log in); data loss (save doesn't persist); wrong HTTP status on a critical endpoint (500 instead of 200, 404 on existing resource) |
+| **COSMETIC** | The feature works but has a visual or copy imperfection. A human might note it but would not reject the phase. | Spacing or padding off; wrong color or font; copy typo or wrong label text; minor layout deviation from design; non-critical missing decoration (icon, border radius) |
+
+**Decision rule:** When in doubt, classify as BLOCKING. A false BLOCKING sends you to fix something minor; a false COSMETIC ships a broken feature to the human.
+
 ## Procedure
 
 ### 1. Read inputs
@@ -44,8 +55,9 @@ Observable outcomes to verify:
 <paste the Observable outcomes list from the current phase>
 
 Severity taxonomy:
-- BLOCKING: blank page, JS console error, crash, missing required element, broken navigation, auth failure, data loss, wrong HTTP status on critical endpoint
-- COSMETIC: spacing, color, copy, minor layout deviation, non-critical missing decoration
+- BLOCKING: blank page or white screen, JS console error on load, application crash, missing required element (form field, button, nav link), broken navigation (404/redirect loop), auth failure, data loss (save doesn't persist), wrong HTTP status on critical endpoint (500 instead of 200, 404 on existing resource)
+- COSMETIC: spacing/padding off, wrong color or font, copy typo or wrong label, minor layout deviation, non-critical missing decoration (icon, border radius)
+- When in doubt, classify as BLOCKING.
 
 For each outcome:
 1. Use browser_navigate to open the URL

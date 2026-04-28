@@ -87,6 +87,10 @@ Mention any relevant items to the user.
 
 **Rules for this template:**
 - **Observable outcomes** are written NOW at plan time — not at verify time. They describe what must be true about the *running system* from the outside (HTTP responses, browser state, CLI output). They are the agent's verification target in `feature-verify-self`.
+  - **Each outcome must be mechanically verifiable** — it must be checkable by Playwright, curl, or a CLI command. Prose outcomes ("the feature works correctly", "the UI looks good") are NOT acceptable. If you cannot describe a concrete check, the outcome is not done.
+  - **Every phase must include at least one HTTP, Browser, or CLI outcome.** If a phase has no user-facing surface (pure internal refactor), state that explicitly and use a CLI smoke-test (e.g., `python -c "from mymodule import MyClass; MyClass()"` exits 0).
+  - **Bad:** `Browser: The login page looks correct` → **Good:** `Browser: Playwright navigates to /login, snapshot contains input[type=email] and input[type=password], no JS console errors`
+  - **Bad:** `HTTP: API works` → **Good:** `HTTP: POST /api/login with valid credentials → 200, body contains {"token": string}`
 - **All 5 verification group nodes** (`verify-auto`, `verify-self`, `verify-human`, `verify-codify`) must be pre-populated as `NOT-STARTED` under every phase. Do not omit any.
 - **`## Current Node`** must be initialized pointing to Phase 1's first impl task. This is the position pointer every subsequent skill reads first.
 - **No depth cap** — nest as needed, but prefer splitting wide phases into sibling phases over excessive nesting.

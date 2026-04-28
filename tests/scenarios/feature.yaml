@@ -177,6 +177,201 @@ scenarios:
         - "/feature-spec"
     max_retries: 2
 
+  - id: F13-prefiltered
+    name: "feature:verify-human excludes verify-self [x] items from checklist"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-passed.md
+    system_prompt_extra: |
+      verify-self completed with all outcomes [x] (PASS):
+      - P1.verify-self.1 GET /api/notification-preferences → 200: PASS [x]
+      - P1.verify-self.2 PUT /api/notification-preferences/:category → 200: PASS [x]
+      - P1.verify-self.3 Browser /settings/notifications no JS errors: PASS [x]
+      The human checklist must NOT include any of these items — they were
+      already confirmed by the agent. The human should only see items that
+      require genuine human judgment. Human approves the phase.
+    expect:
+      transition_id: F13
+      contains_any:
+        - "/feature-verify-codify"
+      not_contains:
+        - "P1.verify-self.1"
+        - "P1.verify-self.2"
+        - "P1.verify-self.3"
+        - "GET /api/notification-preferences"
+    max_retries: 2
+
+  - id: F8-reverify
+    name: "feature:build re-verify gate confirms fix before transitioning to verify-auto"
+    skill: feature-build
+    args: "P1.verify-self.1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-blocking.md
+    system_prompt_extra: |
+      Re-entering build from a verify-self back-loop (F9b). The previously
+      failing outcome was: GET /api/notification-preferences → 500 (missing
+      DB migration). You have applied the fix (ran the migration). Before
+      transitioning to verify-auto, re-run the behavioral check:
+      curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/notification-preferences
+      returns 200. The re-verify passes. Now transition to verify-auto.
+    expect:
+      transition_id: F8
+      contains_any:
+        - "/feature-verify-auto"
+        - "re-verify"
+        - "confirmed"
+        - "passes"
+      not_contains:
+        - "/feature-verify-human"
+        - "/feature-plan"
+    max_retries: 2
+
+  - id: F10-clarified
+    name: "feature:verify-auto recommends cheap/scoped checks, not full test suite"
+    skill: feature-verify-auto
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      The build step just created a new Python module: notification_preferences.py.
+      Run appropriate cheap, fast, scoped checks for this specific file only.
+      Do NOT run the full pytest suite. Appropriate checks include: syntax check,
+      lint, and an import smoke test (e.g. python -c "from notification_preferences
+      import NotificationPreferences"). All checks pass.
+    expect:
+      transition_id: F10
+      contains_any:
+        - "/feature-verify-self"
+        - "syntax"
+        - "lint"
+        - "import"
+        - "smoke"
+      not_contains:
+        - "full test suite"
+        - "run all tests"
+        - "pytest -v"
+    max_retries: 2
+
+  - id: F9b
+    name: "feature:verify-self back-loops to build on BLOCKING failure"
+    skill: feature-verify-self
+    args: "http://localhost:3000"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-blocking.md
+    system_prompt_extra: |
+      SUBAGENT RESULTS ALREADY RECEIVED. Do not attempt to connect to the app.
+      The verification subagent has already run and returned these results:
+
+      ```result
+      outcome: GET /api/notification-preferences → 200
+      status: FAIL
+      severity: BLOCKING
+      detail: Returns 500 Internal Server Error — missing DB migration
+      ---
+      outcome: PUT /api/notification-preferences/:category → 200
+      status: FAIL
+      severity: BLOCKING
+      detail: BLOCKED — cannot test because GET endpoint is broken
+      ---
+      outcome: Browser /settings/notifications no JS console errors
+      status: FAIL
+      severity: COSMETIC
+      detail: Minor spacing misalignment on toggle row, no JS errors
+      ```
+
+      There is one BLOCKING failure. The agent must back-loop to build.
+    expect:
+      transition_id: F9b
+      contains_any:
+        - "/feature-build"
+        - "BLOCKING"
+        - "back-loop"
+      not_contains:
+        - "/feature-verify-human"
+    max_retries: 2
+
+  - id: F9b-rerun
+    name: "feature:verify-self cosmetic-only failure does NOT back-loop — forwards to verify-human"
+    skill: feature-verify-self
+    args: "http://localhost:3000"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-passed.md
+    system_prompt_extra: |
+      SUBAGENT RESULTS ALREADY RECEIVED. Do not attempt to connect to the app.
+      The verification subagent has already run and returned these results:
+
+      ```result
+      outcome: GET /api/notification-preferences → 200
+      status: PASS
+      severity: N/A
+      detail: Returns 200 with correct body
+      ---
+      outcome: PUT /api/notification-preferences/:category → 200
+      status: PASS
+      severity: N/A
+      detail: Persisted correctly on re-fetch
+      ---
+      outcome: Browser /settings/notifications no JS errors
+      status: FAIL
+      severity: COSMETIC
+      detail: Toggle labels have slightly inconsistent padding (no JS errors, no crash)
+      ```
+
+      One COSMETIC failure exists. COSMETIC failures do NOT trigger a back-loop.
+      Forward to verify-human and note the cosmetic item.
+    expect:
+      transition_id: F10b
+      contains_any:
+        - "/feature-verify-human"
+        - "cosmetic"
+        - "COSMETIC"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F10b
+    name: "feature:verify-self → verify-human when all blocking outcomes pass"
+    skill: feature-verify-self
+    args: "http://localhost:3000"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-passed.md
+    system_prompt_extra: |
+      SUBAGENT RESULTS ALREADY RECEIVED. Do not attempt to connect to the app.
+      The verification subagent has already run and returned these results:
+
+      ```result
+      outcome: GET /api/notification-preferences → 200
+      status: PASS
+      severity: N/A
+      detail: Returns 200 with body [{category: "email", enabled: true}]
+      ---
+      outcome: PUT /api/notification-preferences/email with {"enabled": false} → 200
+      status: PASS
+      severity: N/A
+      detail: Re-fetch returns enabled: false — persisted correctly
+      ---
+      outcome: Browser /settings/notifications no JS console errors
+      status: PASS
+      severity: N/A
+      detail: Page loads cleanly, no console errors
+      ```
+
+      All blocking outcomes pass. No cosmetic issues. Forward to verify-human.
+    expect:
+      transition_id: F10b
+      contains_any:
+        - "/feature-verify-human"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
   - id: F11
     name: "feature:verify-human skips to verify-codify with reasoning"
     skill: feature-verify-human
@@ -523,6 +718,35 @@ scenarios:
     max_retries: 2
 
   # Work Tree format scenarios (Phase 1 codification)
+
+  - id: F7-observable-outcomes
+    name: "feature:plan emits mechanically verifiable Observable outcomes (not prose)"
+    skill: feature-plan
+    args: "User login page"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-spec-clear.md
+    system_prompt_extra: |
+      Create a phased plan for a user login page. Observable outcomes in the
+      Work Tree must be mechanically verifiable (HTTP status codes, Playwright
+      selectors, CLI commands) — NOT prose like "the page looks correct" or
+      "the feature works". Each phase must include at least one HTTP, Browser,
+      or CLI outcome.
+    expect:
+      transition_id: F7
+      contains_any:
+        - "HTTP:"
+        - "Browser:"
+        - "CLI:"
+        - "curl"
+        - "Playwright"
+        - "exits 0"
+        - "→ 200"
+      not_contains:
+        - "looks correct"
+        - "works correctly"
+        - "functions properly"
+    max_retries: 2
 
   - id: F7-worktree
     name: "feature:plan emits Work Tree format with Observable Outcomes"

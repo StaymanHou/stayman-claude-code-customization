@@ -46,10 +46,18 @@ Review the current phase and determine if there are user-facing changes that nee
 - Present only leaves that are `FAILED` or `BLOCKED` — skip any `[x]` leaves
 - Do not re-present items the human already approved
 
-**Pre-filter from verify-self:** Read `verify-self` results in the WIP tree before building the checklist:
-- Items `[x]` in verify-self → exclude from human checklist entirely (agent already confirmed)
-- Items `UNVERIFIED` → include, annotated "agent could not verify — check manually"
-- Cosmetic failures from verify-self → include as low-priority notes, not blockers
+**Pre-filter from verify-self:** Read `verify-self` results in the WIP tree before building the checklist. Apply these rules strictly — do not present items the agent already confirmed:
+
+| verify-self status | Action in human checklist |
+|--------------------|--------------------------|
+| `[x]` (PASS) | **EXCLUDED entirely** — do not show it, do not mention it. The agent confirmed it; the human's time is better spent on judgment calls. |
+| `UNVERIFIED` (Playwright unavailable) | **INCLUDE**, annotated: "agent could not verify — check manually" |
+| `FAILED-cosmetic` | **INCLUDE as low-priority note** — not a blocker, human may choose to accept or reject |
+| `FAILED` (BLOCKING) | Agent should have caught this in verify-self and back-looped already. If it appears here, **INCLUDE as blocker** and note it was missed by verify-self. |
+
+**Severity reference** (for classifying any new issues found during human testing):
+- **BLOCKING:** blank page, JS console error, crash, missing required element, broken navigation, auth failure, data loss, wrong HTTP status on critical endpoint
+- **COSMETIC:** spacing, color, copy, minor layout deviation, non-critical missing decoration
 
 **BLOCKED items:** Any leaf that cannot be tested because another leaf failed must be marked `<!-- status: BLOCKED: depends on <node> -->` and shown explicitly — never silently skipped.
 

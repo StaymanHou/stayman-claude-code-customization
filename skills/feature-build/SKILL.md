@@ -14,6 +14,7 @@ You are in the **feature** workflow at the **build** state.
 
 **Valid transitions from here:**
 - **F8 → verify-auto:** Phase implementation complete → tell user to run `/feature-verify-auto`
+- **F9b (back-loop from verify-self):** Re-entered to fix a blocking observable outcome — after fixing, run the re-verify gate before transitioning to verify-auto
 - **F22 → research (REDIRECT):** Hit unknown during implementation → pause, research, return
 - **F23 → plan (back-loop):** Plan is wrong/incomplete → document what's wrong, go back to plan
 - **F25 → SURFACE to product:wbs:** Discovered module/component not in WBS (note-and-continue)
@@ -71,12 +72,26 @@ Before exiting, scan every phase node in the Work Tree:
 - If ALL children of a phase are `[x]` but the phase itself is not `[x]` → mark the phase `[x]` now
 - This includes impl tasks, verify-auto, verify-self, verify-human, verify-codify — all must be `[x]`
 
-### 6. Update Current Node and Exit
+### 6. Re-Verify Gate (back-loop exits only)
+
+**Only applies when re-entering from a verify-self back-loop (F9b) — i.e., `{{args}}` contained specific failed leaf IDs.**
+
+Before transitioning to verify-auto, re-run the behavioral checks that previously failed. These are the Observable outcomes from the current phase's WIP tree node that were marked `FAILED` in verify-self.
+
+Concrete re-verify actions:
+- **HTTP outcome:** `curl -s -o /dev/null -w "%{http_code}" <endpoint>` and compare to expected status
+- **Browser outcome:** use `browser_snapshot` / `browser_console_messages` at the relevant URL
+- **CLI outcome:** re-run the exact CLI command from the Observable outcomes list
+
+**If re-verify passes:** proceed to verify-auto (F8) — the fix is confirmed.
+**If re-verify fails:** document what still fails, update the failed leaf status in the WIP tree, and stay in build to investigate further. Do not transition to verify-auto with an unconfirmed fix.
+
+### 7. Update Current Node and Exit
 Always update `## Current Node` before handing off:
 - If scoped re-entry: update Active scope to reflect which leaves were fixed (or clear if all resolved)
 - If normal impl: update Path and Active scope to reflect current position
 
-### 7. Phase Complete
+### 8. Phase Complete
 When all impl tasks in the current phase are done (verify nodes will be handled by their own skills):
 - Update `## Current Node` to point to `verify-auto` for this phase
 - Tell user to run `/feature-verify-auto` to verify this phase

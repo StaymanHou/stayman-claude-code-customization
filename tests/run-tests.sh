@@ -25,7 +25,7 @@ FILTER_GROUP=""
 FILTER_IDS=""
 DRY_RUN=false
 MODEL="haiku"
-MAX_BUDGET="0.05"
+MAX_BUDGET="0.15"
 GLOBAL_RETRY=0  # 0 = use per-scenario setting
 
 # --- Shared testing system prompt ---
