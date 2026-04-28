@@ -1,7 +1,7 @@
 ---
 stage: roadmap
 state: complete
-updated: 2026-04-25
+updated: 2026-04-27
 ---
 
 # Roadmap — Claude Code Workflow System
@@ -13,12 +13,12 @@ updated: 2026-04-25
 **Motivation:** This is the most foundational gap. Pain Points 1 and 2 both root here — the flat WIP format is why the agent forgets B/C/D after fixing A, and why discoveries made on A.1 have nowhere to attach for B. Framework Gaps F1 and F2 (root problem re-identification per iteration, test-as-learning) both require the tree to exist before they can be addressed.
 
 **Milestones:**
-- [ ] 1.1 Define the Work Tree node format — status values, parent-child notation, dependency-blocked status, surface-attached discoveries — and update the WIP file template
-- [ ] 1.2 Update `feature-plan` to emit the plan as a Work Tree, not prose phases
-- [ ] 1.3 Update `feature-verify-human` to expand phase verification into leaf nodes, record pass/fail per leaf, pass failed-leaf IDs as scoped args to `feature-build`
-- [ ] 1.4 Update `feature-build` to accept scoped args (specific failed leaves), attach in-flight discoveries to the correct tree node, and re-evaluate parent readiness before transitioning out
-- [ ] 1.5 Update `task-plan` / `task-act` with the same tree-scoped re-entry pattern (lighter version)
-- [ ] 1.6 Update transition test scenarios to cover: partial verify-human failure, scoped re-entry, cross-node discovery attachment
+- [x] 1.1 Define the Work Tree node format — status values, parent-child notation, dependency-blocked status, surface-attached discoveries — and update the WIP file template
+- [x] 1.2 Update `feature-plan` to emit the plan as a Work Tree, not prose phases
+- [x] 1.3 Update `feature-verify-human` to expand phase verification into leaf nodes, record pass/fail per leaf, pass failed-leaf IDs as scoped args to `feature-build`
+- [x] 1.4 Update `feature-build` to accept scoped args (specific failed leaves), attach in-flight discoveries to the correct tree node, and re-evaluate parent readiness before transitioning out
+- [x] 1.5 Update `task-plan` / `task-act` with the same tree-scoped re-entry pattern (lighter version)
+- [x] 1.6 Update transition test scenarios to cover: partial verify-human failure, scoped re-entry, cross-node discovery attachment
 
 **Exit Criteria:**
 - A verify-human rejection for item A does not cause B/C/D to be skipped or treated as implicitly done

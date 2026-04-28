@@ -39,7 +39,7 @@ Keep both paths working: never bake auto-chain logic into individual skill promp
 
 ### The state machine lives in three places — keep them in sync
 
-1. `docs/product/transitions.md` — authoritative definition (63 transitions, IDs like `P1`, `F8`, `T2`, `I3`) plus architecture narrative and cross-level mechanism docs.
+1. `docs/product/transitions.md` — authoritative definition (65 transitions, IDs like `P1`, `F8`, `T2`, `I3`) plus architecture narrative and cross-level mechanism docs.
 2. Per-skill `SKILL.md` — each skill lists the transitions *out of its state* in prose, referencing the same IDs.
 3. `tests/scenarios/*.yaml` — scenarios assert a specific transition ID fires for a given input.
 

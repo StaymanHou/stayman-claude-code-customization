@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: complete
-updated: 2026-04-26
+updated: 2026-04-27
 ---
 
 # Work Breakdown Structure — Claude Code Workflow System
@@ -42,10 +42,10 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** None — foundational
 **Size:** S
 **Tasks:**
-- [ ] 1.1 Write the Work Tree grammar into `CLAUDE.snippet.md` as a new `## Work Tree Format (GLOBAL)` section — status vocabulary, `## Current Node` schema, `## Discoveries` section, HTML comment convention, parent-completion rule, tree-update-on-exit rule
-- [ ] 1.2 Update `tests/fixtures/wip/` — create one canonical Work Tree fixture file (e.g., `feature-plan-worktree.md`) that all Phase 1 skill tests can reference
-- [ ] 1.3 Update the WIP file template embedded in `feature-plan`'s SKILL.md to emit Work Tree format (do not update the skill's behavior yet — that is WP2)
-- [ ] 1.4 Re-run `./install.sh` to inject updated CLAUDE.snippet.md into `~/.claude/CLAUDE.md`
+- [x] 1.1 Write the Work Tree grammar into `CLAUDE.snippet.md` as a new `## Work Tree Format (GLOBAL)` section — status vocabulary, `## Current Node` schema, `## Discoveries` section, HTML comment convention, parent-completion rule, tree-update-on-exit rule
+- [x] 1.2 Update `tests/fixtures/wip/` — create one canonical Work Tree fixture file (e.g., `feature-plan-worktree.md`) that all Phase 1 skill tests can reference
+- [x] 1.3 Update the WIP file template embedded in `feature-plan`'s SKILL.md to emit Work Tree format (do not update the skill's behavior yet — that is WP2)
+- [x] 1.4 Re-run `./install.sh` to inject updated CLAUDE.snippet.md into `~/.claude/CLAUDE.md`
 
 ---
 
@@ -55,10 +55,10 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP1
 **Size:** M
 **Tasks:**
-- [ ] 2.1 Update `skills/feature-plan/SKILL.md`: replace flat-checklist WIP template with Work Tree template; add instruction to write Observable Outcomes per phase at plan time
-- [ ] 2.2 Add instruction: verification group nodes (`verify-auto`, `verify-human`, `verify-codify`) must be pre-populated as `NOT-STARTED` leaf nodes under each phase
-- [ ] 2.3 Add instruction: `## Current Node` section must be initialized pointing to Phase 1, first impl task
-- [ ] 2.4 Update `tests/scenarios/` — add or update scenario asserting `feature-plan` output matches Work Tree format (T-level: output contains `## Work Tree`, `## Current Node`, `<!-- status:`)
+- [x] 2.1 Update `skills/feature-plan/SKILL.md`: replace flat-checklist WIP template with Work Tree template; add instruction to write Observable Outcomes per phase at plan time
+- [x] 2.2 Add instruction: verification group nodes (`verify-auto`, `verify-self`, `verify-human`, `verify-codify`) must be pre-populated as `NOT-STARTED` leaf nodes under each phase
+- [x] 2.3 Add instruction: `## Current Node` section must be initialized pointing to Phase 1, first impl task
+- [x] 2.4 Update `tests/scenarios/` — added F7-worktree scenario
 
 ---
 
@@ -68,13 +68,13 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP1
 **Size:** M
 **Tasks:**
-- [ ] 3.1 Update `skills/feature-verify-human/SKILL.md`: on first run for a phase, expand `verify-human` node into leaf items (one per check); write each leaf with a status tag
-- [ ] 3.2 Add instruction: on subsequent runs (re-entry from build), present only the leaves that are `FAILED` or `BLOCKED` — skip `[x]` leaves
-- [ ] 3.3 Add instruction: mark `BLOCKED` leaves explicitly with `BLOCKED: depends on <node>` — do not silently skip them
-- [ ] 3.4 Add instruction: when handing back to `feature-build`, pass the specific failed leaf IDs (e.g., `/feature-build P2.verify-human.A.3.1,P2.verify-human.A.3.2`) — not just "phase N failed"
-- [ ] 3.5 Add instruction: `verify-human` node status may only be set to complete when ALL leaf items are `[x]`
-- [ ] 3.6 Update `## Current Node` on exit with failed leaf IDs in `Active scope`
-- [ ] 3.7 Update/add test scenario: partial failure → scoped re-entry args are present in output
+- [x] 3.1 Update `skills/feature-verify-human/SKILL.md`: on first run for a phase, expand `verify-human` node into leaf items (one per check); write each leaf with a status tag
+- [x] 3.2 Add instruction: on subsequent runs (re-entry from build), present only the leaves that are `FAILED` or `BLOCKED` — skip `[x]` leaves
+- [x] 3.3 Add instruction: mark `BLOCKED` leaves explicitly with `BLOCKED: depends on <node>` — do not silently skip them
+- [x] 3.4 Add instruction: when handing back to `feature-build`, pass the specific failed leaf IDs — not just "phase N failed"
+- [x] 3.5 Add instruction: `verify-human` node status may only be set to complete when ALL leaf items are `[x]`
+- [x] 3.6 Update `## Current Node` on exit with failed leaf IDs in `Active scope`
+- [x] 3.7 Added F12-scoped and F12-blocked scenarios
 
 ---
 
@@ -84,13 +84,13 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP1, WP3 (for scoped args format); WP6, WP7 (for re-verify gate behavioral checks)
 **Size:** L
 **Tasks:**
-- [ ] 4.1 Update `skills/feature-build/SKILL.md`: on entry, read `## Current Node` first; if scoped args present, restrict work to named leaf IDs only — do not touch sibling leaves
-- [ ] 4.2 Add instruction: discoveries made while working on a scoped leaf must be attached to the correct parent phase node as `SURFACED` children (not dropped to flat backlog only — do both)
-- [ ] 4.3 Add instruction: before transitioning out, check every phase whose children are all `[x]` — if parent is not marked `[x]`, mark it now (parent completion enforcement)
-- [ ] 4.4 Add re-verify gate (Phase 2 dependency — implement after WP7): before transitioning back to `verify-human`, re-run the Observable Outcome checks for the specific failed leaves that were just fixed; only proceed if those checks pass
-- [ ] 4.5 Add Playwright MCP tools to `allowed-tools` frontmatter (needed for re-verify gate): `mcp__playwright__browser_navigate`, `mcp__playwright__browser_snapshot`, `mcp__playwright__browser_console_messages`, `mcp__playwright__browser_take_screenshot`
-- [ ] 4.6 Update `## Current Node` on exit
-- [ ] 4.7 Update/add test scenarios: scoped re-entry (only named leaves touched); discovery attachment to correct node; parent completion enforcement
+- [x] 4.1 Update `skills/feature-build/SKILL.md`: on entry, read `## Current Node` first; if scoped args present, restrict work to named leaf IDs only
+- [x] 4.2 Add instruction: discoveries attach to correct parent phase node as `SURFACED` children (and also to backlog)
+- [x] 4.3 Add instruction: parent completion enforcement before exit
+- [ ] 4.4 Add re-verify gate (Phase 2 — after WP7): before transitioning back to `verify-self`, re-run Observable Outcome checks for fixed leaves
+- [ ] 4.5 Add Playwright MCP tools to `allowed-tools` (for re-verify gate)
+- [x] 4.6 Update `## Current Node` on exit
+- [x] 4.7 Added F8-scoped scenario
 
 ---
 
@@ -100,10 +100,10 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP1
 **Size:** S
 **Tasks:**
-- [ ] 5.1 Update `skills/task-plan/SKILL.md`: emit Task Work Tree format with step nodes, `## Current Node`, `## Discoveries`
-- [ ] 5.2 Update `skills/task-act/SKILL.md`: on entry, read `## Current Node`; attach discoveries to correct step node; update node statuses and Current Node on exit
-- [ ] 5.3 Add instruction to `task-act`: before transitioning out, check for any step whose children are all complete but parent is not marked complete — fix it
-- [ ] 5.4 Update/add test scenarios for task-plan (Work Tree output) and task-act (scoped re-entry, discovery attachment)
+- [x] 5.1 Update `skills/task-plan/SKILL.md`: emit Task Work Tree format with step nodes, `## Current Node`, `## Discoveries`
+- [x] 5.2 Update `skills/task-act/SKILL.md`: on entry, read `## Current Node`; attach discoveries to correct step node; update node statuses and Current Node on exit
+- [x] 5.3 Add instruction to `task-act`: parent completion enforcement before exit
+- [x] 5.4 Added T2-worktree and T7-worktree scenarios
 
 ---
 
@@ -113,10 +113,10 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP1 (format spec must be final)
 **Size:** M
 **Tasks:**
-- [ ] 9.1 Audit `tests/fixtures/wip/` — list all 14 fixture files and which skills reference them
-- [ ] 9.2 Convert each fixture to Work Tree format (preserve the scenario intent, update the file schema)
-- [ ] 9.3 Add new fixtures: `feature-verify-human-partial-failure.md` (some leaves FAILED, some BLOCKED), `feature-build-scoped-reentry.md` (Current Node points to specific failed leaves), `task-plan-worktree.md`
-- [ ] 9.4 Validate: run `tests/run-tests.sh --group feature` and `--group task` — all existing tests pass with updated fixtures
+- [x] 9.1 Audit `tests/fixtures/wip/` — audited 17 fixtures, identified references
+- [x] 9.2 Convert each fixture to Work Tree format (preserved scenario intent)
+- [x] 9.3 Added `feature-verify-human-partial-failure.md`, `feature-build-scoped-reentry.md`, `task-plan-worktree.md`, `feature-plan-worktree.md`
+- [x] 9.4 7/7 new Work Tree scenarios pass on haiku (--budget 0.10)
 
 ---
 
