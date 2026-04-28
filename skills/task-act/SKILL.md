@@ -25,32 +25,24 @@ You are in the **task** workflow at the **act** state.
 - Look in `workflow/wip/` for the active task plan
 - If `{{args}}` specifies a file, use that
 - If multiple exist, ask the user which one
-- Check for any "Session Pause Note" — if found, resume from the noted next step
+- **Read `## Current Node` first** — this is the authoritative position pointer; resume from where it points
 
 ### 2. Environment Check
 - Read the project `CLAUDE.md` at the root for environment rules (also `.claude/CLAUDE.md` if present)
 - **Docker Rule:** If the project mandates Docker, ALL commands (pip, python, npm, etc.) MUST run inside the container. Only git commands and basic file operations run on the host.
 
 ### 3. Implement
-- Execute the plan steps in order
+- Work only on the step(s) named in `## Current Node` Active scope
 - Make atomic, logical changes
 - Verify syntax after editing files
-- Check off items in the WIP plan as completed
+- Mark each step `[x]` in the Work Tree as it completes
 - Before using project-specific CLI tools, verify their syntax (e.g., `--help`)
 
-### 4. Handle Discoveries
+### 4. Attach Discoveries to the Tree
 
-**If you discover the plan needs changing (T6):**
-Back-loop to plan. Document what changed and why in the WIP file, then re-plan the remaining steps.
-
-**If you discover something beyond task scope:**
-
-Evaluate using SURFACE criteria — default to **note-and-continue** unless:
-- The discovery changes an interface being actively coded against
-- An architectural decision is required before proceeding
-- Current work would be invalidated without the change
-
-**Note-and-continue (T7, T8):** Log to `workflow/backlog.md` using this format:
+When you discover something new while working on a step:
+- Add a `SURFACED` child node under the relevant step in the Work Tree: `- [ ] <summary>  <!-- status: SURFACED: <summary> -->`
+- Also log to `workflow/backlog.md`:
 
 ```markdown
 ## SURFACE-<timestamp>
@@ -64,13 +56,24 @@ Evaluate using SURFACE criteria — default to **note-and-continue** unless:
 - **Status:** pending
 ```
 
-Then annotate the WIP plan and continue working.
+**If you discover the plan needs changing (T6):**
+Document what changed and why in the WIP file. Tell user to run `/task-plan` to revise.
 
-**Pause-and-escalate (T7 blocker variant):** If it IS a blocker, save state and tell the user what needs to happen at the higher level before this task can continue.
+**Pause-and-escalate (T7 blocker variant):** If discovery IS a blocker, save state and tell the user what needs to happen at the higher level before this task can continue.
 
 **ESCALATE (T9):** If the task has grown beyond task scope entirely, close/archive the WIP plan as "Escalated to feature:spec", and tell the user to run `/feature-spec`.
 
-### 5. Completion
-When all plan steps are done:
+### 5. Parent Completion Enforcement
+Before exiting, scan the Work Tree:
+- If ALL children of a step are `[x]` but the step itself is not `[x]` → mark the step `[x]` now
+
+### 6. Update Current Node and Exit
+Always update `## Current Node` before handing off:
+- Advance Path and Active scope to the next incomplete step
+- If all steps complete, set Active scope to "all complete"
+
+### 7. Completion
+When all steps are `[x]`:
+- Mark all complete in the Work Tree
 - Update the WIP file state to `act (complete)`
 - Tell the user to run `/task-close`

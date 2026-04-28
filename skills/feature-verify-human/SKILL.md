@@ -25,7 +25,10 @@ This is the third step of the per-phase verification loop: `build → verify-aut
 
 ## Procedure
 
-### 1. Assess Whether Human Testing is Needed
+### 1. Read Current Node
+Read the WIP file in `workflow/wip/`. Find `## Current Node` — this tells you which phase's `verify-human` node is active and whether this is a first run or re-entry from a back-loop.
+
+### 2. Assess Whether Human Testing is Needed
 Review the current phase and determine if there are user-facing changes that need manual verification.
 
 **If there is genuinely nothing for a human to test** (e.g., purely internal refactor, backend-only logic with full test coverage):
@@ -33,42 +36,63 @@ Review the current phase and determine if there are user-facing changes that nee
 - Explicitly ask the human: "I believe there's nothing to manually verify for this phase because [reasoning]. Do you agree to skip to verify-codify?"
 - Only proceed to verify-codify (F11) if the human confirms
 
-### 2. Create Verification Checklist
+### 3. Expand verify-human into leaf nodes (first run)
 
-**Pre-filter:** Read `verify-self` results from the WIP tree. Items already `[x]` in verify-self do NOT appear in the human checklist — the agent already confirmed them. Items marked `UNVERIFIED` (Playwright unavailable) DO appear, annotated "agent could not verify — check manually." Cosmetic failures from verify-self appear as low-priority notes, not blockers.
+**On first run for this phase** (verify-human node has no children yet):
+- Expand the `verify-human` node into individual leaf items in the WIP tree — one leaf per check
+- Each leaf gets a node ID (e.g., `P1.verify-human.1`, `P1.verify-human.2`) and `<!-- status: NOT-STARTED -->`
 
-For each remaining user-facing change, create a step-by-step checklist:
+**On re-entry from build back-loop** (verify-human node already has children):
+- Present only leaves that are `FAILED` or `BLOCKED` — skip any `[x]` leaves
+- Do not re-present items the human already approved
+
+**Pre-filter from verify-self:** Read `verify-self` results in the WIP tree before building the checklist:
+- Items `[x]` in verify-self → exclude from human checklist entirely (agent already confirmed)
+- Items `UNVERIFIED` → include, annotated "agent could not verify — check manually"
+- Cosmetic failures from verify-self → include as low-priority notes, not blockers
+
+**BLOCKED items:** Any leaf that cannot be tested because another leaf failed must be marked `<!-- status: BLOCKED: depends on <node> -->` and shown explicitly — never silently skipped.
+
+### 4. Present Checklist
+
+For each leaf item (after filtering), present as:
 
 ```markdown
 ## Manual Verification — Phase <N>
 
 ### Happy Path
-- [ ] Step 1: <action> → Expected: <result>
-- [ ] Step 2: <action> → Expected: <result>
+- [ ] P1.verify-human.1: <action> → Expected: <result>
+- [ ] P1.verify-human.2: <action> → Expected: <result>
 
 ### Edge Cases
-- [ ] <edge case scenario> → Expected: <result>
+- [ ] P1.verify-human.3: <edge case> → Expected: <result>
 
-### Regression Check
-- [ ] <existing functionality that should still work>
+### Blocked (cannot test until above resolved)
+- [ ] P1.verify-human.4: BLOCKED: depends on P1.verify-human.1
+
+### Agent could not verify (check manually)
+- [ ] P1.verify-human.5: <item> [UNVERIFIED by agent]
 ```
 
-### 3. Invoke `/notify-human`
+### 5. Invoke `/notify-human`
 Before presenting the checklist, invoke `/notify-human` to alert the user — they may have stepped away during the automated phase.
 
-### 4. Guide the Human
-- Present the checklist
-- Be available to help debug or explain expected behavior
-- Record results as the human works through them
+### 6. Record Results
+As the human works through each item, record their result per leaf:
+- Pass → mark leaf `[x]` in WIP tree
+- Fail → mark leaf `<!-- status: FAILED -->`, note what was observed
+- Blocked → keep `BLOCKED` status until its dependency resolves
 
-### 5. Evaluate Results
+### 7. Evaluate Results
 
-**Human approves (F13):**
-- Update WIP state to `verify-human (approved)`
+**All leaves [x] (F13 — human approves):**
+- Mark `verify-human` node `[x]` in WIP tree (only valid when ALL leaves are `[x]`)
+- Update `## Current Node`: clear active scope, verify-human complete
 - Tell user to run `/feature-verify-codify`
 
-**Human rejects (F12):**
-- Document exactly what failed and how it differs from expectations
-- Tell user to run `/feature-build` to fix the issues
+**Any leaf FAILED (F12 — back-loop):**
+- Do NOT mark verify-human complete
+- Update `## Current Node`: set Active scope to the specific failed leaf IDs (e.g. `P1.verify-human.2, P1.verify-human.3`)
+- Tell user to run `/feature-build P1.verify-human.2,P1.verify-human.3` with the exact failed leaf IDs as args
 
 **Scope:** {{args}}

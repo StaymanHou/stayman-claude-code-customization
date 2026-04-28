@@ -41,29 +41,39 @@ Evaluate whether this is truly a task or should be escalated:
 - Otherwise → proceed with planning
 
 ### 4. Plan Creation
-Create a markdown file in `workflow/wip/<task-slug>.md` with this structure:
+Create a markdown file in `workflow/wip/<task-slug>.md` using the **Work Tree format** (task variant — no Observable Outcomes, no verify loop):
 
 ```markdown
 # Task: <title>
 
 **Workflow:** task
-**State:** plan
+**State:** plan (complete)
 **Created:** <YYYY-MM-DD>
 
-## Requirements
-- Clear goals and constraints
+## Problem Statement
+<One sentence. Will be re-examined on back-loop re-entry.>
 
 ## Context
 - Links to relevant files discovered above
 
-## Implementation Plan
-- [ ] Step 1
-- [ ] Step 2
-- [ ] ...
+## Work Tree
 
-## Verification
-- How to verify the changes (tests, commands)
+- [ ] T1 <step>  <!-- status: NOT-STARTED -->
+- [ ] T2 <step>  <!-- status: NOT-STARTED -->
+- [ ] T3 <step>  <!-- status: NOT-STARTED -->
+
+## Current Node
+- **Path:** Task > T1
+- **Active scope:** T1 (first step)
+- **Blocked:** none
+- **Open discoveries:** none
+
+## Discoveries
+<!-- Format: [SURFACED-<date>] <target node> — <summary>
+     Each entry is also logged to workflow/backlog.md -->
 ```
+
+Note: Task Work Tree has no Observable Outcomes and no verify loop — tasks are atomic. The `## Current Node` section is still required so that re-entry after a back-loop carries precise scope.
 
 ### 5. Stop and Hand Off
 After creating the plan:

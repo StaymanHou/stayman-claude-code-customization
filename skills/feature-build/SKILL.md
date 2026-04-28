@@ -23,42 +23,33 @@ You are in the **feature** workflow at the **build** state.
 ## Procedure
 
 ### 1. Context Recovery
-- Read the WIP plan in `workflow/wip/`
-- If `{{args}}` specifies a phase, focus on that
-- Check for "Session Pause Note" — if found, resume from the noted next step
-- Identify which phase to work on (the next incomplete one)
+- Read the WIP file in `workflow/wip/`
+- **Read `## Current Node` first** — this is the authoritative position pointer
+- **If `{{args}}` contains leaf IDs** (e.g., `P1.verify-human.2,P1.verify-human.3`): you are re-entering from a back-loop. Restrict work to those specific leaves only — do not touch sibling leaves or advance to the next phase
+- If no scoped args: work on the next incomplete impl task in the current phase
+- If `## Current Node` diverges from what the tree shows, trust the tree and rewrite Current Node
 
 ### 2. Environment Check
 - Read the project `CLAUDE.md` at the root for environment rules (also `.claude/CLAUDE.md` if present)
 - **Docker Rule:** If the project mandates Docker, ALL commands MUST run inside the container
 
-### 3. Implement the Current Phase
-- Pick the next incomplete item from the current phase
+### 3. Implement
+- Implement only the items in scope (scoped leaf IDs if present; otherwise next incomplete impl task)
 - Write or update tests alongside code where possible (TDD)
 - Follow project conventions strictly
 - Run tests frequently to catch regressions
-- Check off items in the WIP plan as completed
+- Mark each leaf `[x]` in the WIP tree as it completes
 
-### 4. Handle Discoveries
+### 4. Attach Discoveries to the Tree
 
-**Unknown encountered (F22 REDIRECT):**
-Save state, document the question, tell user to run `/feature-research`. Note that this is a REDIRECT so research knows to return here.
+When you discover something new while working on a leaf:
+- Add a `SURFACED` child node under the **relevant parent phase node** in the WIP tree: `- [ ] <summary>  <!-- status: SURFACED: <summary> -->`
+- Also log to `workflow/backlog.md`:
 
-**Plan is wrong (F23 back-loop):**
-Document what's wrong and why in the WIP file. Tell user to run `/feature-plan` to revise.
-
-**Discovery beyond feature scope:**
-
-Evaluate using SURFACE criteria — default to **note-and-continue** unless:
-- The discovery changes an interface being actively coded against
-- An architectural decision is required before proceeding
-- Current work would be invalidated without the change
-
-**Note-and-continue (F25):** Log to `workflow/backlog.md`:
 ```markdown
 ## SURFACE-<timestamp>
 - **Source:** feature:build
-- **Target level:** product:wbs
+- **Target level:** product:wbs | product:arch
 - **Type:** new-work | gap | tech-debt | bug
 - **Summary:** <what was discovered>
 - **Context:** <why it matters>
@@ -66,13 +57,28 @@ Evaluate using SURFACE criteria — default to **note-and-continue** unless:
 - **Priority:** low | medium | high
 - **Status:** pending
 ```
-Annotate WIP plan, continue working.
 
-**Pause-and-escalate (F26):** Save state, explain the architectural blocker, tell user what needs resolution at the product level before continuing.
+**Unknown encountered (F22 REDIRECT):**
+Save state, document the question, tell user to run `/feature-research`. Note that this is a REDIRECT so research knows to return here.
 
-### 5. Phase Complete
-When all items in the current phase are done:
-- Update WIP state to `build (phase N complete)`
+**Plan is wrong (F23 back-loop):**
+Document what's wrong and why in the WIP file. Tell user to run `/feature-plan` to revise.
+
+**Architectural blocker (F26 pause-and-escalate):** Save state, explain the blocker, tell user what needs resolution at the product level before continuing.
+
+### 5. Parent Completion Enforcement
+Before exiting, scan every phase node in the Work Tree:
+- If ALL children of a phase are `[x]` but the phase itself is not `[x]` → mark the phase `[x]` now
+- This includes impl tasks, verify-auto, verify-self, verify-human, verify-codify — all must be `[x]`
+
+### 6. Update Current Node and Exit
+Always update `## Current Node` before handing off:
+- If scoped re-entry: update Active scope to reflect which leaves were fixed (or clear if all resolved)
+- If normal impl: update Path and Active scope to reflect current position
+
+### 7. Phase Complete
+When all impl tasks in the current phase are done (verify nodes will be handled by their own skills):
+- Update `## Current Node` to point to `verify-auto` for this phase
 - Tell user to run `/feature-verify-auto` to verify this phase
 
 **Current Step/Focus:** {{args}}

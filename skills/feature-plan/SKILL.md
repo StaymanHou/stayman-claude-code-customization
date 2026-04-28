@@ -37,31 +37,61 @@ Mention any relevant items to the user.
 
 ### 3. Create Phased Plan
 
-**If entering for a new feature** (F2 or F4→F7), create or update `workflow/wip/<feature-name>.md`:
+**If entering for a new feature** (F2 or F4→F7), create or update `workflow/wip/<feature-name>.md` using the **Work Tree format** (see `## Work Tree Format (GLOBAL)` in your system context):
 
 ```markdown
-## Architecture
-- System changes, data models, API endpoints (if applicable)
+# Feature: <Name>
 
-## Implementation Phases
+**Workflow:** feature
+**State:** plan (complete)
+**Created:** <YYYY-MM-DD>
 
-### Phase 1: <title>
-- [ ] Step 1.1
-- [ ] Step 1.2
-- ...
+## Problem Statement
+<One paragraph. Will be re-examined on every back-loop entry — not static.>
 
-### Phase 2: <title>
-- [ ] Step 2.1
-- ...
+## Work Tree
 
-## Testing Strategy
-- How each phase will be verified
+- [ ] Phase 1: <title>  <!-- status: NOT-STARTED -->
+  **Observable outcomes:**
+  - Browser: <declarative outcome — what a user/curl/Playwright would observe>
+  - HTTP: <e.g. GET /endpoint → 200, body contains {field: type}>
+  - CLI: <e.g. command exits 0, stdout matches pattern>
+  - Console: <e.g. no JS errors on page load>
+  - [ ] P1.1 <impl task>  <!-- status: NOT-STARTED -->
+  - [ ] P1.2 <impl task>  <!-- status: NOT-STARTED -->
+  - [ ] verify-auto  <!-- status: NOT-STARTED -->
+  - [ ] verify-self  <!-- status: NOT-STARTED -->
+  - [ ] verify-human  <!-- status: NOT-STARTED -->
+  - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
-## Migration Plan
-- Database or data migrations (if needed)
+- [ ] Phase 2: <title>  <!-- status: NOT-STARTED; depends on Phase 1 -->
+  **Observable outcomes:**
+  - <...>
+  - [ ] P2.1 <impl task>  <!-- status: NOT-STARTED -->
+  - [ ] verify-auto  <!-- status: NOT-STARTED -->
+  - [ ] verify-self  <!-- status: NOT-STARTED -->
+  - [ ] verify-human  <!-- status: NOT-STARTED -->
+  - [ ] verify-codify  <!-- status: NOT-STARTED -->
+
+## Current Node
+- **Path:** Feature > Phase 1 > P1.1
+- **Active scope:** P1.1 (first task)
+- **Blocked:** none
+- **Unvisited:** <list phases beyond Phase 1>
+- **Open discoveries:** none
+
+## Discoveries
+<!-- Format: [SURFACED-<date>] <target node> — <summary>
+     Each entry is also logged to workflow/backlog.md -->
 ```
 
-Each phase should be a coherent unit that can go through the `build → verify-auto → verify-human → verify-codify` loop independently.
+**Rules for this template:**
+- **Observable outcomes** are written NOW at plan time — not at verify time. They describe what must be true about the *running system* from the outside (HTTP responses, browser state, CLI output). They are the agent's verification target in `feature-verify-self`.
+- **All 5 verification group nodes** (`verify-auto`, `verify-self`, `verify-human`, `verify-codify`) must be pre-populated as `NOT-STARTED` under every phase. Do not omit any.
+- **`## Current Node`** must be initialized pointing to Phase 1's first impl task. This is the position pointer every subsequent skill reads first.
+- **No depth cap** — nest as needed, but prefer splitting wide phases into sibling phases over excessive nesting.
+
+Each phase should be a coherent unit that can go through the `build → verify-auto → verify-self → verify-human → verify-codify` loop independently.
 
 **If entering from refactor (F20):**
 - CONSTRAINT: Scope to cleanup only — no new features, no scope expansion

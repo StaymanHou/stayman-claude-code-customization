@@ -4,10 +4,23 @@
 **State:** act (complete)
 **Created:** 2026-04-15
 
-## Implementation Plan
-- [x] Add loading state to LoginForm
-- [x] Show spinner component when loading
-- [x] Disable button during loading
+## Problem Statement
+The login button shows no feedback while the auth request is in flight.
 
-## Verification
-- All tests pass
+## Context
+- Login component: `src/components/LoginForm.tsx`
+- Auth service: `src/services/auth.ts`
+
+## Work Tree
+
+- [x] T1 Add loading state wiring — pass `disabled={loading}` and `loading={loading}` to Button
+- [x] T2 Show spinner in Button when `loading` prop is true
+- [x] T3 Disable button during loading to prevent double-submit
+
+## Current Node
+- **Path:** Task > complete
+- **Active scope:** all steps complete
+- **Blocked:** none
+- **Open discoveries:** none
+
+## Discoveries

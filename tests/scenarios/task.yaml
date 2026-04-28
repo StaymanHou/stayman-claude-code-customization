@@ -18,6 +18,27 @@ scenarios:
         - "ESCALATE"
     max_retries: 2
 
+  - id: T2-worktree
+    name: "task:plan emits Work Tree format with Current Node and Discoveries"
+    skill: task-plan
+    args: "Add a loading spinner to the login button while auth request is in flight"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      This is a simple, well-scoped task. Create a Work Tree plan with step
+      nodes, a Current Node section, and a Discoveries section. No Observable
+      Outcomes or verify loop nodes — tasks are atomic.
+    expect:
+      transition_id: T2
+      contains_any:
+        - "## Work Tree"
+        - "## Current Node"
+      not_contains:
+        - "## Implementation Phases"
+        - "verify-auto"
+        - "verify-human"
+    max_retries: 2
+
   - id: T3
     name: "task:plan escalates to feature:spec when too large"
     skill: task-plan
@@ -55,6 +76,30 @@ scenarios:
         - "research"
       not_contains:
         - "/task-act"
+    max_retries: 2
+
+  - id: T7-worktree
+    name: "task:act attaches discovery to correct step node in Work Tree"
+    skill: task-act
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-plan-worktree.md
+    system_prompt_extra: |
+      While implementing T1 (adding disabled/loading props to the Button),
+      you discover that the Button component doesn't actually support a
+      `loading` prop — it would need to be added to the Button component
+      itself. This is a bigger issue affecting all buttons in the app.
+      Attach this discovery to T1 in the Work Tree, log it to backlog as
+      SURFACE to feature:spec, and continue with what you can do.
+    expect:
+      transition_id: T7
+      contains_any:
+        - "SURFACE"
+        - "SURFACED"
+        - "T1"
+      not_contains:
+        - "ESCALATE"
+        - "/task-close"
     max_retries: 2
 
   - id: T5

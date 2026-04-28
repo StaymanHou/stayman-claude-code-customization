@@ -158,7 +158,7 @@ scenarios:
     max_retries: 2
 
   - id: F10
-    name: "feature:verify-auto → verify-human when tests pass"
+    name: "feature:verify-auto → verify-self when tests pass"
     skill: feature-verify-auto
     args: "phase 1"
     fixtures:
@@ -170,8 +170,9 @@ scenarios:
     expect:
       transition_id: F10
       contains_any:
-        - "/feature-verify-human"
+        - "/feature-verify-self"
       not_contains:
+        - "/feature-verify-human"
         - "/feature-build"
         - "/feature-spec"
     max_retries: 2
@@ -519,6 +520,94 @@ scenarios:
         - "blocker"
       not_contains:
         - "note-and-continue"
+    max_retries: 2
+
+  # Work Tree format scenarios (Phase 1 codification)
+
+  - id: F7-worktree
+    name: "feature:plan emits Work Tree format with Observable Outcomes"
+    skill: feature-plan
+    args: "User notification preferences"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-spec-clear.md
+    system_prompt_extra: |
+      Create a phased plan. The output WIP file must use the Work Tree format
+      with Observable Outcomes per phase and all 5 verification group nodes
+      pre-populated as NOT-STARTED.
+    expect:
+      transition_id: F7
+      contains_any:
+        - "## Work Tree"
+        - "Observable outcomes"
+      not_contains:
+        - "## Implementation Phases"
+    max_retries: 2
+
+  - id: F12-scoped
+    name: "feature:verify-human back-loop includes specific failed leaf IDs"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-human-partial-failure.md
+    system_prompt_extra: |
+      P1.verify-human.1 (GET preferences returns correct shape) has FAILED —
+      the response body is missing the 'category' field. P1.verify-human.2
+      is BLOCKED because it depends on P1.verify-human.1. P1.verify-human.3
+      is NOT-STARTED. Human rejects this phase based on the failure.
+    expect:
+      transition_id: F12
+      contains_any:
+        - "P1.verify-human.1"
+        - "verify-human.1"
+      not_contains:
+        - "/feature-verify-codify"
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F12-blocked
+    name: "feature:verify-human shows BLOCKED items explicitly, not silently skipped"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-human-partial-failure.md
+    system_prompt_extra: |
+      P1.verify-human.1 FAILED. P1.verify-human.2 is BLOCKED because it
+      depends on P1.verify-human.1. The agent must present P1.verify-human.2
+      as explicitly BLOCKED — not skip it silently.
+    expect:
+      transition_id: F12
+      contains_any:
+        - "BLOCKED"
+        - "blocked"
+        - "depends on"
+      not_contains:
+        - "/feature-verify-codify"
+    max_retries: 2
+
+  - id: F8-scoped
+    name: "feature:build scoped re-entry restricts to named leaf IDs only"
+    skill: feature-build
+    args: "P1.verify-human.1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-scoped-reentry.md
+    system_prompt_extra: |
+      Re-entering build with scoped args P1.verify-human.1. Fix only this
+      leaf — the GET /api/notification-preferences endpoint is returning
+      objects without the 'category' field. P1.verify-human.2 is already
+      passing and must NOT be touched. P2 (Frontend) must NOT be touched.
+    expect:
+      transition_id: F8
+      contains_any:
+        - "P1.verify-human.1"
+        - "verify-human.1"
+      not_contains:
+        - "P2"
+        - "Frontend"
+        - "P1.verify-human.2"
     max_retries: 2
 
   # F27 (ANY → incident:report) is impractical to test — requires simulating breakage.
