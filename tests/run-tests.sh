@@ -174,8 +174,8 @@ ${extra_prompt}"
       continue
     fi
 
-    # Verify
-    verify_result "$result_text" "$expect_id" "$contains_any" "$not_contains"
+    # Verify (|| true prevents set -e from killing the script on non-zero return)
+    verify_result "$result_text" "$expect_id" "$contains_any" "$not_contains" || true
     local rc=$?
     detail="$VERIFY_DETAIL"
     transition_found=$(echo "$result_text" | sed -n 's/.*TRANSITION:[[:space:]]*\([A-Za-z0-9_]*\).*/\1/p' | head -1) || true
