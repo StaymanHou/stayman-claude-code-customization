@@ -1,7 +1,7 @@
 ---
 stage: roadmap
 state: complete
-updated: 2026-04-27
+updated: 2026-04-29
 ---
 
 # Roadmap — Claude Code Workflow System
@@ -35,12 +35,12 @@ updated: 2026-04-27
 **Motivation:** Pain Point 2. The current `feature-verify-auto` is a test-runner gate. It has no mandate to start the application and observe it. Framework Gap F6 (unknown-unknown detection) is also addressed here — behavioral definitions of done force the agent to state observable outcomes before building, which surfaces unknown-unknowns cheaply.
 
 **Milestones:**
-- [ ] 2.1 Define the "behavioral definition of done" format — observable outcomes per phase node (e.g., "GET /login returns 200", "browser renders form with two inputs") — and add it to the Work Tree node format from Phase 1
-- [ ] 2.2 Define a severity taxonomy: **blocking** (blank page, crash, data loss, auth bypass) vs. **cosmetic** (spacing, color, copy) — document it in a shared conventions file
-- [ ] 2.3 Update `feature-verify-auto` to include a live-system observation step: start the app if needed, run Playwright/curl/CLI checks against behavioral definitions of done, classify any failures by severity before deciding whether to escalate to human
-- [ ] 2.4 Add a re-verify gate: when `feature-build` completes a fix and prepares to return to `verify-human`, it must re-run the behavioral checks that previously failed before handing back
-- [ ] 2.5 Update `feature-verify-human` checklist to only include items that passed the agent's own self-verification — agent pre-filters blocking issues it could have caught itself
-- [ ] 2.6 Update transition test scenarios to cover: agent self-catches blank page before human handoff, re-verify gate after fix, severity-based escalation decision
+- [x] 2.1 Observable Outcomes format defined and embedded in `feature-plan/SKILL.md`; format uses `Browser:`, `HTTP:`, `CLI:` prefixes; rule "written at plan time" is explicit
+- [x] 2.2 Severity taxonomy (BLOCKING/COSMETIC) inline in `feature-verify-self/SKILL.md` with concrete examples
+- [x] 2.3 Created `feature-verify-self` skill: reads Observable Outcomes, runs Playwright/curl checks, classifies failures by severity; F9b (blocking → build) and F10b (cosmetic-only → verify-human) transitions
+- [x] 2.4 Re-verify gate added to `feature-build/SKILL.md`: on re-entry from verify-self back-loop, agent re-runs failed behavioral checks before transitioning to verify-auto
+- [x] 2.5 `feature-verify-human` pre-filter strengthened: EXCLUDED table, UNVERIFIED annotation, cosmetic failures as low-priority notes
+- [x] 2.6 All Phase 2 scenarios pass on haiku (F9b, F9b-rerun, F10b, F10-clarified, F8-reverify, F13-prefiltered, F7-observable-outcomes, F7-worktree)
 
 **Exit Criteria:**
 - Agent never hands a blank page or JS console error to the human — it catches and fixes those itself

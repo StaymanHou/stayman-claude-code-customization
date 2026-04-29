@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: complete
-updated: 2026-04-27
+updated: 2026-04-29
 ---
 
 # Work Breakdown Structure — Claude Code Workflow System
@@ -87,7 +87,7 @@ WP13 (hardening + docs) — depends on all prior WPs
 - [x] 4.1 Update `skills/feature-build/SKILL.md`: on entry, read `## Current Node` first; if scoped args present, restrict work to named leaf IDs only
 - [x] 4.2 Add instruction: discoveries attach to correct parent phase node as `SURFACED` children (and also to backlog)
 - [x] 4.3 Add instruction: parent completion enforcement before exit
-- [ ] 4.4 Add re-verify gate (Phase 2 — after WP7): before transitioning back to `verify-self`, re-run Observable Outcome checks for fixed leaves
+- [x] 4.4 Add re-verify gate (Phase 2 — after WP7): before transitioning back to `verify-self`, re-run Observable Outcome checks for fixed leaves
 - [ ] 4.5 Add Playwright MCP tools to `allowed-tools` (for re-verify gate)
 - [x] 4.6 Update `## Current Node` on exit
 - [x] 4.7 Added F8-scoped scenario
@@ -128,9 +128,9 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP1 (Work Tree format must exist)
 **Size:** XS
 **Tasks:**
-- [ ] 6.1 Document the Observable Outcomes format in `docs/product/wip-format.md` (or equivalent reference): one entry per observable, prefixed with verification method (`Browser:`, `HTTP:`, `CLI:`, `Console:`)
-- [ ] 6.2 Confirm that WP2 (feature-plan) already includes Observable Outcomes at plan time — no additional skill change needed here, just validation
-- [ ] 6.3 Document the rule: Observable Outcomes are written at plan time (not verify time) — rationale in arch.md already; ensure it is surfaced in the skill prompt
+- [x] 6.1 Observable Outcomes format embedded directly in `skills/feature-plan/SKILL.md` (not a separate doc); format uses `Browser:`, `HTTP:`, `CLI:` prefixes
+- [x] 6.2 Confirmed WP2 already includes Observable Outcomes at plan time; added explicit guidance against prose outcomes
+- [x] 6.3 Rule "written at plan time, not verify time" is explicit in `feature-plan/SKILL.md`
 
 ---
 
@@ -140,14 +140,14 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP6 (DoD format), WP8 (severity taxonomy)
 **Size:** L
 **Tasks:**
-- [ ] 7.1 Create `skills/feature-verify-self/SKILL.md` with subagent spawn pattern: bake dev URL (from args), Observable Outcomes, and severity taxonomy into spawn prompt; parse `result` block back from subagent output
-- [ ] 7.2 Define subagent allowed-tools: `mcp__playwright__browser_navigate`, `mcp__playwright__browser_snapshot`, `mcp__playwright__browser_console_messages`, `mcp__playwright__browser_take_screenshot`, `mcp__playwright__browser_click`, `mcp__playwright__browser_fill_form`, `mcp__playwright__browser_evaluate`, `Bash`
-- [ ] 7.3 Add Playwright unavailability handling: if subagent errors on Playwright tools, fall back to curl for HTTP outcomes; annotate browser outcomes as `UNVERIFIED` — these appear in verify-human checklist
-- [ ] 7.4 Add severity classification in subagent prompt: BLOCKING vs COSMETIC per taxonomy (WP8); blocking failures route back to build; cosmetic failures noted but don't block handoff
-- [ ] 7.5 Update WIP tree on exit: mark verify-self leaf statuses, update Current Node; pre-filter verify-human checklist (agent-confirmed items excluded)
-- [ ] 7.6 Update `docs/product/transitions.md`: add F10 (verify-auto → verify-self), F10b (verify-self → verify-human), F9b (verify-self → build back-loop)
-- [ ] 7.7 Update `feature-verify-auto` SKILL.md: F10 now points to verify-self, not verify-human
-- [ ] 7.8 Update `feature-verify-human` SKILL.md: note pre-filtering from verify-self results
+- [x] 7.1 Created `skills/feature-verify-self/SKILL.md`; severity taxonomy and Observable Outcomes embedded inline (not via subagent spawn — design simplified)
+- [x] 7.2 Playwright tool list documented in skill; fallback to curl when Playwright unavailable
+- [x] 7.3 Playwright unavailability handling present — falls back to curl, marks browser outcomes UNVERIFIED
+- [x] 7.4 Severity taxonomy (BLOCKING/COSMETIC) inline in skill with examples; blocking → F9b back-loop, cosmetic-only → F10b forward
+- [x] 7.5 WIP tree update on exit defined in skill procedure
+- [x] 7.6 Transitions F9b, F10b added to `docs/product/transitions.md`; F10 (verify-auto → verify-self) added
+- [x] 7.7 `feature-verify-auto` updated: F10 now points to verify-self
+- [x] 7.8 `feature-verify-human` updated: pre-filter section strengthened
 
 ### WP7b: Update `install.sh` for new skill symlink
 **Description:** `install.sh` must pick up the new `feature-verify-self` skill directory and create its symlink.
@@ -155,8 +155,8 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP7
 **Size:** XS
 **Tasks:**
-- [ ] 7b.1 Run `./install.sh` and confirm `~/.claude/skills/feature-verify-self` symlink is created
-- [ ] 7b.2 Confirm skill appears in available skills list in Claude Code
+- [x] 7b.1 `install.sh` runs idempotently; `~/.claude/skills/feature-verify-self` symlink confirmed
+- [x] 7b.2 Skill confirmed in available skills list
 
 ---
 
@@ -166,10 +166,10 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** None (prerequisite for WP7)
 **Size:** XS
 **Tasks:**
-- [ ] 8.1 Write severity taxonomy to `docs/product/severity-taxonomy.md`: **blocking** = blank page, JS console error, crash, data loss, auth bypass, broken navigation; **cosmetic** = spacing, color, copy, minor layout deviation
-- [ ] 8.2 Add a "gray area" section: items that may be blocking or cosmetic depending on context (e.g., missing image — cosmetic if decorative, blocking if it's a required UI affordance)
-- [ ] 8.3 Reference the taxonomy in `feature-verify-auto` SKILL.md (link or inline the categories)
-- [ ] 8.4 Reference the taxonomy in `feature-build` SKILL.md (for re-verify gate classification)
+- [x] 8.1 Taxonomy embedded inline in `feature-verify-self/SKILL.md` (not a separate doc — kept co-located with the skill that uses it)
+- [x] 8.2 Gray area guidance present in skill (missing required UI element vs decorative)
+- [x] 8.3 Taxonomy referenced in `feature-verify-auto/SKILL.md`
+- [x] 8.4 Taxonomy referenced in `feature-verify-human/SKILL.md`; `feature-build` references verify-self back-loop (F9b)
 
 ---
 
@@ -179,10 +179,10 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP6, WP7, WP8
 **Size:** S
 **Tasks:**
-- [ ] 14.1 Add fixture: `feature-verify-auto-with-dod.md` — WIP file with Observable Outcomes defined; scenario asserts agent runs live checks
-- [ ] 14.2 Add scenario: agent self-catches blocking failure (blank page) — transition stays in verify-auto, not escalated to verify-human
-- [ ] 14.3 Add scenario: re-verify gate fires after build fix — agent re-runs Observable Outcome checks before returning to verify-human
-- [ ] 14.4 Run `tests/run-tests.sh --group feature` — all Phase 2 scenarios pass on haiku
+- [x] 14.1 Added `feature-verify-self-blocking.md` and `feature-verify-self-passed.md` fixtures
+- [x] 14.2 F9b scenario: blocking failure back-loops to build — PASS
+- [x] 14.3 F8-reverify scenario: re-verify gate fires after fix — PASS
+- [x] 14.4 All 37 feature scenarios pass on haiku (run 2026-04-29)
 
 ---
 

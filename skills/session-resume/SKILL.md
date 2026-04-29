@@ -29,4 +29,4 @@ Get the user back into flow as quickly as possible.
 
 6. **Backlog check.** Quickly scan `workflow/backlog.md` (if it exists) for any `high` priority items that relate to the current work. Mention them if found.
 
-7. **Clean up.** Once the user has resumed, `workflow/.session.md` stays in place — it will be overwritten by the next `/session-pause` or deleted by the workflow's terminal state.
+7. **Clean up.** Delete `workflow/.session.md` now — its purpose is consumed. The next `/session-pause` will recreate it if needed.

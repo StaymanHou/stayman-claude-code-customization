@@ -98,6 +98,7 @@ run_test() {
   local not_contains; not_contains=$(parse_scenario_nested "$yaml_file" "$index" "expect" "not_contains")
   local fixture_wip; fixture_wip=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "wip")
   local fixture_product_dir; fixture_product_dir=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "product_dir")
+  local fixture_session; fixture_session=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "session")
 
   # Apply filters
   if [ -n "$FILTER_IDS" ]; then
@@ -138,6 +139,10 @@ ${extra_prompt}"
 
   if [ -n "$fixture_product_dir" ] && [ -d "$SCRIPT_DIR/$fixture_product_dir" ]; then
     cp "$SCRIPT_DIR/$fixture_product_dir"/*.md "$tmpdir/docs/product/" 2>/dev/null || true
+  fi
+
+  if [ -n "$fixture_session" ] && [ -f "$SCRIPT_DIR/$fixture_session" ]; then
+    cp "$SCRIPT_DIR/$fixture_session" "$tmpdir/workflow/.session.md"
   fi
 
   local attempt=0

@@ -85,3 +85,23 @@ scenarios:
         - "/feature-spec"
         - "/task-plan"
     max_retries: 2
+
+  - id: S6
+    name: "session:resume deletes .session.md after restoring context"
+    skill: session-resume
+    args: ""
+    fixtures:
+      session: fixtures/session/feature-ship-paused.md
+      wip: fixtures/wip/feature-ship-paused.md
+    expect:
+      transition_id: S6
+      contains_any:
+        - "delete"
+        - "deleted"
+        - "removed"
+        - "rm "
+        - "clean"
+      not_contains:
+        - "stays in place"
+        - "will be overwritten"
+    max_retries: 2
