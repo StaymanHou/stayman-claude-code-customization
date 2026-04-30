@@ -837,6 +837,26 @@ scenarios:
   # F27 (ANY → incident:report) is impractical to test — requires simulating breakage.
   # F28 (SURFACE-IN → spec) tested from task workflow's ESCALATE output.
 
+  - id: F29
+    name: "feature:spec flags missing probe for 3rd-party integration"
+    skill: feature-spec
+    args: "Add Stripe subscription billing so users can upgrade to a paid plan"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      There is no docs/product/wbs.md in this project. No probe WP for
+      Stripe has been completed. Proceed with the spec as requested.
+    expect:
+      transition_id: F29
+      contains_any:
+        - "probe"
+        - "spike"
+        - "known unknown"
+        - "Known unknown"
+      not_contains:
+        - "no probe needed"
+    max_retries: 2
+
   - id: F28
     name: "feature:spec accepts SURFACE-IN from task escalation"
     skill: feature-spec

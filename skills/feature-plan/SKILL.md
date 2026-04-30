@@ -35,7 +35,24 @@ Mention any relevant items to the user.
 - Examine existing codebase structure and patterns
 - Read the project `CLAUDE.md` at the root for project rules (also `.claude/CLAUDE.md` if present)
 
-### 3. Create Phased Plan
+### 3. 3rd-Party Probe Check
+
+Before writing the plan, check whether this feature depends on any 3rd-party service, external API, or SDK (e.g. Stripe, Twilio, SendGrid, AWS, Google Maps, an OAuth provider, any API you don't own).
+
+**If a 3rd-party dependency is present:**
+1. Check `docs/product/wbs.md` (if it exists) for a completed Probe WP covering that integration.
+2. If no probe WP exists or none is marked complete — this is a **known unknown**. Flag it explicitly:
+
+> ⚠️ **Known unknown — probe required before planning**
+> This feature depends on [service/API name], but no completed probe WP exists for it. The API's request/response shapes, auth model, rate limits, and error codes are unverified assumptions. Planning now risks major revision once the probe is complete.
+> **Recommended action:** Run a spike task first to document the integration's I/O shapes. Then return to `/feature-plan` with that knowledge.
+> If you want to proceed anyway, mark the 3rd-party-dependent phases as explicitly provisional in the plan.
+
+3. If a completed probe WP exists — note it in the plan's Problem Statement and proceed.
+
+**If no 3rd-party dependency is present:** skip this step and continue.
+
+### 4. Create Phased Plan
 
 **If entering for a new feature** (F2 or F4→F7), create or update `workflow/wip/<feature-name>.md` using the **Work Tree format** (see `## Work Tree Format (GLOBAL)` in your system context):
 
@@ -104,10 +121,10 @@ Each phase should be a coherent unit that can go through the `build → verify-a
 **If entering from build back-loop (F23):**
 - Revise the existing plan, document what was wrong and why
 
-### 4. Update WIP State
+### 5. Update WIP State
 Set state to `plan (complete)` in the WIP file.
 
-### 5. Hand Off
+### 6. Hand Off
 Tell the user to run `/feature-build` to start Phase 1.
 
 **STOP** — do NOT start implementing.

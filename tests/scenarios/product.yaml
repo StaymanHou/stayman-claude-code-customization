@@ -214,3 +214,59 @@ scenarios:
         - "/product-wbs"
         - "/product-context"
     max_retries: 2
+
+  - id: P13
+    name: "product:wbs with wip fixture — includes probe WP for Stripe integration"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/arch-done
+      wip: fixtures/wip/feature-spec-3rdparty-no-probe.md
+    system_prompt_extra: |
+      You are producing the WBS for the current project. The active feature spec
+      (workflow/wip/feature-spec-3rdparty-no-probe.md) describes a Stripe
+      subscription billing feature. No Stripe probe WP has been completed.
+      Apply learning-sequence ordering: the WBS must include a probe work
+      package for Stripe before any build WP that assumes known Stripe API
+      shapes. Include a brief ordering rationale per phase.
+    expect:
+      transition_id: P13
+      contains_any:
+        - "probe"
+        - "Probe"
+        - "spike"
+        - "Spike"
+        - "Learning objective"
+      not_contains:
+        - "no probe"
+        - "skip probe"
+    max_retries: 2
+
+  - id: P9b
+    name: "product:wbs includes probe WP and ordering rationale for 3rd-party integration"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/arch-done
+    system_prompt_extra: |
+      You are decomposing a project that includes a Stripe payment integration.
+      The architecture specifies: a subscription billing feature that calls the
+      Stripe API to create and manage PaymentIntents. No prior probe or spike
+      has been done on the Stripe API. Produce the WBS now.
+
+      IMPORTANT: Apply the learning-sequence ordering rules. A 3rd-party
+      integration is present (Stripe). Ensure the WBS includes a probe WP
+      for Stripe before any build WP that assumes known Stripe API shapes.
+      Also include a brief ordering rationale for each phase.
+    expect:
+      transition_id: P9b
+      contains_any:
+        - "probe"
+        - "Probe"
+        - "spike"
+        - "Spike"
+        - "Learning objective"
+      not_contains:
+        - "no probe"
+        - "skip probe"
+    max_retries: 2
