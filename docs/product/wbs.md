@@ -222,12 +222,12 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** None (independent; but benefits from WP3/WP4 back-loop machinery being in place)
 **Size:** M
 **Tasks:**
-- [ ] 12.1 Add "problem statement re-check" prompt to `feature-build` SKILL.md back-loop entry: before re-planning, agent must answer "has the root problem changed based on what we learned?" and record the answer in the WIP file
-- [ ] 12.2 Apply same re-check to `task-act` back-loop entry
-- [ ] 12.3 Add relevance gate to `feature-plan` phase-advance logic: before starting each new phase, check the relevance signals checklist (requester still needs it, requirements unchanged, solution still feasible, no superior alternative discovered) — record the check in the WIP file
-- [ ] 12.4 Update `task-close` SKILL.md: require both a retrospect artifact ("what changed in our understanding") and a communicate step ("confirmation that the requester knows the work is done and what it does") — these are two separate prompts, not one
-- [ ] 12.5 Apply same dual-output requirement to `feature-finalize` SKILL.md
-- [ ] 12.6 Update/add test scenarios for back-loop re-entry (problem re-check present), phase advance (relevance check present), task-close (both retrospect and communicate in output)
+- [x] 12.1 Add "problem statement re-check" prompt to `feature-build` SKILL.md back-loop entry: before re-planning, agent must answer "has the root problem changed based on what we learned?" and record the answer in the WIP file
+- [x] 12.2 Apply same re-check to `task-act` back-loop entry
+- [x] 12.3 Add relevance gate to `feature-plan` phase-advance logic: before starting each new phase, check the relevance signals checklist (requester still needs it, requirements unchanged, solution still feasible, no superior alternative discovered) — record the check in the WIP file
+- [x] 12.4 Update `task-close` SKILL.md: require both a retrospect artifact ("what changed in our understanding") and a communicate step ("confirmation that the requester knows the work is done and what it does") — these are two separate prompts, not one
+- [x] 12.5 Apply same dual-output requirement to `feature-finalize` SKILL.md
+- [x] 12.6 Update/add test scenarios for back-loop re-entry (problem re-check present), phase advance (relevance check present), task-close (both retrospect and communicate in output) — added F23-recheck, T6-recheck, F7-relevance, T10-dualclose, F19-dualclose
 
 ---
 
