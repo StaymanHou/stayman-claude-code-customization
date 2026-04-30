@@ -114,6 +114,27 @@ Before writing the plan, check whether this feature depends on any 3rd-party ser
 
 Each phase should be a coherent unit that can go through the `build → verify-auto → verify-self → verify-human → verify-codify` loop independently.
 
+### 4b. Phase-Advance Relevance Gate (multi-phase features only)
+
+**Applies when:** advancing to Phase 2 or later — i.e., Phase 1 is complete and build is transitioning to the next phase.
+
+Before writing or starting any new phase, check four relevance signals and record the result in the WIP file under the phase node being started:
+
+```markdown
+**Relevance check (before Phase N):**
+- Requester still needs this: yes / no — <brief note>
+- Requirements unchanged: yes / no — <brief note>
+- Solution still feasible: yes / no — <brief note>
+- No superior alternative discovered: yes / no — <brief note>
+**Verdict:** proceed / pause-and-reassess
+```
+
+If all four signals are "yes" → proceed with the phase as planned.
+
+If any signal is "no" → stop. Document which signal failed and why in the WIP file. Present the issue to the user before starting the phase — do not silently continue with work that may no longer be warranted.
+
+This check is lightweight: one paragraph, not a full re-plan. Its purpose is to catch the case where the feature's context has changed during earlier phases and proceeding blindly would produce waste.
+
 **If entering from refactor (F20):**
 - CONSTRAINT: Scope to cleanup only — no new features, no scope expansion
 - Plan should address specific tech debt items identified in finalize

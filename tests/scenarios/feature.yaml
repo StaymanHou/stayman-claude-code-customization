@@ -553,6 +553,29 @@ scenarios:
         - "/feature-refactor"
     max_retries: 2
 
+  - id: F19-dualclose
+    name: "feature:finalize produces both retrospect artifact and communicate step"
+    skill: feature-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-no-debt.md
+    system_prompt_extra: |
+      Documentation updated. Code reviewed. No tech debt identified.
+      Feature is clean and complete. Before archiving, you must produce two
+      separate outputs: (A) a retrospect artifact documenting what changed in
+      your understanding during the feature, and (B) a communicate step — a
+      closure notice confirming the requester knows the feature is done and
+      what it does. Both outputs are required.
+    expect:
+      transition_id: F19
+      contains_any:
+        - "Retrospect"
+        - "retrospect"
+        - "what changed"
+      not_contains:
+        - "/feature-refactor"
+    max_retries: 2
+
   - id: F20
     name: "feature:refactor → plan (cleanup-only constraint)"
     skill: feature-refactor
@@ -640,6 +663,33 @@ scenarios:
       not_contains:
         - "/feature-verify-auto"
         - "/feature-research"
+    max_retries: 2
+
+  - id: F23-recheck
+    name: "feature:build back-loop re-entry records problem statement re-check"
+    skill: feature-build
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-phase1.md
+    system_prompt_extra: |
+      You are re-entering feature-build from a back-loop (F23 — plan was wrong).
+      The original problem was: users can't configure notifications.
+      During the failed phase, you learned that the notification system was
+      recently redesigned: notifications are now opt-in by default, not opt-out.
+      The root problem has shifted — the solution approach needs to change.
+      Before implementing, you must record whether the root problem has changed
+      and update the Problem Statement in the WIP file accordingly.
+    expect:
+      transition_id: F23-recheck
+      contains_any:
+        - "root problem"
+        - "problem statement"
+        - "Problem Statement"
+        - "Updated"
+        - "changed"
+      not_contains:
+        - "/feature-verify-auto"
     max_retries: 2
 
   - id: F24
@@ -766,6 +816,33 @@ scenarios:
         - "Observable outcomes"
       not_contains:
         - "## Implementation Phases"
+    max_retries: 2
+
+  - id: F7-relevance
+    name: "feature:plan phase-advance records relevance gate before Phase 2"
+    skill: feature-plan
+    args: "User notification preferences — advancing to Phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-phase1.md
+    system_prompt_extra: |
+      Phase 1 (Backend API) is complete. You are now advancing to Phase 2
+      (Frontend Settings UI). Before starting Phase 2, you must run the
+      relevance gate: check that the requester still needs the feature,
+      requirements are unchanged, the solution is still feasible, and no
+      superior alternative has been discovered. Record the result in the
+      WIP file under the Phase 2 node before writing the phase plan.
+    expect:
+      transition_id: F7
+      contains_any:
+        - "Relevance check"
+        - "relevance check"
+        - "relevance gate"
+        - "still warranted"
+        - "still needed"
+        - "still feasible"
+      not_contains:
+        - "/feature-ship"
     max_retries: 2
 
   - id: F12-scoped

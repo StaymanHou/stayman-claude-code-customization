@@ -31,6 +31,20 @@ You are in the **task** workflow at the **act** state.
 - Read the project `CLAUDE.md` at the root for environment rules (also `.claude/CLAUDE.md` if present)
 - **Docker Rule:** If the project mandates Docker, ALL commands (pip, python, npm, etc.) MUST run inside the container. Only git commands and basic file operations run on the host.
 
+### 2b. Problem Statement Re-Check (back-loop re-entry only)
+
+**Applies when:** re-entering from a back-loop (T6 — plan was wrong) — i.e., this is not the first entry into act for this task.
+
+Before implementing anything, answer this question in writing and record the answer in the WIP file's `## Problem Statement` section:
+
+> **Has the root problem changed based on what we learned?**
+> - What did we learn from the failed or revised plan?
+> - Is the original problem statement still accurate, or has our understanding shifted?
+> - If the problem has changed: update `## Problem Statement` to reflect the current understanding. Mark the update with `[Updated YYYY-MM-DD: <one-line reason>]`.
+> - If the problem has NOT changed: record "Problem statement unchanged — [brief confirmation of why]" as a one-liner appended to the Problem Statement section.
+
+This check must be completed before implementing. Its purpose: prevent working on the wrong problem after the plan changes.
+
 ### 3. Implement
 - Work only on the step(s) named in `## Current Node` Active scope
 - Make atomic, logical changes

@@ -39,8 +39,30 @@ Present the backlog summary to the user.
 - Move the plan file to `workflow/archive/` (create directory if needed)
 - Clean up the `workflow/wip/` directory
 
-### 5. Reflect Check
-Evaluate whether significant learning occurred during this task:
+### 5. Retrospect + Communicate (required — two separate outputs)
+
+These two steps are mandatory before closing, regardless of whether learnings occurred.
+
+**Output A — Retrospect artifact:** Write a short retrospect in the WIP file before archiving it:
+
+```markdown
+## Retrospect
+- **What changed in our understanding:** <what we learned that we didn't know at the start>
+- **Assumptions that held:** <what we got right>
+- **Assumptions that were wrong:** <what surprised us>
+- **Approach delta:** <how the actual implementation differed from the plan, if at all>
+```
+
+If the task was exactly as planned with no surprises, record that explicitly ("No surprises — implementation matched plan exactly"). Do not skip this section.
+
+**Output B — Communicate step:** Confirm that the requester knows the work is done and what it does. This is a prompted action — produce a brief closure message suitable for sharing:
+
+> **Closure notice:** [Task name] is complete. [One sentence: what was done]. [One sentence: how to verify or where to see the result, if applicable.]
+
+If the requester is the same person running the agent (solo developer), note it as: "Requester = operator — closure notice for self-record."
+
+### 6. Reflect Check
+Evaluate whether significant learning occurred during this task (beyond what was captured in the retrospect):
 - Were there wrong assumptions that were corrected?
 - Were there unexpected discoveries?
 - Was the approach significantly different from the plan?

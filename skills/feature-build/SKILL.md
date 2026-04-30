@@ -30,6 +30,20 @@ You are in the **feature** workflow at the **build** state.
 - If no scoped args: work on the next incomplete impl task in the current phase
 - If `## Current Node` diverges from what the tree shows, trust the tree and rewrite Current Node
 
+### 1b. Problem Statement Re-Check (back-loop re-entry only)
+
+**Applies when:** re-entering from any back-loop (F9b, F12, F23) — i.e., this is not the first time build has been entered for this phase.
+
+Before implementing anything, answer this question in writing and record the answer in the WIP file's `## Problem Statement` section:
+
+> **Has the root problem changed based on what we learned?**
+> - What did we learn from the failed verification or rejected phase?
+> - Is the original problem statement still accurate, or has our understanding shifted?
+> - If the problem has changed: update `## Problem Statement` to reflect the current understanding. Mark the update with `[Updated YYYY-MM-DD: <one-line reason>]`.
+> - If the problem has NOT changed: record "Problem statement unchanged — [brief confirmation of why]" as a one-liner appended to the Problem Statement section.
+
+This check must be completed before proceeding to implement. Its purpose: prevent the agent from fixing symptoms while the root cause has shifted.
+
 ### 2. Environment Check
 - Read the project `CLAUDE.md` at the root for environment rules (also `.claude/CLAUDE.md` if present)
 - **Docker Rule:** If the project mandates Docker, ALL commands MUST run inside the container

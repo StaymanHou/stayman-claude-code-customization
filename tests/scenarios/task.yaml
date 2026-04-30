@@ -249,3 +249,52 @@ scenarios:
         - "learning"
       not_contains: []
     max_retries: 2
+
+  - id: T10-dualclose
+    name: "task:close produces both retrospect artifact and communicate step"
+    skill: task-close
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-act-complete.md
+    system_prompt_extra: |
+      The task is complete. Before archiving, you must produce two separate
+      outputs: (A) a retrospect artifact documenting what changed in your
+      understanding during the task, and (B) a communicate step — a closure
+      notice confirming the requester knows the work is done and what it does.
+      Both outputs are required. Do not skip either one.
+    expect:
+      transition_id: T10
+      contains_any:
+        - "Retrospect"
+        - "retrospect"
+        - "what changed"
+      not_contains:
+        - "/session-reflect"
+    max_retries: 2
+
+  - id: T6-recheck
+    name: "task:act back-loop re-entry records problem statement re-check"
+    skill: task-act
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-plan-clear.md
+    system_prompt_extra: |
+      You are re-entering task-act from a back-loop (T6 — plan was wrong).
+      The original plan assumed direct useState management for the loading spinner.
+      During re-planning you learned the LoginForm now uses a state machine (XState).
+      The root problem — "add a loading indicator to the login flow" — has not changed,
+      but the approach is completely different. Before implementing, you must record
+      whether the root problem has changed and note this in the WIP file's
+      Problem Statement section.
+    expect:
+      transition_id: T6-recheck
+      contains_any:
+        - "root problem"
+        - "problem statement"
+        - "Problem Statement"
+        - "unchanged"
+        - "not changed"
+      not_contains:
+        - "/task-close"
+        - "ESCALATE"
+    max_retries: 2
