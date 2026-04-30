@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: complete
-updated: 2026-04-29
+updated: 2026-04-30
 ---
 
 # Work Breakdown Structure — Claude Code Workflow System
@@ -194,11 +194,11 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** None (independent of Phases 1–2)
 **Size:** M
 **Tasks:**
-- [ ] 10.1 Update `skills/product-wbs/SKILL.md`: add requirement for learning-sequence ordering — assert the standard pattern (Docker → probes → UI mockups → backend → orchestration); require written rationale per phase ("why this before that in terms of risk reduction")
-- [ ] 10.2 Add "spike/probe" work package class to the WBS template: define distinct format fields (`Learning objective:`, `Timebox:`, `Success criterion: what do we now know?`); contrast with "build" WPs
-- [ ] 10.3 Add instruction: 3rd-party integrations must be classified as blockers on downstream WPs until a probe has completed and its I/O shapes are documented; if no probe WP exists, one must be created
-- [ ] 10.4 Add instruction: orchestration layers (queues, workers, async) must appear in a later phase than the synchronous path they will wrap — deviations require written rationale
-- [ ] 10.5 Update/add test scenario: WBS for a project with 3rd-party API includes a probe WP before any WP that assumes known API shapes
+- [x] 10.1 Update `skills/product-wbs/SKILL.md`: add requirement for learning-sequence ordering — assert the standard pattern (Docker → probes → UI mockups → backend → orchestration); require written rationale per phase ("why this before that in terms of risk reduction")
+- [x] 10.2 Add "spike/probe" work package class to the WBS template: define distinct format fields (`Learning objective:`, `Timebox:`, `Success criterion: what do we now know?`); contrast with "build" WPs
+- [x] 10.3 Add instruction: 3rd-party integrations must be classified as blockers on downstream WPs until a probe has completed and its I/O shapes are documented; if no probe WP exists, one must be created
+- [x] 10.4 Add instruction: orchestration layers (queues, workers, async) must appear in a later phase than the synchronous path they will wrap — deviations require written rationale
+- [x] 10.5 Update/add test scenario: WBS for a project with 3rd-party API includes a probe WP before any WP that assumes known API shapes (P9b + P13)
 
 ---
 
@@ -208,9 +208,9 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** WP10 (probe WP class must be defined first)
 **Size:** S
 **Tasks:**
-- [ ] 11.1 Update `skills/feature-spec/SKILL.md`: add a pre-planning check — does this feature reference a 3rd-party integration? If yes, is there a completed probe WP in the WBS? If no probe, flag as known unknown and recommend REDIRECT to a spike
-- [ ] 11.2 Apply same check to `skills/feature-plan/SKILL.md`
-- [ ] 11.3 Add test scenario: feature plan for 3rd-party dependent feature with no probe → output contains the known-unknown flag and spike recommendation
+- [x] 11.1 Update `skills/feature-spec/SKILL.md`: add a pre-planning check — does this feature reference a 3rd-party integration? If yes, is there a completed probe WP in the WBS? If no probe, flag as known unknown and recommend REDIRECT to a spike
+- [x] 11.2 Apply same check to `skills/feature-plan/SKILL.md`
+- [x] 11.3 Add test scenario: feature plan for 3rd-party dependent feature with no probe → output contains the known-unknown flag and spike recommendation (F29)
 
 ---
 
