@@ -1,7 +1,7 @@
 ---
 name: feature-verify-human
 description: "Feature workflow: guide the human through manual verification of the current phase"
-argument-hint: <optional scope or phase number>
+argument-hint: <optional phase number — on rejection, outputs specific failed leaf IDs (e.g. P1.verify-human.1) for scoped re-entry to feature-build>
 allowed-tools:
   - Bash
   - Read

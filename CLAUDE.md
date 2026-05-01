@@ -17,6 +17,7 @@ The skills and agents here are **symlinked into `~/.claude/`** by `install.sh`. 
 ./tests/run-tests.sh --id T2,T3,F9    # Run specific transitions by ID
 ./tests/run-tests.sh --dry-run        # List scenarios without executing
 ./tests/run-tests.sh --model sonnet   # Override test model (default: haiku)
+./tests/check-structure.sh            # Structural checks: argument-hints, CLAUDE.md content, symlinks, YAML validity
 ```
 
 Test runner requires `claude` CLI, `jq`, and `bc` on PATH. Results are written to `tests/results/run-<timestamp>.json` (gitignored). Each test spins up a temp project directory, copies `tests/fixtures/` into it, runs the skill in `--print` mode with a system prompt that forces the model to emit `TRANSITION: <id>` at the end, then verifies the output.
@@ -44,6 +45,19 @@ Keep both paths working: never bake auto-chain logic into individual skill promp
 3. `tests/scenarios/*.yaml` — scenarios assert a specific transition ID fires for a given input.
 
 If you add, remove, or reword a transition, update all three. The tests use the IDs as the source of truth for pass/fail.
+
+The feature per-phase loop is: `build → verify-auto → verify-self → verify-human → verify-codify`. Note that `verify-self` (agent live-system observation) sits between automated checks and human review — it was added in WP7 to close the gap where agents handed off to humans without ever observing the running system.
+
+### Work Tree Format
+
+WIP files use the **Work Tree format** — a recursive tree with status-tagged nodes, `## Current Node` pointer, and `## Discoveries` section. The canonical schema and status vocabulary (`NOT-STARTED`, `in-progress`, `FAILED`, `BLOCKED`, `SURFACED`) live in `CLAUDE.snippet.md`, which `install.sh` injects into `~/.claude/CLAUDE.md`.
+
+Work Tree status vocabulary: `NOT-STARTED` → `in-progress` → `[x]` (complete); failure states: `FAILED`, `BLOCKED: depends on <node>`, `SURFACED: <summary>`. A parent node may only be checked `[x]` when ALL children are `[x]`.
+
+Key conventions:
+- **Observable Outcomes** are written at plan time (in `feature-plan`), not at verify time. Each outcome must be mechanically verifiable — an HTTP status, a Playwright selector, or a CLI exit code. Prose outcomes ("looks correct") are not acceptable.
+- **Severity taxonomy** for `feature-verify-self` failures: `BLOCKING` (ship-blocking — blank page, broken endpoint, crash) triggers a back-loop to build; `COSMETIC` (visual misalignment, non-critical) is noted but does not block forward progress to `verify-human`. Full taxonomy in `skills/feature-verify-self/SKILL.md`.
+- **Scoped re-entry:** when `feature-verify-human` rejects a phase, it passes specific failed leaf IDs (e.g. `P1.verify-human.1`) to `feature-build`. Build restricts work to those leaves only — does not re-implement the whole phase.
 
 ### State persistence is per-project, not here
 
