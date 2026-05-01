@@ -80,9 +80,9 @@ Current workflow pauses, another workflow/step runs, original resumes:
 ## Product Workflow
 
 ```
-States:  vision → roadmap → research → arch → wbs → context
+States:  vision → roadmap → research → arch → wbs → context → [features] → product-finalize
 Entry:   vision
-Terminal: context (→ drops to feature:plan for first milestone)
+Terminal: product-finalize (→ EXIT; docs archived, cycle closed)
 ```
 
 | ID | From | To | Condition |
@@ -99,8 +99,12 @@ Terminal: context (→ drops to feature:plan for first milestone)
 | P10 | context | EXIT→feature:plan | Always — start first milestone from roadmap |
 | P11 | SURFACE-IN | wbs | Lower-level workflow discovers new work |
 | P12 | SURFACE-IN | arch | Lower-level workflow discovers architectural gap |
+| P13 | product-finalize | EXIT | Cycle closed — durable docs resynced, cycle-scoped docs archived |
+| P14 | product-finalize | arch | Back-loop: resync reveals significant architectural drift requiring formal revision |
 
-Back-loop guard applies to: P4, P6, P8.
+Back-loop guard applies to: P4, P6, P8, P14.
+
+**product-finalize** is triggered by `feature-finalize` (via F29) when all WBS items are `[x]`. It resyncs durable docs (arch.md, roadmap.md) against what was actually built, sweeps the backlog, then archives cycle-scoped docs (`wbs.md`, `research.md`, and any cycle-specific diagnostics) to `docs/product/archive/<cycle-name>/`. Durable docs (`vision.md`, `arch.md`, `transitions.md`, `roadmap.md`) remain in place.
 
 **Back-loop behavior:** Edit the earlier stage's file in place — bump `updated:`, set `state: in-progress`, append a `## Revision <date>` section. Files are never deleted on back-loops.
 
@@ -158,6 +162,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect)
 | F26 | build | SURFACE→product:arch | Architectural change needed (pause-and-escalate) |
 | F27 | ANY | incident:report | Something breaks |
 | F28 | SURFACE-IN | spec | Task/incident escalated to feature |
+| F30 | finalize | product-finalize | WBS fully complete — all WPs `[x]`; surface product-finalize to user |
 
 ---
 

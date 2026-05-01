@@ -15,6 +15,7 @@ You are in the **feature** workflow at the **finalize** state.
 **Valid transitions from here:**
 - **F18 → refactor:** Tech debt identified during this feature → tell user to run `/feature-refactor`
 - **F19 → EXIT + reflect:** No tech debt, feature done → auto-trigger reflect
+- **F30 → product-finalize:** No tech debt AND `docs/product/wbs.md` exists with all WPs `[x]` → tell user to run `/product-finalize`
 
 ## Procedure
 
@@ -67,8 +68,10 @@ Review the implementation for tech debt:
 - List the specific items
 - Tell user to run `/feature-refactor` to address them
 
-**If no tech debt (F19):**
-- Feature is done
-- Tell user: "Feature complete. Running reflection..." and recommend `/session-reflect`
+**If no tech debt — check WBS completion (F19 vs F30):**
+
+Check whether `docs/product/wbs.md` exists and all work packages are marked `[x]`:
+- **WBS exists and all WPs `[x]` (F30):** The entire product cycle is complete. Tell user: "Feature complete and WBS fully done. Run `/product-finalize` to resync architecture docs, sweep the backlog, and archive the completed product cycle."
+- **No WBS, or WBS has incomplete WPs (F19):** Feature is done but product cycle continues. Tell user: "Feature complete. Running reflection..." and recommend `/session-reflect`
 
 **Feature Name:** {{args}}

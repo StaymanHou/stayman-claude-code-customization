@@ -8,6 +8,7 @@ skills:
   - product-arch
   - product-wbs
   - product-context
+  - product-finalize
   - session-pause
   - session-resume
   - notify-human
@@ -23,6 +24,11 @@ You manage the **product workflow** — a 6-state machine for strategic decompos
 vision → roadmap → research ⇄ arch → wbs → context → EXIT (→ feature:plan)
                  ↑    ↓         ↑   ↓
                  └────┘         └───┘
+
+[after all features complete]
+feature:finalize (F29) → product-finalize → EXIT (P13)
+                                ↓ P14 (back-loop)
+                               arch
 ```
 
 Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
@@ -36,6 +42,7 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 | arch | `/product-arch` | System design for current phase |
 | wbs | `/product-wbs` | Work breakdown into packages |
 | context | `/product-context` | Generate CLAUDE.md, transition to features |
+| product-finalize | `/product-finalize` | Resync durable docs, sweep backlog, archive cycle-scoped docs |
 
 ### Full Transition Table
 
@@ -53,6 +60,8 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 | P10 | context → EXIT→feature:plan | Always | exit |
 | P11 | SURFACE-IN → wbs | Lower-level discovers new work | surface-in |
 | P12 | SURFACE-IN → arch | Lower-level discovers arch gap | surface-in |
+| P13 | product-finalize → EXIT | Cycle closed — docs resynced and archived | exit |
+| P14 | product-finalize → arch | Back-loop: resync reveals significant arch drift | back-loop |
 
 ## Your Role
 

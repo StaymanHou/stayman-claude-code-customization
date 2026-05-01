@@ -4,7 +4,7 @@ This machine has a state-machine-driven workflow system installed (skills + orch
 
 **Four workflows with entry-point slash commands:**
 
-- **Product** — `/product-vision` (new initiative) → roadmap → research → arch → wbs → context
+- **Product** — `/product-vision` (new initiative) → roadmap → research → arch → wbs → context → [features] → `/product-finalize` (cycle close)
 - **Feature** — `/feature-spec` (complex) or `/feature-plan` (small/simple) → build/verify loop → ship → finalize
 - **Task** — `/task-plan` → act → close (atomic changes, bug fixes)
 - **Incident** — `/incident-report` → triage → investigate → mitigate → resolve
@@ -17,12 +17,15 @@ Running an entry-point slash command directly (e.g., `/product-vision`) stays si
 
 **Per-project layout** (not shared between projects):
 ```
-docs/product/          # vision.md, roadmap.md, research.md, arch.md, wbs.md, context.md
-workflow/wip/          # active feature/task/incident items
-workflow/backlog.md    # SURFACE discoveries
-workflow/archive/      # completed items
-workflow/.session.md   # single-file pause pointer
+docs/product/                        # vision.md, roadmap.md, research.md, arch.md, wbs.md, context.md
+docs/product/archive/<cycle-name>/   # cycle-scoped docs archived by /product-finalize on WBS completion
+workflow/wip/                        # active feature/task/incident items
+workflow/backlog.md                  # SURFACE discoveries
+workflow/archive/                    # completed feature/task/incident items
+workflow/.session.md                 # single-file pause pointer
 ```
+
+When a WBS cycle completes, `/product-finalize` resyncs durable docs (`arch.md`, `roadmap.md`), sweeps the backlog, then moves cycle-scoped docs (`wbs.md`, `research.md`, diagnostics) to `docs/product/archive/<cycle-name>/`. Durable docs (`vision.md`, `arch.md`, `transitions.md`, `roadmap.md`) stay in place.
 
 ## Work Tree Format (GLOBAL)
 

@@ -157,12 +157,12 @@ else
   check "All scenario YAML files parse cleanly" "fail" "python3 not available"
 fi
 
-# Minimum scenario count (should be ≥ 85 after WP13)
+# Minimum scenario count (should be ≥ 88 after product-doc-archival feature)
 total=$(./tests/run-tests.sh --dry-run 2>/dev/null | grep "^TOTAL" | grep -oE "[0-9]+" | tail -1 || echo 0)
-if [ "${total:-0}" -ge 85 ]; then
-  check "Scenario count ≥ 85 ($total registered)" "pass"
+if [ "${total:-0}" -ge 88 ]; then
+  check "Scenario count ≥ 88 ($total registered)" "pass"
 else
-  check "Scenario count ≥ 85" "fail" "only $total scenarios found"
+  check "Scenario count ≥ 88" "fail" "only $total scenarios found"
 fi
 
 echo ""

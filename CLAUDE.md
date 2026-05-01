@@ -40,7 +40,7 @@ Keep both paths working: never bake auto-chain logic into individual skill promp
 
 ### The state machine lives in three places — keep them in sync
 
-1. `docs/product/transitions.md` — authoritative definition (65 transitions, IDs like `P1`, `F8`, `T2`, `I3`) plus architecture narrative and cross-level mechanism docs.
+1. `docs/product/transitions.md` — authoritative definition (IDs like `P1`, `F8`, `T2`, `I3`) plus architecture narrative and cross-level mechanism docs.
 2. Per-skill `SKILL.md` — each skill lists the transitions *out of its state* in prose, referencing the same IDs.
 3. `tests/scenarios/*.yaml` — scenarios assert a specific transition ID fires for a given input.
 
@@ -65,7 +65,7 @@ Skills read and write state **in whatever project the user is currently in** —
 
 Two locations, different purposes:
 
-- **`docs/product/`** — strategic, long-lived product docs. Flat layout, one file per product-workflow stage: `vision.md`, `roadmap.md`, `research.md`, `arch.md`, `wbs.md`, `context.md`. Each file carries YAML frontmatter with `stage`, `state` (`in-progress` / `complete`), and `updated`. **Assume one product per codebase.** Files are never archived — they are durable reference.
+- **`docs/product/`** — strategic product docs. Flat layout, one file per product-workflow stage: `vision.md`, `roadmap.md`, `research.md`, `arch.md`, `wbs.md`, `context.md`. Each file carries YAML frontmatter with `stage`, `state` (`in-progress` / `complete`), and `updated`. **Assume one product per codebase.** When a WBS cycle completes, cycle-scoped docs (`wbs.md`, `research.md`, and any diagnostic/scratch docs) are archived to `docs/product/archive/<cycle-name>/` by `/product-finalize`. Durable docs (`vision.md`, `arch.md`, `transitions.md`, `roadmap.md`) remain in place across cycles.
 - **`workflow/`** — transient execution state for feature/task/incident workflows.
   - `workflow/wip/<item>.md` — the active work item for a feature, task, or incident
   - `workflow/backlog.md` — SURFACE discoveries
@@ -94,7 +94,7 @@ The `notify-human` skill sends Telegram messages before the model asks the user 
 
 ## Product Workflow Notes
 
-This repo dogfoods the product workflow but **skips `/product-context`** — the project already has a hand-maintained `CLAUDE.md` (this file) that serves the same purpose. The product workflow is considered complete after `/product-wbs`.
+This repo dogfoods the product workflow but **skips `/product-context`** — the project already has a hand-maintained `CLAUDE.md` (this file) that serves the same purpose. The product workflow is considered complete after `/product-wbs` and `/product-finalize`.
 
 ## Conventions
 

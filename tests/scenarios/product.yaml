@@ -270,3 +270,52 @@ scenarios:
         - "no probe"
         - "skip probe"
     max_retries: 2
+
+  - id: P13b
+    name: "product:product-finalize exits when all WPS complete and docs archived"
+    skill: product-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/wbs-complete
+    system_prompt_extra: |
+      You are running product-finalize for the "API Documentation Generator" cycle.
+      All WPs in wbs.md are marked [x]. docs/product/arch.md exists and is accurate.
+      workflow/backlog.md is empty. The cycle name is "api-doc-generator-v1".
+      Complete the finalize procedure and exit.
+    expect:
+      transition_id: P13
+      contains_any:
+        - "archive"
+        - "archived"
+        - "docs/product/archive"
+        - "product cycle"
+      not_contains:
+        - "/product-arch"
+        - "incomplete"
+    max_retries: 2
+
+  - id: P14
+    name: "product:product-finalize back-loops to arch on significant drift"
+    skill: product-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/wbs-complete
+    system_prompt_extra: |
+      You are running product-finalize for the "API Documentation Generator" cycle.
+      All WPs in wbs.md are marked [x]. However, during the resync step you discover
+      that arch.md describes a planned plugin system that was never built — the team
+      decided during implementation to drop plugin support entirely and use a different
+      extension model. This is significant architectural drift that must be formally
+      documented in arch.md before archiving. Trigger the back-loop to product-arch.
+    expect:
+      transition_id: P14
+      contains_any:
+        - "/product-arch"
+        - "product-arch"
+        - "arch"
+        - "back-loop"
+        - "drift"
+      not_contains:
+        - "archive"
+        - "EXIT"
+    max_retries: 2

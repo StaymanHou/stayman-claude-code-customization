@@ -112,4 +112,6 @@ If new work was surfaced from a lower level:
 - If WBS is complete and architecture holds → set `state: complete` in the frontmatter, recommend `/product-context` (P9)
 - If decomposition reveals architectural gaps → document them, recommend `/product-arch` (P8). The arch skill will bump `docs/product/arch.md` back to `state: in-progress`.
 
+**Note on cycle close:** When all WPs in this WBS are eventually marked `[x]` by `feature-finalize` runs, `feature-finalize` will detect the complete WBS and surface `/product-finalize` (F30). That skill resyncs durable docs, sweeps the backlog, and archives cycle-scoped docs (`wbs.md`, `research.md`, diagnostics) to `docs/product/archive/<cycle-name>/`.
+
 **Scope:** {{args}}

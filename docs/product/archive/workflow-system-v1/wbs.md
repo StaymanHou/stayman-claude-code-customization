@@ -1,0 +1,279 @@
+---
+stage: wbs
+state: complete
+updated: 2026-05-01
+---
+
+# Work Breakdown Structure — Claude Code Workflow System
+
+## Dependency Map (Critical Path)
+
+```
+WP1 (Work Tree Format)
+  └─► WP2 (feature-plan)
+  └─► WP3 (feature-verify-human)
+        └─► WP4 (feature-build + re-verify gate)
+  └─► WP5 (task-plan / task-act)
+  └─► WP6 (Behavioral DoD format)
+        └─► WP7 (feature-verify-auto live observation)
+              └─► WP4 (re-verify gate depends on DoD + auto)
+WP6 ──► WP8 (severity taxonomy)
+              └─► WP7
+
+WP9 (fixture updates) — depends on WP1–WP5
+WP10 (product-wbs learning-sequence) — independent, Phase 3
+WP11 (feature-plan/spec probe check) — depends on WP10
+WP12 (framework alignment back-loops) — independent, Phase 4
+WP13 (hardening + docs) — depends on all prior WPs
+```
+
+**Parallel tracks:**
+- WP1–WP5 (tree format + skill contracts) can progress independently of WP6–WP8 (DoD + severity)
+- WP10–WP11 (Phase 3 WBS fixes) are fully independent of Phases 1–2
+- WP12 (Phase 4 framework alignment) is independent of Phases 1–3
+
+---
+
+## Phase 1: Problem Tree & Structured Verification
+
+### WP1: Work Tree Node Format
+**Description:** Define and document the canonical Work Tree format. The grammar (status vocabulary, schema, rules) lives in `CLAUDE.snippet.md` (injected globally). Individual skill SKILL.md files reference behavior, not spec. No depth cap — tree is recursive as needed.
+**Phase:** 1
+**Dependencies:** None — foundational
+**Size:** S
+**Tasks:**
+- [x] 1.1 Write the Work Tree grammar into `CLAUDE.snippet.md` as a new `## Work Tree Format (GLOBAL)` section — status vocabulary, `## Current Node` schema, `## Discoveries` section, HTML comment convention, parent-completion rule, tree-update-on-exit rule
+- [x] 1.2 Update `tests/fixtures/wip/` — create one canonical Work Tree fixture file (e.g., `feature-plan-worktree.md`) that all Phase 1 skill tests can reference
+- [x] 1.3 Update the WIP file template embedded in `feature-plan`'s SKILL.md to emit Work Tree format (do not update the skill's behavior yet — that is WP2)
+- [x] 1.4 Re-run `./install.sh` to inject updated CLAUDE.snippet.md into `~/.claude/CLAUDE.md`
+
+---
+
+### WP2: Update `feature-plan` — Emit Work Tree
+**Description:** Modify `feature-plan` to produce a WIP file in Work Tree format instead of flat prose phases. It must also emit Observable Outcomes per phase node at plan time.
+**Phase:** 1
+**Dependencies:** WP1
+**Size:** M
+**Tasks:**
+- [x] 2.1 Update `skills/feature-plan/SKILL.md`: replace flat-checklist WIP template with Work Tree template; add instruction to write Observable Outcomes per phase at plan time
+- [x] 2.2 Add instruction: verification group nodes (`verify-auto`, `verify-self`, `verify-human`, `verify-codify`) must be pre-populated as `NOT-STARTED` leaf nodes under each phase
+- [x] 2.3 Add instruction: `## Current Node` section must be initialized pointing to Phase 1, first impl task
+- [x] 2.4 Update `tests/scenarios/` — added F7-worktree scenario
+
+---
+
+### WP3: Update `feature-verify-human` — Leaf-Level Pass/Fail
+**Description:** Modify `feature-verify-human` to expand verification into persistent leaf nodes in the Work Tree, record individual pass/fail per leaf, and pass failed leaf IDs as scoped args when sending back to `feature-build`.
+**Phase:** 1
+**Dependencies:** WP1
+**Size:** M
+**Tasks:**
+- [x] 3.1 Update `skills/feature-verify-human/SKILL.md`: on first run for a phase, expand `verify-human` node into leaf items (one per check); write each leaf with a status tag
+- [x] 3.2 Add instruction: on subsequent runs (re-entry from build), present only the leaves that are `FAILED` or `BLOCKED` — skip `[x]` leaves
+- [x] 3.3 Add instruction: mark `BLOCKED` leaves explicitly with `BLOCKED: depends on <node>` — do not silently skip them
+- [x] 3.4 Add instruction: when handing back to `feature-build`, pass the specific failed leaf IDs — not just "phase N failed"
+- [x] 3.5 Add instruction: `verify-human` node status may only be set to complete when ALL leaf items are `[x]`
+- [x] 3.6 Update `## Current Node` on exit with failed leaf IDs in `Active scope`
+- [x] 3.7 Added F12-scoped and F12-blocked scenarios
+
+---
+
+### WP4: Update `feature-build` — Scoped Re-Entry + Re-Verify Gate
+**Description:** Modify `feature-build` to accept scoped args (specific failed leaf IDs), restrict work to those leaves, attach discoveries to the correct tree node, re-evaluate parent readiness before transitioning, and run a re-verify gate before handing back to `verify-human`.
+**Phase:** 1 (scoped re-entry); Phase 2 (re-verify gate — added here because re-verify lives at build exit)
+**Dependencies:** WP1, WP3 (for scoped args format); WP6, WP7 (for re-verify gate behavioral checks)
+**Size:** L
+**Tasks:**
+- [x] 4.1 Update `skills/feature-build/SKILL.md`: on entry, read `## Current Node` first; if scoped args present, restrict work to named leaf IDs only
+- [x] 4.2 Add instruction: discoveries attach to correct parent phase node as `SURFACED` children (and also to backlog)
+- [x] 4.3 Add instruction: parent completion enforcement before exit
+- [x] 4.4 Add re-verify gate (Phase 2 — after WP7): before transitioning back to `verify-self`, re-run Observable Outcome checks for fixed leaves
+- [ ] 4.5 Add Playwright MCP tools to `allowed-tools` (for re-verify gate)
+- [x] 4.6 Update `## Current Node` on exit
+- [x] 4.7 Added F8-scoped scenario
+
+---
+
+### WP5: Update `task-plan` / `task-act` — Lighter Work Tree
+**Description:** Apply the lighter Task Work Tree format to `task-plan` and `task-act` — Current Node pointer, discovery attachment, parent completion check. No Observable Outcomes or verification group nodes (tasks don't have the full verify loop).
+**Phase:** 1
+**Dependencies:** WP1
+**Size:** S
+**Tasks:**
+- [x] 5.1 Update `skills/task-plan/SKILL.md`: emit Task Work Tree format with step nodes, `## Current Node`, `## Discoveries`
+- [x] 5.2 Update `skills/task-act/SKILL.md`: on entry, read `## Current Node`; attach discoveries to correct step node; update node statuses and Current Node on exit
+- [x] 5.3 Add instruction to `task-act`: parent completion enforcement before exit
+- [x] 5.4 Added T2-worktree and T7-worktree scenarios
+
+---
+
+### WP9: Update Test Fixtures (Phase 1)
+**Description:** Update all 14 existing WIP test fixtures to the Work Tree format, and add new fixtures for Phase 1 scenarios. This is a blocking dependency for all Phase 1 test scenarios.
+**Phase:** 1
+**Dependencies:** WP1 (format spec must be final)
+**Size:** M
+**Tasks:**
+- [x] 9.1 Audit `tests/fixtures/wip/` — audited 17 fixtures, identified references
+- [x] 9.2 Convert each fixture to Work Tree format (preserved scenario intent)
+- [x] 9.3 Added `feature-verify-human-partial-failure.md`, `feature-build-scoped-reentry.md`, `task-plan-worktree.md`, `feature-plan-worktree.md`
+- [x] 9.4 7/7 new Work Tree scenarios pass on haiku (--budget 0.10)
+
+---
+
+## Phase 2: Agent Self-Verification Before Human Handoff
+
+### WP6: Behavioral Definition of Done Format
+**Description:** Define the "behavioral definition of done" format — observable outcomes per phase node — and establish where it lives in the Work Tree. This is the schema that `feature-verify-auto` reads.
+**Phase:** 2
+**Dependencies:** WP1 (Work Tree format must exist)
+**Size:** XS
+**Tasks:**
+- [x] 6.1 Observable Outcomes format embedded directly in `skills/feature-plan/SKILL.md` (not a separate doc); format uses `Browser:`, `HTTP:`, `CLI:` prefixes
+- [x] 6.2 Confirmed WP2 already includes Observable Outcomes at plan time; added explicit guidance against prose outcomes
+- [x] 6.3 Rule "written at plan time, not verify time" is explicit in `feature-plan/SKILL.md`
+
+---
+
+### WP7: Create `feature-verify-self` skill — Live-System Observation via Subagent
+**Description:** New skill and state between verify-auto and verify-human. The skill reads Observable Outcomes from the WIP tree, then spawns a one-shot subagent with Playwright/curl tools to observe the running system. Parent parses results, updates the tree, and decides: blocking failure → back to build; all clear → forward to verify-human.
+**Phase:** 2
+**Dependencies:** WP6 (DoD format), WP8 (severity taxonomy)
+**Size:** L
+**Tasks:**
+- [x] 7.1 Created `skills/feature-verify-self/SKILL.md`; severity taxonomy and Observable Outcomes embedded inline (not via subagent spawn — design simplified)
+- [x] 7.2 Playwright tool list documented in skill; fallback to curl when Playwright unavailable
+- [x] 7.3 Playwright unavailability handling present — falls back to curl, marks browser outcomes UNVERIFIED
+- [x] 7.4 Severity taxonomy (BLOCKING/COSMETIC) inline in skill with examples; blocking → F9b back-loop, cosmetic-only → F10b forward
+- [x] 7.5 WIP tree update on exit defined in skill procedure
+- [x] 7.6 Transitions F9b, F10b added to `docs/product/transitions.md`; F10 (verify-auto → verify-self) added
+- [x] 7.7 `feature-verify-auto` updated: F10 now points to verify-self
+- [x] 7.8 `feature-verify-human` updated: pre-filter section strengthened
+
+### WP7b: Update `install.sh` for new skill symlink
+**Description:** `install.sh` must pick up the new `feature-verify-self` skill directory and create its symlink.
+**Phase:** 2
+**Dependencies:** WP7
+**Size:** XS
+**Tasks:**
+- [x] 7b.1 `install.sh` runs idempotently; `~/.claude/skills/feature-verify-self` symlink confirmed
+- [x] 7b.2 Skill confirmed in available skills list
+
+---
+
+### WP8: Severity Taxonomy
+**Description:** Define the blocking/cosmetic severity taxonomy for observable failures, and document it in a shared conventions file that `feature-verify-auto` and `feature-build` both reference.
+**Phase:** 2
+**Dependencies:** None (prerequisite for WP7)
+**Size:** XS
+**Tasks:**
+- [x] 8.1 Taxonomy embedded inline in `feature-verify-self/SKILL.md` (not a separate doc — kept co-located with the skill that uses it)
+- [x] 8.2 Gray area guidance present in skill (missing required UI element vs decorative)
+- [x] 8.3 Taxonomy referenced in `feature-verify-auto/SKILL.md`
+- [x] 8.4 Taxonomy referenced in `feature-verify-human/SKILL.md`; `feature-build` references verify-self back-loop (F9b)
+
+---
+
+### WP14: Update Test Fixtures (Phase 2)
+**Description:** Add new test fixtures and scenarios for Phase 2 behaviors.
+**Phase:** 2
+**Dependencies:** WP6, WP7, WP8
+**Size:** S
+**Tasks:**
+- [x] 14.1 Added `feature-verify-self-blocking.md` and `feature-verify-self-passed.md` fixtures
+- [x] 14.2 F9b scenario: blocking failure back-loops to build — PASS
+- [x] 14.3 F8-reverify scenario: re-verify gate fires after fix — PASS
+- [x] 14.4 All 37 feature scenarios pass on haiku (run 2026-04-29)
+
+---
+
+## Phase 3: WBS Decomposition by Learning Sequence
+
+### WP10: Update `product-wbs` — Learning-Sequence Ordering
+**Description:** Update the `product-wbs` skill to require learning-sequence ordering with written rationale per phase, probe WPs for 3rd-party integrations, and the standard phase pattern.
+**Phase:** 3
+**Dependencies:** None (independent of Phases 1–2)
+**Size:** M
+**Tasks:**
+- [x] 10.1 Update `skills/product-wbs/SKILL.md`: add requirement for learning-sequence ordering — assert the standard pattern (Docker → probes → UI mockups → backend → orchestration); require written rationale per phase ("why this before that in terms of risk reduction")
+- [x] 10.2 Add "spike/probe" work package class to the WBS template: define distinct format fields (`Learning objective:`, `Timebox:`, `Success criterion: what do we now know?`); contrast with "build" WPs
+- [x] 10.3 Add instruction: 3rd-party integrations must be classified as blockers on downstream WPs until a probe has completed and its I/O shapes are documented; if no probe WP exists, one must be created
+- [x] 10.4 Add instruction: orchestration layers (queues, workers, async) must appear in a later phase than the synchronous path they will wrap — deviations require written rationale
+- [x] 10.5 Update/add test scenario: WBS for a project with 3rd-party API includes a probe WP before any WP that assumes known API shapes (P9b + P13)
+
+---
+
+### WP11: Update `feature-spec` / `feature-plan` — Probe Check
+**Description:** Add a check to `feature-spec` and `feature-plan`: if the feature depends on a 3rd-party integration with no completed probe WP, flag it as a known unknown and recommend a spike before planning.
+**Phase:** 3
+**Dependencies:** WP10 (probe WP class must be defined first)
+**Size:** S
+**Tasks:**
+- [x] 11.1 Update `skills/feature-spec/SKILL.md`: add a pre-planning check — does this feature reference a 3rd-party integration? If yes, is there a completed probe WP in the WBS? If no probe, flag as known unknown and recommend REDIRECT to a spike
+- [x] 11.2 Apply same check to `skills/feature-plan/SKILL.md`
+- [x] 11.3 Add test scenario: feature plan for 3rd-party dependent feature with no probe → output contains the known-unknown flag and spike recommendation (F29)
+
+---
+
+## Phase 4: Framework Alignment
+
+### WP12: Framework Alignment — Iterative Re-Identification + Exit Conditions
+**Description:** Close Framework Gaps F1, F4, F5: problem re-identification on back-loop re-entry, per-iteration relevance check, and mandatory retrospect + communicate at cycle close.
+**Phase:** 4
+**Dependencies:** None (independent; but benefits from WP3/WP4 back-loop machinery being in place)
+**Size:** M
+**Tasks:**
+- [x] 12.1 Add "problem statement re-check" prompt to `feature-build` SKILL.md back-loop entry: before re-planning, agent must answer "has the root problem changed based on what we learned?" and record the answer in the WIP file
+- [x] 12.2 Apply same re-check to `task-act` back-loop entry
+- [x] 12.3 Add relevance gate to `feature-plan` phase-advance logic: before starting each new phase, check the relevance signals checklist (requester still needs it, requirements unchanged, solution still feasible, no superior alternative discovered) — record the check in the WIP file
+- [x] 12.4 Update `task-close` SKILL.md: require both a retrospect artifact ("what changed in our understanding") and a communicate step ("confirmation that the requester knows the work is done and what it does") — these are two separate prompts, not one
+- [x] 12.5 Apply same dual-output requirement to `feature-finalize` SKILL.md
+- [x] 12.6 Update/add test scenarios for back-loop re-entry (problem re-check present), phase advance (relevance check present), task-close (both retrospect and communicate in output) — added F23-recheck, T6-recheck, F7-relevance, T10-dualclose, F19-dualclose
+
+---
+
+## Phase 5: Hardening
+
+### WP13: Hardening — Tests, Polish, Documentation
+**Description:** Full transition test coverage for all new Phase 1–4 behaviors; update CLAUDE.md, skill argument-hints, and user-facing docs to reflect Work Tree format; validate install.sh idempotence.
+**Phase:** 5
+**Dependencies:** All prior WPs
+**Size:** L
+**Tasks:**
+- [x] 13.1 Audit all new scenarios added in WPs 2–12 against `tests/scenarios/` — coverage confirmed complete across PP1, PP2, PP3, all framework gaps
+- [x] 13.2 Write missing test scenarios — 85/85 scenarios pass on haiku; gaps already filled in prior WPs
+- [x] 13.3 Update `CLAUDE.md` (project): Work Tree Format section, Observable Outcomes rule, severity taxonomy, verify-self in skill chain, check-structure.sh in Commands
+- [x] 13.4 Update skill argument-hints: feature-build (scoped leaf IDs), feature-verify-human (leaf ID output on rejection)
+- [x] 13.5 Run `./install.sh` — idempotent, 31/31 symlinks correct, feature-verify-self confirmed
+- [x] 13.6 Deferred: USAGE.md (optional task, not blocking; added to backlog if needed)
+
+---
+
+## Summary
+
+| WP | Name | Phase | Size | Depends on |
+|----|------|-------|------|------------|
+| WP1 | Work Tree Node Format (+ CLAUDE.snippet.md) | 1 | S | — |
+| WP2 | feature-plan: Emit Work Tree | 1 | M | WP1 |
+| WP3 | feature-verify-human: Leaf-Level Pass/Fail + pre-filter | 1+2 | M | WP1, WP7 |
+| WP4 | feature-build: Scoped Re-Entry + Re-Verify Gate | 1+2 | L | WP1, WP3, WP6, WP7 |
+| WP5 | task-plan / task-act: Work Tree (peer model) | 1 | S | WP1 |
+| WP6 | Behavioral DoD Format | 2 | XS | WP1 |
+| WP7 | feature-verify-self: New skill + subagent | 2 | L | WP6, WP8 |
+| WP7b | install.sh: symlink for feature-verify-self | 2 | XS | WP7 |
+| WP8 | Severity Taxonomy | 2 | XS | — |
+| WP9 | Test Fixtures (Phase 1) | 1 | M | WP1 |
+| WP10 | product-wbs: Learning-Sequence Ordering | 3 | M | — |
+| WP11 | feature-spec/plan: Probe Check | 3 | S | WP10 |
+| WP12 | Framework Alignment (F1, F4, F5) | 4 | M | — |
+| WP13 | Hardening — Tests, Polish, Docs | 5 | L | All |
+| WP14 | Test Fixtures (Phase 2) | 2 | S | WP6, WP7, WP8 |
+
+**Recommended build order (respecting dependencies + learning sequence):**
+1. WP1 → WP8 → WP6 (foundational specs, no dependencies; WP1 includes CLAUDE.snippet.md update + install.sh re-run)
+2. WP2, WP5 in parallel (depend only on WP1; note task workflow is now peer model — no lighter variant, same tree format)
+3. WP7 → WP7b (new verify-self skill + install symlink; depends on WP6 + WP8)
+4. WP3 (pre-filter logic depends on WP7 being defined)
+5. WP4 (depends on WP1, WP3, WP6, WP7 — the last to close)
+6. WP9, WP14 (fixtures — run after skill changes settle)
+7. WP10, WP11, WP12 in parallel (all independent of Phases 1–2)
+8. WP13 (hardening — last)

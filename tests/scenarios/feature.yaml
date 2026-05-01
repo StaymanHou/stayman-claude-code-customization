@@ -953,3 +953,26 @@ scenarios:
         - "escalat"
       not_contains: []
     max_retries: 2
+
+  - id: F30
+    name: "feature:finalize surfaces product-finalize when WBS fully complete"
+    skill: feature-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-wbs-complete.md
+      product_dir: fixtures/product/wbs-complete
+    system_prompt_extra: |
+      You are finalizing the User Notification Preferences feature.
+      The WIP file shows all phases complete with no tech debt.
+      docs/product/wbs.md exists and all work packages (WP1-WP4) are marked [x].
+      The entire product cycle is complete.
+    expect:
+      transition_id: F30
+      contains_any:
+        - "/product-finalize"
+        - "product-finalize"
+        - "product cycle"
+      not_contains:
+        - "/session-reflect"
+        - "/feature-refactor"
+    max_retries: 2
