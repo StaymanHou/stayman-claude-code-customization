@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: complete
-updated: 2026-04-30
+updated: 2026-05-01
 ---
 
 # Work Breakdown Structure — Claude Code Workflow System
@@ -239,12 +239,12 @@ WP13 (hardening + docs) — depends on all prior WPs
 **Dependencies:** All prior WPs
 **Size:** L
 **Tasks:**
-- [ ] 13.1 Audit all new scenarios added in WPs 2–12 against `tests/scenarios/` — identify any gaps in transition test coverage
-- [ ] 13.2 Write missing test scenarios until `tests/run-tests.sh` passes clean on haiku for all groups
-- [ ] 13.3 Update `CLAUDE.md` (project): document Work Tree format, new skill behaviors, Observable Outcomes convention, severity taxonomy reference
-- [ ] 13.4 Update each modified skill's `argument-hint` field to reflect new args (e.g., `feature-build` now accepts scoped leaf IDs)
-- [ ] 13.5 Run `./install.sh` on this machine and verify all symlinks are correct and idempotent — no new files need symlinking for Phases 1–4, but confirm
-- [ ] 13.6 Optional: write `USAGE.md` section targeting secondary audience adoption (Work Tree format explanation, what each skill now does, how to read a WIP file)
+- [x] 13.1 Audit all new scenarios added in WPs 2–12 against `tests/scenarios/` — coverage confirmed complete across PP1, PP2, PP3, all framework gaps
+- [x] 13.2 Write missing test scenarios — 85/85 scenarios pass on haiku; gaps already filled in prior WPs
+- [x] 13.3 Update `CLAUDE.md` (project): Work Tree Format section, Observable Outcomes rule, severity taxonomy, verify-self in skill chain, check-structure.sh in Commands
+- [x] 13.4 Update skill argument-hints: feature-build (scoped leaf IDs), feature-verify-human (leaf ID output on rejection)
+- [x] 13.5 Run `./install.sh` — idempotent, 31/31 symlinks correct, feature-verify-self confirmed
+- [x] 13.6 Deferred: USAGE.md (optional task, not blocking; added to backlog if needed)
 
 ---
 
