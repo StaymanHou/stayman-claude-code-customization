@@ -96,6 +96,19 @@ The `notify-human` skill sends Telegram messages before the model asks the user 
 
 This repo dogfoods the product workflow but **skips `/product-context`** — the project already has a hand-maintained `CLAUDE.md` (this file) that serves the same purpose. The product workflow is considered complete after `/product-wbs` and `/product-finalize`.
 
+## Current Phase
+
+**Active cycle:** Workflow System v2 — PP4 + PP5
+**Active roadmap phase:** Phase 1 (Orchestrator Auto-Advance) + Phase 2 (verify-codify Triage Gate)
+**WBS:** WP14–WP17 (see `docs/product/wbs.md`)
+
+- **WP14** — Annotate feature-workflow orchestrator with AUTO/PAUSE pause policy; auto-chain clean-pass steps
+- **WP15** — Add mandatory test triage protocol to `feature-verify-codify` (five-case classification, triage artifact)
+- **WP16** — Transition test scenarios for PP4 triage paths
+- **WP17** — Hardening: docs, structure checks, full test run
+
+WP14 and WP15 are independent parallel tracks. Start with either.
+
 ## Conventions
 
 - `install.sh` is idempotent. Re-run after adding or renaming a skill/agent directory — it will create new symlinks and update any whose target has changed.

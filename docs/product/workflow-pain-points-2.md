@@ -46,11 +46,81 @@ When a test fails, exactly one of three things is true:
 
 ### Where the fix should live
 
-The triage decision can surface at any verification step, not only at `verify-auto`. As the agent iterates through the loop and accumulates new information, a previously green test may become relevant again at a later step:
+The problem primarily surfaces at `verify-codify`, which runs the full test suite. Earlier verification steps (`verify-auto`, `verify-self`) run scoped checks and rarely hit unexpected failures. `verify-codify` is the highest-stakes moment: a silent misclassification here removes a specification artifact from the permanent suite.
 
-- **`verify-auto`** — first encounter; the agent runs scoped checks and may hit an obvious H1 regression or an ambiguous H2/H3 conflict.
-- **`verify-self`** — live-system observation may reveal a behavioral discrepancy that re-opens a test classification question.
-- **`verify-human`** — human feedback may reveal that a passing test was guarding a contract the human considers superseded (H3) or still required (H2).
-- **`verify-codify`** — the most consequential moment. Codify is the step that ensures all regression checks pass and are permanently committed. If a test fails here, the stakes are highest: a silent H3 misclassification at this step removes a specification artifact from the permanent suite.
+The fix belongs in `verify-codify`: a hard triage gate before the agent takes any action on a failing test.
 
-The decision procedure and human-approval gate for H2/H3 must therefore be present in every verification skill, not just `verify-auto`. The `feature-build` re-entry rules must also enforce it when the agent returns from any failed verify step. Confidence thresholds (when H1 is obvious vs. ambiguous) should be part of each triage prompt so the agent can self-escalate on ambiguous cases regardless of which step surfaces the failure.
+### Classification and auto/pause policy
+
+When a test fails at `verify-codify`, the agent must classify it before acting. Spell out the classification in full — do not use shorthand labels.
+
+| Classification | Confidence | Action |
+|---|---|---|
+| Code regression (test is correct, new code broke it) | High | Auto-fix code |
+| Code regression | Low / ambiguous | Pause for human |
+| Obsolete test (new feature intentionally supersedes what the test checked) | High | Auto-update or delete test |
+| Obsolete test | Low / ambiguous | Pause for human |
+| Both sides valid — contract conflict requiring product judgment | Any | Always pause |
+| Flaky test (failure unrelated to new code; timing or environment) | — | Auto re-run up to 2 retries; if failing after 3 total runs, pause |
+
+**High confidence** means: the agent can point to a specific line in the new code or the test that unambiguously explains the failure, with no plausible alternative reading.
+
+### Artifact requirement
+
+Before taking any action on a failing test, the agent must write a `## Test Triage` entry to the WIP file:
+
+```
+## Test Triage — <test name>
+Classification: <spelled out>
+Confidence: high / low / ambiguous
+Evidence: <one sentence pointing to the specific cause>
+Action: <what the agent did or is waiting for human approval to do>
+```
+
+This creates an audit trail. If the classification was wrong, the record shows the agent's reasoning at the time.
+
+---
+
+## Pain Point 5: Agent Stops and Waits After `feature-build` Instead of Auto-Advancing Through Verification
+
+### What was observed
+
+After completing `feature-build`, the agent ends its turn with a prompt like:
+
+> "Run `/feature-verify-auto` to proceed to verification."
+
+The user must manually invoke `/feature-verify-auto`. After that passes, the agent ends with:
+
+> "Run `/feature-verify-self` to do live browser verification."
+
+Again the user must invoke it manually. The agent treated each step as a full stop requiring a user command, even though the user had no decision to make — all checks passed, there was nothing to confirm.
+
+The user's actual response: "Just go ahead."
+
+### Root causes
+
+**RC5-1: Skill prompts end with a transition instruction addressed to the user, not to the orchestrator.** Each skill's SKILL.md tells the model to "Run `/feature-verify-auto`" or "Run `/feature-verify-self`" — phrased as a user command. In single-step invocation mode this is correct: the user is driving. But in orchestrated mode (via `/session-start`), the orchestrator should be receiving that signal and auto-advancing, not the user.
+
+**RC5-2: The orchestrator's Orchestration Procedure does not distinguish auto-advance steps from human-pause steps.** The `feature-workflow/AGENTS.md` procedure lists each step, but does not explicitly flag which steps require a human pause vs. which should be auto-chained by the orchestrator. The orchestrator defaults to pausing after every step because the procedure is ambiguous.
+
+**RC5-3: No mechanism for the skill to signal "auto-advance" vs. "pause for human."** Skills end with a transition ID (e.g., `TRANSITION: F5`) but carry no metadata indicating whether the next step needs human input. The orchestrator has no machine-readable signal to act on — it must infer from context or procedure prose, which it does not reliably do.
+
+**RC5-4: `verify-auto` and `verify-self` have no decision points that require human input when they pass.** When both pass cleanly, the correct behavior is: finish verify-auto → immediately start verify-self → immediately proceed to verify-human. A human pause only makes sense if a step *fails* (back-loop decision) or explicitly requires human input (verify-human by definition). Clean passes should be transparent.
+
+### Where the fix should live
+
+**In `agents/feature-workflow/AGENTS.md` (Orchestration Procedure):** Each step in the procedure should be annotated with its pause policy:
+- `AUTO` — orchestrator advances immediately on a passing transition (no user prompt)
+- `PAUSE` — orchestrator stops and waits for human input before advancing
+
+`verify-auto` → `AUTO` when passing (back-loop to build if failing)
+`verify-self` → `AUTO` when passing (back-loop to build if BLOCKING failure found)
+`verify-human` → always `PAUSE` (human must confirm before codify)
+`verify-codify` → `AUTO` when passing
+`build` → `AUTO` to verify-auto (no human confirmation needed to start verification)
+`feature-ship` → `AUTO` (human already confirmed at verify-human; ship immediately)
+`feature-finalize` → `PAUSE` (human reviews backlog before close)
+
+**In skill SKILL.md transition language:** Distinguish between transitions addressed to the orchestrator vs. the user. A skill running in orchestrated context should communicate "advance to X" as a machine signal, not a human instruction. One approach: keep the `TRANSITION: <id>` token as the machine signal; the prose "Run `/x`" remains for single-step users but the orchestrator acts on the token, not the prose.
+
+**Critical constraint:** The fix must not break single-step invocation. A user directly invoking `/feature-verify-auto` should still see clear guidance on what to run next. The AUTO/PAUSE distinction is an orchestrator-layer concern; individual skills should remain agnostic about whether they're running in orchestrated or single-step mode.

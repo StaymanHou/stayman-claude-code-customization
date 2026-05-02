@@ -86,6 +86,95 @@ scenarios:
         - "/task-plan"
     max_retries: 2
 
+  # PP5: Orchestrator AUTO/PAUSE policy scenarios
+  # These test that session-start reads the pause policy from AGENTS.md correctly.
+
+  - id: S7
+    name: "session:orchestrator auto-chains build→verify-auto without asking user"
+    skill: session-start
+    args: "Continue the notification preferences feature — Phase 1 build is complete, run verification"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      You are driving the feature workflow end-to-end (orchestrated mode).
+      The user has confirmed they want end-to-end driving.
+      Phase 1 build is complete (Current Node: verify-auto).
+      Per the AUTO/PAUSE policy in agents/feature-workflow/AGENTS.md:
+      feature-build is AUTO — the orchestrator must chain immediately to
+      feature-verify-auto without asking the user to type "/feature-verify-auto".
+      Demonstrate that you will invoke verify-auto automatically, not prompt
+      the user to run it manually.
+    expect:
+      transition_id: S7
+      contains_any:
+        - "auto"
+        - "automatically"
+        - "chain"
+        - "immediately"
+        - "verify-auto"
+      not_contains:
+        - "run /feature-verify-auto"
+        - "type /feature-verify-auto"
+        - "please run"
+    max_retries: 2
+
+  - id: S8
+    name: "session:orchestrator pauses at verify-human (PAUSE step)"
+    skill: session-start
+    args: "Continue the notification preferences feature — verify-auto and verify-self passed, ready for human review"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-passed.md
+    system_prompt_extra: |
+      You are driving the feature workflow end-to-end (orchestrated mode).
+      The user has confirmed they want end-to-end driving.
+      verify-auto and verify-self both passed.
+      Per the AUTO/PAUSE policy in agents/feature-workflow/AGENTS.md:
+      feature-verify-human is PAUSE — the orchestrator must stop and wait
+      for the human to review the running feature. It must NOT auto-chain
+      past verify-human. Invoke notify-human and present the checklist.
+    expect:
+      transition_id: S8
+      contains_any:
+        - "verify-human"
+        - "review"
+        - "check"
+        - "manually"
+      not_contains:
+        - "auto-chain"
+        - "/feature-verify-codify"
+    max_retries: 2
+
+  - id: S9
+    name: "session:orchestrator pauses at feature-finalize (PAUSE step)"
+    skill: session-start
+    args: "Continue — feature has shipped, now finalize"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-shipped.md
+    system_prompt_extra: |
+      You are driving the feature workflow end-to-end (orchestrated mode).
+      The user has confirmed they want end-to-end driving.
+      feature-ship completed (transition F17 fired — ship → finalize).
+      Per the AUTO/PAUSE policy in agents/feature-workflow/AGENTS.md:
+      feature-finalize is PAUSE — the orchestrator must stop after finalize
+      completes and wait for the human to confirm cycle close and backlog review.
+      It must NOT auto-chain past finalize into a new workflow.
+    expect:
+      transition_id: S9
+      contains_any:
+        - "finalize"
+        - "backlog"
+        - "review"
+        - "confirm"
+        - "done"
+      not_contains:
+        - "/session-start"
+        - "next feature"
+        - "auto-chain"
+    max_retries: 2
+
   - id: S6
     name: "session:resume deletes .session.md after restoring context"
     skill: session-resume
