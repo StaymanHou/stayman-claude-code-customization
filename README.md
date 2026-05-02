@@ -19,7 +19,7 @@ Lower-level workflows can **surface** discoveries upward (e.g., a task discovers
 
 | Component | Count | Description |
 |-----------|-------|-------------|
-| **Skills** | 30 | One per workflow step, plus `notify-human` |
+| **Skills** | 32 | One per workflow step, plus `notify-human` |
 | **Agents** | 4 | Orchestrators: product, feature, task, incident |
 | **Transitions** | 63 | Defined in `docs/product/transitions.md` |
 | **Install script** | 1 | Idempotent symlink setup |
@@ -27,7 +27,7 @@ Lower-level workflows can **surface** discoveries upward (e.g., a task discovers
 ### Skills by Workflow
 
 - **Product (6):** vision, roadmap, research, arch, wbs, context
-- **Feature (10):** spec, research, plan, build, verify-auto, verify-human, verify-codify, ship, finalize, refactor
+- **Feature (11):** spec, research, plan, build, verify-auto, verify-self, verify-human, verify-codify, ship, finalize, refactor
 - **Task (3):** plan, act, close
 - **Incident (5):** report, triage, investigate, mitigate, resolve
 - **Session (5):** start, pause, resume, reflect, store-learning
@@ -85,11 +85,9 @@ Both symlink and source paths are needed in permissions — symlink resolution b
 
 ### Starting a Workflow
 
-```
-/session-start
-```
+Two invocation modes:
 
-This guides you to the right workflow entry point. Or invoke directly:
+**Single-step** — invoke a skill directly. The agent runs that one step, tells you the next command, and stops. You invoke each step manually.
 
 ```
 /product-vision    # New product initiative
@@ -97,17 +95,25 @@ This guides you to the right workflow entry point. Or invoke directly:
 /feature-plan      # Simple feature (skip spec)
 /task-plan         # Atomic task (bug fix, small change)
 /incident-report   # Production issue
+/session-resume    # Resume a paused session
+```
+
+**End-to-end orchestration** — use `/session-start` when you want the agent to drive the entire workflow without you invoking each step. The agent classifies the work, confirms once, then chains through all steps automatically — pausing only at real decision points (spec/plan review, human verification, finalize).
+
+```
+/session-start
 ```
 
 ### During a Workflow
 
-Each skill tells you the valid next steps based on the state machine. Follow the recommendations:
+In single-step mode, each skill tells you the valid next step. Invoke it manually:
 
 ```
-/feature-build     # Implement current phase
-/feature-verify-auto   # Run automated tests
-/feature-verify-human  # Manual verification
-/feature-verify-codify # Write comprehensive tests
+/feature-build          # Implement current phase
+/feature-verify-auto    # Run automated checks
+/feature-verify-self    # Agent live-system observation
+/feature-verify-human   # Manual verification
+/feature-verify-codify  # Write comprehensive tests
 ```
 
 ### Pausing and Resuming
@@ -127,7 +133,7 @@ During any workflow, if you discover something that belongs at a higher level:
 ## Key Design Decisions
 
 - **Advisory enforcement:** State machines are encoded in skill prompts, not hard-blocked by hooks. This allows flexibility while maintaining structure.
-- **Per-phase verification loop:** Features go through `build → verify-auto → verify-human → verify-codify` for each implementation phase.
+- **Per-phase verification loop:** Features go through `build → verify-auto → verify-self → verify-human → verify-codify` for each implementation phase.
 - **File-based state:** `workflow/wip/` files are the canonical record — inspectable, git-trackable, and persistent across sessions.
 - **Telegram notifications:** The `notify-human` skill alerts you via Telegram before Claude needs your input.
 

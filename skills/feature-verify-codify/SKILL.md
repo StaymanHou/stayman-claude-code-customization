@@ -25,12 +25,22 @@ This is the final step of the per-phase verification loop: `build → verify-aut
 - Review the human verification results (what was approved, what was tested manually)
 - Identify behaviors that were verified manually but lack automated test coverage
 
-### 2. Write Comprehensive Tests
-For each verified behavior, write tests that codify it:
-- **Unit tests** for individual components/functions
-- **Integration tests** for interactions between components
-- **Edge case tests** based on the edge cases from the human verification checklist
-- Follow the project's testing conventions and framework
+### 2. Determine What Needs New Tests
+
+Before writing anything, check whether each verified behavior already has test coverage that would catch a regression:
+- Scan existing tests for assertions against the verified behavior
+- If a behavior is already covered by a test that would fail if the behavior broke → **skip it, do not duplicate**
+- If a behavior has no existing test, or only tests an internal implementation detail that wouldn't catch a user-visible regression → **write a new test**
+
+For each behavior that needs a new test, choose the **highest-level test type** that still runs reliably in CI:
+
+1. **End-to-end / scenario test** (preferred for user-facing behavior) — exercises the behavior from the outside, the way a user or API client would. Examples: an HTTP request against a real endpoint, a CLI command with real input, a Playwright interaction against a running page. Write this if the verified behavior is observable from outside the system.
+2. **Integration test** — if the behavior involves multiple components working together but can't be exercised end-to-end without excessive setup or flakiness risk.
+3. **Unit test** — only if the behavior is purely internal and unreachable from a higher level, or if the higher-level test would be too slow or brittle to be useful.
+
+**Do not default to unit tests** just because they are easier to write. A unit test that passes while the user-facing behavior is broken is not useful coverage.
+
+Follow the project's testing conventions and framework.
 
 ### 3. Run All Tests
 - Run the full test suite (not just new tests) to ensure no regressions

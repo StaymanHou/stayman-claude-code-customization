@@ -635,6 +635,60 @@ scenarios:
         - "/feature-ship"
     max_retries: 2
 
+  # verify-codify test coverage decisions
+  - id: F16-codify-skip-covered
+    name: "feature:verify-codify skips writing new test when behavior already covered"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      The human verified that POST /api/login with valid credentials returns 200
+      and sets a session cookie. You scan the existing test suite and find
+      tests/test_auth.py::test_login_success which already asserts a 200 response
+      and checks for the Set-Cookie header on valid credentials. This test would
+      fail if the behavior broke. No new test is needed for this behavior.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "already covered"
+        - "existing test"
+        - "no new test"
+        - "skip"
+        - "covered"
+      not_contains:
+        - "write a new test"
+        - "unit test"
+    max_retries: 2
+
+  - id: F16-codify-scenario-test
+    name: "feature:verify-codify prefers end-to-end scenario test over unit test for user-facing behavior"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      The human verified that a user can submit the signup form and receive a
+      confirmation email. No existing test covers this behavior end-to-end.
+      There are unit tests for the email service's send() method and for the
+      user model's save() method individually, but no test exercises the full
+      signup → email flow from the outside. Write the appropriate test.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "end-to-end"
+        - "scenario"
+        - "integration test"
+        - "HTTP"
+        - "from the outside"
+        - "end to end"
+      not_contains:
+        - "unit test"
+        - "mock"
+    max_retries: 2
+
   - id: F17
     name: "feature:ship → finalize"
     skill: feature-ship
