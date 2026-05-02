@@ -49,24 +49,11 @@ Two pain points diagnosed in `docs/product/workflow-pain-points-2.md`:
 **Dependencies:** None
 **Size:** M
 **Tasks:**
-- [ ] 15.1 Add the five-case classification table to `feature-verify-codify/SKILL.md`:
-  - Code regression, high confidence → auto-fix code
-  - Code regression, low/ambiguous → pause for human
-  - Obsolete test, high confidence → auto-update/delete test
-  - Obsolete test, low/ambiguous → pause for human
-  - Both sides valid (contract conflict) → always pause
-  - Flaky test → auto re-run up to 2 retries; if still failing after 3 total runs, pause
-- [ ] 15.2 Define "high confidence" in the skill: agent can point to a specific line in new code or test that unambiguously explains the failure, with no plausible alternative reading
-- [ ] 15.3 Require the agent to write a `## Test Triage` artifact to the WIP file before taking any action on a failing test:
-  ```
-  ## Test Triage — <test name>
-  Classification: <spelled out>
-  Confidence: high / low / ambiguous
-  Evidence: <one sentence pointing to specific cause>
-  Action: <what agent did or is waiting for human approval to do>
-  ```
-- [ ] 15.4 Add a hard rule: no test file may be modified or deleted without a completed Test Triage entry in the WIP file
-- [ ] 15.5 Add flaky-test detection guidance: if re-running the same test 2 additional times (3 total) produces inconsistent results, classify as flaky and pause
+- [x] 15.1 Add the six-case classification table to `feature-verify-codify/SKILL.md` (flaky test added as 6th case)
+- [x] 15.2 Define "high confidence": failure has exactly one plausible explanation, stateable in one sentence without hedging (revised from original line-pointing definition)
+- [x] 15.3 Require `## Test Triage` artifact in WIP file before any action on failing test
+- [x] 15.4 Hard rule: no test file modified/deleted without completed triage entry
+- [x] 15.5 Flaky detection: re-run up to 2 retries (3 total); if still failing, pause
 
 ### WP16: Transition Test Scenarios for PP4
 
@@ -75,10 +62,10 @@ Two pain points diagnosed in `docs/product/workflow-pain-points-2.md`:
 **Dependencies:** WP15
 **Size:** S
 **Tasks:**
-- [ ] 16.1 Add scenario: verify-codify encounters obvious code regression → auto-fix transition fires
-- [ ] 16.2 Add scenario: verify-codify encounters ambiguous failure → pause/escalate transition fires
-- [ ] 16.3 Add scenario: verify-codify encounters flaky test (inconsistent on re-run) → pause transition fires after 3 runs
-- [ ] 16.4 Add scenario: verify-codify encounters contract conflict → always-pause transition fires
+- [x] 16.1 F16-triage-regression: code regression, high confidence → auto-fix
+- [x] 16.2 F16-triage-ambiguous: ambiguous failure → pause
+- [x] 16.3 F16-triage-flaky: inconsistent test → classify as flaky, pause
+- [x] 16.4 F16-triage-contract: contract conflict → always pause
 
 ---
 

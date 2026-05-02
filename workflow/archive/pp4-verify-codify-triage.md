@@ -1,7 +1,7 @@
 # Feature: PP4 — verify-codify Test Triage Gate
 
 **Workflow:** feature
-**State:** verify-codify (all phases complete)
+**State:** ship (complete)
 **Created:** 2026-05-02
 **Entry:** spec (complex feature)
 
@@ -30,6 +30,12 @@
 - **Blocked:** none
 - **Unvisited:** none (single-phase feature)
 - **Open discoveries:** none
+
+## Retrospect
+- **What changed in our understanding:** The original "high confidence" definition required pointing to a specific line, which was too narrow — missing obvious cases like deleted functions or config changes spanning multiple lines. Revised during verify-human to: "the failure has exactly one plausible explanation, stateable in one sentence without hedging."
+- **Assumptions that held:** Six cases covers the full classification space. Scoping the fix to `verify-codify` only (not verify-auto/verify-self) was correct — earlier steps run scoped checks and rarely hit unexpected failures.
+- **Assumptions that were wrong:** None structural. The single definition refinement was caught early at verify-human.
+- **Approach delta:** Implementation matched plan exactly. One definition wording change before codify.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
