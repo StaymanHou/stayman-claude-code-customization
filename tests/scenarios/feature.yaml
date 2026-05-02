@@ -499,6 +499,142 @@ scenarios:
         - "/feature-build"
     max_retries: 2
 
+  # PP4: verify-codify triage gate scenarios
+  - id: F16-triage-regression
+    name: "feature:verify-codify auto-fixes high-confidence code regression"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      While running the full test suite, one test fails:
+        FAILED tests/test_preferences.py::test_default_preferences_on_user_create
+        AssertionError: expected 3 defaults, got 0
+      You inspect the new code and find that the P1.3 implementation
+      (add default preferences on user creation) has a bug: the
+      `create_user` function in user_service.py line 47 calls
+      `db.add(user)` but never calls `_seed_default_preferences(user.id)`.
+      This is an obvious code regression — the test is correct, the new
+      code broke it, and the specific missing call is unambiguous.
+      High confidence. Classify as code regression, write the triage
+      artifact to the WIP file, auto-fix the code, and proceed.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "Code regression"
+        - "code regression"
+        - "regression"
+        - "triage"
+        - "Triage"
+      not_contains:
+        - "pause"
+        - "human"
+        - "obsolete"
+    max_retries: 2
+
+  - id: F16-triage-ambiguous
+    name: "feature:verify-codify pauses on ambiguous failure"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      While running the full test suite, one test fails:
+        FAILED tests/test_preferences.py::test_email_notification_default_enabled
+        AssertionError: expected enabled=True, got enabled=False
+      The new feature changes the default notification state as part of
+      a new "conservative defaults" policy. It's unclear whether this
+      test was checking the old default (now intentionally changed) or
+      a business invariant that must be preserved. Both the test and the
+      new feature could be correct. You cannot determine from the code
+      alone whether the old behavior was intentionally superseded.
+      This is ambiguous — you cannot determine high confidence for any
+      single classification. Write the triage artifact and pause for human.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "pause"
+        - "human"
+        - "ambiguous"
+        - "unclear"
+        - "triage"
+        - "Triage"
+      not_contains:
+        - "auto-fix"
+        - "automatically fixed"
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F16-triage-flaky
+    name: "feature:verify-codify classifies inconsistent test as flaky"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      While running the full test suite, one test fails:
+        FAILED tests/test_preferences.py::test_concurrent_preference_updates
+        AssertionError: expected 2 updates, got 1
+      You re-run the test suite. This time the same test passes.
+      You run it a third time — it fails again. The failure is
+      inconsistent across runs (passes and fails non-deterministically).
+      The new code does not touch the concurrency logic. This is a
+      pre-existing flaky test unrelated to the feature changes.
+      Classify as flaky, write the triage artifact, and pause for human.
+      Do NOT modify any code or test files.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "flaky"
+        - "flake"
+        - "inconsistent"
+        - "non-deterministic"
+        - "triage"
+        - "Triage"
+      not_contains:
+        - "auto-fix"
+        - "automatically fixed"
+        - "modified"
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F16-triage-contract
+    name: "feature:verify-codify always pauses on contract conflict"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-all-phases-done.md
+    system_prompt_extra: |
+      While running the full test suite, one test fails:
+        FAILED tests/test_preferences.py::test_admin_cannot_override_user_preference
+        AssertionError: admin override succeeded, expected 403
+      The new feature intentionally adds admin override capability as an
+      explicit product requirement. The test was written to guard the
+      old invariant that admins cannot override user preferences. Both
+      the test (old invariant) and the new feature (new capability) are
+      internally correct — they represent conflicting product contracts.
+      This is a contract conflict. Even if you were highly confident,
+      this classification always requires human approval. Write the
+      triage artifact and pause for human, regardless of confidence.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "contract"
+        - "conflict"
+        - "pause"
+        - "human"
+        - "triage"
+        - "Triage"
+      not_contains:
+        - "auto-fix"
+        - "automatically"
+        - "/feature-ship"
+    max_retries: 2
+
   - id: F17
     name: "feature:ship → finalize"
     skill: feature-ship

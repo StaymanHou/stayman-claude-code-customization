@@ -1,48 +1,36 @@
 # Feature: PP4 — verify-codify Test Triage Gate
 
 **Workflow:** feature
-**State:** spec
+**State:** verify-codify (all phases complete)
 **Created:** 2026-05-02
 **Entry:** spec (complex feature)
 
 ## Problem Statement
 
-When `verify-codify` runs the full test suite and a test fails, the agent implicitly decides to fix the code, update the test, or re-run — without stating its reasoning, without a written artifact, and without escalating ambiguous cases to the human.
+`feature-verify-codify` runs the full test suite and acts on failures without a decision procedure. The agent silently chooses to fix code, update tests, or re-run — with no written reasoning and no human gate for ambiguous cases. Test modifications at this step remove specification artifacts permanently. The fix: a mandatory triage classification before any file is touched, with a written artifact in the WIP file, escalating all but high-confidence obvious cases to the human.
 
-A test modification is higher-stakes than a code change: it removes a specification artifact, not just an implementation detail. The current workflow applies no asymmetric scrutiny to test changes, has no audit trail for triage decisions, and provides no escalation gate for cases where the correct action is ambiguous.
+## Work Tree
 
-## User Stories
+- [x] Phase 1: Add triage protocol to `feature-verify-codify` + test scenarios  <!-- status: complete -->
+  **Observable outcomes:**
+  - CLI: `grep -A 5 "Test Failure Triage" skills/feature-verify-codify/SKILL.md` returns the classification table header
+  - CLI: `grep "Triage artifact" skills/feature-verify-codify/SKILL.md` returns a match (artifact requirement present)
+  - CLI: `grep "flaky" skills/feature-verify-codify/SKILL.md` returns a match (flaky detection present)
+  - CLI: `./tests/run-tests.sh --id F16-triage-regression,F16-triage-ambiguous,F16-triage-flaky,F16-triage-contract --model haiku` exits 0 with all 4 PASS
+  - [x] P1.1 Add "Test Failure Triage" section to `skills/feature-verify-codify/SKILL.md` with classification table, high-confidence definition, artifact requirement, hard rule, and flaky detection  <!-- status: complete -->
+  - [x] P1.2 Add 4 triage test scenarios to `tests/scenarios/feature.yaml` (regression, ambiguous, flaky, contract-conflict)  <!-- status: complete -->
+  - [x] verify-auto  <!-- status: complete -->
+  - [x] verify-self  <!-- status: complete -->
+  - [x] verify-human  <!-- status: complete -->
+  - [x] verify-codify  <!-- status: complete -->
 
-- As a user, when `verify-codify` hits a failing test, I want to see the agent's classification and reasoning written to the WIP file before it touches anything, so I can audit or override the decision.
-- As a user, I want the agent to auto-resolve only high-confidence obvious cases (clear code regression, clearly obsolete test), and pause for my input on everything ambiguous or conflicting.
-- As a user, I want flaky tests to be re-run rather than "fixed," and escalated to me after 3 total failed runs.
+## Current Node
+- **Path:** Feature > Phase 1 > verify-codify (complete)
+- **Active scope:** none — all phases complete
+- **Blocked:** none
+- **Unvisited:** none (single-phase feature)
+- **Open discoveries:** none
 
-## Acceptance Criteria
-
-- When any test fails at `verify-codify`, a `## Test Triage — <test name>` block is written to the WIP file before any code or test file is modified
-- The triage block contains: classification (spelled out), confidence (high/low/ambiguous), evidence (one sentence pointing to specific cause), action (what was done or what is awaiting approval)
-- No test file may be modified or deleted without a completed triage block present in the WIP file
-- Classification → action mapping:
-  - Code regression, high confidence → agent auto-fixes code
-  - Code regression, low/ambiguous → agent pauses for human
-  - Obsolete test, high confidence → agent auto-updates/deletes test
-  - Obsolete test, low/ambiguous → agent pauses for human
-  - Both sides valid (contract conflict requiring product judgment) → agent always pauses regardless of confidence
-  - Flaky test (inconsistent across re-runs) → agent re-runs up to 2 retries (3 total); if still failing, agent pauses
-- "High confidence" defined as: agent can point to a specific line in new code or the test that unambiguously explains the failure, with no plausible alternative reading
-
-## Out of Scope
-
-- Applying the triage gate to `verify-auto` or `verify-self` — the problem manifests at `verify-codify` (full suite); earlier steps run scoped checks and rarely hit unexpected failures
-- Changes to the task workflow or any non-feature workflow
-- New workflow states or transitions
-
-## Technical Constraints
-
-- Skill prompts are advisory, not enforced by hooks. The triage gate is prompt-engineering only; if it proves unreliable in practice, structural enforcement is a future WP.
-- The fix lives in `feature-verify-codify/SKILL.md` and test scenarios only. No changes to other skills.
-- Three files govern the state machine and must stay in sync: `docs/product/transitions.md`, per-skill `SKILL.md`, `tests/scenarios/*.yaml`.
-
-## Open Questions
-
-- (none)
+## Discoveries
+<!-- Format: [SURFACED-<date>] <target node> — <summary>
+     Each entry is also logged to workflow/backlog.md -->

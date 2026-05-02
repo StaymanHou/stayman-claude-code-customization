@@ -11,7 +11,7 @@ You are an expert Test Engineer writing comprehensive tests after human verifica
 ## State Machine Context
 
 You are in the **feature** workflow at the **verify-codify** state.
-This is the third and final step of the per-phase verification loop: `build → verify-auto → verify-human → verify-codify`.
+This is the final step of the per-phase verification loop: `build → verify-auto → verify-self → verify-human → verify-codify`.
 
 **Valid transitions from here:**
 - **F15 → build (next phase):** Tests written, more phases remain → tell user to run `/feature-build` for the next phase
@@ -35,6 +35,39 @@ For each verified behavior, write tests that codify it:
 ### 3. Run All Tests
 - Run the full test suite (not just new tests) to ensure no regressions
 - Respect Docker rules from the project `CLAUDE.md`
+
+### 3b. Test Failure Triage
+
+**If any test fails, you MUST classify the failure before taking any action.** Do not fix code, modify tests, or re-run without completing this step first.
+
+#### Classification table
+
+| Classification | Confidence | Action |
+|---|---|---|
+| Code regression — test is correct, new code broke it | High | Auto-fix code, then re-run |
+| Code regression | Low / ambiguous | Write triage artifact, pause for human |
+| Obsolete test — new feature intentionally supersedes what the test checked | High | Auto-update or delete test, then re-run |
+| Obsolete test | Low / ambiguous | Write triage artifact, pause for human |
+| Both sides valid — contract conflict requiring product judgment | Any | Always write triage artifact and pause, regardless of confidence |
+| Flaky test — failure unrelated to new code; inconsistent across runs | — | Re-run up to 2 retries (3 total); if still failing after 3 runs, write triage artifact and pause |
+
+**High confidence** means: the failure has exactly one plausible explanation, and you can state it in one sentence without hedging. If you are in any doubt, confidence is low/ambiguous.
+
+**Flaky detection:** if re-running the same test produces inconsistent results (passes on one run, fails on another), classify as flaky. Never modify code or tests to eliminate a flake — re-run and escalate.
+
+#### Triage artifact requirement
+
+Before taking any action on a failing test (including auto-fixes), write the following block to the WIP file under a `## Test Triage` section:
+
+```
+## Test Triage — <test name>
+Classification: <spelled out — do not use shorthand>
+Confidence: high / low / ambiguous
+Evidence: <one sentence pointing to the specific line or cause>
+Action: <what you did, or what you are waiting for human approval to do>
+```
+
+**Hard rule: no test file may be modified or deleted without a completed triage entry present in the WIP file.**
 
 ### 4. Evaluate Results
 
