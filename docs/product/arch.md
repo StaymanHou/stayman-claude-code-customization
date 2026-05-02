@@ -193,6 +193,34 @@ Tasks are simpler — no per-phase verification loop, no observable outcomes sec
 - `session-*` skills — unaffected. The Work Tree is carried transparently through pause/resume because it lives in the WIP file.
 - `install.sh` — no new files, no new symlinks needed for Phases 1–2.
 
+## Revision 2026-05-02
+
+Two behavioral additions from the v2 cycle (PP4 + PP5):
+
+### Orchestrator AUTO/PAUSE pause policy
+
+The feature-workflow Orchestration Procedure in `agents/feature-workflow/AGENTS.md` now carries an explicit pause-policy table. Every step is annotated `AUTO` (orchestrator chains immediately) or `PAUSE` (orchestrator waits for human input). The `TRANSITION: <id>` token in skill output is the machine signal; prose "Run `/x`" is for single-step users only.
+
+AUTO steps: build, verify-auto, verify-self, verify-codify, ship, refactor, all back-loops.
+PAUSE steps: spec, research, plan, verify-human, finalize, REDIRECT (F22), SURFACE F26.
+
+This is an orchestrator-layer concern only — individual skill SKILL.md files remain agnostic about whether they're running in orchestrated or single-step mode.
+
+### verify-codify test failure triage protocol
+
+`feature-verify-codify/SKILL.md` now requires a mandatory triage step before any action on a failing test. Six cases:
+
+| Classification | Confidence | Action |
+|---|---|---|
+| Code regression | High | Auto-fix code |
+| Code regression | Low/ambiguous | Pause for human |
+| Obsolete test | High | Auto-update/delete test |
+| Obsolete test | Low/ambiguous | Pause for human |
+| Contract conflict (both sides valid) | Any | Always pause |
+| Flaky test | — | Re-run 3 total; then pause |
+
+A `## Test Triage` artifact is written to the WIP file before any file is modified. No test file may be modified or deleted without a completed triage entry. "High confidence" = the failure has exactly one plausible explanation, stateable in one sentence without hedging.
+
 ## Revision 2026-04-27
 
 Three design decisions revised after WBS completion:

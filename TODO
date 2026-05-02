@@ -1,0 +1,3 @@
+The feature-verify-code skill should try better at writing tests that reflect the end-user scenario whenever possible, not just following the convetional unit test, integration test, and etc
+
+Also, is there already a feature where a skill will ask the user if he/she want the agent to drive the workflow end-to-end. Is that still working? And how does that work together with the AUTO/PAUSE table we just defined?

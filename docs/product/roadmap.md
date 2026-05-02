@@ -1,7 +1,7 @@
 ---
 stage: roadmap
 state: complete
-updated: 2026-05-01
+updated: 2026-05-02
 ---
 
 # Roadmap — Claude Code Workflow System
@@ -102,3 +102,20 @@ updated: 2026-05-01
 - `tests/run-tests.sh` passes clean on haiku for all groups
 - A user who has never seen the system can read `CLAUDE.md` + one skill file and understand the Work Tree format
 - `install.sh` runs clean on a fresh machine with no prior symlinks
+
+---
+
+## Phase 6: Orchestration Loop Integrity (v2 cycle — PP5 + PP4)
+
+**Goal:** Close two gaps diagnosed in `workflow-pain-points-2.md`: (1) the orchestrator stops after every step even when no human decision is required, and (2) the agent silently triages test failures at verify-codify without a decision procedure or audit trail.
+
+**Milestones:**
+- [x] 6.1 (WP14) AUTO/PAUSE policy table in `agents/feature-workflow/AGENTS.md`; back-loops and ship are AUTO; TRANSITION token clarified as machine signal
+- [x] 6.2 (WP15) Six-case test triage protocol in `feature-verify-codify/SKILL.md` with mandatory WIP artifact and hard rule against test modification without triage
+- [x] 6.3 (WP16) Triage test scenarios F16-triage-{regression,ambiguous,flaky,contract}
+- [x] 6.4 (WP17) transitions.md AUTO/PAUSE section, CLAUDE.md conventions updated, structure checks pass
+
+**Exit Criteria:**
+- In orchestrated mode, clean-pass steps chain without user prompting; verify-human and finalize remain PAUSE
+- verify-codify always writes a triage artifact before acting on any test failure
+- 95 transition scenarios pass on haiku
