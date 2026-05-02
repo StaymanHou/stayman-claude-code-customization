@@ -28,11 +28,11 @@ Two pain points diagnosed in `docs/product/workflow-pain-points-2.md`:
 **Dependencies:** None
 **Size:** S
 **Tasks:**
-- [ ] 14.1 Define AUTO/PAUSE policy for each feature-workflow step (build→AUTO, verify-auto→AUTO on pass, verify-self→AUTO on pass, verify-human→PAUSE, verify-codify→AUTO on pass, feature-ship→AUTO, feature-finalize→PAUSE)
-- [ ] 14.2 Update `agents/feature-workflow/AGENTS.md` Orchestration Procedure to annotate each step with its pause policy and instruct the orchestrator to chain AUTO steps without waiting for user input
-- [ ] 14.3 Clarify that the `TRANSITION: <id>` token is the machine signal the orchestrator acts on; the prose "Run `/x`" in skill output is for single-step users only and should not cause the orchestrator to pause
-- [ ] 14.4 Add a back-loop exception: any AUTO step that returns a failing/back-loop transition becomes a PAUSE (the agent must report and get human direction before re-entering build)
-- [ ] 14.5 Update transition test scenarios to cover orchestrated auto-advance behavior
+- [x] 14.1 Define AUTO/PAUSE policy for each feature-workflow step (build→AUTO, verify-auto→AUTO on pass, verify-self→AUTO on pass, verify-human→PAUSE, verify-codify→AUTO on pass, feature-ship→AUTO, feature-finalize→PAUSE)
+- [x] 14.2 Update `agents/feature-workflow/AGENTS.md` Orchestration Procedure to annotate each step with its pause policy and instruct the orchestrator to chain AUTO steps without waiting for user input
+- [x] 14.3 Clarify that the `TRANSITION: <id>` token is the machine signal the orchestrator acts on; the prose "Run `/x`" in skill output is for single-step users only and should not cause the orchestrator to pause
+- [x] 14.4 Back-loop transitions are AUTO — orchestrator re-enters build without pausing; human sees outcome at next verify-human (revised from original plan)
+- [x] 14.5 Update transition test scenarios to cover orchestrated auto-advance behavior (S7, S8, S9)
 
 ---
 

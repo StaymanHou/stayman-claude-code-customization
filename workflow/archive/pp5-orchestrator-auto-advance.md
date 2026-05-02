@@ -1,7 +1,7 @@
 # Feature: PP5 — Orchestrator Auto-Advance
 
 **Workflow:** feature
-**State:** verify-codify (all phases complete)
+**State:** ship (complete)
 **Created:** 2026-05-02
 **Entry:** spec (complex feature)
 
@@ -33,6 +33,12 @@ When running a feature end-to-end via `/session-start`, the orchestrator halts a
 - **Blocked:** none
 - **Unvisited:** none (single-phase feature)
 - **Open discoveries:** none
+
+## Retrospect
+- **What changed in our understanding:** Back-loops were originally planned as PAUSE (the agent should report before re-entering build). During plan review the user clarified they should be AUTO — the human sees the cumulative outcome at the next verify-human, not at each back-loop. This is the right design and was incorporated before build started.
+- **Assumptions that held:** The fix was purely in AGENTS.md — no skill SKILL.md edits needed, no new transitions. The `TRANSITION: <id>` token was already present in skill output; we just needed to clarify it as the authoritative machine signal.
+- **Assumptions that were wrong:** None — implementation matched the revised plan exactly.
+- **Approach delta:** WBS task 14.4 was originally "add back-loop exception rule (AUTO→PAUSE on fail)" but was revised to "back-loops are AUTO" before build. The WBS itself was out of sync with this decision and was updated during finalize.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
