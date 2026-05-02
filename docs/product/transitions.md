@@ -17,6 +17,27 @@ State transitions are **advisory**, not hard-blocked. Skill prompts tell the mod
 
 Keep both paths working: never bake auto-chain logic into individual skill prompts. Orchestration behavior lives in `agents/<workflow>-workflow/AGENTS.md`.
 
+### Orchestrator pause policy (AUTO vs PAUSE)
+
+The feature-workflow orchestrator (and any future workflow orchestrators) annotates every step with a pause policy. This lives in `agents/feature-workflow/AGENTS.md` → "Pause policy" table, not in individual skill SKILL.md files.
+
+- **AUTO** — orchestrator chains immediately to the next step on a passing transition. No user prompt.
+- **PAUSE** — orchestrator stops, invokes `notify-human`, and waits for the user before proceeding.
+
+The `TRANSITION: <id>` token emitted at the end of a skill's output is the machine signal the orchestrator acts on. The prose "Run `/feature-x`" in skill output is for single-step users only and must not cause the orchestrator to pause.
+
+**Feature workflow pause policy summary** (canonical version in AGENTS.md):
+
+| Step | Policy |
+|---|---|
+| spec, research, plan | PAUSE |
+| build, verify-auto, verify-self, verify-codify, ship, refactor | AUTO |
+| verify-human, finalize | PAUSE |
+| Back-loops (F6, F9, F9b, F12, F14, F23, F24) | AUTO |
+| REDIRECT (F22) | PAUSE |
+| SURFACE F25 (note-and-continue) | AUTO |
+| SURFACE F26 (pause-and-escalate) | PAUSE |
+
 ### Back-loop guard
 
 Any back-loop transition must document *what changed and why* before re-entering the earlier state. This prevents infinite loops and creates an audit trail in the WIP file.

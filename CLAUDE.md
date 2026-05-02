@@ -99,15 +99,12 @@ This repo dogfoods the product workflow but **skips `/product-context`** — the
 ## Current Phase
 
 **Active cycle:** Workflow System v2 — PP4 + PP5
-**Active roadmap phase:** Phase 1 (Orchestrator Auto-Advance) + Phase 2 (verify-codify Triage Gate)
-**WBS:** WP14–WP17 (see `docs/product/wbs.md`)
+**WBS:** WP14–WP17 complete (see `docs/product/wbs.md`)
 
-- **WP14** — Annotate feature-workflow orchestrator with AUTO/PAUSE pause policy; auto-chain clean-pass steps
-- **WP15** — Add mandatory test triage protocol to `feature-verify-codify` (five-case classification, triage artifact)
-- **WP16** — Transition test scenarios for PP4 triage paths
-- **WP17** — Hardening: docs, structure checks, full test run
-
-WP14 and WP15 are independent parallel tracks. Start with either.
+- **WP14** ✅ — AUTO/PAUSE policy table in `agents/feature-workflow/AGENTS.md`; back-loops and ship are AUTO
+- **WP15** ✅ — Test triage gate in `feature-verify-codify/SKILL.md` (six-case table, triage artifact, flaky detection)
+- **WP16** ✅ — Triage test scenarios F16-triage-{regression,ambiguous,flaky,contract}
+- **WP17** ✅ — Hardening: transitions.md updated, CLAUDE.md updated, structure checks pass
 
 ## Conventions
 
@@ -115,3 +112,5 @@ WP14 and WP15 are independent parallel tracks. Start with either.
 - Skill frontmatter fields: `name` (matches the directory), `description`, optional `argument-hint`.
 - Agent frontmatter includes a `skills:` list — this must match the directories that exist under `skills/`.
 - When the PR description references a transition, use the ID from `docs/product/transitions.md` (e.g. "Fixes F12 back-loop wording"), not the state names alone.
+- **Orchestrator pause policy** lives in `agents/feature-workflow/AGENTS.md` only — never in individual skill SKILL.md files. `TRANSITION: <id>` is the machine signal; "Run `/x`" prose is for single-step users.
+- **Test triage at verify-codify:** any test failure requires a `## Test Triage — <name>` block in the WIP file before any file is modified. Six cases: code regression (high/low), obsolete test (high/low), contract conflict (always pause), flaky (re-run 3x then pause). High confidence = failure has exactly one plausible explanation, stateable in one sentence without hedging.

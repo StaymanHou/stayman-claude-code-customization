@@ -2,6 +2,7 @@
 stage: wbs
 state: in-progress
 updated: 2026-05-02
+completed: 2026-05-02
 ---
 
 # Work Breakdown Structure — Workflow System v2 (PP4 + PP5)
@@ -82,10 +83,10 @@ Two pain points diagnosed in `docs/product/workflow-pain-points-2.md`:
 **Dependencies:** WP14, WP15, WP16
 **Size:** S
 **Tasks:**
-- [ ] 17.1 Update `docs/product/transitions.md` to document the AUTO/PAUSE pause-policy concept and which transitions carry which policy
-- [ ] 17.2 Update `CLAUDE.md` (project) if any new conventions need documenting (triage artifact format, orchestrator pause policy)
-- [ ] 17.3 Run `./tests/check-structure.sh` and resolve any new structural issues
-- [ ] 17.4 Run full `./tests/run-tests.sh` — all groups pass on haiku
+- [x] 17.1 Update `docs/product/transitions.md` with AUTO/PAUSE pause-policy concept and feature workflow pause policy summary table
+- [x] 17.2 Update `CLAUDE.md`: mark WP14–WP17 complete, add orchestrator pause policy and test triage conventions
+- [x] 17.3 `./tests/check-structure.sh` — 13/13 pass
+- [x] 17.4 Skipped per operator instruction (full suite already green from PP4 ship)
 
 ---
 
