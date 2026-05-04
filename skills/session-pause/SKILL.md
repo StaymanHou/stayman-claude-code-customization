@@ -18,6 +18,8 @@ Save the current workflow state so it can be resumed later.
 
 2. **Write `workflow/.session.md`** — this is a single-file session pointer (one active session per repo). Overwrite it each time:
 
+   Before writing, read the active WIP file's YAML frontmatter. If it contains a `drive_mode:` field, include it in the session pointer. If no `drive_mode` is present, omit the field entirely (do not default it).
+
 ```markdown
 ---
 paused: <YYYY-MM-DD HH:MM>
@@ -25,6 +27,7 @@ workflow: <product|feature|task|incident>
 step: <current step name>
 resume_skill: /<workflow>-<step>
 state_file: <path to the active state file, e.g. workflow/wip/<feature>.md or docs/product/roadmap.md>
+drive_mode: <step-by-step|orchestrated|autopilot|full-autopilot>  # omit if WIP has no drive_mode
 ---
 
 # Session Pause

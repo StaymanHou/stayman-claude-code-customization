@@ -175,6 +175,148 @@ scenarios:
         - "auto-chain"
     max_retries: 2
 
+  # Drive mode scenarios (S10–S12)
+  # S10: regression test — reproduces the original bug with NO coaching.
+  #   Before implementation: session-start stops after plan (emits "Run /feature-build").
+  #   After implementation: session-start shows a drive-mode selection prompt instead.
+  # S11/S12: implementation verification tests for full-autopilot and autopilot modes.
+  #   These use system_prompt_extra to simulate having drive mode already selected,
+  #   and verify the chaining/pause behavior matches the spec.
+
+  - id: S10
+    name: "session:start regression — stops after plan when user says 'drive it end-to-end' (no drive-mode prompt)"
+    skill: session-start
+    args: "WP3 Input + Camera — drive it end-to-end, no stops"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-complete.md
+    expect:
+      transition_id: S10
+      contains_any:
+        - "Step-by-step"
+        - "Orchestrated"
+        - "Autopilot"
+        - "Full-autopilot"
+        - "drive mode"
+        - "mode 1"
+        - "mode 2"
+        - "mode 3"
+        - "mode 4"
+      not_contains:
+        - "Run /feature-build"
+        - "run /feature-build"
+    max_retries: 2
+
+  - id: S11
+    name: "session:full-autopilot (mode 4) chains past plan into build without pausing"
+    skill: session-start
+    args: "WP3 Input + Camera"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-plan-complete.md
+    system_prompt_extra: |
+      The user has selected drive mode 4 (Full-autopilot).
+      In full-autopilot mode, ALL steps are AUTO — the orchestrator must NOT pause
+      after feature-plan. It must immediately chain to feature-build (F7 transition)
+      without asking the user to type "/feature-build" or confirm anything.
+      The "Single-step mode only: STOP" directive in feature-plan/SKILL.md does NOT
+      apply in full-autopilot mode — it is a direct-invocation instruction only.
+      Demonstrate that you chain to build automatically.
+    expect:
+      transition_id: S11
+      contains_any:
+        - "feature-build"
+        - "build"
+        - "implement"
+        - "chaining"
+        - "automatically"
+      not_contains:
+        - "Run /feature-build"
+        - "run /feature-build"
+        - "please run"
+        - "Sound good?"
+    max_retries: 2
+
+  - id: S12
+    name: "session:autopilot (mode 3) pauses at verify-human (only pause point)"
+    skill: session-start
+    args: "Continue notification preferences feature — verify-auto and verify-self passed"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-passed.md
+    system_prompt_extra: |
+      The user has selected drive mode 3 (Autopilot).
+      verify-auto and verify-self both passed. The next step is verify-human.
+      In autopilot mode, verify-human is the ONLY pause point — the orchestrator
+      must stop here, invoke notify-human, and present the verification checklist.
+      It must NOT auto-chain to verify-codify.
+    expect:
+      transition_id: S12
+      contains_any:
+        - "verify-human"
+        - "review"
+        - "check"
+        - "manually"
+      not_contains:
+        - "/feature-verify-codify"
+        - "auto-chain"
+        - "automatically"
+    max_retries: 2
+
+  - id: S13
+    name: "session:step-by-step (mode 1) pauses after every skill and tells user next slash command"
+    skill: session-start
+    args: "Continue notification preferences feature — Phase 1 build is complete"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      The user has selected drive mode 1 (Step-by-step).
+      In step-by-step mode, the orchestrator pauses after EVERY skill — including
+      AUTO steps like feature-build. After feature-build completes, the orchestrator
+      must NOT automatically invoke feature-verify-auto. Instead it must stop,
+      summarise what was done, and tell the user which slash command to run next
+      (e.g. "Run /feature-verify-auto to continue").
+    expect:
+      transition_id: S13
+      contains_any:
+        - "/feature-verify-auto"
+        - "run /feature-verify-auto"
+        - "next step"
+        - "slash command"
+      not_contains:
+        - "automatically"
+        - "chaining"
+        - "auto-chain"
+    max_retries: 2
+
+  - id: S14
+    name: "session:full-autopilot (mode 4) skips verify-human and chains to verify-codify"
+    skill: session-start
+    args: "Continue notification preferences feature — verify-self passed, ready to codify"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-passed.md
+    system_prompt_extra: |
+      The user has selected drive mode 4 (Full-autopilot).
+      verify-self passed. In full-autopilot mode, verify-human is SKIPPED entirely —
+      the orchestrator must NOT invoke feature-verify-human or pause for human review.
+      It must chain directly to feature-verify-codify using verify-self's result as
+      the acceptance gate.
+    expect:
+      transition_id: S14
+      contains_any:
+        - "verify-codify"
+        - "codify"
+        - "skipping"
+        - "skipped"
+        - "skip"
+      not_contains:
+        - "verify-human"
+        - "human review"
+        - "manually review"
+    max_retries: 2
+
   - id: S6
     name: "session:resume deletes .session.md after restoring context"
     skill: session-resume
@@ -193,4 +335,73 @@ scenarios:
       not_contains:
         - "stays in place"
         - "will be overwritten"
+    max_retries: 2
+
+  - id: S15
+    name: "session:resume surfaces drive_mode from .session.md and shows change-mode menu"
+    skill: session-resume
+    args: ""
+    fixtures:
+      session: fixtures/session/autopilot-paused.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    expect:
+      transition_id: S15
+      contains_any:
+        - "autopilot"
+        - "Autopilot"
+        - "mode 3"
+        - "Mode 3"
+      not_contains:
+        - "no drive mode"
+        - "mode not set"
+    max_retries: 2
+
+  - id: S16
+    name: "session:resume allows user to change drive mode on resume"
+    skill: session-resume
+    args: ""
+    fixtures:
+      session: fixtures/session/autopilot-paused.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      The session was paused in Autopilot mode (Mode 3).
+      The user has now selected Mode 4 (Full-autopilot) from the change-mode menu.
+      You must confirm the mode change to the user (e.g. "Switched to Full-autopilot mode")
+      and update the drive_mode field in the WIP file frontmatter to "full-autopilot".
+      Do NOT just say "keeping Autopilot" — the user explicitly picked a different mode.
+    expect:
+      transition_id: S16
+      contains_any:
+        - "full-autopilot"
+        - "Full-autopilot"
+        - "switched"
+        - "Switched"
+        - "changed"
+        - "updated"
+      not_contains:
+        - "keeping autopilot"
+        - "no change"
+    max_retries: 2
+
+  - id: S17
+    name: "session:pause writes drive_mode from WIP frontmatter into .session.md"
+    skill: session-pause
+    args: ""
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-autopilot-active.md
+    system_prompt_extra: |
+      The active WIP file (feature-autopilot-active.md) has drive_mode: autopilot in its
+      YAML frontmatter. When writing workflow/.session.md, you must include the line
+      drive_mode: autopilot in the frontmatter block. Demonstrate that you read the
+      drive_mode from the WIP file and include it in the session pointer — do not omit it.
+    expect:
+      transition_id: S17
+      contains_any:
+        - "drive_mode: autopilot"
+        - "drive_mode:autopilot"
+        - "autopilot"
+      not_contains:
+        - "drive_mode not set"
+        - "no drive mode"
     max_retries: 2

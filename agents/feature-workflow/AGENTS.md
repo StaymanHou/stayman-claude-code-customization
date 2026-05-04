@@ -120,33 +120,46 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 
 This section is the **reference procedure** followed by `/session-start` when driving the feature workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
+### Precedence rule
+
+**Skill-level `**STOP**` directives and `"Run /x"` prose are never authoritative in orchestrated mode.** The orchestrator ignores them. The only machine signal the orchestrator acts on is the `TRANSITION: <id>` token at the end of a skill's output. After every `Skill` tool call, re-read the active drive mode and apply the pause-policy table below before deciding whether to chain or wait.
+
 ### How to advance
 
 1. **Invoke each skill via the Skill tool** in sequence, following the state machine and per-phase loop.
-2. **After each skill completes**, read the `TRANSITION: <id>` token in its output — that is the machine signal. Look up the transition in the table above, then check the pause policy below to decide whether to chain immediately or wait for the user. Do not treat the prose "Run `/feature-x`" in skill output as an instruction to stop — that text is for users invoking skills directly in single-step mode.
+2. **After each skill completes**, read the `TRANSITION: <id>` token — that is the machine signal. Re-check the pause-policy table below for the active drive mode. Do not act on `"Run /feature-x"` prose or `**STOP**` directives.
 3. **Incident interrupt (F27):** if something breaks during any state, invoke `/notify-human` and surface to the user immediately — do not recover silently.
 
-### Pause policy
+### Pause policy by drive mode
 
-| Step | Policy | Rationale |
-|------|--------|-----------|
-| `feature-spec` | **PAUSE** | User must approve scope before planning |
-| `feature-research` | **PAUSE** | Research findings may change the spec or plan |
-| `feature-plan` | **PAUSE** | User must approve phase breakdown before build starts |
-| `feature-build` | AUTO | No decision needed after implementation; chain to verify-auto |
-| `feature-verify-auto` | AUTO | Chain to verify-self on pass; chain back to build on fail (F9) |
-| `feature-verify-self` | AUTO | Chain to verify-human on pass; chain back to build on fail (F9b) |
-| `feature-verify-human` | **PAUSE** | Human's turn to review the running feature |
-| `feature-verify-codify` | AUTO | Chain to next phase's build (F15) or to ship (F16) on pass |
-| `feature-ship` | AUTO | Human already approved at verify-human; chain to finalize |
-| `feature-finalize` | **PAUSE** | Human reviews backlog and confirms cycle close |
-| `feature-refactor` | AUTO | Chain back to plan (F20) or to exit (F21) |
-| Back-loops (F6, F9, F9b, F12, F14, F23, F24) | AUTO | Re-enter the target state immediately; human sees outcome at next verify-human |
-| REDIRECT (F22) | **PAUSE** | Unknown hit mid-build; surface to user before researching |
-| SURFACE (F25, F26) | **PAUSE** (F26 only) | F26 is pause-and-escalate; F25 is note-and-continue (AUTO) |
+Full policy tables for all workflows are in `docs/product/transitions.md` → "Drive modes". Summary for feature workflow:
+
+| Step | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|------|-----------------------|-----------------------|--------------------|------------------------|
+| `feature-spec` | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| `feature-research` | PAUSE | **PAUSE** | AUTO | AUTO |
+| `feature-plan` | PAUSE | **PAUSE** | AUTO | AUTO |
+| `feature-build` | PAUSE | AUTO | AUTO | AUTO |
+| `feature-verify-auto` | PAUSE | AUTO | AUTO | AUTO |
+| `feature-verify-self` | PAUSE | AUTO | AUTO | AUTO |
+| `feature-verify-human` | PAUSE | **PAUSE** | **PAUSE** | **SKIP** |
+| `feature-verify-codify` | PAUSE | AUTO | AUTO | AUTO |
+| `feature-ship` | PAUSE | AUTO | AUTO | AUTO |
+| `feature-finalize` | PAUSE | **PAUSE** | AUTO | AUTO |
+| `feature-refactor` | PAUSE | AUTO | AUTO | AUTO |
+| Back-loops (F6, F9, F9b, F12, F14, F23, F24) | PAUSE | AUTO | AUTO | AUTO |
+| REDIRECT (F22) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| SURFACE F25 (note-and-continue) | PAUSE | AUTO | AUTO | AUTO |
+| SURFACE F26 (pause-and-escalate) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| ESCALATE (any) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
+
+**SKIP** (verify-human in Mode 4): do not invoke `feature-verify-human` at all. Use the `verify-self` result as the acceptance gate and chain directly to `feature-verify-codify`.
 
 ### Per-phase loop discipline
 
-Within one phase, the happy path `build → verify-auto → verify-self → verify-human → verify-codify` has exactly one forced human pause (verify-human). Back-loops within a phase (F9, F9b, F12, F14) are all AUTO — the orchestrator re-enters the appropriate step without waiting. The human sees the cumulative result at the next verify-human.
+Within one phase, the happy path `build → verify-auto → verify-self → verify-human → verify-codify` has exactly one forced human pause in Mode 2/3 (verify-human). Back-loops within a phase (F9, F9b, F12, F14) are all AUTO in modes 2–4 — the orchestrator re-enters the appropriate step without waiting.
 
-Happy path pauses: 1 on spec, 1 on plan, 1 per phase at verify-human, 1 at finalize. Ship and back-loops are transparent to the user.
+Mode 1 pauses: every step.
+Mode 2 happy-path pauses per feature: 1 on spec, 1 on plan, 1 per phase at verify-human, 1 at finalize.
+Mode 3 happy-path pauses: 1 per phase at verify-human only.
+Mode 4 happy-path pauses: none (ESCALATE excepted).

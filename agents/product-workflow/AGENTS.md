@@ -76,15 +76,31 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 
 This section is the **reference procedure** followed by `/session-start` when driving the product workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
-1. **Invoke each skill via the Skill tool** in sequence: `product-vision` → `product-roadmap` → `product-research` → `product-arch` → `product-wbs` → `product-context`.
-2. **After each skill completes**, read its transition recommendation and pick the matching transition from the table. Immediately invoke the next skill — no "please run /product-roadmap" prompts.
-3. **Human-pause points** (invoke `/notify-human` then wait for user input):
-   - **Before `product-vision` drafts the doc:** ask the scoping questions (audience, scope, success criteria), get answers, then draft.
-   - **After roadmap is written:** pause for user review — this is the strategic skeleton and needs human sign-off before you invest in research/arch/wbs.
-   - **Back-loops (P4, P6, P8):** always pause. The user needs to see *why* you're looping back and approve the change.
-   - **SURFACE-IN (P11, P12):** pause. The lower-level workflow paused for this — don't silently re-enter.
-   - **Before P10 (context → EXIT→feature:plan):** pause with a summary of what's about to happen. Offer the first-milestone entry point.
-4. **Do NOT pause** after vision (the scoping-question answers already drove the draft — a re-confirm is ceremony) or between research/arch/wbs on the happy path. Only pause if a decision hinges on human judgment.
-5. **If research reveals blocking unknowns** or arch exposes an unexpected architectural choice, pause with `/notify-human`. Don't guess through strategy.
+### Precedence rule
 
-Happy path: user answers scoping questions → all 6 skills run in the parent context → user reviews roadmap once mid-flight → user confirms at the end. Typical: 3 human pauses across the full workflow (scoping, roadmap review, exit).
+**Skill-level `**STOP**` directives and `"Run /x"` prose are never authoritative in orchestrated mode.** The only machine signal the orchestrator acts on is the `TRANSITION: <id>` token at the end of a skill's output. After every `Skill` tool call, re-read the active drive mode and apply the pause-policy table below.
+
+### How to advance
+
+1. **Invoke each skill via the Skill tool** in sequence: `product-vision` → `product-roadmap` → `product-research` → `product-arch` → `product-wbs` → `product-context`.
+2. **After each skill completes**, read the `TRANSITION: <id>` token and re-check the pause-policy table for the active drive mode. Do not act on `"Run /product-roadmap"` prose or similar.
+3. **If research reveals blocking unknowns** or arch exposes an unexpected architectural choice, pause with `/notify-human` regardless of drive mode — don't guess through strategy.
+
+### Pause policy by drive mode
+
+Full policy tables are in `docs/product/transitions.md` → "Drive modes". Summary for product workflow:
+
+| Step | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|------|-----------------------|-----------------------|--------------------|------------------------|
+| `product-vision` scoping questions | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| After `product-roadmap` (review gate) | PAUSE | **PAUSE** | AUTO | AUTO |
+| `product-research` / `product-arch` / `product-wbs` happy path | PAUSE | AUTO | AUTO | AUTO |
+| Back-loops (P4, P6, P8) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| SURFACE-IN (P11, P12) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| P10 exit to feature (transition summary) | PAUSE | **PAUSE** | AUTO | AUTO |
+| P14 product-finalize back-loop | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+
+Mode 1 pauses: every step.
+Mode 2 happy-path pauses: vision scoping + roadmap review + P10 exit (3 total).
+Mode 3 happy-path pauses: vision scoping only (1 total).
+Mode 4 happy-path pauses: none.

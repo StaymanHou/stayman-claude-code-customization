@@ -78,5 +78,5 @@ Note: Task Work Tree has no Observable Outcomes and no verify loop — tasks are
 ### 5. Stop and Hand Off
 After creating the plan:
 - Present a high-level summary
-- **STOP** — do NOT start implementing
 - Tell the user to run `/task-act` to begin implementation
+- **Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator chains to act automatically based on the drive mode's pause policy.

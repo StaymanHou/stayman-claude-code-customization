@@ -66,17 +66,27 @@ report → triage → investigate ⇄ mitigate → resolve → EXIT (→ reflect
 
 This section is the **reference procedure** followed by `/session-start` when driving the incident workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
+### Drive mode override
+
+**The incident workflow always runs as Mode 2 (Orchestrated) regardless of the drive mode selected in `/session-start`.** Human judgment is non-negotiable during incidents. The pause-policy table below applies unconditionally.
+
+### How to advance
+
 1. **Invoke each skill via the Skill tool** in sequence: `incident-report` → `incident-triage` → `incident-investigate` → `incident-mitigate` → `incident-resolve`.
-2. **After each skill completes**, read its transition recommendation and pick the matching transition from the table. Immediately invoke the next skill.
-3. **Human-pause points** (invoke `/notify-human` then wait):
-   - **Before triage (I2):** **always pause.** Severity (P0–P3) requires the human's read on blast radius. This is non-negotiable.
-   - **Investigation self-loop (I5):** no pause per iteration. Pause only if you're stuck — 2+ iterations without progress on the leading hypothesis.
-   - **Before mitigate (I6):** pause. The user must know what fix you're about to apply, especially if it touches production.
-   - **Back-loop (I8):** always pause. The mitigation didn't work and the user needs to know before you investigate again.
-   - **Before resolve (I9):** pause. The user needs to confirm the monitoring period passed cleanly.
-   - **Fast-close (I4, I7):** pause briefly. False alarms still deserve explicit sign-off before archiving.
-   - **Surface (I11, I12):** pause. Root-cause follow-up work needs human prioritization.
-4. **Urgency discipline:** incidents are time-sensitive. Keep pauses short and focused. If the human has walked away, `/notify-human` is the bridge.
-5. **Do not skip triage.** Even if the user says "just fix it," run triage — the severity assessment shapes everything after.
+2. **After each skill completes**, read the `TRANSITION: <id>` token and apply the pause policy below.
+3. **Urgency discipline:** incidents are time-sensitive. Keep pauses short and focused. If the human has walked away, `/notify-human` is the bridge.
+4. **Do not skip triage.** Even if the user says "just fix it," run triage — the severity assessment shapes everything after.
+
+### Pause policy (all drive modes — incident is always Mode 1)
+
+| Step | Policy | Rationale |
+|------|--------|-----------|
+| Before triage (I2→I3) | **PAUSE** | Severity (P0–P3) requires human read on blast radius — non-negotiable |
+| Investigation self-loop (I5) | AUTO per iteration | Pause only if stuck: 2+ iterations without progress |
+| Before mitigate (I6) | **PAUSE** | Human must know what fix is about to be applied, especially in production |
+| Back-loop mitigate→investigate (I8) | **PAUSE** | Fix didn't work — human must know before re-investigating |
+| Before resolve (I9) | **PAUSE** | Human confirms monitoring period passed cleanly |
+| Fast-close (I4, I7) | **PAUSE** | False alarms still need explicit sign-off before archiving |
+| Surface (I11, I12) | **PAUSE** | Root-cause follow-up needs human prioritization |
 
 Happy path: report → triage pause → investigate → mitigate pause → (monitor) → resolve pause → done. Typical: 3 human pauses.

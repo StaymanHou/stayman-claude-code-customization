@@ -81,6 +81,6 @@ What are we solving?
 - If there are open questions or unknowns → recommend `/feature-research` (F3)
 - If the spec is clear and complete → recommend `/feature-plan` (F4)
 
-**STOP** after creating the spec. Do NOT start planning or implementing.
+**Single-step mode only:** STOP after creating the spec — do NOT start planning or implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator chains to the next step automatically based on the drive mode's pause policy.
 
 **User Request:** {{args}}

@@ -62,17 +62,33 @@ When the user invokes you (e.g., "start a task workflow"), you:
 
 This section is the **reference procedure** followed by `/session-start` when driving the task workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
-1. **Invoke each skill via the Skill tool** in sequence, following the state machine above.
-2. **After each skill completes**, read the skill's own transition recommendation and pick the matching transition from the table. Immediately invoke the next skill — no "please run /task-act" prompts.
-3. **Human-pause points** (invoke `/notify-human` then wait for user input):
-   - `task-plan` is drafting: if the plan requires meaningful clarification (ambiguous requirements, unknown context), ask once, then continue.
-   - **Before T2 (plan → act):** present the plan and get a "proceed" confirmation. Small tasks may skip this if the plan is trivial.
-   - **Before ESCALATE (T3, T9) or REDIRECT (T4):** the user must know the scope changed. Surface this and wait.
-   - **Before T10/T11 (close → EXIT):** summarize what was done and any backlog entries. Short confirmation is fine.
-4. **Do NOT pause** between states that don't require human judgment (e.g., T5 act → close is automatic once implementation and tests pass).
-5. **If you hit a blocker you can't resolve** (tests failing, environment broken, unclear instruction), pause with `/notify-human` — don't thrash.
+### Precedence rule
 
-Happy path: `plan → (confirm) → act → close → done`. Two human pauses typical: one on the plan, one on close. Everything else is automatic.
+**Skill-level `**STOP**` directives and `"Run /x"` prose are never authoritative in orchestrated mode.** The only machine signal the orchestrator acts on is the `TRANSITION: <id>` token at the end of a skill's output. After every `Skill` tool call, re-read the active drive mode and apply the pause-policy table below.
+
+### How to advance
+
+1. **Invoke each skill via the Skill tool** in sequence, following the state machine above.
+2. **After each skill completes**, read the `TRANSITION: <id>` token and re-check the pause-policy table for the active drive mode. Do not act on `"Run /x"` prose.
+3. **If you hit a blocker you can't resolve** (tests failing, environment broken, unclear instruction), pause with `/notify-human` — don't thrash.
+
+### Pause policy by drive mode
+
+Full policy tables are in `docs/product/transitions.md` → "Drive modes". Summary for task workflow:
+
+| Step | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|------|-----------------------|-----------------------|--------------------|------------------------|
+| `task-plan` (T2 gate) | PAUSE | **PAUSE** | AUTO | AUTO |
+| `task-act` | PAUSE | AUTO | AUTO | AUTO |
+| `task-close` (T10/T11 gate) | PAUSE | **PAUSE** | AUTO | AUTO |
+| ESCALATE (T3, T9) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
+| REDIRECT (T4) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
+
+ESCALATE and REDIRECT always pause in all modes — scope changes require human acknowledgment.
+
+Mode 1 pauses: every step.
+Mode 2 happy-path pauses: plan confirm + close confirm (2 total).
+Mode 3/4 happy-path pauses: none (ESCALATE/REDIRECT excepted).
 
 ## Workflow State File
 

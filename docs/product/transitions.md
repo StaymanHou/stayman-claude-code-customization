@@ -26,17 +26,104 @@ The feature-workflow orchestrator (and any future workflow orchestrators) annota
 
 The `TRANSITION: <id>` token emitted at the end of a skill's output is the machine signal the orchestrator acts on. The prose "Run `/feature-x`" in skill output is for single-step users only and must not cause the orchestrator to pause.
 
-**Feature workflow pause policy summary** (canonical version in AGENTS.md):
+The full pause policy per workflow and per drive mode is in the **Drive modes** section below.
 
-| Step | Policy |
-|---|---|
-| spec, research, plan | PAUSE |
-| build, verify-auto, verify-self, verify-codify, ship, refactor | AUTO |
-| verify-human, finalize | PAUSE |
-| Back-loops (F6, F9, F9b, F12, F14, F23, F24) | AUTO |
-| REDIRECT (F22) | PAUSE |
-| SURFACE F25 (note-and-continue) | AUTO |
-| SURFACE F26 (pause-and-escalate) | PAUSE |
+### Drive modes
+
+`/session-start` supports four named drive modes. The model selects the mode by asking the user to choose from a numbered list in the CLI (not via command-line flags). The selected mode is recorded in the session's WIP state and governs all pause/chain decisions for the duration of the workflow.
+
+#### Mode definitions
+
+| # | Name | How selected | Description |
+|---|------|-------------|-------------|
+| 0 | **Direct** | Direct slash command (e.g. `/feature-plan`) — not via session-start | One skill runs, then stops. The skill's own "Hand Off" prose is authoritative. No chaining. |
+| 1 | **Step-by-step** | session-start option 1 | Pause after every skill. The orchestrator summarises what was done and tells the user which slash command to run next — but does not invoke it automatically. |
+| 2 | **Orchestrated** | session-start option 2 / default (Enter) | Follows the pause-policy table in `agents/<workflow>-workflow/AGENTS.md` exactly. Skill-level stop signals are ignored; `TRANSITION: <id>` tokens are the sole machine signal. |
+| 3 | **Autopilot** | session-start option 3 | All steps AUTO except `verify-human` (still PAUSE) and ESCALATE (always PAUSE). |
+| 4 | **Full-autopilot** | session-start option 4 | All steps AUTO. `verify-human` is **skipped** — `verify-self` result is the acceptance gate. ESCALATE remains PAUSE. Runs until terminal state. |
+
+#### Mode precedence
+
+```
+Direct (mode 0):         skill SKILL.md "Hand Off" / **STOP** is authoritative
+Step-by-step (mode 1):   orchestrator chains to next skill but pauses for user confirmation after each
+Orchestrated (mode 2):   AGENTS.md pause-policy table overrides skill-level stop signals
+Autopilot (mode 3):      simplified policy below overrides AGENTS.md
+Full-autopilot (mode 4): all-AUTO policy overrides AGENTS.md; verify-human is skipped
+```
+
+Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes 2–4. The orchestrator ignores them and acts on `TRANSITION: <id>` tokens only.
+
+#### Pause policy by mode — feature workflow
+
+| Step | Mode 1 (Step-by-step) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (Full-autopilot) |
+|------|-----------------------|-----------------------|--------------------|------------------------|
+| spec | PAUSE | PAUSE | PAUSE | AUTO |
+| research | PAUSE | PAUSE | AUTO | AUTO |
+| plan | PAUSE | PAUSE | AUTO | AUTO |
+| build | PAUSE | AUTO | AUTO | AUTO |
+| verify-auto | PAUSE | AUTO | AUTO | AUTO |
+| verify-self | PAUSE | AUTO | AUTO | AUTO |
+| verify-human | PAUSE | PAUSE | **PAUSE** | **SKIP** |
+| verify-codify | PAUSE | AUTO | AUTO | AUTO |
+| ship | PAUSE | AUTO | AUTO | AUTO |
+| finalize | PAUSE | PAUSE | AUTO | AUTO |
+| refactor | PAUSE | AUTO | AUTO | AUTO |
+| Back-loops | PAUSE | AUTO | AUTO | AUTO |
+| REDIRECT (F22) | PAUSE | PAUSE | PAUSE | AUTO |
+| SURFACE F25 | PAUSE | AUTO | AUTO | AUTO |
+| SURFACE F26 | PAUSE | PAUSE | PAUSE | AUTO |
+| ESCALATE (any) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
+
+#### Pause policy by mode — task workflow
+
+| Step | Mode 1 (Step-by-step) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (Full-autopilot) |
+|------|-----------------------|-----------------------|--------------------|------------------------|
+| plan | PAUSE | PAUSE | AUTO | AUTO |
+| act | PAUSE | AUTO | AUTO | AUTO |
+| close | PAUSE | PAUSE | AUTO | AUTO |
+| ESCALATE / REDIRECT | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
+
+#### Pause policy by mode — product workflow
+
+| Step | Mode 1 (Step-by-step) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (Full-autopilot) |
+|------|-----------------------|-----------------------|--------------------|------------------------|
+| vision scoping questions | PAUSE | PAUSE | PAUSE | AUTO |
+| roadmap review | PAUSE | PAUSE | AUTO | AUTO |
+| research / arch / wbs happy path | PAUSE | AUTO | AUTO | AUTO |
+| back-loops (P4, P6, P8) | PAUSE | PAUSE | PAUSE | AUTO |
+| P10 exit to feature | PAUSE | PAUSE | AUTO | AUTO |
+| P14 product-finalize back-loop | PAUSE | PAUSE | PAUSE | AUTO |
+
+#### Pause policy by mode — incident workflow
+
+Incidents are always treated as **Mode 2 (Orchestrated)** regardless of the selected drive mode. Human judgment is non-negotiable in an incident.
+
+| Step | All modes |
+|------|-----------|
+| triage (I2→I3) | PAUSE |
+| before mitigate (I6) | PAUSE |
+| back-loop (I8) | PAUSE |
+| before resolve (I9) | PAUSE |
+| fast-close (I4, I7) | PAUSE |
+| surface (I11, I12) | PAUSE |
+| investigate self-loop (I5) | AUTO |
+
+#### Session-start prompt
+
+When `/session-start` confirms the work classification, it presents the mode choice before proceeding:
+
+```
+I'll drive the <workflow> workflow. Which drive mode do you want?
+
+  1. Orchestrated  — follows the standard pause policy (spec, plan, verify-human, finalize)
+  2. Autopilot     — only pauses at verify-human; everything else chains automatically
+  3. Full-autopilot — no pauses; verify-human skipped; runs to completion
+
+(Type 1, 2, or 3 — or just press Enter for Orchestrated)
+```
+
+The selected mode is stored in `workflow/wip/<item>.md` frontmatter as `drive_mode: orchestrated | autopilot | full-autopilot` and honoured for the full workflow duration including cross-workflow handoffs. The mode persists across `/session-pause` and `/session-resume`.
 
 ### Back-loop guard
 

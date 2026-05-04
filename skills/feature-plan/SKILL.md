@@ -148,6 +148,6 @@ Set state to `plan (complete)` in the WIP file.
 ### 6. Hand Off
 Tell the user to run `/feature-build` to start Phase 1.
 
-**STOP** — do NOT start implementing.
+**Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator chains to build automatically based on the drive mode's pause policy.
 
 **User Request:** {{args}}
