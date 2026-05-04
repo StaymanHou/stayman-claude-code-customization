@@ -90,7 +90,7 @@ Three ways one workflow interacts with another — understand the distinction be
 
 ### Telegram notify-human
 
-The `notify-human` skill sends Telegram messages before the model asks the user a question. The global `~/.claude/CLAUDE.md` mandates calling it before any substantive human input. Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` env vars in `~/.claude/settings.json`; skip silently if unset.
+The `notify-human` skill sends Telegram messages before the model asks the user a question. The global `~/.claude/CLAUDE.md` mandates calling it before any substantive human input. Requires `CLAUDE_TELEGRAM_BOT_TOKEN` and `CLAUDE_TELEGRAM_CHAT_ID` env vars in `~/.claude/settings.json`; skip silently if unset.
 
 ## Product Workflow Notes
 

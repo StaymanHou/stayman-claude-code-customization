@@ -64,8 +64,8 @@ Add to `~/.claude/settings.json`:
 ```json
 {
   "env": {
-    "TELEGRAM_BOT_TOKEN": "<your-bot-token>",
-    "TELEGRAM_CHAT_ID": "<your-chat-id>"
+    "CLAUDE_TELEGRAM_BOT_TOKEN": "<your-bot-token>",
+    "CLAUDE_TELEGRAM_CHAT_ID": "<your-chat-id>"
   },
   "permissions": {
     "allow": [

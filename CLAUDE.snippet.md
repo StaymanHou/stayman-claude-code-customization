@@ -95,5 +95,5 @@ Rationale: this rule exists because of a real incident where a scaffolder wiped 
 
 **ALWAYS invoke the `/notify-human` skill before requesting human input** — any substantive question, decision point, review request, verification checklist, or any moment the user might have walked away from the terminal. This is non-negotiable across all projects and contexts.
 
-- Requires `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `~/.claude/settings.json` env. If unset, skip the notification silently and proceed.
+- Requires `CLAUDE_TELEGRAM_BOT_TOKEN` and `CLAUDE_TELEGRAM_CHAT_ID` in `~/.claude/settings.json` env. If unset, skip the notification silently and proceed.
 - **Do NOT notify for:** trivial yes/no confirmations during routine steps, or tool permission prompts (Claude Code handles those natively).

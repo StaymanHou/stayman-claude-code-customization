@@ -143,4 +143,4 @@ echo '  "Edit(~/.claude/**)"'
 echo "  \"Read($SOURCE_DIR/**)\""
 echo "  \"Edit($SOURCE_DIR/**)\""
 echo
-echo "Ensure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set in settings.json env."
+echo "Ensure CLAUDE_TELEGRAM_BOT_TOKEN and CLAUDE_TELEGRAM_CHAT_ID are set in settings.json env."

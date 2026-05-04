@@ -19,10 +19,10 @@ You are about to request human input. Before doing so, send a Telegram notificat
 **Send the notification:**
 
 ```bash
-curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+curl -s -X POST "https://api.telegram.org/bot${CLAUDE_TELEGRAM_BOT_TOKEN}/sendMessage" \
   -H "Content-Type: application/json" \
   -d '{
-    "chat_id": "'"${TELEGRAM_CHAT_ID}"'",
+    "chat_id": "'"${CLAUDE_TELEGRAM_CHAT_ID}"'",
     "text": "🔔 Claude Code needs you\n\nProject: <project>\nDone: <done summary>\nNeed: <what is needed>",
     "parse_mode": "HTML"
   }'
