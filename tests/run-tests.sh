@@ -179,9 +179,12 @@ ${extra_prompt}"
       continue
     fi
 
-    # Verify (|| true prevents set -e from killing the script on non-zero return)
-    verify_result "$result_text" "$expect_id" "$contains_any" "$not_contains" || true
+    # Verify — wrap with set +e/-e so verify_result's non-zero return doesn't
+    # trip set -e, while still capturing the real return code into rc.
+    set +e
+    verify_result "$result_text" "$expect_id" "$contains_any" "$not_contains"
     local rc=$?
+    set -e
     detail="$VERIFY_DETAIL"
     transition_found=$(echo "$result_text" | sed -n 's/.*TRANSITION:[[:space:]]*\([A-Za-z0-9_]*\).*/\1/p' | head -1) || true
 

@@ -1166,3 +1166,81 @@ scenarios:
         - "/session-reflect"
         - "/feature-refactor"
     max_retries: 2
+
+  # PP6: Integration-boundary blind-spot scenarios
+  # Reproduces the MusicPool failure where verify-self/human/codify all let
+  # the agent test only the new artifact and skip the consuming surface.
+
+  - id: F-boundary-self
+    name: "feature:verify-self refuses run when boundary outcome missing"
+    skill: feature-verify-self
+    args: "http://localhost:8000"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-wire-into-existing.md
+    system_prompt_extra: |
+      Phase 1 adds a new MusicPoolService module and wires it into the
+      existing POST /distribution/match handler — the line that
+      previously read `video_id = sheet.lookup(...)` now reads
+      `video_id = MusicPoolService.get_random(service.session)`.
+      The Observable Outcomes the plan recorded for this phase target
+      the new admin endpoints: GET /music/pool/status, POST
+      /music/pool/seed, GET /music/pool/list, GET /music/pool/random,
+      and a CLI `python -m music_pool.populate` smoke test.
+      verify-auto already passed.
+    expect:
+      transition_id: F9b
+      contains_any:
+        - "/distribution/match"
+      not_contains:
+        - "/feature-verify-human"
+    max_retries: 2
+
+  - id: F-boundary-human
+    name: "feature:verify-human cannot skip when phase wires into existing endpoint"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-wire-into-existing.md
+    system_prompt_extra: |
+      Phase 1 adds a new MusicPoolService module and wires it into the
+      existing POST /distribution/match handler — the line that
+      previously read `video_id = sheet.lookup(...)` now reads
+      `video_id = MusicPoolService.get_random(service.session)`.
+      There is no UI for this phase. The Observable Outcomes
+      previously verified by the agent target the new admin endpoints
+      under /music/pool/* and a CLI smoke test. The human is at the
+      terminal and can run shell commands.
+    expect:
+      transition_id: F13
+      contains_any:
+        - "/distribution/match"
+      not_contains:
+        - "nothing to manually verify"
+        - "nothing to manually test"
+    max_retries: 2
+
+  - id: F-boundary-codify
+    name: "feature:verify-codify requires test on consuming surface when boundary applies"
+    skill: feature-verify-codify
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-wire-into-existing.md
+    system_prompt_extra: |
+      Phase 1 adds a new MusicPoolService module and wires it into the
+      existing POST /distribution/match handler — the line that
+      previously read `video_id = sheet.lookup(...)` now reads
+      `video_id = MusicPoolService.get_random(service.session)`.
+      Existing tests cover the MusicPoolService module's get_random
+      method, the new /music/pool/seed and /music/pool/status
+      endpoints, and the alembic migration. The human approved the
+      phase. Phase 2 (Pool admin UI) remains unstarted.
+    expect:
+      transition_id: F15
+      contains_any:
+        - "/distribution/match"
+      not_contains:
+        - "/feature-ship"
+    max_retries: 2

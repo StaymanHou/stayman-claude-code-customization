@@ -29,12 +29,23 @@ This is the third step of the per-phase verification loop: `build → verify-aut
 Read the WIP file in `workflow/wip/`. Find `## Current Node` — this tells you which phase's `verify-human` node is active and whether this is a first run or re-entry from a back-loop.
 
 ### 2. Assess Whether Human Testing is Needed
-Review the current phase and determine if there are user-facing changes that need manual verification.
 
-**If there is genuinely nothing for a human to test** (e.g., purely internal refactor, backend-only logic with full test coverage):
-- Present your reasoning for why there's nothing to manually test
-- Explicitly ask the human: "I believe there's nothing to manually verify for this phase because [reasoning]. Do you agree to skip to verify-codify?"
-- Only proceed to verify-codify (F11) if the human confirms
+First, determine whether this phase has an **integration boundary**. A phase has a boundary when any of the following is true:
+
+1. A line of code was added or modified inside a file that an existing HTTP endpoint, route, controller, resolver, or middleware already consumed.
+2. A line of code was added or modified inside an existing UI page, view, or component such that user-visible behavior changes.
+3. A line of code was added or modified inside an existing CLI command or argument parser.
+4. A line of code was added or modified inside an existing scheduled job, cron, queue consumer, or background worker.
+5. The request/response shape, payload, or destination of an existing outbound call to an external system was changed.
+
+**If a boundary applies, the F11 skip path is forbidden.** Even when there is no UI to click, the human checklist MUST include at least one item: a recorded `curl` (or equivalent CLI invocation) against the consuming surface, with the response captured. Phrase the item so the human can copy-paste-run it: e.g. "Run `curl -sS -X POST http://localhost:8000/distribution/match -d '{...}'` and paste the response — confirm the `video_id` field is one the new pool would produce." Do **not** mark the phase complete on the human's "looks fine" alone — require the captured response.
+
+**If no boundary applies** (the phase only adds isolated new artifacts that no existing surface consumes):
+- Affirm this in writing: "This phase does NOT wire into any existing endpoint, route, UI page, CLI command, scheduled job, or external-system call. It only adds isolated new artifacts: [list them]."
+- Then ask the human: "Given that affirmation, do you agree to skip to verify-codify?"
+- Only proceed to verify-codify (F11) if the human confirms.
+
+The skip path is gated by the affirmation, not by the agent's general judgment that "there is nothing to test."
 
 ### 3. Expand verify-human into leaf nodes (first run)
 

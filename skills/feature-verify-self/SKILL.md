@@ -33,6 +33,22 @@ Use this taxonomy consistently when classifying failures. It is also embedded in
 
 **Decision rule:** When in doubt, classify as BLOCKING. A false BLOCKING sends you to fix something minor; a false COSMETIC ships a broken feature to the human.
 
+## Integration-boundary rule
+
+A phase has an **integration boundary** when any of the following is true of the implementation leaves under the current phase:
+
+1. A line of code was added or modified inside a file that an existing HTTP endpoint, route, controller, GraphQL resolver, RPC handler, or middleware already consumed.
+2. A line of code was added or modified inside a file that backs an existing UI page, view, or component such that user-visible behavior changes.
+3. A line of code was added or modified inside an existing CLI command, subcommand, or argument parser.
+4. A line of code was added or modified inside an existing scheduled job, cron, queue consumer, or background worker.
+5. The request/response shape, payload, or destination of an existing outbound call to an external system was changed.
+
+If a boundary applies, **at least one Observable Outcome for this phase must cite the consuming surface by name** — the existing endpoint path, route URL, UI page URL, CLI command, job name, or external-call target. An outcome that only exercises the new module or new dedicated admin/status endpoints does not satisfy this rule.
+
+If you reach §1 of the procedure and find the current phase has a boundary but no outcome citing the consuming surface, **do not run the verification subagent**. Instead, document the missing outcome and back-loop to build (F9b) so the plan can be updated and the missing outcome verified. Cite the specific consuming surface (e.g. `POST /distribution/match`) in your back-loop message.
+
+If a boundary does not apply (the phase only adds isolated new artifacts — a new module nothing imports, a new endpoint nothing links to, a constant, a renamed private function), this rule does not apply. Note in your output: "No integration boundary — phase adds isolated new artifacts only."
+
 ## Procedure
 
 ### 1. Read inputs
@@ -41,6 +57,7 @@ Use this taxonomy consistently when classifying failures. It is also embedded in
 - Identify the current phase from `## Current Node`
 - Extract the **Observable outcomes** for that phase
 - Confirm the dev URL from `{{args}}` — if empty, stop and ask the user for it before proceeding
+- Determine whether this phase has an **integration boundary** (see "Integration-boundary rule" above). If yes, confirm at least one Observable Outcome cites the consuming surface; if no such outcome exists, follow the back-loop guidance in that section.
 
 ### 2. Spawn self-verification subagent
 

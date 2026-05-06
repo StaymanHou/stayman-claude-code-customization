@@ -40,6 +40,13 @@ For each behavior that needs a new test, choose the **highest-level test type** 
 
 **Do not default to unit tests** just because they are easier to write. A unit test that passes while the user-facing behavior is broken is not useful coverage.
 
+**Integration-boundary check:** when planning the test set above, determine whether this phase has an integration boundary — a line of code added or modified inside an existing HTTP endpoint, route, UI surface, CLI command, scheduled job, or external-system call.
+
+- **If a boundary applies:** the test set must include at least one test that exercises the consuming surface end-to-end and asserts the post-change behavior. Cite the consuming surface by name (e.g. a test against `POST /distribution/match` that asserts the response reflects the new wiring). Unit tests on the new module do not satisfy this; the consuming-surface test is in addition to whatever unit-level coverage you write.
+- **If no boundary applies** (the phase only added isolated new artifacts — a new module nothing imports, a new endpoint nothing links to, a constant, a renamed private function): note "No integration boundary — phase adds isolated new artifacts only" and continue with the test-set decisions above.
+
+This check shapes which tests you write. It does not change how codify completes — §3 (run tests) and §4 (evaluate results) still own all advance / back-loop / ship decisions.
+
 Follow the project's testing conventions and framework.
 
 ### 3. Run All Tests

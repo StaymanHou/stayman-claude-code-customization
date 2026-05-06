@@ -231,6 +231,11 @@ Terminal: finalize or refactor (both → auto-trigger reflect)
 
 **verify-self:** Agent spawns a one-shot subagent with Playwright/curl tools to observe the running system against the phase's Observable Outcomes. Blocking failures return to build; cosmetic failures are noted but don't block. The subagent is one-shot — all inputs must be in the spawn prompt (dev URL, Observable Outcomes, severity taxonomy). Human checklist in verify-human is pre-filtered: items the agent already confirmed are excluded.
 
+**Integration-boundary rule (verify-self / verify-human / verify-codify):** A phase has an integration boundary when it modifies a line of code inside an existing HTTP endpoint, route, UI surface, CLI command, scheduled job, or external-system call. When a boundary applies, all three verify SKILLs require an outcome / check / test that targets the consuming surface by name (not just the new module). When no boundary applies, each SKILL provides an affirmation-gated path that lets the phase proceed normally. Full rules in:
+- `skills/feature-verify-self/SKILL.md` ("Integration-boundary rule" section)
+- `skills/feature-verify-human/SKILL.md` (Procedure §2)
+- `skills/feature-verify-codify/SKILL.md` (Procedure §2 "Integration-boundary check")
+
 **Small/simple criteria** (all must hold to skip spec and go straight to plan):
 1. No new data models or API endpoints
 2. No architectural decisions required
@@ -252,7 +257,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect)
 | F10 | verify-auto | verify-self | Tests pass → user runs `/feature-verify-self <dev-url>` |
 | F10b | verify-self | verify-human | All blocking outcomes pass (cosmetic issues noted) |
 | F9b | verify-self | build | Back-loop: blocking observable outcome failed |
-| F11 | verify-human | verify-codify | Nothing for human to test — agent presents reasoning, human confirms skip |
+| F11 | verify-human | verify-codify | Phase has no integration boundary (agent affirms in writing) and human confirms skip — see verify-human SKILL.md "Integration-boundary rule" |
 | F12 | verify-human | build | Back-loop: human rejects |
 | F13 | verify-human | verify-codify | Human approves happy path |
 | F14 | verify-codify | verify-human | Back-loop: new tests reveal issues human missed |
