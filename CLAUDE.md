@@ -12,13 +12,17 @@ The skills and agents here are **symlinked into `~/.claude/`** by `install.sh`. 
 
 ```bash
 ./install.sh                          # Idempotent — creates per-skill and per-agent symlinks from this repo to ~/.claude/
-./tests/run-tests.sh                  # Run all transition tests (invokes `claude --print` per scenario)
+./tests/run-all.sh                    # Two-pass sweep: haiku for untagged scenarios, sonnet for those tagged `model: sonnet`
+./tests/run-tests.sh                  # Single-pass primitive — runs whichever model is configured
 ./tests/run-tests.sh --group task     # Run one workflow group (task|feature|product|incident|session)
 ./tests/run-tests.sh --id T2,T3,F9    # Run specific transitions by ID
 ./tests/run-tests.sh --dry-run        # List scenarios without executing
-./tests/run-tests.sh --model sonnet   # Override test model (default: haiku)
+./tests/run-tests.sh --model sonnet   # Force sonnet for ALL scenarios (overrides per-scenario `model:` tags)
+./tests/run-tests.sh --filter-model X # Only run scenarios with `model: X` (or `default` for untagged)
 ./tests/check-structure.sh            # Structural checks: argument-hints, CLAUDE.md content, symlinks, YAML validity
 ```
+
+**New tests start untagged (haiku).** Per-scenario `model: sonnet` is reserved for scenarios where haiku has been *proven* to produce model-noise — the recon discipline is: see a haiku failure, run the same scenario on sonnet, confirm it PASSes deterministically, *then* tag it. Don't tag preemptively for "safety" — the cost differential is real and haiku coverage is meaningful signal for prompt clarity.
 
 Test runner requires `claude` CLI, `jq`, and `bc` on PATH. Results are written to `tests/results/run-<timestamp>.json` (gitignored). Each test spins up a temp project directory, copies `tests/fixtures/` into it, runs the skill in `--print` mode with a system prompt that forces the model to emit `TRANSITION: <id>` at the end, then verifies the output.
 

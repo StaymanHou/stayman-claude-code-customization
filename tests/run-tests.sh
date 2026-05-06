@@ -3,12 +3,17 @@
 # Invokes Claude Code skills via --print and verifies correct transitions.
 #
 # Usage:
-#   ./tests/run-tests.sh                    # All tests
-#   ./tests/run-tests.sh --group task       # One workflow group
-#   ./tests/run-tests.sh --id T2            # Single transition
-#   ./tests/run-tests.sh --id T2,T3,F9     # Multiple IDs
-#   ./tests/run-tests.sh --dry-run          # Show what would run
-#   ./tests/run-tests.sh --model sonnet     # Override model (default: haiku)
+#   ./tests/run-tests.sh                              # All tests (haiku default; per-scenario `model:` tag honored)
+#   ./tests/run-tests.sh --group task                 # One workflow group
+#   ./tests/run-tests.sh --id T2                      # Single transition
+#   ./tests/run-tests.sh --id T2,T3,F9                # Multiple IDs
+#   ./tests/run-tests.sh --dry-run                    # Show what would run
+#   ./tests/run-tests.sh --model sonnet               # Force sonnet for ALL scenarios (overrides per-scenario tags)
+#   ./tests/run-tests.sh --filter-model default       # Only scenarios with no `model:` tag
+#   ./tests/run-tests.sh --filter-model sonnet        # Only scenarios tagged `model: sonnet`
+#
+# Tip: for routine sweeps, prefer ./tests/run-all.sh — it runs the haiku and
+# sonnet partitions in sequence with the right model for each, optimizing cost.
 
 set -euo pipefail
 
@@ -23,8 +28,10 @@ source "$SCRIPT_DIR/lib/verify.sh"
 # --- Defaults ---
 FILTER_GROUP=""
 FILTER_IDS=""
+FILTER_MODEL=""        # If set: only run scenarios whose `model:` field equals this value (or, with "default", scenarios that have no `model:` field). Used by tests/run-all.sh to partition haiku vs sonnet passes.
 DRY_RUN=false
 MODEL="haiku"
+MODEL_EXPLICIT=false   # Set true when --model is passed; signals that global flag overrides per-scenario `model:` tags
 MAX_BUDGET="0.20"
 GLOBAL_RETRY=0  # 0 = use per-scenario setting
 
@@ -49,8 +56,9 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --group)   FILTER_GROUP="$2"; shift 2 ;;
     --id)      FILTER_IDS="$2"; shift 2 ;;
+    --filter-model) FILTER_MODEL="$2"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
-    --model)   MODEL="$2"; shift 2 ;;
+    --model)   MODEL="$2"; MODEL_EXPLICIT=true; shift 2 ;;
     --budget)  MAX_BUDGET="$2"; shift 2 ;;
     --retry)   GLOBAL_RETRY="$2"; shift 2 ;;
     *)         echo "Unknown arg: $1"; exit 1 ;;
@@ -93,6 +101,19 @@ run_test() {
   local args; args=$(parse_scenario_field "$yaml_file" "$index" "args")
   local extra_prompt; extra_prompt=$(parse_scenario_field "$yaml_file" "$index" "system_prompt_extra")
   local max_retries; max_retries=$(parse_scenario_field "$yaml_file" "$index" "max_retries")
+  local scenario_model; scenario_model=$(parse_scenario_field "$yaml_file" "$index" "model")
+
+  # Effective model resolution:
+  # - If --model was passed explicitly (MODEL_EXPLICIT=true), the global flag wins (overrides any scenario tag).
+  # - Otherwise, use the scenario's `model:` field if set, else the default ($MODEL = haiku).
+  # This way `tests/run-all.sh` can partition by tag and force the right model per pass via --model,
+  # while a developer running `./tests/run-tests.sh --model sonnet` to debug forces sonnet for everything.
+  local effective_model
+  if [ "$MODEL_EXPLICIT" = "true" ]; then
+    effective_model="$MODEL"
+  else
+    effective_model="${scenario_model:-$MODEL}"
+  fi
   local expect_id; expect_id=$(parse_scenario_nested "$yaml_file" "$index" "expect" "transition_id")
   local contains_any; contains_any=$(parse_scenario_nested "$yaml_file" "$index" "expect" "contains_any")
   local not_contains; not_contains=$(parse_scenario_nested "$yaml_file" "$index" "expect" "not_contains")
@@ -104,6 +125,17 @@ run_test() {
   if [ -n "$FILTER_IDS" ]; then
     if ! echo ",$FILTER_IDS," | grep -q ",$id,"; then
       return
+    fi
+  fi
+
+  # --filter-model partitions the suite by `model:` tag (used by tests/run-all.sh):
+  #   --filter-model default  → only scenarios with NO `model:` field
+  #   --filter-model sonnet   → only scenarios with `model: sonnet`
+  if [ -n "$FILTER_MODEL" ]; then
+    if [ "$FILTER_MODEL" = "default" ]; then
+      [ -n "$scenario_model" ] && return
+    else
+      [ "$scenario_model" != "$FILTER_MODEL" ] && return
     fi
   fi
 
@@ -159,7 +191,7 @@ ${extra_prompt}"
     local output
     output=$(cd "$tmpdir" && claude --print "/$skill $args" \
       --output-format json \
-      --model "$MODEL" \
+      --model "$effective_model" \
       --max-budget-usd "$MAX_BUDGET" \
       --no-session-persistence \
       --permission-mode dontAsk \
@@ -231,8 +263,9 @@ ${extra_prompt}"
     --argjson duration "$duration" \
     --arg transition "$transition_found" \
     --arg detail "$detail" \
+    --arg model "$effective_model" \
     '{id:$id, name:$name, group:$group, status:$status, attempts:$attempts,
-      cost_usd:$cost, duration_ms:$duration, transition_found:$transition, details:$detail}')
+      cost_usd:$cost, duration_ms:$duration, transition_found:$transition, details:$detail, model:$model}')
   append_result "$result_json"
 
   # Clean up

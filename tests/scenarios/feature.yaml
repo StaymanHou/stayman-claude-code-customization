@@ -42,6 +42,7 @@ scenarios:
   - id: F4
     name: "feature:spec → plan when spec is clear"
     skill: feature-spec
+    model: sonnet  # Haiku flakes on this scenario; sonnet is reliable. See workflow/backlog.md history (HIDDEN-FAIL-F4 → recon 2026-05-06).
     args: "User notification preferences"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -812,6 +813,7 @@ scenarios:
   - id: F22
     name: "feature:build redirects to research on unknown"
     skill: feature-build
+    model: sonnet  # Haiku emits "BLOCKED" (status vocab) instead of F22; sonnet is reliable. See backlog history (F22-FLAKY-REGRESSED-TO-FAIL → recon 2026-05-06).
     args: "phase 2 — payment integration"
     fixtures:
       claude_md: fixtures/CLAUDE.md

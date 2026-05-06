@@ -8,6 +8,14 @@ argument-hint: <optional override — ignored if workflow/.session.md exists>
 
 Get the user back into flow as quickly as possible.
 
+## Valid transitions
+
+When you finish, label your output with one of these IDs:
+
+- **S6** — Standard resume: context restored, `.session.md` deleted, hand off to `resume_skill`
+- **S15** — Surfaced `drive_mode` from `.session.md` and presented the change-mode menu
+- **S16** — User selected a different drive mode on resume; updated WIP frontmatter accordingly
+
 **Steps:**
 
 1. **Read `workflow/.session.md`.** If it does not exist, tell the user there's nothing to resume and suggest `/session-start`.

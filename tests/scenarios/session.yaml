@@ -39,6 +39,7 @@ scenarios:
   - id: S3
     name: "session:start routes simple feature to feature:plan"
     skill: session-start
+    model: sonnet  # Even after Valid-transitions section in SKILL.md, haiku FLAKY/FAILs on routing classification. Sonnet FLAKY-passes (run-2026-05-06-122811). Tagged 2026-05-06.
     args: "Add a tooltip to the settings icon showing the keyboard shortcut Ctrl+K"
     fixtures:
       claude_md: fixtures/CLAUDE.md

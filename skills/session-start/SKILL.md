@@ -21,6 +21,27 @@ You are a workflow dispatcher AND orchestrator. Your job is to **classify** the 
 **Small/simple feature criteria** (skip spec, go straight to plan):
 All must hold: (1) no new data models or API endpoints, (2) no architectural decisions required, (3) describable in ≤ 4 sentences, (4) estimated < 4 hours of agent work, (5) estimated ≤ ~200 lines of new/changed code.
 
+## Valid transitions
+
+When you finish dispatching, label your output with one of these IDs (the test harness asserts on them; in production they're a clarity aid):
+
+**Routing — classification outputs:**
+- **S1 → task:plan** — atomic change, bug fix
+- **S2 → feature:spec** — complex feature (fails small/simple criteria)
+- **S3 → feature:plan** — small/simple feature (all criteria met)
+- **S4 → incident:report** — production incident
+- **S5 → product:vision** — new product initiative
+
+**Drive-mode and orchestration outputs (after the user has selected a mode):**
+- **S7** — auto-chain build → verify-auto without asking the user (orchestration step in modes 2-4)
+- **S8** — pause at verify-human (orchestration PAUSE step)
+- **S9** — pause at feature-finalize (orchestration PAUSE step)
+- **S10** — user asked for end-to-end driving but no mode picked yet — present the drive-mode menu (do NOT skip directly to build)
+- **S11** — Mode 4 (Full-autopilot): chain past plan into build without pausing
+- **S12** — Mode 3 (Autopilot): pause only at verify-human
+- **S13** — Mode 1 (Step-by-step): pause after every skill, tell the user the next slash command (do NOT auto-chain)
+- **S14** — Mode 4 (Full-autopilot): skip verify-human, chain to verify-codify
+
 ## Drive modes
 
 Four modes control how aggressively the orchestrator chains between steps. The full pause-policy tables for all workflows are in `docs/product/transitions.md` → "Drive modes".

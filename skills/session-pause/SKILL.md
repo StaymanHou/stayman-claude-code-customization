@@ -8,6 +8,12 @@ argument-hint: <optional notes about current status>
 
 Save the current workflow state so it can be resumed later.
 
+## Valid transitions
+
+When you finish, label your output with this ID:
+
+- **S17** — `.session.md` written (with `drive_mode:` if present in WIP frontmatter), state-file annotated, user told to use `/session-resume`
+
 **Steps:**
 
 1. **Identify the active work.** Determine the current workflow and step (e.g., `feature:build`, `task:act`, `product:roadmap`). Check recent conversation context plus:

@@ -342,6 +342,30 @@ Not a state machine — meta-operations that attach to any workflow state.
 | `reflect` | Auto: after feature:finalize, feature:refactor, incident:resolve. Optional: after task:close. | Analyze session for wrong assumptions. Strongly prompt user to run store-learning. |
 | `store-learning` | Manual (prompted by reflect) | Classify learning (global vs project), propose storage location, execute after human confirmation |
 
+### Session transitions (dispatcher outputs)
+
+Session entry skills (`session-start`, `session-resume`, `session-pause`) are dispatchers and meta-operations, not state-machine states. The IDs below label each skill's possible outputs so they can be asserted by the test harness — they are NOT classical state transitions.
+
+| ID | Skill | Output | Condition |
+|----|-------|--------|-----------|
+| S1 | session-start | task:plan | Classified as task (atomic change, bug fix) |
+| S2 | session-start | feature:spec | Classified as complex feature (fails small/simple criteria) |
+| S3 | session-start | feature:plan | Classified as small/simple feature (all criteria met) |
+| S4 | session-start | incident:report | Classified as production incident |
+| S5 | session-start | product:vision | Classified as new product initiative |
+| S6 | session-resume | (resume_skill) | Context restored; `.session.md` deleted after handoff |
+| S7 | session-start | (auto-chain) | Orchestrator auto-chains build → verify-auto without asking user |
+| S8 | session-start | (pause) | Orchestrator pauses at verify-human (PAUSE step in policy) |
+| S9 | session-start | (pause) | Orchestrator pauses at feature-finalize (PAUSE step in policy) |
+| S10 | session-start | (drive-mode menu) | User wants end-to-end drive — present mode menu (do not skip to build) |
+| S11 | session-start | (auto-chain) | Mode 4 (Full-autopilot): chain past plan into build without pausing |
+| S12 | session-start | (pause) | Mode 3 (Autopilot): pause only at verify-human |
+| S13 | session-start | (pause-after-each) | Mode 1 (Step-by-step): pause after every skill, tell user next slash command |
+| S14 | session-start | (skip+chain) | Mode 4 (Full-autopilot): skip verify-human, chain to verify-codify |
+| S15 | session-resume | (mode menu) | Surface `drive_mode` from `.session.md` and present change-mode menu |
+| S16 | session-resume | (mode change) | User selects different drive mode on resume — update WIP frontmatter |
+| S17 | session-pause | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |
+
 ---
 
 ## Experiment: Subagent-Per-Step Orchestration (Parked)
