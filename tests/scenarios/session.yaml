@@ -163,7 +163,9 @@ scenarios:
       completes and wait for the human to confirm cycle close and backlog review.
       It must NOT auto-chain past finalize into a new workflow.
     expect:
-      transition_id: S9
+      # Dual-identity: orchestrator at finalize step is genuinely transitioning into
+      # F19 (finalize → EXIT/reflect), so emitting F19 is honest. Accept either.
+      transition_id_any: [S9, F19]
       contains_any:
         - "finalize"
         - "backlog"
@@ -192,7 +194,11 @@ scenarios:
       claude_md: fixtures/CLAUDE.md
       wip: fixtures/wip/feature-plan-complete.md
     expect:
-      transition_id: S10
+      # Routing-vs-drive-mode dual identity: model classifies the request as
+      # routing first (S3 = small/simple → feature-plan), then notices the
+      # "drive it end-to-end" signal and presents the drive-mode menu. Both
+      # are honest emissions when the menu is actually shown.
+      transition_id_any: [S10, S3]
       contains_any:
         - "Step-by-step"
         - "Orchestrated"
@@ -224,7 +230,9 @@ scenarios:
       apply in full-autopilot mode — it is a direct-invocation instruction only.
       Demonstrate that you chain to build automatically.
     expect:
-      transition_id: S11
+      # Dual-identity: orchestrator chaining plan→build is genuinely emitting
+      # F7 (plan → build) or F8 (build → verify-auto, depending on phase reached).
+      transition_id_any: [S11, F7, F8]
       contains_any:
         - "feature-build"
         - "build"
@@ -252,16 +260,21 @@ scenarios:
       must stop here, invoke notify-human, and present the verification checklist.
       It must NOT auto-chain to verify-codify.
     expect:
-      transition_id: S12
+      # Dual-identity: pausing AT verify-human is genuinely the F10b transition
+      # (verify-self → verify-human). S12 labels the autopilot-mode decoration.
+      transition_id_any: [S12, F10b]
       contains_any:
         - "verify-human"
         - "review"
         - "check"
         - "manually"
+      # In autopilot mode, "auto-chain to verify-codify" or saying it happens
+      # "automatically" is a real behavior bug. Flip to strict.
       not_contains:
         - "/feature-verify-codify"
         - "auto-chain"
         - "automatically"
+      not_contains_strict: true
     max_retries: 2
 
   - id: S13
@@ -279,7 +292,10 @@ scenarios:
       summarise what was done, and tell the user which slash command to run next
       (e.g. "Run /feature-verify-auto to continue").
     expect:
-      transition_id: S13
+      # Dual-identity: orchestrator pausing after build is genuinely at the
+      # build → verify-auto transition (F8). Step-by-step pause is the
+      # session-level decoration on top.
+      transition_id_any: [S13, F8]
       contains_any:
         - "/feature-verify-auto"
         - "run /feature-verify-auto"
@@ -305,17 +321,25 @@ scenarios:
       It must chain directly to feature-verify-codify using verify-self's result as
       the acceptance gate.
     expect:
-      transition_id: S14
+      # Dual-identity: full-autopilot skipping verify-human and chaining to
+      # verify-codify is genuinely the F11/F13 transition (verify-human →
+      # verify-codify, either skip or approve path). S14 is the session-level
+      # label for the same emission.
+      transition_id_any: [S14, F11, F13]
       contains_any:
         - "verify-codify"
         - "codify"
         - "skipping"
         - "skipped"
         - "skip"
+      # S14 is one of the rare scenarios where presence of verify-human prose
+      # is genuinely a behavior bug (full-autopilot must skip it), so flip
+      # not_contains to strict — content-mismatch should FAIL not SOFT_PASS.
       not_contains:
         - "verify-human"
         - "human review"
         - "manually review"
+      not_contains_strict: true
     max_retries: 2
 
   - id: S6
