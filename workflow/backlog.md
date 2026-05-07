@@ -1,5 +1,15 @@
 # Backlog
 
+## SURFACE-2026-05-06-SETTINGS-JSON-ALLOWLIST-CRUFT
+- **Source:** feature:finalize (telegram-notify-hook, 2026-05-06)
+- **Target level:** task
+- **Type:** tech-debt
+- **Summary:** `~/.claude/settings.json` `permissions.allow` accumulated 5+ specific full-URL Telegram API curl entries during the original `notify-human` skill development (e.g. `Bash(curl -s "https://api.telegram.org/bot<token>/getUpdates")`). The skill is gone but the allowlist entries remain — they reference the bot token in plaintext, are tied to one specific token, and would all need to change if the token rotated. They could be consolidated into one pattern entry like `Bash(curl -s "https://api.telegram.org/bot*")` or removed entirely (the hook now runs the only Telegram API call automation needs).
+- **Why this matters:** low-grade — the entries still work, they're just verbose, token-coupled, and confusing for future-me trying to understand what's still in use. Also: plaintext bot tokens in an allowlist are mildly worse than nothing, since the same token is already in `env`.
+- **Suggested action:** small task — review each `Bash(curl ... api.telegram.org ...)` allowlist entry, consolidate into one pattern or delete the unused ones. Verify the hook still runs after.
+- **Priority:** low
+- **Status:** open
+
 ## SURFACE-2026-05-06-FEATURE-WORKFLOW-MISSING-REPRO-STEP
 - **Source:** session-start (this conversation, 2026-05-06) — classifying the order-flip incident as a feature
 - **Target level:** product:wbs (or feature:spec for a self-contained workflow change)

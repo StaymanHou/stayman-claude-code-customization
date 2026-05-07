@@ -1,7 +1,8 @@
 # Feature: Telegram Notify Hook (replace notify-human skill)
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** finalize (complete)
+**Completed:** 2026-05-06
 **Created:** 2026-05-06
 **drive_mode:** full-autopilot (switched from autopilot at end of P2.verify-self per user request)
 
@@ -48,15 +49,34 @@ The `notify-human` skill relies on the model remembering a global rule to invoke
   - [x] verify-codify
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** ship
+- **Path:** Feature > finalize
+- **Active scope:** finalize
 - **Blocked:** none
-- **Unvisited (in execution order):** ship → finalize
+- **Unvisited (in execution order):** finalize
 - **Open discoveries:** none
+
+## Ship Record
+- **Commit:** `013a30e` on `main`
+- **Pushed:** `8aa6e65..013a30e` to `origin/main`
+- **Date:** 2026-05-06
+- **Test state at ship:** 28/28 structural checks pass
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
      Each entry is also logged to workflow/backlog.md -->
+
+## Retrospect
+
+- **What changed in our understanding:** Confirmed empirically that bot-to-private-chat outgoing messages do not appear in `getUpdates` — initial verify-self interpreted empty `getUpdates` as failed delivery, but a direct verbose curl showed `ok: true, message_id: 91`. Worth remembering: the only reliable way to confirm Telegram delivery from automation is the API response body, not polling.
+- **Assumptions that held:** the hook fires deterministically before the model gets control; users see notifications without any model involvement; Phase 1 verifications carried directly to Phase 2 (the doc-corpus changes did not break orchestration coherence).
+- **Assumptions that were wrong:** initial Phase 2 plan (P2.2) intended to *replace* the `## Telegram notify-human (GLOBAL)` section in `CLAUDE.snippet.md` with a hook-explainer; user redirected mid-flight to remove it entirely. The "global mandate" framing was outdated — when behavior is a deterministic hook, it doesn't need to be reasserted in the model's prompt at all. Same logic applied to the `(Telegram notifications fire automatically...)` parentheticals across the 4 AGENTS.md files: they leaked transport detail into orchestration procedure that should be transport-agnostic.
+- **Approach delta:** Plan was 2 phases, executed as 2 phases. The verify-self subagent path in the existing `feature-verify-self/SKILL.md` is Playwright-/HTTP-shaped and didn't fit a CLI-shaped feature; we ran the live-system observations as direct curl + bash invocations instead of spawning a Playwright subagent. No back-loops were needed — both phases verified clean on first pass. Two mid-feature user redirects shaped the final result: format change at verify-human (project name as first line), and removal of all transport-mention parentheticals across AGENTS.md.
+
+## Communicate
+
+> **Feature complete:** `notify-telegram.sh` Claude Code hook has shipped (commit `013a30e`, pushed to `origin/main`). It replaces the `notify-human` skill — Telegram notifications now fire deterministically on every `Notification` (Claude is blocked) and `Stop` (turn ended) event via `~/.claude/hooks/notify-telegram.sh`, with no model involvement. To verify in action: trigger any `/feature-*` skill that pauses for input; a Telegram message should arrive immediately with the project name on its own line and a one-line status.
+
+Requester = operator — closure notice for self-record.
 
 ## Notes
 
