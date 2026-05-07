@@ -90,10 +90,3 @@ Every feature WIP file uses the Work Tree format. All skills that read or write 
 3. **Treat all template/scaffold generators as destructive** until proven otherwise. Non-empty target directories are the danger zone.
 
 Rationale: this rule exists because of a real incident where a scaffolder wiped strategic docs without warning. Only the conversation transcript saved the work. Don't rely on transcript survival.
-
-## Telegram notify-human (GLOBAL)
-
-**ALWAYS invoke the `/notify-human` skill before requesting human input** — any substantive question, decision point, review request, verification checklist, or any moment the user might have walked away from the terminal. This is non-negotiable across all projects and contexts.
-
-- Requires `CLAUDE_TELEGRAM_BOT_TOKEN` and `CLAUDE_TELEGRAM_CHAT_ID` in `~/.claude/settings.json` env. If unset, skip the notification silently and proceed.
-- **Do NOT notify for:** trivial yes/no confirmations during routine steps, or tool permission prompts (Claude Code handles those natively).

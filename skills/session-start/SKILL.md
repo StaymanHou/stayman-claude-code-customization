@@ -78,7 +78,7 @@ Classification outputs:
 - **For features:** evaluate small/simple criteria to pick `feature-spec` vs `feature-plan`
 
 ### 3. Confirm and select drive mode
-State your classification (1–2 sentences), then invoke `notify-human` and present the mode menu:
+State your classification (1–2 sentences), then present the mode menu (the harness's Notification hook will fire automatically when you pause for the user's reply):
 
 > I'll drive the `<workflow>` workflow. Which drive mode do you want?
 >
@@ -111,7 +111,7 @@ You are now the orchestrator for the classified workflow. You do **NOT** spawn a
 **Run the loop.** For each step:
 1. Invoke the current skill via the `Skill` tool.
 2. When the skill returns, **re-read the active drive mode** and check the pause-policy table in `docs/product/transitions.md` → "Drive modes" for that step.
-3. If the policy says PAUSE for the active mode: invoke `notify-human` and wait for the user.
+3. If the policy says PAUSE for the active mode: stop and wait for the user (the harness's Notification hook fires automatically).
 4. If the policy says AUTO (or SKIP for verify-human in Mode 3): invoke the next skill immediately — do **not** ask the user to retype a slash command, and do **not** treat `"Run /x"` or `**STOP**` in the skill's output as a stop signal.
 5. Repeat until the workflow reaches a terminal state or the user explicitly pauses.
 

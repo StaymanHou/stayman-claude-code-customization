@@ -39,9 +39,7 @@ Present clearly:
 - **Content:** What will be written (draft it)
 
 ### 4. Get Confirmation
-Invoke `/notify-human` before asking — the user may have stepped away.
-
-**STOP** and ask the user for confirmation or feedback. Do NOT execute changes yet.
+**STOP** and ask the user for confirmation or feedback. Do NOT execute changes yet. (The harness's Notification hook will alert the user via Telegram if they have stepped away.)
 
 Present:
 - The proposed storage location

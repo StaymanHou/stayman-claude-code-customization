@@ -27,7 +27,7 @@ The system is **advisory, not coercive**: transitions are encoded in prompts, no
 - **Correctness:** Automated transition tests (`tests/run-tests.sh`) pass consistently on `haiku` and above; flaky tests get rewritten, not retried.
 - **Context survival:** The user can `session-pause` mid-feature, return days later via `session-resume`, and continue without re-explanation. The active WIP file plus `workflow/.session.md` is sufficient context.
 - **Cross-level fidelity:** Discoveries during lower-level work reliably surface to `workflow/backlog.md` rather than getting lost or derailing the current state.
-- **Human-in-the-loop alerting:** When the agent needs the user, `notify-human` fires. The user is never left guessing whether the agent is waiting on them.
+- **Human-in-the-loop alerting:** When the agent is blocked or a turn ends, the harness's `notify-telegram.sh` hook fires automatically. The user is never left guessing whether the agent is waiting on them.
 
 ## Core Principles
 
@@ -37,7 +37,7 @@ The system is **advisory, not coercive**: transitions are encoded in prompts, no
 4. **Surface, don't swallow.** Real work uncovers work. When a task reveals a feature, or a feature reveals an architectural gap, the system has a named mechanism (SURFACE / ESCALATE / REDIRECT) to route it — never silent TODO comments or dropped threads.
 5. **Source lives here; `~/.claude/` is a symlink.** The repo is the source of truth. Edits are live. There is no build step and no duplication.
 6. **Per-project state stays per-project.** Workflow artifacts (`workflow/wip/`, `workflow/backlog.md`, `workflow/.session.md`) and strategic docs (`docs/product/`) live in the project the user is working on, not in the skill repo. The skill repo ships behavior, not state.
-7. **Human interruptibility is a feature.** Telegram notifications via `notify-human` are mandatory before any substantive question. The agent must never silently block on the user.
+7. **Human interruptibility is a feature.** Telegram notifications fire automatically via a Claude Code hook on every `Notification` and `Stop` event — deterministic, not model-driven. The agent never silently blocks on the user.
 8. **Ported, not reinvented.** This system is a deliberate port of the Gemini CLI workflow — refined and restructured around skills/agents, but preserving the hard-won shape of the original lifecycle.
 
 ---

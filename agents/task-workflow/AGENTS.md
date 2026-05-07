@@ -8,7 +8,6 @@ skills:
   - session-pause
   - session-resume
   - session-reflect
-  - notify-human
 ---
 
 # Task Workflow Orchestrator
@@ -55,8 +54,7 @@ When the user invokes you (e.g., "start a task workflow"), you:
    - **SURFACE (T7, T8):** Follow the surface mechanism — default to note-and-continue. Log to `workflow/backlog.md`.
    - **ESCALATE (T3, T9):** Close/archive the task, inform the user to start a feature workflow.
    - **REDIRECT (T4):** Pause task, direct user to research, plan to resume on return.
-5. **Invoke `/notify-human`** before any question or decision point that requires human input.
-6. **Support pause/resume.** If the user needs to stop, use `/session-pause`. On return, use `/session-resume`.
+5. **Support pause/resume.** If the user needs to stop, use `/session-pause`. On return, use `/session-resume`.
 
 ## Orchestration Procedure
 
@@ -70,7 +68,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 1. **Invoke each skill via the Skill tool** in sequence, following the state machine above.
 2. **After each skill completes**, read the `TRANSITION: <id>` token and re-check the pause-policy table for the active drive mode. Do not act on `"Run /x"` prose.
-3. **If you hit a blocker you can't resolve** (tests failing, environment broken, unclear instruction), pause with `/notify-human` — don't thrash.
+3. **If you hit a blocker you can't resolve** (tests failing, environment broken, unclear instruction), pause and surface it to the user — don't thrash.
 
 ### Pause policy by drive mode
 

@@ -131,6 +131,145 @@ fi
 
 echo ""
 
+# ── Phase 5: Hooks ────────────────────────────────────────────────────────
+
+echo "[Phase 5] Hook script integrity"
+
+# notify-telegram.sh exists in repo
+if [ -f hooks/notify-telegram.sh ]; then
+  check "hooks/notify-telegram.sh exists in repo" "pass"
+else
+  check "hooks/notify-telegram.sh exists in repo" "fail" "file missing"
+fi
+
+# notify-telegram.sh is executable
+if [ -x hooks/notify-telegram.sh ]; then
+  check "hooks/notify-telegram.sh is executable" "pass"
+else
+  check "hooks/notify-telegram.sh is executable" "fail" "missing executable bit"
+fi
+
+# notify-telegram.sh passes bash syntax check
+if bash -n hooks/notify-telegram.sh 2>/dev/null; then
+  check "hooks/notify-telegram.sh passes bash syntax check" "pass"
+else
+  check "hooks/notify-telegram.sh passes bash syntax check" "fail" "bash -n failed"
+fi
+
+# Hook symlink in ~/.claude/hooks/ resolves into this repo (only after install.sh)
+hook_link_target=$(readlink ~/.claude/hooks/notify-telegram.sh 2>/dev/null || echo "")
+if echo "$hook_link_target" | grep -q "my-claude-code-customization"; then
+  check "~/.claude/hooks/notify-telegram.sh symlink resolves to this repo" "pass"
+else
+  check "~/.claude/hooks/notify-telegram.sh symlink resolves to this repo" "fail" \
+    "target: ${hook_link_target:-missing}"
+fi
+
+# Hook is silent no-op when env vars missing (must exit 0)
+if (unset CLAUDE_TELEGRAM_BOT_TOKEN CLAUDE_TELEGRAM_CHAT_ID; \
+    echo '{"hook_event_name":"Notification","message":"x"}' \
+    | hooks/notify-telegram.sh > /dev/null 2>&1); then
+  check "hook exits 0 with missing env vars (silent no-op)" "pass"
+else
+  check "hook exits 0 with missing env vars (silent no-op)" "fail" "non-zero exit"
+fi
+
+# Hook tolerates malformed JSON on stdin (must exit 0)
+if (unset CLAUDE_TELEGRAM_BOT_TOKEN CLAUDE_TELEGRAM_CHAT_ID; \
+    echo "not json at all" | hooks/notify-telegram.sh > /dev/null 2>&1); then
+  check "hook exits 0 with malformed JSON stdin" "pass"
+else
+  check "hook exits 0 with malformed JSON stdin" "fail" "non-zero exit"
+fi
+
+# Hook tolerates empty stdin (must exit 0)
+if (unset CLAUDE_TELEGRAM_BOT_TOKEN CLAUDE_TELEGRAM_CHAT_ID; \
+    echo "" | hooks/notify-telegram.sh > /dev/null 2>&1); then
+  check "hook exits 0 with empty stdin" "pass"
+else
+  check "hook exits 0 with empty stdin" "fail" "non-zero exit"
+fi
+
+# settings.json (global) is valid JSON and contains both hook entries
+if command -v python3 &>/dev/null; then
+  if python3 -c "import json; d=json.load(open('$HOME/.claude/settings.json')); \
+      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'; \
+      assert 'Stop' in d.get('hooks',{}), 'Stop hook missing'" 2>/dev/null; then
+    check "~/.claude/settings.json has Notification + Stop hooks" "pass"
+  else
+    err=$(python3 -c "import json; d=json.load(open('$HOME/.claude/settings.json')); \
+      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'; \
+      assert 'Stop' in d.get('hooks',{}), 'Stop hook missing'" 2>&1)
+    check "~/.claude/settings.json has Notification + Stop hooks" "fail" "$err"
+  fi
+fi
+
+echo ""
+
+# ── Phase 6: notify-human skill is gone ───────────────────────────────────
+#
+# The notify-human skill was replaced by the notify-telegram.sh hook.
+# These assertions catch a regression where someone re-introduces the skill
+# or leaves a stale invocation in active orchestration guidance.
+
+echo "[Phase 6] notify-human skill removal"
+
+# (a) skills/notify-human/ does not exist in the repo
+if [ ! -e skills/notify-human ]; then
+  check "skills/notify-human/ does not exist" "pass"
+else
+  check "skills/notify-human/ does not exist" "fail" "directory still present"
+fi
+
+# (b) ~/.claude/skills/notify-human symlink is gone (post-install)
+if [ ! -e ~/.claude/skills/notify-human ]; then
+  check "~/.claude/skills/notify-human symlink is gone" "pass"
+else
+  check "~/.claude/skills/notify-human symlink is gone" "fail" "stale symlink present"
+fi
+
+# (c) No AGENTS.md references notify-human (skills list or invocation)
+agents_hits=$( { grep -l "notify-human\|notify_human" agents/*/AGENTS.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+if [ "$agents_hits" = "0" ]; then
+  check "no AGENTS.md references notify-human" "pass"
+else
+  check "no AGENTS.md references notify-human" "fail" \
+    "$( { grep -l 'notify-human\|notify_human' agents/*/AGENTS.md 2>/dev/null || true; } )"
+fi
+
+# (d) No active SKILL.md references invoke /notify-human
+skills_hits=$( { grep -l "notify-human\|notify_human" skills/*/SKILL.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+if [ "$skills_hits" = "0" ]; then
+  check "no SKILL.md references notify-human" "pass"
+else
+  check "no SKILL.md references notify-human" "fail" \
+    "$( { grep -l 'notify-human\|notify_human' skills/*/SKILL.md 2>/dev/null || true; } )"
+fi
+
+# (e) CLAUDE.snippet.md has no notify-human mention (the global mandate is gone)
+if ! grep -q "notify-human\|notify_human" CLAUDE.snippet.md 2>/dev/null; then
+  check "CLAUDE.snippet.md has no notify-human reference" "pass"
+else
+  check "CLAUDE.snippet.md has no notify-human reference" "fail" "still referenced"
+fi
+
+# (f) ~/.claude/CLAUDE.md (the rendered global guidance) has no notify-human mention
+if ! grep -q "notify-human\|notify_human" "$HOME/.claude/CLAUDE.md" 2>/dev/null; then
+  check "~/.claude/CLAUDE.md has no notify-human reference" "pass"
+else
+  check "~/.claude/CLAUDE.md has no notify-human reference" "fail" "still referenced"
+fi
+
+# (g) ~/.claude/settings.json has no orphan permission entry pointing at the
+# deleted skill directory
+if ! grep -q "skills/notify-human" "$HOME/.claude/settings.json" 2>/dev/null; then
+  check "~/.claude/settings.json has no skills/notify-human permission" "pass"
+else
+  check "~/.claude/settings.json has no skills/notify-human permission" "fail" "orphan entry present"
+fi
+
+echo ""
+
 # ── Phase 1: Scenario YAML validity ───────────────────────────────────────
 
 echo "[Phase 1] Scenario YAML integrity"

@@ -63,6 +63,34 @@ for agent_dir in "$SOURCE_DIR"/agents/*/; do
   echo "  [new] agents/$agent_name"
 done
 
+# --- Symlink Hooks ---
+if [ -d "$SOURCE_DIR/hooks" ]; then
+  mkdir -p "$TARGET_DIR/hooks"
+
+  for hook_file in "$SOURCE_DIR"/hooks/*; do
+    [ -f "$hook_file" ] || continue
+    hook_name="$(basename "$hook_file")"
+    link="$TARGET_DIR/hooks/$hook_name"
+
+    if [ -L "$link" ]; then
+      current_target="$(readlink "$link")"
+      if [ "$current_target" = "$hook_file" ]; then
+        echo "  [ok] hooks/$hook_name (already linked)"
+        continue
+      else
+        echo "  [update] hooks/$hook_name (repointing symlink)"
+        rm "$link"
+      fi
+    elif [ -e "$link" ]; then
+      echo "  [skip] hooks/$hook_name (exists but is not a symlink — manual resolution needed)"
+      continue
+    fi
+
+    ln -s "$hook_file" "$link"
+    echo "  [new] hooks/$hook_name"
+  done
+fi
+
 # --- Inject workflow snippet into ~/.claude/CLAUDE.md ---
 SNIPPET_FILE="$SOURCE_DIR/CLAUDE.snippet.md"
 GLOBAL_CLAUDE_MD="$TARGET_DIR/CLAUDE.md"

@@ -15,7 +15,6 @@ skills:
   - session-pause
   - session-resume
   - session-reflect
-  - notify-human
 ---
 
 # Feature Workflow Orchestrator
@@ -113,8 +112,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
    - **SURFACE (F25, F26):** Follow surface mechanism rules
    - **REDIRECT (F22):** Pause build, send to research, plan return
    - **SURFACE-IN (F28):** Accept escalations from task level
-5. **Invoke `/notify-human`** before any human decision point.
-6. **Support pause/resume** via `/session-pause` and `/session-resume`.
+5. **Support pause/resume** via `/session-pause` and `/session-resume`.
 
 ## Orchestration Procedure
 
@@ -128,7 +126,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 1. **Invoke each skill via the Skill tool** in sequence, following the state machine and per-phase loop.
 2. **After each skill completes**, read the `TRANSITION: <id>` token — that is the machine signal. Re-check the pause-policy table below for the active drive mode. Do not act on `"Run /feature-x"` prose or `**STOP**` directives.
-3. **Incident interrupt (F27):** if something breaks during any state, invoke `/notify-human` and surface to the user immediately — do not recover silently.
+3. **Incident interrupt (F27):** if something breaks during any state, surface to the user immediately and pause — do not recover silently.
 
 ### Pause policy by drive mode
 

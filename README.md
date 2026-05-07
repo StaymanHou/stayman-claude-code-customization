@@ -19,8 +19,9 @@ Lower-level workflows can **surface** discoveries upward (e.g., a task discovers
 
 | Component | Count | Description |
 |-----------|-------|-------------|
-| **Skills** | 32 | One per workflow step, plus `notify-human` |
+| **Skills** | 31 | One per workflow step |
 | **Agents** | 4 | Orchestrators: product, feature, task, incident |
+| **Hooks** | 1 | `notify-telegram.sh` — fires on Notification + Stop events |
 | **Transitions** | 63 | Defined in `docs/product/transitions.md` |
 | **Install script** | 1 | Idempotent symlink setup |
 
@@ -31,7 +32,7 @@ Lower-level workflows can **surface** discoveries upward (e.g., a task discovers
 - **Task (3):** plan, act, close
 - **Incident (5):** report, triage, investigate, mitigate, resolve
 - **Session (5):** start, pause, resume, reflect, store-learning
-- **Cross-cutting (1):** notify-human (Telegram notifications)
+- **Telegram notifications:** wired via the `hooks/notify-telegram.sh` harness hook (no skill — fires automatically on Notification + Stop events)
 
 ## Installation
 
@@ -52,8 +53,8 @@ cd ~/Personal/projects/my-claude-code-customization
 ```
 
 The install script:
-- Creates per-skill and per-agent symlinks from this repo to `~/.claude/skills/` and `~/.claude/agents/`.
-- Injects the contents of [`CLAUDE.snippet.md`](CLAUDE.snippet.md) into `~/.claude/CLAUDE.md` between `<!-- BEGIN/END claude-workflow-system -->` markers. This primes every Claude Code session with the workflow entry points, orchestrator subagents, and the `notify-human` mandate. A one-time `.bak` is written on first modification.
+- Creates per-skill, per-agent, and per-hook symlinks from this repo to `~/.claude/skills/`, `~/.claude/agents/`, and `~/.claude/hooks/`.
+- Injects the contents of [`CLAUDE.snippet.md`](CLAUDE.snippet.md) into `~/.claude/CLAUDE.md` between `<!-- BEGIN/END claude-workflow-system -->` markers. This primes every Claude Code session with the workflow entry points and orchestrator subagents. A one-time `.bak` is written on first modification.
 
 It's idempotent — safe to re-run: subsequent runs refresh the block between markers rather than appending again. **To opt out of the injected block, don't re-run `install.sh`** — the block you already have is yours to edit or delete. Any `install.sh` invocation will reassert the canonical block.
 
@@ -135,7 +136,7 @@ During any workflow, if you discover something that belongs at a higher level:
 - **Advisory enforcement:** State machines are encoded in skill prompts, not hard-blocked by hooks. This allows flexibility while maintaining structure.
 - **Per-phase verification loop:** Features go through `build → verify-auto → verify-self → verify-human → verify-codify` for each implementation phase.
 - **File-based state:** `workflow/wip/` files are the canonical record — inspectable, git-trackable, and persistent across sessions.
-- **Telegram notifications:** The `notify-human` skill alerts you via Telegram before Claude needs your input.
+- **Telegram notifications:** The `notify-telegram.sh` hook fires automatically on `Notification` (Claude is blocked, awaiting input) and `Stop` (turn ended) events — deterministic, not model-driven.
 
 ## Per-Project State
 

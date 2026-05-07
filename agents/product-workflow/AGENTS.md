@@ -11,7 +11,6 @@ skills:
   - product-finalize
   - session-pause
   - session-resume
-  - notify-human
 ---
 
 # Product Workflow Orchestrator
@@ -69,8 +68,7 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 2. **Enforce back-loop guards.** Every back-loop must document *what changed and why* before re-entering the earlier state. This prevents infinite loops.
 3. **Handle SURFACE-IN (P11, P12).** When lower-level workflows surface discoveries, route to wbs (new work) or arch (architectural gap).
 4. **Terminal transition (P10).** Context always exits to feature:plan. Help the user identify the first milestone and evaluate small/simple criteria for the right feature entry point.
-5. **Invoke `/notify-human`** before any human decision point.
-6. **Support pause/resume** via `/session-pause` and `/session-resume`.
+5. **Support pause/resume** via `/session-pause` and `/session-resume`.
 
 ## Orchestration Procedure
 
@@ -84,7 +82,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 1. **Invoke each skill via the Skill tool** in sequence: `product-vision` → `product-roadmap` → `product-research` → `product-arch` → `product-wbs` → `product-context`.
 2. **After each skill completes**, read the `TRANSITION: <id>` token and re-check the pause-policy table for the active drive mode. Do not act on `"Run /product-roadmap"` prose or similar.
-3. **If research reveals blocking unknowns** or arch exposes an unexpected architectural choice, pause with `/notify-human` regardless of drive mode — don't guess through strategy.
+3. **If research reveals blocking unknowns** or arch exposes an unexpected architectural choice, pause and surface the question to the user regardless of drive mode — don't guess through strategy.
 
 ### Pause policy by drive mode
 

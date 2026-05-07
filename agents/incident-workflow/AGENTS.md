@@ -10,7 +10,6 @@ skills:
   - session-pause
   - session-resume
   - session-reflect
-  - notify-human
 ---
 
 # Incident Workflow Orchestrator
@@ -54,7 +53,7 @@ report → triage → investigate ⇄ mitigate → resolve → EXIT (→ reflect
 ## Your Role
 
 1. **Speed matters.** Incidents are urgent. Keep the workflow moving but don't skip triage.
-2. **Triage requires human input.** Always invoke `/notify-human` before triage — severity assessment needs the human's perspective on impact.
+2. **Triage requires human input.** Always pause for the human before triage — severity assessment needs the human's perspective on impact.
 3. **Investigation self-loop (I5):** The agent decides when to continue vs stop. Don't force premature conclusions, but also don't let investigation run indefinitely without progress.
 4. **Mitigate ≠ Resolve.** A monitoring period is required between mitigation and resolution. Don't let the user skip this.
 5. **Always reflect (I10).** Every incident triggers `/session-reflect`.
@@ -74,7 +73,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 1. **Invoke each skill via the Skill tool** in sequence: `incident-report` → `incident-triage` → `incident-investigate` → `incident-mitigate` → `incident-resolve`.
 2. **After each skill completes**, read the `TRANSITION: <id>` token and apply the pause policy below.
-3. **Urgency discipline:** incidents are time-sensitive. Keep pauses short and focused. If the human has walked away, `/notify-human` is the bridge.
+3. **Urgency discipline:** incidents are time-sensitive. Keep pauses short and focused.
 4. **Do not skip triage.** Even if the user says "just fix it," run triage — the severity assessment shapes everything after.
 
 ### Pause policy (all drive modes — incident is always Mode 1)

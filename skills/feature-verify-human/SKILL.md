@@ -93,8 +93,8 @@ For each leaf item (after filtering), present as:
 - [ ] P1.verify-human.5: <item> [UNVERIFIED by agent]
 ```
 
-### 5. Invoke `/notify-human`
-Before presenting the checklist, invoke `/notify-human` to alert the user — they may have stepped away during the automated phase.
+### 5. Pause for the human
+Present the checklist and wait. The harness's Notification hook will alert the user via Telegram automatically — they may have stepped away during the automated phase.
 
 ### 6. Record Results
 As the human works through each item, record their result per leaf:

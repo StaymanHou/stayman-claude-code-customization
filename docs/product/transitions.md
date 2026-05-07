@@ -22,7 +22,7 @@ Keep both paths working: never bake auto-chain logic into individual skill promp
 The feature-workflow orchestrator (and any future workflow orchestrators) annotates every step with a pause policy. This lives in `agents/feature-workflow/AGENTS.md` → "Pause policy" table, not in individual skill SKILL.md files.
 
 - **AUTO** — orchestrator chains immediately to the next step on a passing transition. No user prompt.
-- **PAUSE** — orchestrator stops, invokes `notify-human`, and waits for the user before proceeding.
+- **PAUSE** — orchestrator stops and waits for the user before proceeding. The harness's `Notification` hook fires automatically when the orchestrator blocks for input.
 
 The `TRANSITION: <id>` token emitted at the end of a skill's output is the machine signal the orchestrator acts on. The prose "Run `/feature-x`" in skill output is for single-step users only and must not cause the orchestrator to pause.
 
@@ -407,8 +407,8 @@ loop:
   spawn Agent(subagent_type=<workflow>-workflow,
               prompt=spawn_prompt(state))
   parse orchestration block from output
-  if malformed: retry once with stricter prompt, then pause + notify-human
-  if needs_human_input: notify-human, collect answer, append to pending_answers
+  if malformed: retry once with stricter prompt, then pause for human input
+  if needs_human_input: pause and collect answer (Notification hook fires automatically), append to pending_answers
   append summary to history
   if done: break, clean up .session.md
   state.next_skill = next_skill; persist
@@ -463,6 +463,10 @@ Procedure:
 - If we want finer-grained resume (mid-orchestration, not just mid-skill)
 
 ---
+
+## Change Log
+
+- **2026-05-06 — `notify-human` skill removed; replaced by harness hook.** Telegram alerts are now sent by `hooks/notify-telegram.sh` (symlinked to `~/.claude/hooks/`) configured in `~/.claude/settings.json` under `hooks.Notification` (Claude is blocked) and `hooks.Stop` (turn ended). Rationale: the prior skill relied on the model remembering a global rule before each human-input moment, which drifted in long sessions. The hook is deterministic, runs outside the model loop, and adds Stop-event coverage (notifies on turn end as well as input-blocked). All references to invoking `/notify-human` were stripped from agent procedures, skill steps, and CLAUDE.md guidance in the same change.
 
 ## Future Transitions
 
