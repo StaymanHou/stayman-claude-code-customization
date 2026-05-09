@@ -1246,3 +1246,137 @@ scenarios:
       not_contains:
         - "/feature-ship"
     max_retries: 2
+
+  # Reproduce step (F31–F35) — optional pre-spec/pre-plan red-green discipline for bug-fix features.
+
+  - id: F31
+    name: "feature:reproduce entered for bug-shape feature"
+    skill: feature-reproduce
+    args: >
+      The order-flip regression: after verify-codify on the final phase, the
+      agent's closing prose says "Ready for feature-finalize → feature-ship" —
+      ship and finalize are inverted.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      This is the bug-shape entry point. The user has described an undesirable
+      behavior. Your job is to attempt reproduction (red-green discipline) — write
+      a failing test, document a deterministic recipe, or capture a telemetry
+      signature. You have NOT yet decided whether reproduction succeeded — you
+      are entering the reproduce state. Do not skip ahead to spec or plan.
+    expect:
+      transition_id: F31
+      contains_any:
+        - "reproduce"
+        - "Reproduce"
+        - "failing test"
+        - "red-green"
+      not_contains:
+        - "/feature-spec"
+        - "/feature-plan"
+    max_retries: 2
+
+  - id: F32
+    name: "feature:reproduce → spec when reproduced cleanly + complex feature"
+    skill: feature-reproduce
+    args: >
+      Real-time order-flip regression touching multiple skills, AGENTS.md,
+      transitions.md, and tests across 3 workflows. Write a failing test that
+      asserts the correct prose order and confirm it fails.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-reproduce-success.md
+    system_prompt_extra: |
+      You have written a failing test (`tests/scenarios/feature.yaml::F16-order`)
+      that asserts verify-codify mentions /feature-ship before /feature-finalize.
+      The test currently fails. Reproduction succeeded. The fix is complex —
+      multiple skills, multiple workflows, more than 200 lines, requires
+      architectural decisions. This fails the small/simple criteria.
+      Hand off to spec.
+    expect:
+      transition_id: F32
+      contains_any:
+        - "/feature-spec"
+      not_contains:
+        - "/feature-plan"
+        - "terminate"
+    max_retries: 2
+
+  - id: F33
+    name: "feature:reproduce → plan when reproduced cleanly + small/simple feature"
+    skill: feature-reproduce
+    args: >
+      Typo in error message: when login fails with invalid email format, the
+      response says "Email is not a vaild email" (typo: vaild). Should say "valid".
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      You wrote a failing test that asserts the response text matches "valid"
+      not "vaild". The test currently fails. Reproduction succeeded. The fix is
+      a one-line string change in one file — no new data models, no architecture,
+      describable in 1 sentence, under 5 minutes of work, ~1 line changed. All
+      small/simple criteria are met. Hand off to plan.
+    expect:
+      transition_id: F33
+      contains_any:
+        - "/feature-plan"
+      not_contains:
+        - "/feature-spec"
+        - "terminate"
+    max_retries: 2
+
+  - id: F34
+    name: "feature:reproduce → spec (preventive hardening) when could-not-reproduce + user wants preventive fix"
+    skill: feature-reproduce
+    args: >
+      Intermittent dashboard load failure — users report blank screen
+      occasionally but I cannot reproduce locally even with 50 attempts under
+      throttled conditions. I want to harden the dashboard load path defensively
+      anyway since the telemetry shows real 504 spikes from /api/dashboard/widgets.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-reproduce-failed.md
+    system_prompt_extra: |
+      You attempted reproduction across 50 trials and could not capture the bug
+      locally. Telemetry shows real prod incidents (504 spikes). The user has
+      explicitly stated they want preventive hardening — defensive timeout
+      handling, retry logic, and fallback UI for the dashboard widgets endpoint.
+      Hand off to spec with framing reset to "preventive hardening — bug not
+      reproducible at reproduce stage."
+    expect:
+      transition_id: F34
+      contains_any:
+        - "/feature-spec"
+        - "preventive"
+      not_contains:
+        - "/feature-plan"
+        - "terminate"
+    max_retries: 2
+
+  - id: F35
+    name: "feature:reproduce → terminate when could-not-reproduce + no preventive fix"
+    skill: feature-reproduce
+    args: >
+      User reports an issue where the avatar image "sometimes shows the wrong
+      person" but cannot give specifics. I tried to reproduce by loading 100
+      different user profiles and saw no mismatches. No telemetry shows any
+      avatar-related errors. User confirms they cannot reproduce it either now,
+      and there's nothing actionable here. They are okay closing without a fix.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-reproduce-failed.md
+    system_prompt_extra: |
+      Reproduction attempt returned could-not-reproduce. No telemetry signal,
+      no actionable description, user has explicitly accepted closing the
+      workflow without a fix. The reproduce attempt itself is the record.
+      Terminate the workflow (F35).
+    expect:
+      transition_id: F35
+      contains_any:
+        - "terminate"
+        - "close"
+        - "record"
+      not_contains:
+        - "/feature-spec"
+        - "/feature-plan"
+    max_retries: 2

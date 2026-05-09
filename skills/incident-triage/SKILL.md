@@ -19,8 +19,11 @@ You are in the **incident** workflow at the **triage** state.
 This is a **new state** not present in the original Gemini workflow — added to ensure severity assessment before investigation.
 
 **Valid transitions from here:**
-- **I3 → investigate:** Severity assessed, needs investigation → tell user to run `/incident-investigate`
+- **I3 → investigate:** Severity assessed, needs investigation, NOT reproducible locally (prod-data-only or telemetry-only) → tell user to run `/incident-investigate`
+- **I13 → reproduce:** Severity assessed, incident IS reproducible locally → tell user to run `/incident-reproduce` for red-green discipline before investigation
 - **I4 → resolve:** Fast-close — false alarm or duplicate → tell user to run `/incident-resolve`
+
+**Decision rule for I3 vs I13:** After severity is assessed, ask the human (or evaluate from the report): *can this incident be exercised in a test environment, or with a deterministic local recipe?* If yes → I13 (reproduce first; the failing test or recipe becomes the anchor for investigation and the regression gate for mitigation). If no — incidents tied to prod data shape, real concurrency, external service state, or telemetry-only signals — go to I3 (investigate directly using prod signals). Reproduce is optional; defaulting to I3 is always valid when reproducibility is unclear.
 
 ## Procedure
 
@@ -55,8 +58,11 @@ Update the incident report:
 
 ### 4. Evaluate Next Step
 
-**Needs investigation (I3):**
-- Tell user to run `/incident-investigate`
+**Needs investigation, reproducible locally (I13):**
+- Tell user to run `/incident-reproduce` to capture a failing test, deterministic recipe, or telemetry signature before investigating
+
+**Needs investigation, NOT reproducible locally (I3):**
+- Tell user to run `/incident-investigate` — investigation will rely on prod signals (telemetry, traces, logs)
 
 **Fast-close (I4):**
 - If false alarm or duplicate of existing incident

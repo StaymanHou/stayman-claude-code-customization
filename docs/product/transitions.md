@@ -58,6 +58,9 @@ Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes
 
 | Step | Mode 1 (Step-by-step) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (Full-autopilot) |
 |------|-----------------------|-----------------------|--------------------|------------------------|
+| reproduce — F32/F33 (reproduced cleanly) | PAUSE | AUTO | AUTO | AUTO |
+| reproduce — F34 (could-not-reproduce → preventive hardening) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| reproduce — F35 (could-not-reproduce → terminate) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
 | spec | PAUSE | PAUSE | PAUSE | AUTO |
 | research | PAUSE | PAUSE | AUTO | AUTO |
 | plan | PAUSE | PAUSE | AUTO | AUTO |
@@ -101,7 +104,10 @@ Incidents are always treated as **Mode 2 (Orchestrated)** regardless of the sele
 
 | Step | All modes |
 |------|-----------|
-| triage (I2→I3) | PAUSE |
+| triage (I2→I3 / I2→I13) | PAUSE |
+| reproduce → investigate (I14) | AUTO |
+| reproduce → investigate-with-telemetry-constraint (I15) | PAUSE |
+| reproduce → pause-as-record (I16) | PAUSE |
 | before mitigate (I6) | PAUSE |
 | back-loop (I8) | PAUSE |
 | before resolve (I9) | PAUSE |
@@ -221,10 +227,10 @@ Back-loop guard applies to: P4, P6, P8, P14.
 ## Feature Workflow
 
 ```
-States:  spec, research, plan, build, verify-auto, verify-self,
+States:  reproduce, spec, research, plan, build, verify-auto, verify-self,
          verify-human, verify-codify, ship, finalize, refactor
-Entry:   spec (complex) or plan (small/simple)
-Terminal: finalize or refactor (both → auto-trigger reflect)
+Entry:   spec (complex) or plan (small/simple) — or reproduce (bug-shape, optional)
+Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → terminate (F35) when could-not-reproduce
 ```
 
 **Per-phase loop:** `plan` decomposes a milestone into phases. The loop `build → verify-auto → verify-self → verify-human → verify-codify` executes once per phase. After all phases complete → ship.
@@ -276,6 +282,13 @@ Terminal: finalize or refactor (both → auto-trigger reflect)
 | F27 | ANY | incident:report | Something breaks |
 | F28 | SURFACE-IN | spec | Task/incident escalated to feature |
 | F30 | finalize | product-finalize | WBS fully complete — all WPs `[x]`; surface product-finalize to user |
+| F31 | ENTRY | reproduce | Bug-shape entry: user describes undesirable behavior (bug, regression, broken state) — optional pre-spec/pre-plan reproduction step |
+| F32 | reproduce | spec | Reproduced cleanly, feature is complex (fails small/simple criteria) |
+| F33 | reproduce | plan | Reproduced cleanly, feature is small/simple (all criteria met) |
+| F34 | reproduce | spec | Could-not-reproduce, user elects preventive hardening — spec framing reset to "preventive hardening" |
+| F35 | reproduce | EXIT (terminate) | Could-not-reproduce, no preventive fix — close workflow with reproduce attempt as record |
+
+**Reproduce step (F31–F35):** Optional, opt-in. Triggered when the user describes undesirable behavior (bug, regression, broken state). For new-capability features (no bug language) reproduce is skipped — workflow enters at spec or plan as before. Red-green discipline: write a failing test (or deterministic manual recipe, or telemetry signature) capturing the bug *before* spec/plan. The reproduction artifact becomes the anchor verify-codify uses to confirm "fixed means this no longer happens." Drive-mode behavior in the Pause-policy section above: F32/F33 are AUTO in modes 2–4; F34 is AUTO in mode 4 only (PAUSE in 1–3 because preventive hardening is a meaningful divergence); F35 is PAUSE in all modes (terminating a workflow without a reproduce signal deserves human confirmation).
 
 ---
 
@@ -308,9 +321,9 @@ Terminal: close
 ## Incident Workflow
 
 ```
-States:  report → triage → investigate → mitigate → resolve
+States:  report → triage → [reproduce] → investigate → mitigate → resolve
 Entry:   report
-Terminal: resolve
+Terminal: resolve (or reproduce → pause-as-record when could-not-reproduce-no-signal)
 ```
 
 | ID | From | To | Condition |
@@ -327,6 +340,12 @@ Terminal: resolve
 | I10 | resolve | EXIT→reflect | Always (auto-trigger) |
 | I11 | resolve | SURFACE→task:plan | Root cause needs proper fix (small) |
 | I12 | resolve | SURFACE→feature:spec | Root cause needs architectural fix (large) |
+| I13 | triage | reproduce | Reproducible incident — human or autopilot elects red-green reproduction before investigate |
+| I14 | reproduce | investigate | Reproduced cleanly (failing test or deterministic recipe) — investigate uses artifact as root-cause anchor |
+| I15 | reproduce | investigate | Could-not-reproduce-locally but telemetry confirms incident — investigate must rely on prod signals |
+| I16 | reproduce | EXIT (pause-as-record) | Could-not-reproduce and no telemetry signal — close workflow with reproduce attempt as record |
+
+**Reproduce step (I13–I16):** Optional, post-triage. The human decides at triage whether to attempt reproduction (I13) or go straight to investigate (I3) — reproducible bugs benefit from the red-green anchor; prod-data-only or telemetry-only incidents skip reproduce. Reproduce produces a failing test, a deterministic manual recipe, or a captured telemetry signature. The reproduction artifact becomes the anchor investigate uses to confirm root cause and mitigate uses to confirm the fix. Drive-mode behavior: incident workflow is always Mode 2 (Orchestrated) regardless of session drive mode — human judgment is non-negotiable. I14 (reproduced) is AUTO; I15 (telemetry-only constraint) and I16 (close-as-record) are PAUSE because they require human acknowledgement of degraded investigation conditions or workflow termination.
 
 ---
 
@@ -365,6 +384,7 @@ Session entry skills (`session-start`, `session-resume`, `session-pause`) are di
 | S15 | session-resume | (mode menu) | Surface `drive_mode` from `.session.md` and present change-mode menu |
 | S16 | session-resume | (mode change) | User selects different drive mode on resume — update WIP frontmatter |
 | S17 | session-pause | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |
+| S18 | session-start | feature:reproduce | Classified as bug-shape feature (user describes undesirable behavior) — route to optional pre-spec/pre-plan red-green reproduction |
 
 ---
 

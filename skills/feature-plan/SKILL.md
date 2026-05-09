@@ -20,6 +20,9 @@ This is the entry point for **small/simple** features (F2) or follows spec/resea
 Also entered via:
 - **F20 (refactor → plan):** CONSTRAINT — plan must be scoped to cleanup only, no new features
 - **F23 (build → plan back-loop):** Plan was wrong/incomplete — revise it
+- **F33 (reproduce → plan):** Bug-fix small/simple feature — repro artifact already exists; plan must reference the failing test as the verify-codify anchor
+
+**Bug-fix discoverability:** If `{{args}}` describes an undesirable behavior (bug, regression, broken state, wrong output) and you have not been entered via F33 from `feature-reproduce`, surface a one-line suggestion to the user: "If this describes a bug-fix or regression and you haven't run reproduction, consider running `/feature-reproduce` first to capture a failing test before planning the fix." Then proceed with planning — this is a soft pointer, not a gate.
 
 ## Procedure
 

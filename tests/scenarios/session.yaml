@@ -430,3 +430,27 @@ scenarios:
         - "drive_mode not set"
         - "no drive mode"
     max_retries: 2
+
+  - id: S18
+    name: "session:start routes bug-shape feature to feature:reproduce"
+    skill: session-start
+    args: >
+      The dashboard widget loading is broken — users intermittently see blank
+      widgets, console errors about undefined fields, and the cache invalidation
+      is misfiring across tabs. We've been getting reports for two weeks. This
+      affects multiple components (widget renderer, cache layer, cross-tab sync)
+      and we need to investigate root cause AND backfill regression coverage.
+      Fix this regression.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id_any: [S18, S2]
+      contains_any:
+        - "/feature-reproduce"
+        - "reproduce"
+        - "red-green"
+      not_contains:
+        - "/task-plan"
+        - "/incident-report"
+        - "/product-vision"
+    max_retries: 2

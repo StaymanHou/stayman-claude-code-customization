@@ -1,19 +1,23 @@
 # Backlog
 
-## SURFACE-2026-05-06-FEATURE-WORKFLOW-MISSING-REPRO-STEP
-- **Source:** session-start (this conversation, 2026-05-06) — classifying the order-flip incident as a feature
-- **Target level:** product:wbs (or feature:spec for a self-contained workflow change)
-- **Type:** workflow-design
-- **Summary:** The feature workflow has no first-class step for "reproduce the bug / observe the failure" before spec or plan. For bug-fix features (and likely some refactor / regression-style features) reproduction is the single most important early step — without it, spec is guessing at what's broken and plan is guessing at what to fix. The current workflow forces reproduction to be either smuggled into `feature-spec` (as it was here, under "Open Questions") or deferred to `feature-research`, neither of which is a clean fit. Spec is supposed to define *what* the feature does, not *whether the bug exists*; research is supposed to investigate unknowns about *the solution*, not confirm the *problem*.
-- **Why this matters:** Bug-fix features without confirmed repro are a known antipattern — the "fix" can land against a misdiagnosed cause, the repro conditions are lost (so regression tests can't be written tightly), and verify-self/verify-human have nothing to compare "fixed" against. The workflow currently allows this antipattern to pass through without friction.
-- **Observed in this session:** when classifying the order-flip incident, the user explicitly said "First step should be reproducing the issue." There's no skill or transition that names this. Closest fits are (a) treating `feature-research` as repro (semantically off — research is for solution unknowns), (b) packing repro into `feature-spec` (what we did, but uncomfortably), or (c) routing through the incident workflow (overkill — this isn't a production incident). None are clean.
-- **Possible directions (need design discussion, not yet committed):**
-  1. **Add a `feature-reproduce` step** before `feature-spec` for bug-fix features — entry transition picks reproduce vs. spec based on whether the user describes a bug or a new capability. Repro produces an artifact (failing test, manual repro path with deterministic result, or "could not reproduce — preventive fix only" finding) that spec/plan reference.
-  2. **Add a "reproduction" requirement inside `feature-spec`** for any feature whose problem statement describes a bug — make it a section of the spec template with mandatory content (steps, observed behavior, expected behavior, repro determinism). Lighter weight than a new step; doesn't address the "spec is the wrong place" complaint.
-  3. **Generalize `feature-research` to cover problem-confirmation as well as solution-investigation** — split it into two flavors or just broaden the description so repro fits without contortion.
-  4. **Route bug-fixes through incident workflow even when not production-impacting** — incident has triage→investigate which is closer in spirit. Probably overkill but worth considering.
-- **Suggested action:** Pick this up after the order-flip fix lands (so we have one fresh data point on how repro-as-spec-section actually felt). Likely a small product:research → arch decision rather than a full feature spec.
-- **Priority:** medium — current workflow works (we're shipping the order-flip fix through it), but the friction is real and will recur for every bug-fix feature.
+## SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT
+- **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
+- **Target level:** feature:spec
+- **Type:** workflow-gap
+- **Summary:** The incident workflow has no regression-securing step analogous to `feature-verify-codify`. After `incident-mitigate` applies a fix and `incident-resolve` confirms monitoring passes, there is no formal step that writes/extends test coverage to prevent recurrence. The new `incident-reproduce` step (when invoked) front-loads a failing test as the verify gate, but for incidents that bypass reproduce (telemetry-only, prod-data-only) — and even for ones that do go through reproduce — there's no codify-equivalent that ensures the regression test is permanently added to the suite alongside any adjacent coverage discoveries.
+- **Context:** Without an incident-codify step, the regression test from incident-reproduce may live only in the WIP/archive and never enter the regular CI test suite. Mitigate's fix may not have a corresponding permanent test. This mirrors the gap that motivated feature-verify-codify in the first place.
+- **Suggested action:** Design an `incident-codify` skill that runs between `incident-mitigate` and `incident-resolve`. Adapt the feature-verify-codify procedure (highest-level test, integration-boundary check, triage gate) for incident context — speed-aware, since incidents are time-sensitive. Add transitions, AGENTS.md row, pause policy.
+- **Priority:** medium
+- **Status:** open
+
+## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
+- **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
+- **Target level:** feature:spec
+- **Type:** workflow-enhancement
+- **Summary:** When `feature-build` hits an "I cannot tell if my fix actually worked because I never confirmed the bug" moment, allow REDIRECT into `feature-reproduce` (similar to F22 redirect to research). Currently reproduce is only an entry transition (F31) and post-spec/plan suggestion — there's no path FROM build INTO reproduce.
+- **Context:** Useful for bug-fix features that didn't go through reproduce upfront but discover during build that they need a failing-test anchor. Without this transition, the agent has to either (a) continue without confirmation, or (b) abandon and restart at reproduce. A redirect would preserve build state and let reproduce run, then resume.
+- **Suggested action:** Add Fnew → build → reproduce REDIRECT transition. Update feature-build SKILL.md to surface this as a valid exit when "could not confirm fix worked" condition holds. Update reproduce SKILL.md to recognize REDIRECT entry and hand back to build.
+- **Priority:** low (deferred — wait until we observe the need in practice)
 - **Status:** open
 
 ## SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP
@@ -58,6 +62,7 @@
 
 ## Resolved (chronological log)
 
+- **SURFACE-2026-05-06-FEATURE-WORKFLOW-MISSING-REPRO-STEP** — RESOLVED 2026-05-09: Implemented option 1 (new `feature-reproduce` and `incident-reproduce` skills). Feature workflow gained F31–F35 transitions; incident workflow gained I13–I16 transitions; session-start gained S18 routing for bug-shape language. Backlog spinouts: SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT (incident codify gap, medium) and SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD (low, deferred). Open known issues: F31 prose-leak (SOFT_PASS, same family as S12 leak); I13 wrong-transition-emission (SOFT_PASS, model emits I2 instead of I13 — test-design / SKILL clarity tradeoff). Both logged as Test Triage blocks in `workflow/wip/reproduce-step.md`.
 - **SURFACE-2026-05-08-SETTINGS-JSON-ALLOWLIST-CRUFT** — RESOLVED 2026-05-08: deleted four token-hardcoded GET allowlist entries (getUpdates x3, getWebhookInfo); kept POST pattern as generic fallback. Hook smoke-tested.
 - **SURFACE-2026-05-06-S9-S11-S14-DUAL-IDENTITY** — RESOLVED 2026-05-06: `transition_id_any` added to `tests/lib/verify.sh`; S9/S11/S12/S13/S14 updated. S9 PASSes via S9|F19 union. (S12 strict-mode regression spun out as SURFACE-2026-05-06-S12-AUTOCHAIN-LEAK-IN-AUTOPILOT, still open above.)
 - **SURFACE-2026-05-06-S10-S13-ROUTING-OVERRIDES-DRIVE-MODE** — RESOLVED 2026-05-06: `transition_id_any: [S10, S3]` and `[S13, F8]` applied. Some haiku-noise SOFT_PASS shape remains.

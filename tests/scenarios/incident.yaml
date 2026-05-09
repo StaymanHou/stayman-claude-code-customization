@@ -221,3 +221,101 @@ scenarios:
       not_contains:
         - "task:plan"
     max_retries: 2
+
+  # Reproduce step (I13–I16) — optional post-triage red-green discipline for reproducible incidents.
+
+  - id: I13
+    name: "incident:triage → reproduce when incident is reproducible locally"
+    skill: incident-triage
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-report-filed.md
+    system_prompt_extra: |
+      The human confirms: this is a P1 — major feature broken, many users
+      affected. The incident IS reproducible locally — the issue happens for
+      any user record missing the profile_image_url field, and we have a
+      deterministic test fixture for that condition. The human elects to
+      run reproduction first to capture a failing test that will anchor
+      both investigation and mitigation.
+    expect:
+      transition_id: I13
+      contains_any:
+        - "/incident-reproduce"
+        - "reproduce"
+        - "red-green"
+      not_contains:
+        - "/incident-investigate"
+        - "/incident-resolve"
+    max_retries: 2
+
+  - id: I14
+    name: "incident:reproduce → investigate when reproduced cleanly"
+    skill: incident-reproduce
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-reproduce-success.md
+    system_prompt_extra: |
+      You wrote a failing test that asserts /api/v2/users returns 200 with
+      profile_image_url null when user record has null image. The test
+      currently fails with NoneType serializer error. Reproduction succeeded.
+      The failing test is now the verify gate for mitigation. Hand off to
+      investigate so root cause analysis can proceed with the test as anchor.
+    expect:
+      transition_id: I14
+      contains_any:
+        - "/incident-investigate"
+      not_contains:
+        - "pause-as-record"
+        - "/incident-resolve"
+    max_retries: 2
+
+  - id: I15
+    name: "incident:reproduce → investigate-with-telemetry-constraint when local reproduction fails but telemetry confirms"
+    skill: incident-reproduce
+    args: "dashboard-504-spikes"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-reproduce-telemetry-only.md
+    system_prompt_extra: |
+      You attempted to reproduce 504 errors on /api/dashboard/widgets across
+      100 trials under throttled network conditions — all 100 passed locally.
+      However, production telemetry confirms the incident is real: 504 spikes
+      occur at p99 correlated with downstream service A's connection pool
+      exhaustion. Cannot reproduce locally, but the incident is genuine.
+      Hand off to investigate with the constraint that root-cause work must
+      rely on production telemetry rather than a local reproducer.
+    expect:
+      transition_id: I15
+      contains_any:
+        - "/incident-investigate"
+        - "telemetry"
+      not_contains:
+        - "pause-as-record"
+        - "/incident-resolve"
+    max_retries: 2
+
+  - id: I16
+    name: "incident:reproduce → pause-as-record when no reproduction and no telemetry signal"
+    skill: incident-reproduce
+    args: "avatar-mismatch-report"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-reproduce-no-signal.md
+    system_prompt_extra: |
+      Single user reported occasional avatar mismatch. You loaded 100 different
+      profiles — no mismatches. Searched logs for 30 days — no avatar-related
+      errors. Searched metrics — no anomalies. User cannot reproduce now either.
+      No actionable signal exists. The reproduce attempt itself becomes the
+      incident record. Close the workflow.
+    expect:
+      transition_id: I16
+      contains_any:
+        - "pause-as-record"
+        - "record"
+        - "close"
+        - "no signal"
+      not_contains:
+        - "/incident-investigate"
+        - "/incident-mitigate"
+    max_retries: 2

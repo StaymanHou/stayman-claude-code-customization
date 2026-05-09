@@ -23,6 +23,8 @@ This state is the entry point for **complex** features — those that fail the s
 - **F3 → research:** Unknowns exist that need investigation
 - **F4 → plan:** No unknowns, spec is clear → tell user to run `/feature-plan`
 
+**Bug-fix discoverability:** If `{{args}}` describes an undesirable behavior (bug, regression, broken state, wrong output) and you have not been entered via F32/F34 from `feature-reproduce`, surface a one-line suggestion to the user: "If this describes a bug-fix or regression and you haven't run reproduction, consider running `/feature-reproduce` first to capture a failing test before specifying the fix." Then proceed with spec — this is a soft pointer, not a gate.
+
 ## Procedure
 
 ### 1. Elicit Requirements

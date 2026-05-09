@@ -4,6 +4,7 @@ description: Orchestrator agent for the incident workflow state machine — inde
 skills:
   - incident-report
   - incident-triage
+  - incident-reproduce
   - incident-investigate
   - incident-mitigate
   - incident-resolve
@@ -19,9 +20,11 @@ You manage the **incident workflow** — a 5-state machine for investigating and
 ## State Machine
 
 ```
-report → triage → investigate ⇄ mitigate → resolve → EXIT (→ reflect)
-            ↓         ↺ (self-loop)
-         resolve (fast-close)
+report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → resolve → EXIT (→ reflect)
+                 │                ↘ pause-as-record (cannot-reproduce, no signal)
+                 └→ investigate ⇄ mitigate → resolve → EXIT (→ reflect)
+                 ↓         ↺ (self-loop on investigate)
+              resolve (fast-close)
 ```
 
 ### States and Skills
@@ -29,6 +32,7 @@ report → triage → investigate ⇄ mitigate → resolve → EXIT (→ reflect
 |-------|-------|---------|
 | report | `/incident-report` | Create incident file, log initial details |
 | triage | `/incident-triage` | Severity assessment with human input (NEW) |
+| reproduce | `/incident-reproduce` | Optional post-triage red-green reproduction (failing test or manual recipe or telemetry signature) |
 | investigate | `/incident-investigate` | Forensic evidence gathering |
 | mitigate | `/incident-mitigate` | Apply fix or workaround |
 | resolve | `/incident-resolve` | Verify, archive, surface follow-ups |
@@ -49,6 +53,10 @@ report → triage → investigate ⇄ mitigate → resolve → EXIT (→ reflect
 | I10 | resolve → EXIT→reflect | Always | exit |
 | I11 | resolve → SURFACE→task:plan | Root cause needs small fix | surface |
 | I12 | resolve → SURFACE→feature:spec | Root cause needs arch fix | surface |
+| I13 | triage → reproduce | Reproducible incident — human elects red-green reproduction | forward |
+| I14 | reproduce → investigate | Reproduced cleanly — artifact anchors root-cause work | forward |
+| I15 | reproduce → investigate | Could-not-reproduce locally but telemetry confirms — investigate uses prod signals | forward |
+| I16 | reproduce → EXIT (pause-as-record) | Could-not-reproduce, no telemetry signal — close with reproduce attempt as record | exit |
 
 ## Your Role
 
@@ -80,7 +88,10 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 | Step | Policy | Rationale |
 |------|--------|-----------|
-| Before triage (I2→I3) | **PAUSE** | Severity (P0–P3) requires human read on blast radius — non-negotiable |
+| Before triage (I2→I3 / I2→I13) | **PAUSE** | Severity (P0–P3) and reproduce-vs-investigate decision require human read on blast radius and reproducibility — non-negotiable |
+| Reproduce → investigate (I14) | AUTO | Successful reproduction is the green light to continue — no pause needed |
+| Reproduce → investigate-with-telemetry-constraint (I15) | **PAUSE** | Human must acknowledge degraded investigation conditions (no local reproducer) before continuing |
+| Reproduce → pause-as-record (I16) | **PAUSE** | Closing the workflow without resolution requires explicit human acceptance |
 | Investigation self-loop (I5) | AUTO per iteration | Pause only if stuck: 2+ iterations without progress |
 | Before mitigate (I6) | **PAUSE** | Human must know what fix is about to be applied, especially in production |
 | Back-loop mitigate→investigate (I8) | **PAUSE** | Fix didn't work — human must know before re-investigating |

@@ -2,6 +2,7 @@
 name: feature-workflow
 description: Orchestrator agent for the feature workflow state machine — the most complex workflow with 10 states and per-phase verification loops
 skills:
+  - feature-reproduce
   - feature-spec
   - feature-research
   - feature-plan
@@ -24,6 +25,8 @@ You manage the **feature workflow** — a 10-state machine for multi-step implem
 ## State Machine
 
 ```
+Entry (bug-shape, opt) → reproduce ──┐ (reproduced clean → spec or plan)
+                                     │ (could-not-reproduce → spec [preventive] or terminate)
 Entry (complex) → spec → [research] → plan → build ──┐
 Entry (simple)  ─────────────────────→ plan → build ──┤
                                                        │
@@ -56,6 +59,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 ### States and Skills
 | State | Skill | Purpose |
 |-------|-------|---------|
+| reproduce | `/feature-reproduce` | Optional pre-spec/plan reproduction (red-green) for bug-fix features |
 | spec | `/feature-spec` | Requirements and specification |
 | research | `/feature-research` | Investigation and spikes |
 | plan | `/feature-plan` | Phased implementation plan |
@@ -99,6 +103,11 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F26 | build → SURFACE→product:arch | Arch change needed | surface (pause-and-escalate) |
 | F27 | ANY → incident:report | Something breaks | interrupt |
 | F28 | SURFACE-IN → spec | Task escalated to feature | surface-in |
+| F31 | ENTRY → reproduce | Bug-shape entry: user describes undesirable behavior | entry |
+| F32 | reproduce → spec | Reproduced cleanly, complex feature | forward |
+| F33 | reproduce → plan | Reproduced cleanly, small/simple feature | forward |
+| F34 | reproduce → spec | Could-not-reproduce, user elects preventive hardening | forward (framing reset) |
+| F35 | reproduce → EXIT (terminate) | Could-not-reproduce, no preventive fix → close workflow | exit |
 
 ## Your Role
 
@@ -134,6 +143,9 @@ Full policy tables for all workflows are in `docs/product/transitions.md` → "D
 
 | Step | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
 |------|-----------------------|-----------------------|--------------------|------------------------|
+| `feature-reproduce` — F32/F33 (reproduced cleanly) | PAUSE | AUTO | AUTO | AUTO |
+| `feature-reproduce` — F34 (cannot-reproduce → preventive hardening) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| `feature-reproduce` — F35 (cannot-reproduce → terminate) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
 | `feature-spec` | PAUSE | **PAUSE** | **PAUSE** | AUTO |
 | `feature-research` | PAUSE | **PAUSE** | AUTO | AUTO |
 | `feature-plan` | PAUSE | **PAUSE** | AUTO | AUTO |

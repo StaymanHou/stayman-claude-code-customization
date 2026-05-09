@@ -27,10 +27,11 @@ When you finish dispatching, label your output with one of these IDs (the test h
 
 **Routing — classification outputs:**
 - **S1 → task:plan** — atomic change, bug fix
-- **S2 → feature:spec** — complex feature (fails small/simple criteria)
-- **S3 → feature:plan** — small/simple feature (all criteria met)
+- **S2 → feature:spec** — complex feature (fails small/simple criteria, no bug-shape language)
+- **S3 → feature:plan** — small/simple feature (all criteria met, no bug-shape language)
 - **S4 → incident:report** — production incident
 - **S5 → product:vision** — new product initiative
+- **S18 → feature:reproduce** — bug-shape feature (user describes undesirable behavior — bug, regression, broken state, wrong output) → optional pre-spec/pre-plan red-green reproduction
 
 **Drive-mode and orchestration outputs (after the user has selected a mode):**
 - **S7** — auto-chain build → verify-auto without asking the user (orchestration step in modes 2-4)
@@ -75,7 +76,11 @@ If the user provided context via `{{args}}`, classify immediately. Otherwise, as
 Classification outputs:
 - **Workflow:** product | feature | task | incident | resume
 - **Entry skill:** the specific skill name from the table above
-- **For features:** evaluate small/simple criteria to pick `feature-spec` vs `feature-plan`
+- **For features:** evaluate two axes:
+  1. **Bug-shape detection.** Does the user's description explicitly mention an undesirable behavior — a bug, regression, broken state, wrong output, "fix" referring to existing behavior, or "X is happening when it shouldn't"? If yes → route to **`feature-reproduce`** (S18) for optional red-green reproduction *before* spec/plan. The reproduce skill itself decides whether reproduction succeeded and hands off to spec/plan accordingly. If the description is about adding/changing/extending capability (no broken behavior described) → skip reproduce.
+  2. **Small/simple criteria** (only if bug-shape was NO above): evaluate to pick `feature-spec` (S2) vs `feature-plan` (S3).
+
+  **Decision rule (bug-shape):** if ambiguous, default to skipping reproduce. Do not ask a clarifying question — let the user explicitly invoke `/feature-reproduce` if they realize they need it. (Repo owner has self-disciplined to describe bugs explicitly when intended; ambiguous descriptions are treated as new-capability features.)
 
 ### 3. Confirm and select drive mode
 State your classification (1–2 sentences), then present the mode menu (the harness's Notification hook will fire automatically when you pause for the user's reply):
