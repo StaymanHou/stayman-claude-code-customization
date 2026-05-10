@@ -167,6 +167,21 @@ ${extra_prompt}"
   mkdir -p "$tmpdir/.claude" "$tmpdir/workflow/wip" "$tmpdir/docs/product"
   cp "$FIXTURES_DIR/CLAUDE.md" "$tmpdir/CLAUDE.md" 2>/dev/null || true
 
+  # Copy settings fixture into tmpdir/.claude/ and pass it via --settings.
+  # --settings *merges on top of* the user's ~/.claude/settings.json (it does
+  # not replace it). We rely on this merge to override only the fields where
+  # tests want different behaviour from the developer's live config — primarily
+  # the Telegram hook entries, which we set to empty arrays here so test runs
+  # don't ping Telegram. We deliberately do NOT pass --setting-sources project,local
+  # to fully replace user settings: that path also strips access to user-level
+  # skills (~/.claude/skills/), and the skills under test live there. The drift
+  # check in check-structure.sh enforces that the fixture stays a near-clone of
+  # live settings so the merge produces predictable behaviour.
+  local settings_fixture="$FIXTURES_DIR/settings.json"
+  if [ -f "$settings_fixture" ]; then
+    cp "$settings_fixture" "$tmpdir/.claude/settings.json"
+  fi
+
   if [ -n "$fixture_wip" ] && [ -f "$SCRIPT_DIR/$fixture_wip" ]; then
     cp "$SCRIPT_DIR/$fixture_wip" "$tmpdir/workflow/wip/"
   fi
@@ -198,6 +213,7 @@ ${extra_prompt}"
       --no-session-persistence \
       --permission-mode dontAsk \
       --disallowed-tools "Edit,Write,NotebookEdit" \
+      --settings "$tmpdir/.claude/settings.json" \
       --append-system-prompt "$full_prompt" 2>/dev/null) || true
 
     # Parse JSON output

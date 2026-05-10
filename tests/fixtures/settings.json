@@ -1,0 +1,52 @@
+{
+  "_comment": "Test fixture loaded by tests/run-tests.sh via --settings. --settings MERGES on top of the developer's live ~/.claude/settings.json — it does not replace it. We rely on the merge to override only the fields listed under _intentional_diffs_from_live (primarily disabling the Telegram hook). Drift detection in tests/check-structure.sh (Phase 7) enforces that NO OTHER fields differ, so the merge produces predictable behaviour. To change live settings, edit ~/.claude/settings.json and re-run check-structure.sh; it will tell you if the fixture needs updating.",
+  "_intentional_diffs_from_live": [
+    "hooks.Notification: emptied (live: notify-telegram.sh) — primary mechanism: tests should not ping Telegram. Fixture's empty array overrides live's populated array via the merge.",
+    "hooks.Stop: empty list (matches current live state; kept explicit as a contract — if Stop hook returns to live, this still suppresses it during tests)",
+    "env.CLAUDE_TELEGRAM_BOT_TOKEN: omitted from fixture (live has it). Note: --settings is additive, so the live value still leaks through at test time. This is harmless because no hook script is left to consume it; documented here so drift detection's expected diff set stays accurate.",
+    "env.CLAUDE_TELEGRAM_CHAT_ID: same as CLAUDE_TELEGRAM_BOT_TOKEN — leaks through merge, harmless without a hook to consume it."
+  ],
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "0",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker compose:*)",
+      "mcp__playwright__*",
+      "Read(~/.claude/**)",
+      "Edit(~/.claude/**)",
+      "Read(~/Personal/projects/my-claude-code-customization/**)",
+      "Edit(~/Personal/projects/my-claude-code-customization/**)",
+      "Bash(curl -s -X POST https://api.telegram.org/*)",
+      "WebSearch",
+      "Bash(python3 -m json.tool)",
+      "Bash(bash install.sh)",
+      "Bash(python3:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "Notification": [],
+    "Stop": []
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "sandbox": {
+    "enabled": false
+  },
+  "alwaysThinkingEnabled": false,
+  "effortLevel": "xhigh",
+  "promptSuggestionEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
+  "defaultMode": "acceptEdits",
+  "model": "opus[1m]"
+}

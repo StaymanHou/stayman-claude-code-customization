@@ -190,17 +190,16 @@ else
   check "hook exits 0 with empty stdin" "fail" "non-zero exit"
 fi
 
-# settings.json (global) is valid JSON and contains both hook entries
+# settings.json (global) is valid JSON and contains the Notification hook
+# (Stop hook was removed 2026-05-10 — was firing on every turn end, too noisy.)
 if command -v python3 &>/dev/null; then
   if python3 -c "import json; d=json.load(open('$HOME/.claude/settings.json')); \
-      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'; \
-      assert 'Stop' in d.get('hooks',{}), 'Stop hook missing'" 2>/dev/null; then
-    check "~/.claude/settings.json has Notification + Stop hooks" "pass"
+      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'" 2>/dev/null; then
+    check "~/.claude/settings.json has Notification hook" "pass"
   else
     err=$(python3 -c "import json; d=json.load(open('$HOME/.claude/settings.json')); \
-      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'; \
-      assert 'Stop' in d.get('hooks',{}), 'Stop hook missing'" 2>&1)
-    check "~/.claude/settings.json has Notification + Stop hooks" "fail" "$err"
+      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'" 2>&1)
+    check "~/.claude/settings.json has Notification hook" "fail" "$err"
   fi
 fi
 
@@ -302,6 +301,149 @@ if [ "${total:-0}" -ge 88 ]; then
   check "Scenario count ≥ 88 ($total registered)" "pass"
 else
   check "Scenario count ≥ 88" "fail" "only $total scenarios found"
+fi
+
+echo ""
+
+# ── Phase 7: Settings fixture drift ───────────────────────────────────────
+#
+# tests/fixtures/settings.json is loaded by run-tests.sh via --settings (with
+# --setting-sources project,local) so test invocations don't inherit the
+# developer's live ~/.claude/settings.json. We want the fixture to mirror live
+# settings closely so tests run under near-realistic conditions, BUT we have
+# a documented set of intentional differences (Telegram hooks disabled, Telegram
+# env vars absent). This check FAILs if any field outside the documented diff
+# set has drifted — telling the developer to either update the fixture or
+# document a new exception.
+
+echo "[Phase 7] Settings fixture drift"
+
+if command -v python3 &>/dev/null && [ -f tests/fixtures/settings.json ] && [ -f "$HOME/.claude/settings.json" ]; then
+  drift_output=$(python3 - <<'PYEOF' 2>&1 || true
+import json, sys, os
+
+LIVE = os.path.expanduser("~/.claude/settings.json")
+FIXTURE = "tests/fixtures/settings.json"
+
+# Documented intentional diffs. Format: list of (path, expected_live, expected_fixture).
+# `path` is a tuple of nested keys; `MISSING` is a sentinel meaning the key is absent.
+MISSING = object()
+INTENTIONAL_DIFFS = [
+    # Telegram hook is wired in live, absent in fixture
+    (("hooks", "Notification"), "non-empty-list", []),
+    (("hooks", "Stop"), "any", []),
+    # Telegram env vars present in live, absent in fixture
+    (("env", "CLAUDE_TELEGRAM_BOT_TOKEN"), "present", MISSING),
+    (("env", "CLAUDE_TELEGRAM_CHAT_ID"), "present", MISSING),
+]
+
+def get_path(d, path):
+    cur = d
+    for k in path:
+        if not isinstance(cur, dict) or k not in cur:
+            return MISSING
+        cur = cur[k]
+    return cur
+
+def matches_expected(actual, expected):
+    if expected == "any":
+        return True
+    if expected == "present":
+        return actual is not MISSING
+    if expected == "non-empty-list":
+        return isinstance(actual, list) and len(actual) > 0
+    return actual == expected
+
+with open(LIVE) as f:
+    live = json.load(f)
+with open(FIXTURE) as f:
+    fixture = json.load(f)
+
+# Strip fixture-only metadata fields from comparison
+fixture = {k: v for k, v in fixture.items() if not k.startswith("_")}
+
+# Verify each intentional diff is present and matches expectation
+diff_violations = []
+for path, exp_live, exp_fix in INTENTIONAL_DIFFS:
+    live_val = get_path(live, path)
+    fix_val = get_path(fixture, path)
+    if not matches_expected(live_val, exp_live):
+        diff_violations.append(
+            f"  {'.'.join(path)}: live should be {exp_live!r}, got {live_val!r}"
+        )
+    if not matches_expected(fix_val, exp_fix):
+        diff_violations.append(
+            f"  {'.'.join(path)}: fixture should be {exp_fix!r}, got {fix_val!r}"
+        )
+
+if diff_violations:
+    print("INTENTIONAL_DIFFS_BROKEN")
+    for v in diff_violations:
+        print(v)
+    sys.exit(1)
+
+# Now compare live vs fixture, ignoring the documented diff paths.
+# Anything that differs outside the diff set is unexpected drift.
+intentional_paths = {tuple(p) for p, _, _ in INTENTIONAL_DIFFS}
+
+def walk(a, b, path=()):
+    """Yield (path, a_val, b_val) for every leaf or container that differs."""
+    if path in intentional_paths:
+        return
+    if type(a) != type(b):
+        yield (path, a, b)
+        return
+    if isinstance(a, dict):
+        keys = set(a.keys()) | set(b.keys())
+        for k in keys:
+            subpath = path + (k,)
+            if subpath in intentional_paths:
+                continue
+            if k not in a or k not in b:
+                yield (subpath, a.get(k, MISSING), b.get(k, MISSING))
+            else:
+                yield from walk(a[k], b[k], subpath)
+    elif isinstance(a, list):
+        if a != b:
+            yield (path, a, b)
+    else:
+        if a != b:
+            yield (path, a, b)
+
+drift = list(walk(live, fixture))
+if drift:
+    print("DRIFT_DETECTED")
+    for path, lv, fv in drift:
+        p = ".".join(path) if path else "<root>"
+        lv_s = "<missing>" if lv is MISSING else json.dumps(lv)
+        fv_s = "<missing>" if fv is MISSING else json.dumps(fv)
+        print(f"  {p}: live={lv_s} fixture={fv_s}")
+    sys.exit(1)
+
+print("OK")
+PYEOF
+)
+  case "$drift_output" in
+    "OK")
+      check "settings fixture in sync with live (modulo documented diffs)" "pass" ;;
+    DRIFT_DETECTED*)
+      drift_detail=$(echo "$drift_output" | tail -n +2)
+      check "settings fixture in sync with live (modulo documented diffs)" "fail" \
+        "drift detected — update tests/fixtures/settings.json (or add to INTENTIONAL_DIFFS in tests/check-structure.sh):
+$drift_detail" ;;
+    INTENTIONAL_DIFFS_BROKEN*)
+      drift_detail=$(echo "$drift_output" | tail -n +2)
+      check "settings fixture in sync with live (modulo documented diffs)" "fail" \
+        "intentional diffs no longer hold:
+$drift_detail" ;;
+    *)
+      check "settings fixture in sync with live (modulo documented diffs)" "fail" \
+        "unexpected output: $drift_output" ;;
+  esac
+else
+  if [ ! -f tests/fixtures/settings.json ]; then
+    check "tests/fixtures/settings.json exists" "fail" "fixture missing"
+  fi
 fi
 
 echo ""
