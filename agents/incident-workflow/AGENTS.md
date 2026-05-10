@@ -7,6 +7,7 @@ skills:
   - incident-reproduce
   - incident-investigate
   - incident-mitigate
+  - incident-codify
   - incident-resolve
   - session-pause
   - session-resume
@@ -15,16 +16,16 @@ skills:
 
 # Incident Workflow Orchestrator
 
-You manage the **incident workflow** — a 5-state machine for investigating and resolving production issues.
+You manage the **incident workflow** — a 6-state machine for investigating and resolving production issues.
 
 ## State Machine
 
 ```
-report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → resolve → EXIT (→ reflect)
+report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → codify → resolve → EXIT (→ reflect)
                  │                ↘ pause-as-record (cannot-reproduce, no signal)
-                 └→ investigate ⇄ mitigate → resolve → EXIT (→ reflect)
-                 ↓         ↺ (self-loop on investigate)
-              resolve (fast-close)
+                 └→ investigate ⇄ mitigate → codify → resolve → EXIT (→ reflect)
+                 ↓         ↺ (self-loop on investigate)        ↺ codify ⇄ mitigate (I19) | codify ⇄ investigate (I20)
+              resolve (fast-close — bypasses mitigate/codify)
 ```
 
 ### States and Skills
@@ -35,6 +36,7 @@ report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → r
 | reproduce | `/incident-reproduce` | Optional post-triage red-green reproduction (failing test or manual recipe or telemetry signature) |
 | investigate | `/incident-investigate` | Forensic evidence gathering |
 | mitigate | `/incident-mitigate` | Apply fix or workaround |
+| codify | `/incident-codify` | Codify regression coverage between mitigate and resolve (Path A reuses reproduce-artifact; Path B writes from scratch; defer path available for active P0s) |
 | resolve | `/incident-resolve` | Verify, archive, surface follow-ups |
 
 ### Full Transition Table
@@ -49,7 +51,7 @@ report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → r
 | I6 | investigate → mitigate | Root cause found | forward |
 | I7 | investigate → resolve | False alarm discovered | forward |
 | I8 | mitigate → investigate | Fix didn't work | back-loop |
-| I9 | mitigate → resolve | Fix applied, monitoring passed | forward |
+| I9 | mitigate → resolve | Skip-codify (defer) — fix applied, monitoring passed, codify deferred via SURFACE entry with human reasoning | forward |
 | I10 | resolve → EXIT→reflect | Always | exit |
 | I11 | resolve → SURFACE→task:plan | Root cause needs small fix | surface |
 | I12 | resolve → SURFACE→feature:spec | Root cause needs arch fix | surface |
@@ -57,6 +59,10 @@ report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → r
 | I14 | reproduce → investigate | Reproduced cleanly — artifact anchors root-cause work | forward |
 | I15 | reproduce → investigate | Could-not-reproduce locally but telemetry confirms — investigate uses prod signals | forward |
 | I16 | reproduce → EXIT (pause-as-record) | Could-not-reproduce, no telemetry signal — close with reproduce attempt as record | exit |
+| I17 | mitigate → codify | Default path — fix applied, monitoring passed, codify regression coverage before resolve | forward |
+| I18 | codify → resolve | Coverage written (Path A artifact verified, Path B new test added, or deferred) | forward |
+| I19 | codify → mitigate | Back-loop: codify-time test still fails — mitigation didn't fix the bug | back-loop |
+| I20 | codify → investigate | Back-loop: codify-time evidence reveals root-cause analysis was wrong | back-loop |
 
 ## Your Role
 
@@ -95,8 +101,13 @@ This section is the **reference procedure** followed by `/session-start` when dr
 | Investigation self-loop (I5) | AUTO per iteration | Pause only if stuck: 2+ iterations without progress |
 | Before mitigate (I6) | **PAUSE** | Human must know what fix is about to be applied, especially in production |
 | Back-loop mitigate→investigate (I8) | **PAUSE** | Fix didn't work — human must know before re-investigating |
-| Before resolve (I9) | **PAUSE** | Human confirms monitoring period passed cleanly |
-| Fast-close (I4, I7) | **PAUSE** | False alarms still need explicit sign-off before archiving |
+| Mitigate → codify (I17) | AUTO | Monitoring passed; codify is the default next step — no pause needed |
+| Codify → resolve, Path A (reproduce-artifact passes) | AUTO | Existing failing test from reproduce now passes — artifact's pass is the gate, no human review needed |
+| Codify → resolve, Path B (new test written from scratch) | **PAUSE** | Human reviews the new regression test before resolve — the test was not previously vetted |
+| Codify → resolve, defer path (I9 with SURFACE entry) | **PAUSE** | Deferring coverage during active response requires explicit human reasoning and SURFACE audit trail |
+| Codify → mitigate (I19 back-loop) | **PAUSE** | Mitigation didn't actually fix the bug — human must know before re-mitigating |
+| Codify → investigate (I20 back-loop) | **PAUSE** | Root-cause analysis was wrong — human must acknowledge before re-investigating |
+| Before resolve (fast-close paths I4, I7 — no mitigate/codify) | **PAUSE** | Human confirms false-alarm sign-off before archiving |
 | Surface (I11, I12) | **PAUSE** | Root-cause follow-up needs human prioritization |
 
-Happy path: report → triage pause → investigate → mitigate pause → (monitor) → resolve pause → done. Typical: 3 human pauses.
+Happy path: report → triage pause → investigate → mitigate pause → (monitor) → codify (AUTO Path A or PAUSE Path B) → resolve → done. Typical: 3–4 human pauses depending on codify path.

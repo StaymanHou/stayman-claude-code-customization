@@ -110,8 +110,13 @@ Incidents are always treated as **Mode 2 (Orchestrated)** regardless of the sele
 | reproduce → pause-as-record (I16) | PAUSE |
 | before mitigate (I6) | PAUSE |
 | back-loop (I8) | PAUSE |
-| before resolve (I9) | PAUSE |
-| fast-close (I4, I7) | PAUSE |
+| mitigate → codify (I17) | AUTO |
+| codify → resolve, Path A (reproduce-artifact passes) | AUTO |
+| codify → resolve, Path B (new test written from scratch) | PAUSE |
+| codify → resolve, defer path (I9 with SURFACE entry) | PAUSE |
+| codify → mitigate (I19 back-loop) | PAUSE |
+| codify → investigate (I20 back-loop) | PAUSE |
+| before resolve (no codify — fast-close paths I4, I7) | PAUSE |
 | surface (I11, I12) | PAUSE |
 | investigate self-loop (I5) | AUTO |
 
@@ -321,7 +326,7 @@ Terminal: close
 ## Incident Workflow
 
 ```
-States:  report → triage → [reproduce] → investigate → mitigate → resolve
+States:  report → triage → [reproduce] → investigate → mitigate → codify → resolve
 Entry:   report
 Terminal: resolve (or reproduce → pause-as-record when could-not-reproduce-no-signal)
 ```
@@ -336,7 +341,7 @@ Terminal: resolve (or reproduce → pause-as-record when could-not-reproduce-no-
 | I6 | investigate | mitigate | Root cause found |
 | I7 | investigate | resolve | Fast-close: false alarm discovered during investigation |
 | I8 | mitigate | investigate | Back-loop: fix didn't work, need more data |
-| I9 | mitigate | resolve | Fix applied, monitoring period passed |
+| I9 | mitigate | resolve | Skip-codify (defer) path — fix applied, monitoring passed, codify explicitly deferred via SURFACE→task:plan entry with human-written reasoning in WIP file |
 | I10 | resolve | EXIT→reflect | Always (auto-trigger) |
 | I11 | resolve | SURFACE→task:plan | Root cause needs proper fix (small) |
 | I12 | resolve | SURFACE→feature:spec | Root cause needs architectural fix (large) |
@@ -344,8 +349,14 @@ Terminal: resolve (or reproduce → pause-as-record when could-not-reproduce-no-
 | I14 | reproduce | investigate | Reproduced cleanly (failing test or deterministic recipe) — investigate uses artifact as root-cause anchor |
 | I15 | reproduce | investigate | Could-not-reproduce-locally but telemetry confirms incident — investigate must rely on prod signals |
 | I16 | reproduce | EXIT (pause-as-record) | Could-not-reproduce and no telemetry signal — close workflow with reproduce attempt as record |
+| I17 | mitigate | codify | Default path — fix applied, monitoring passed, codify regression coverage before resolve |
+| I18 | codify | resolve | Coverage written (Path A reproduce-artifact verified, Path B new test added, or deferred via SURFACE) → resolve |
+| I19 | codify | mitigate | Back-loop: codify-time test still fails — mitigation didn't actually fix the bug |
+| I20 | codify | investigate | Back-loop: codify-time evidence reveals the root-cause analysis was wrong — re-investigate |
 
-**Reproduce step (I13–I16):** Optional, post-triage. The human decides at triage whether to attempt reproduction (I13) or go straight to investigate (I3) — reproducible bugs benefit from the red-green anchor; prod-data-only or telemetry-only incidents skip reproduce. Reproduce produces a failing test, a deterministic manual recipe, or a captured telemetry signature. The reproduction artifact becomes the anchor investigate uses to confirm root cause and mitigate uses to confirm the fix. Drive-mode behavior: incident workflow is always Mode 2 (Orchestrated) regardless of session drive mode — human judgment is non-negotiable. I14 (reproduced) is AUTO; I15 (telemetry-only constraint) and I16 (close-as-record) are PAUSE because they require human acknowledgement of degraded investigation conditions or workflow termination.
+**Reproduce step (I13–I16):** Optional, post-triage. The human decides at triage whether to attempt reproduction (I13) or go straight to investigate (I3) — reproducible bugs benefit from the red-green anchor; prod-data-only or telemetry-only incidents skip reproduce. Reproduce produces a failing test, a deterministic manual recipe, or a captured telemetry signature. The reproduction artifact becomes the anchor investigate uses to confirm root cause, mitigate uses to confirm the fix, and **codify uses to lock the regression test into permanent coverage**. Drive-mode behavior: incident workflow is always Mode 2 (Orchestrated) regardless of session drive mode — human judgment is non-negotiable. I14 (reproduced) is AUTO; I15 (telemetry-only constraint) and I16 (close-as-record) are PAUSE because they require human acknowledgement of degraded investigation conditions or workflow termination.
+
+**Codify step (I17–I20):** Required step between mitigate and resolve. Adapts the feature workflow's `verify-codify` discipline (highest-level test rule, integration-boundary check, six-case triage table) to incident context with two key adaptations: (1) **semantic flip** — a codify-time test failure means the mitigation didn't fix the bug → back-loop to mitigate (I19), not auto-fix; (2) **speed-aware paths** — Path A reuses an existing reproduce-artifact, Path B writes from scratch, and a defer path (I9) is available when active incident response pressure makes writing coverage now infeasible. Defer requires explicit human reasoning in the WIP file plus a SURFACE→task:plan entry so the coverage debt is owned. I20 is a separate back-loop from I19 for the case where the codify-time evidence reveals investigate's root-cause analysis was wrong (not just the mitigation). Pause-policy behavior in §"Pause policy by mode — incident workflow" below.
 
 ---
 

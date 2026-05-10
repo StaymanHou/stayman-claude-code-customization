@@ -142,7 +142,7 @@ scenarios:
     max_retries: 2
 
   - id: I9
-    name: "incident:mitigate → resolve when fix works"
+    name: "incident:mitigate → resolve via skip-codify defer path"
     skill: incident-mitigate
     args: "api-500-errors"
     fixtures:
@@ -152,10 +152,18 @@ scenarios:
       The hotfix was deployed at 15:00. Error rate dropped to 0% by 15:05.
       It has been 30 minutes of monitoring with zero errors. The fix is
       confirmed working and stable.
+
+      This is an active P0 with a customer escalation still open. Writing
+      regression test coverage right now would delay all-clear by 20+ minutes
+      while customer support is waiting on confirmation. The human explicitly
+      directs: defer codify — write a SURFACE→task:plan entry to ensure the
+      regression test gets written later, and go straight to resolve.
     expect:
       transition_id: I9
       contains_any:
         - "/incident-resolve"
+        - "defer"
+        - "SURFACE"
       not_contains:
         - "/incident-investigate"
     max_retries: 2
@@ -318,4 +326,107 @@ scenarios:
       not_contains:
         - "/incident-investigate"
         - "/incident-mitigate"
+    max_retries: 2
+
+  # Codify step (I17–I20) — regression-securing step between mitigate and resolve.
+
+  - id: I17
+    name: "incident:mitigate → codify as the default path when fix works"
+    skill: incident-mitigate
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-rootcause-found.md
+    system_prompt_extra: |
+      The hotfix was deployed at 15:00. Error rate dropped to 0% by 15:05.
+      It has been 30 minutes of monitoring with zero errors. The fix is
+      confirmed working and stable. This is the normal happy-path flow —
+      no active P0 pressure, no defer rationale. Codify regression coverage
+      before resolving.
+    expect:
+      transition_id: I17
+      contains_any:
+        - "/incident-codify"
+        - "codify"
+      not_contains:
+        - "/incident-resolve"
+        - "/incident-investigate"
+    max_retries: 2
+
+  - id: I18
+    name: "incident:codify → resolve via Path A when reproduce-artifact passes post-mitigation"
+    skill: incident-codify
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-codify-with-reproduce-artifact.md
+    system_prompt_extra: |
+      The reproduction artifact from /incident-reproduce is a failing test at
+      `tests/test_users_api.py::test_get_users_with_null_profile_image_returns_200`.
+      After the mitigation (default empty string in the serializer), this test
+      now passes against the mitigated code. Full test suite also passes.
+      The reproduce artifact IS the regression test — Path A. No new test needs
+      to be written from scratch.
+    expect:
+      transition_id: I18
+      contains_any:
+        - "/incident-resolve"
+        - "Path A"
+        - "artifact"
+      not_contains:
+        - "/incident-mitigate"
+        - "/incident-investigate"
+    max_retries: 2
+
+  - id: I18-defer
+    name: "incident:codify → resolve via defer path when active P0 pressure justifies SURFACE"
+    skill: incident-codify
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-codify-no-reproduce.md
+    system_prompt_extra: |
+      No reproduce artifact exists for this incident — investigation went
+      straight from triage to investigate via telemetry signals. The mitigation
+      is confirmed working in prod (telemetry pattern is clean). However, the
+      customer escalation is still open, and writing a regression test from
+      scratch now would require ~30 minutes of test-setup work that delays
+      all-clear. The human explicitly directs: defer codify — write the
+      SURFACE→task:plan entry with reasoning, then proceed to resolve so the
+      customer can be notified.
+    expect:
+      transition_id: I18
+      contains_any:
+        - "/incident-resolve"
+        - "defer"
+        - "SURFACE"
+      not_contains:
+        - "/incident-mitigate"
+        - "/incident-investigate"
+    max_retries: 2
+
+  - id: I19
+    name: "incident:codify → mitigate back-loop when codify-time test still fails"
+    skill: incident-codify
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-codify-with-reproduce-artifact.md
+    system_prompt_extra: |
+      You ran the failing test from the reproduce artifact against the
+      mitigated code. The test STILL fails — the NoneType error reappears.
+      The mitigation (default empty string in the serializer) was applied but
+      did not actually fix the underlying bug. The codify test is correct
+      (it captures the user-visible failure mode); the mitigation must be
+      reconsidered. Per the incident-codify semantic-flip rule: a codify-time
+      regression-test failure means the mitigation didn't fix the bug —
+      back-loop to mitigate, do not auto-fix the test.
+    expect:
+      transition_id: I19
+      contains_any:
+        - "/incident-mitigate"
+        - "back-loop"
+        - "mitigation"
+      not_contains:
+        - "/incident-resolve"
     max_retries: 2

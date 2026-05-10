@@ -73,6 +73,8 @@ Update the incident WIP file with a `## Reproduction Attempt` section:
 
 ### 5. Hand Off
 
+The reproduction artifact (failing test, recipe, or telemetry signature) will be picked up by `/incident-codify` after mitigation — do not delete or move it. Codify's Path A reuses an existing failing test as the regression-coverage anchor; deleting the artifact would force Path B (write-from-scratch) unnecessarily.
+
 Emit the transition ID at the end of your output (the orchestrator reads `TRANSITION: <id>`).
 
 **Single-step mode only:** STOP after writing the reproduction artifact and emitting the transition. The incident workflow runs as Mode 2 (Orchestrated) regardless of session drive mode — human judgment is non-negotiable. Per pause policy: I14 (reproduced) is AUTO; I15 (telemetry-only) is PAUSE — human must acknowledge the constraint before investigate runs; I16 (no signal) is PAUSE — closing without resolution deserves human confirmation.

@@ -1,14 +1,39 @@
 # Backlog
 
-## SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT
-- **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
-- **Target level:** feature:spec
-- **Type:** workflow-gap
-- **Summary:** The incident workflow has no regression-securing step analogous to `feature-verify-codify`. After `incident-mitigate` applies a fix and `incident-resolve` confirms monitoring passes, there is no formal step that writes/extends test coverage to prevent recurrence. The new `incident-reproduce` step (when invoked) front-loads a failing test as the verify gate, but for incidents that bypass reproduce (telemetry-only, prod-data-only) — and even for ones that do go through reproduce — there's no codify-equivalent that ensures the regression test is permanently added to the suite alongside any adjacent coverage discoveries.
-- **Context:** Without an incident-codify step, the regression test from incident-reproduce may live only in the WIP/archive and never enter the regular CI test suite. Mitigate's fix may not have a corresponding permanent test. This mirrors the gap that motivated feature-verify-codify in the first place.
-- **Suggested action:** Design an `incident-codify` skill that runs between `incident-mitigate` and `incident-resolve`. Adapt the feature-verify-codify procedure (highest-level test, integration-boundary check, triage gate) for incident context — speed-aware, since incidents are time-sensitive. Add transitions, AGENTS.md row, pause policy.
-- **Priority:** medium
+## SURFACE-2026-05-10-I20-SCENARIO-MISSING
+- **Source:** feature:verify-codify (incident-codify feature, Phase 3, 2026-05-10)
+- **Target level:** task:plan
+- **Type:** gap (test coverage)
+- **Summary:** I20 (codify → investigate back-loop) has no test scenario. The other three codify transitions (I17, I18, I19) and the defer variant (I18-defer) all have scenarios. I20 is the rare "codify-time evidence reveals investigate's root-cause analysis was wrong" case — distinct from I19 ("mitigation didn't fix the bug, try a different fix").
+- **Context:** I20 was approved in verify-human as part of the SKILL.md procedure (kept rather than folded into I19) but the plan's Phase 3 scenario list didn't include it. Without a scenario, the I20 path is documented but uncovered — a future regression on I20 emission would slip through the test sweep.
+- **Suggested action:** Add an I20 scenario to `tests/scenarios/incident.yaml`. Fixture: `incident-codify-with-reproduce-artifact.md` (or a new fixture). Prompt should describe codify-time evidence that contradicts the prior investigation's root-cause conclusion (e.g., the failing test passes against the mitigated code, but a different failing condition exists that wasn't part of the original investigation). Expected transition: I20 → /incident-investigate.
+- **Priority:** low (the path is rare in practice; cost of adding a scenario is small but not urgent)
 - **Status:** open
+
+## SURFACE-2026-05-10-CLAUDE-CODE-TIME-TRACKING
+- **Source:** user-initiated (exploration idea, 2026-05-10 — logged during incident-codify feature work)
+- **Target level:** feature:spec (likely complex — multi-component, persistent storage, cross-session)
+- **Type:** new-work
+- **Summary:** Automatically log and time Claude Code usage to a centralized database. Track time distribution across agent states (reasoning, waiting on commands like tests/npm install, idle awaiting human input, offline) AND human-side time (writing prompts, reading output, reasoning, context-switching between multiple CC instances, away). Goal: usage analytics + self-awareness of where time actually goes.
+- **Context:** Useful for cost/usage analysis, identifying friction points (e.g., am I spending more time waiting on tests than coding?), and quantifying value across multiple parallel CC sessions. The "real offline vs idle" distinction is non-trivial — see "Suggested action" §3.
+- **Suggested action — exploration outline (not a plan):**
+  1. **Storage:** centralized DB — local SQLite is the cheap default; consider Postgres if cross-machine aggregation is wanted later. Schema sketch: `sessions(id, project, started_at, ended_at)`, `events(session_id, ts, kind, duration_ms, meta)`. Kinds: `agent_reasoning`, `tool_running`, `idle_awaiting_human`, `human_typing`, `human_reading`, `away`, `session_paused`, `session_ended`.
+  2. **Agent-side instrumentation:** hooks are the natural surface. `PreToolUse` / `PostToolUse` for command timing; `Notification` for idle-awaiting-human start; `Stop` for turn end. Reasoning time = wall-clock between user submit and first assistant tool/text, minus tool wait time. Storage write should be async/append-only to avoid blocking the harness.
+  3. **The offline-vs-idle problem:** core ambiguity. When the harness is open but the user has stepped away, the agent and harness can't easily tell the difference between "user is reading slowly" and "user has gone to bed." Options to explore:
+     - **OS-level signals:** macOS idle time (`ioreg -c IOHIDSystem`), lock-screen events, sleep/wake events from `pmset -g log`. Treat OS sleep as authoritative "offline."
+     - **Heuristic timeout:** anything > N minutes (e.g., 15) without keystroke → reclassify as "away" retroactively. Cheap, model-agnostic, but always lossy at the boundary.
+     - **Explicit ritual:** opt-in `/away` and `/back` slash commands. Loses the "going to bed without thinking" goal but is unambiguous.
+     - **Hybrid:** OS sleep = offline (authoritative); else timeout heuristic for away; manual `/away` overrides both. Recommend this as the starting point.
+     - **Key constraint user stated:** "going to bed with or without Claude Code sessions terminated should mean the same thing" → the system must not punish leaving sessions open overnight. The hybrid above satisfies this — OS sleep retroactively reclassifies any pending "idle" time as "offline."
+  4. **Human-side time tracking:** harder. The harness can detect typing-vs-not via the input box state (if exposed via hooks/APIs — unclear). Reading-vs-reasoning is essentially unobservable without eye tracking; best approximation is "time between last assistant output and next user submit, capped by idle threshold." Context-switching between multiple CC instances → would need either a shared parent process tracker or each instance writing to the same DB with a session-foreground signal.
+  5. **Multi-instance handling:** if logging into one DB from multiple sessions concurrently, schema needs a session-foreground/background bit. macOS has frontmost-app APIs but not "frontmost terminal tab" without deeper integration.
+  6. **Privacy/storage hygiene:** decide whether prompt content is stored or only timing metadata. Recommend timing-only to start — easier to reason about and avoids accidentally piping sensitive prompts into a long-lived DB.
+- **Known unknowns to surface in spec:**
+  - Whether Claude Code's hook system exposes input-box-focus / typing events (PreToolUse and Stop are confirmed; the rest may not exist)
+  - Whether session correlation across `/clear`, `/session-pause`, `/session-resume` is feasible with current hook payloads
+  - Whether the centralized DB should be queryable in-session (slash command `/usage-today`) or only via external dashboard
+- **Priority:** low (exploration — no commitment, no deadline)
+- **Status:** open — idea-only, no spec yet
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
@@ -62,6 +87,7 @@
 
 ## Resolved (chronological log)
 
+- **SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT** — RESOLVED 2026-05-10: Implemented `incident-codify` skill between mitigate and resolve. Added transitions I17 (mitigate→codify default), I18 (codify→resolve), I19 (codify→mitigate back-loop), I20 (codify→investigate back-loop); kept I9 as defer-with-SURFACE path. New SKILL adapts feature-verify-codify's highest-level test rule, integration-boundary check, and six-case triage table — with incident-context semantic flip ("code regression" → back-loop to mitigate, not auto-fix) and speed-aware paths (Path A reuses reproduce-artifact, Path B writes from scratch, defer path with SURFACE→task:plan). Wiring across `agents/incident-workflow/AGENTS.md` (skills frontmatter, diagram, states table, transition table, pause policy with conditional AUTO/PAUSE), `docs/product/transitions.md` (transition table, pause-policy table, new Codify-step paragraph), and three existing SKILLs (incident-mitigate, incident-resolve, incident-reproduce). New test fixtures (`incident-codify-with-reproduce-artifact.md`, `incident-codify-no-reproduce.md`) and scenarios (I17, I18 Path A, I18-defer, I19); existing I9 scenario rewritten to assert defer semantics. CLAUDE.md updated.
 - **SURFACE-2026-05-06-FEATURE-WORKFLOW-MISSING-REPRO-STEP** — RESOLVED 2026-05-09: Implemented option 1 (new `feature-reproduce` and `incident-reproduce` skills). Feature workflow gained F31–F35 transitions; incident workflow gained I13–I16 transitions; session-start gained S18 routing for bug-shape language. Backlog spinouts: SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT (incident codify gap, medium) and SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD (low, deferred). Open known issues: F31 prose-leak (SOFT_PASS, same family as S12 leak); I13 wrong-transition-emission (SOFT_PASS, model emits I2 instead of I13 — test-design / SKILL clarity tradeoff). Both logged as Test Triage blocks in `workflow/wip/reproduce-step.md`.
 - **SURFACE-2026-05-08-SETTINGS-JSON-ALLOWLIST-CRUFT** — RESOLVED 2026-05-08: deleted four token-hardcoded GET allowlist entries (getUpdates x3, getWebhookInfo); kept POST pattern as generic fallback. Hook smoke-tested.
 - **SURFACE-2026-05-06-S9-S11-S14-DUAL-IDENTITY** — RESOLVED 2026-05-06: `transition_id_any` added to `tests/lib/verify.sh`; S9/S11/S12/S13/S14 updated. S9 PASSes via S9|F19 union. (S12 strict-mode regression spun out as SURFACE-2026-05-06-S12-AUTOCHAIN-LEAK-IN-AUTOPILOT, still open above.)

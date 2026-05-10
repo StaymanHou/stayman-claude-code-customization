@@ -13,7 +13,8 @@ You are a Systems Engineer applying a fix based on the investigation findings.
 You are in the **incident** workflow at the **mitigate** state.
 
 **Valid transitions from here:**
-- **I9 → resolve:** Fix applied, monitoring period passed → tell user to run `/incident-resolve`
+- **I17 → codify (default):** Fix applied, monitoring period passed → tell user to run `/incident-codify` to lock regression coverage before resolve
+- **I9 → resolve (skip-codify defer path):** Fix applied, monitoring passed, but codify is being explicitly deferred (e.g., active P0 where writing coverage now would delay all-clear). Requires: human-written `## Codify — Deferred` reasoning in the WIP file AND a SURFACE→task:plan entry in `workflow/backlog.md` to own the coverage debt. Then tell user to run `/incident-resolve`
 - **I8 → investigate (back-loop):** Fix didn't work, need more data → document what failed, tell user to run `/incident-investigate`
 
 ## Procedure
@@ -43,9 +44,15 @@ You are in the **incident** workflow at the **mitigate** state.
 
 ### 6. Evaluate Outcome
 
-**Fix works (I9):**
+**Fix works — default path (I17):**
 - Note the monitoring start time
-- Tell user: "Fix applied and verified. Monitor for stability, then run `/incident-resolve` to close."
+- Tell user: "Fix applied and verified. Monitor for stability, then run `/incident-codify` to lock regression coverage before resolve."
+
+**Fix works — defer-codify path (I9, exceptional):**
+- Only use when active incident pressure makes writing coverage now infeasible (P0 with customer escalation, etc.)
+- Write a `## Codify — Deferred` section to the WIP file with: reasoning, severity at defer time, and what makes you confident the bug is gone without a regression test
+- Append a `SURFACE-<YYYY-MM-DD>-CODIFY-DEFERRED-<incident-name>` entry to `workflow/backlog.md` targeting `task:plan`
+- Tell user: "Fix applied. Codify deferred — see WIP file for reasoning and SURFACE entry. Run `/incident-resolve` to close."
 
 **Fix didn't work (I8):**
 - Document what was tried and why it failed

@@ -13,6 +13,11 @@ You are finalizing the incident lifecycle.
 You are in the **incident** workflow at the **resolve** state.
 This is the **terminal state** of the incident workflow.
 
+**How this state is reached:**
+- **I18 from codify (default):** Regression coverage in place (Path A reproduce-artifact verified, Path B new test written, or defer-with-SURFACE acknowledged)
+- **I9 from mitigate (defer path):** Codify explicitly deferred — `## Codify — Deferred` section in WIP file + SURFACE entry in backlog
+- **I4 from triage / I7 from investigate (fast-close):** False alarm or duplicate — no mitigation, no codify
+
 **Valid transitions from here:**
 - **I10 → EXIT + reflect:** Always auto-trigger reflect
 - **I11 → SURFACE to task:plan:** Root cause needs a proper fix (small) — note-and-continue
@@ -24,6 +29,8 @@ This is the **terminal state** of the incident workflow.
 - Confirm with the user that the issue is fully fixed
 - Ensure the incident was in `Monitoring` status with no regressions before closing
 - If coming from fast-close (I4 or I7), confirm the reason
+- If coming from codify (I18): confirm the `## Codify` section in the WIP file documents which path was taken (Path A artifact, Path B new test, or deferred) and the consuming-surface test if an integration boundary applied
+- If coming from defer (I9): confirm the `## Codify — Deferred` section is present with reasoning and that the SURFACE→task:plan entry is in `workflow/backlog.md`
 
 ### 2. Data Correction (if needed)
 - If the incident corrupted data, propose and execute a correction plan
