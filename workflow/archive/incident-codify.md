@@ -1,7 +1,7 @@
 ---
 name: incident-codify
 workflow: feature
-state: verify-codify (all phases complete)
+state: finalize (complete) — archived 2026-05-10
 created: 2026-05-10
 entry: spec (complex feature)
 drive_mode: orchestrated
@@ -87,8 +87,8 @@ Spec content (problem, user stories, acceptance criteria, technical constraints,
   - [x] verify-codify  <!-- All 4 phase-3 scenarios in place (I17, I18, I18-defer, I19) + I9 updated; I20 absence surfaced as SURFACE-2026-05-10-I20-SCENARIO-MISSING (low priority, plan didn't include it); 29/29 structural checks PASS -->
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** ship (all 3 phases verified and codified)
+- **Path:** Feature > finalize
+- **Active scope:** finalize (archive WIP, sweep backlog, mark cycle done)
 - **Blocked:** none
 - **Unvisited:** Phase 2 (state machine wiring), Phase 3 (tests + docs + backlog close)
 - **Open discoveries:** none
@@ -97,6 +97,22 @@ Spec content (problem, user stories, acceptance criteria, technical constraints,
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
      Each entry is also logged to workflow/backlog.md -->
 - [SURFACED-2026-05-10] Phase 3 verify-codify — I20 (codify → investigate back-loop) has no test scenario. Logged to backlog as SURFACE-2026-05-10-I20-SCENARIO-MISSING (priority: low).
+
+## Retrospect
+
+- **What changed in our understanding:** The biggest learning was that calibrating a plan's Observable Outcomes against existing codebase conventions matters. The Phase 2 plan asserted `grep -c "incident-codify" agents/incident-workflow/AGENTS.md ≥4`, but the existing AGENTS.md convention uses short-form `codify` in tables and prose, full form only in frontmatter and slash-command references. The wiring was correct; the outcome threshold was miscalibrated. Caught and adjusted in Phase 2 verify-auto — the outcome was rewritten to assert two distinct thresholds (literal `incident-codify` ≥2 + short-form `codify` references ≥6).
+- **Assumptions that held:** The structural mirroring of feature-verify-codify worked cleanly — the highest-level test rule, integration-boundary check, and six-case triage table all adapted to incident context without architectural changes. Path A vs Path B distinction proved load-bearing and not over-engineered. The conditional pause model (AUTO on artifact-passes / defer, PAUSE on new-test-from-scratch) cleanly captured the speed-vs-rigor tradeoff.
+- **Assumptions that were wrong:** I9 contract change cascaded into the existing I9 test scenario in a way the plan didn't anticipate. The Phase 2 plan listed "test scenarios" only in Phase 3 — but Phase 2's mitigate-SKILL edit silently invalidated the existing I9 scenario's premise. Caught by Phase 2 verify-codify's triage gate; classified as obsolete-test, batched into Phase 3 P3.2. The triage gate doing its job here was the system working as designed — but the plan should have flagged the I9 contract change as a Phase 2 deliverable, not a Phase 3 cleanup.
+- **Approach delta:** Implementation matched the plan with two adjustments: (a) Phase 2 Observable Outcome threshold recalibrated mid-build (described above); (b) one discovery surfaced — I20 scenario absence — and logged to backlog rather than absorbed into Phase 3 (plan didn't include it; user approved I20's distinct existence in verify-human Phase 1 but didn't request a scenario). Both adjustments documented in the WIP file at the time. Plan held to 3 phases with no insertion or merging.
+
+## Communicate
+
+> **Feature complete:** `incident-codify` has shipped. A new regression-securing step now sits between `/incident-mitigate` and `/incident-resolve` in the incident workflow, with Path A (reuse reproduce-artifact), Path B (write from scratch), and a defer-with-SURFACE escape hatch for active P0s. The four new transitions (I17, I18, I19, I20) and the I9 contract change are wired through transitions.md, AGENTS.md, the three adjacent SKILLs, and the test scenario suite.
+>
+> Verify in action: next time you run `/incident-mitigate` after a successful fix, it should hand off to `/incident-codify` instead of going straight to `/incident-resolve`. Or run `./tests/run-tests.sh --group incident --id I17,I18,I18-defer,I19 --dry-run` to see the new scenarios resolve.
+>
+> Requester = operator — closure notice for self-record.
+
 
 ## Test Triage — tests/scenarios/incident.yaml I9
 Classification: Obsolete test — new feature intentionally supersedes what the test checked
