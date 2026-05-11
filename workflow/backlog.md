@@ -10,6 +10,13 @@
 - **Priority:** medium (recurrence likely without a SKILL fix; cost is small but creates orphaned commits)
 - **Status:** open
 
+## SURFACE-2026-05-11-STORE-LEARNING-NO-TRANSITION-ID
+- **Source:** feature:verify-codify (reflect-store-local-only feature, Phase 1, 2026-05-11)
+- **Target level:** Phase 3 of the same feature
+- **Type:** gap (test infrastructure consistency)
+- **Summary:** `session-store-learning` had no S-transition-ID and emitted no `TRANSITION:` line. Resolved 2026-05-11: added S20 to transitions.md and `TRANSITION: S20` emission in Step 3 of SKILL.md. S19 now PASSes strictly.
+- **Status:** resolved (Phase 3, this feature)
+
 ## SURFACE-2026-05-10-I20-SCENARIO-MISSING
 - **Source:** feature:verify-codify (incident-codify feature, Phase 3, 2026-05-10)
 - **Target level:** task:plan

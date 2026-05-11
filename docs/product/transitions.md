@@ -370,7 +370,7 @@ Not a state machine — meta-operations that attach to any workflow state.
 | `pause` | Manual | Save current workflow + state + step to `workflow/wip/` file |
 | `resume` | Manual | Read state file, summarize where left off, suggest resume command |
 | `reflect` | Auto: after feature:finalize, feature:refactor, incident:resolve. Optional: after task:close. | Analyze session for wrong assumptions. Strongly prompt user to run store-learning. |
-| `store-learning` | Manual (prompted by reflect) | Classify learning (global vs project), propose storage location, execute after human confirmation |
+| `store-learning` | Manual (prompted by reflect) | Classify learning (global vs project), propose storage location, execute after human confirmation. **Project-scope** writes to the project's own `.claude/` (CLAUDE.md / memory / skills) as before. **Global-scope** drafts to `.claude/learnings/<YYYY-MM-DD>-<slug>.md` (project-local, gitignored) for manual curation into a source repo — never writes to `~/.claude/`. |
 
 ### Session transitions (dispatcher outputs)
 
@@ -396,6 +396,7 @@ Session entry skills (`session-start`, `session-resume`, `session-pause`) are di
 | S16 | session-resume | (mode change) | User selects different drive mode on resume — update WIP frontmatter |
 | S17 | session-pause | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |
 | S18 | session-start | feature:reproduce | Classified as bug-shape feature (user describes undesirable behavior) — route to optional pre-spec/pre-plan red-green reproduction |
+| S20 | session-store-learning | (terminal) | Learning persisted: project-scope to `.claude/<dest>`, or global-scope drafted to `.claude/learnings/<date>-<slug>.md` for manual curation; never writes to `~/.claude/` |
 
 ---
 
@@ -496,6 +497,8 @@ Procedure:
 ---
 
 ## Change Log
+
+- **2026-05-11 — `session-store-learning` global path redirected away from `~/.claude/`.** Project-scope behavior is unchanged (still writes to the project's own `.claude/CLAUDE.md` / `.claude/memory/` / `.claude/skills/`). Global-scope learnings — previously written into `~/.claude/CLAUDE.md` / `~/.claude/projects/*/memory/` / `~/.claude/skills/` — are now drafted to `.claude/learnings/<YYYY-MM-DD>-<slug>.md` (project-local, gitignored) for manual curation into a source repo (e.g., `my-claude-code-customization`). Rationale: a project session should not silently mutate global Claude Code configuration; the curation step belongs to the human, by hand, in the source repo. New transition ID **S20** registers the skill's terminal output for the test harness. Affects: `skills/session-store-learning/SKILL.md`, `tests/scenarios/session.yaml` (S19 updated, S20 introduced).
 
 - **2026-05-06 — `notify-human` skill removed; replaced by harness hook.** Telegram alerts are now sent by `hooks/notify-telegram.sh` (symlinked to `~/.claude/hooks/`) configured in `~/.claude/settings.json` under `hooks.Notification` (Claude is blocked) and `hooks.Stop` (turn ended). Rationale: the prior skill relied on the model remembering a global rule before each human-input moment, which drifted in long sessions. The hook is deterministic, runs outside the model loop, and adds Stop-event coverage (notifies on turn end as well as input-blocked). All references to invoking `/notify-human` were stripped from agent procedures, skill steps, and CLAUDE.md guidance in the same change.
 

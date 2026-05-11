@@ -454,3 +454,25 @@ scenarios:
         - "/incident-report"
         - "/product-vision"
     max_retries: 2
+
+  - id: S19
+    name: "session:store-learning drafts global-scope learnings to .claude/learnings/, never to ~/.claude/"
+    skill: session-store-learning
+    args: >
+      I just learned that across every project I work in, integration tests
+      that mock the database are unreliable — last quarter a mocked test
+      passed while the prod migration failed. This is a global rule:
+      integration tests must hit a real database, not mocks. Save this
+      so future sessions in any project follow the rule.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S20
+      contains_any:
+        - ".claude/learnings/"
+        - ".claude/learnings"
+      not_contains:
+        - "~/.claude/CLAUDE.md"
+        - "~/.claude/projects/"
+        - "~/.claude/skills/"
+    max_retries: 2
