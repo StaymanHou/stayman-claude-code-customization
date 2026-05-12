@@ -70,8 +70,35 @@ Briefly check for any active work and mention it if found:
 
 If active work exists, ask whether the user wants to resume or start something new.
 
+**If all three sources are empty AND `{{args}}` is empty**, also check `workflow/backlog.md` and surface open items as candidate work *before* asking the question in step 2. This turns the curated backlog into a useful starting menu.
+
+**Backlog surfacing rules:**
+- **Trigger:** Only when no active work was found above *and* the user did not provide `{{args}}` describing what they want to tackle. If args are present, the user has already declared intent — skip the backlog surfacing entirely.
+- **Silent no-op:** If `workflow/backlog.md` is absent or contains zero open `## SURFACE-…` blocks, skip — do not say "no backlog items," just proceed to the question.
+- **Parsing:** Read each `## SURFACE-…` block from `workflow/backlog.md`. Include entries whose `**Status:**` line is `open` *or* missing (defensive — old entries may lack a status). Skip entries with `**Status:** resolved` (these are leftovers from migration; should not appear in the open list).
+- **Ranking:** By `**Priority:**` tier in this order: `high` → `medium-high` → `medium` → `low`. Within a tier, newer SURFACE date first (the date in the SURFACE-ID prefix, e.g., `SURFACE-2026-05-11-…` is newer than `SURFACE-2026-05-08-…`).
+- **Cap at 3.** Show the top-3. If more remain, append a single line: "…and N more — say 'more backlog' to see the full list."
+- **Display shape (numbering anchor — important):** Each item shows on its own block with both the local index `1./2./3.` and the full SURFACE-ID, plus the first sentence of the `**Summary:**` line and the priority. Both the local index and the SURFACE-ID are valid references for the user's reply. The numbering anchors to the displayed top-3 only — never to a hidden full-backlog enumeration. Example:
+
+  > By the way, the backlog has these open items —
+  >
+  > **1. SURFACE-2026-05-12-STORE-LEARNING-WRONG-ITEM-SELECTED** *(medium-high)*
+  > `/session-store-learning` re-indexes within the "Recommendations" sub-list, silently picks the wrong learning.
+  >
+  > **2. SURFACE-2026-05-11-ENTRYPOINT-SKILLS-LOAD-PRODUCT-CONTEXT** *(medium)*
+  > Entry-point skills should optionally load relevant `docs/product/*.md` files when present.
+  >
+  > **3. SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP** *(medium)*
+  > Agent prose inverted ship→finalize order in a real run; finalize wrote "shipped" before push.
+  >
+  > …and 7 more — say "more backlog" to see the full list. Or describe new work below.
+
+- **Then proceed to step 2's question.** The user can reply with: a candidate reference (1/2/3 or full SURFACE-ID), "more backlog", or free-form text describing new work.
+
 ### 2. Classify the work
 If the user provided context via `{{args}}`, classify immediately. Otherwise, ask one brief question: "What are you tackling?" — then classify.
+
+**If the user's reply references a backlog candidate from step 1's surfacing** (either a local index `1`/`2`/`3` or a full `SURFACE-…` identifier), resolve the reference back to the matching backlog entry and use that entry's `**Summary:**` plus `**Target level:**` and `**Type:**` lines as the classification input (as if they had been passed in via `{{args}}`). Then **confirm the match by SURFACE-ID** ("Picked up SURFACE-…") before classifying, so the user can catch a wrong-item selection (see SURFACE-2026-05-12-STORE-LEARNING-WRONG-ITEM-SELECTED for the failure mode this defends against). If the user replies "more backlog", expand the list (no cap, same display shape) and re-ask. If the user types free-form text, ignore the surfaced list and classify the free-form text.
 
 Classification outputs:
 - **Workflow:** product | feature | task | incident | resume

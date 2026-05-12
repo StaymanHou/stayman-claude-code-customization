@@ -544,3 +544,52 @@ scenarios:
         - "~/.claude/projects/"
         - "~/.claude/skills/"
     max_retries: 2
+
+  - id: S22
+    name: "session:start surfaces backlog candidates when no active work and empty args"
+    skill: session-start
+    # No args: this exercises step 1's empty-args path where backlog surfacing fires.
+    # Fixture stages workflow/backlog.md with 3 open SURFACE entries (1 high, 1 medium,
+    # 1 low). No .session.md, no wip, no docs/product — so all three "active work"
+    # checks return empty and the backlog trigger condition holds.
+    # No transition_id is asserted: the empty-args path stops at the drive-mode menu
+    # (or earlier, surfacing the backlog) before classification, so the model does not
+    # emit S1–S5. Content assertions carry the test.
+    args: ""
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      backlog: fixtures/backlog/with-three-open.md
+    expect:
+      contains_any:
+        - "SURFACE-2026-05-12-FAKE-HIGH-FIXTURE"
+        - "FAKE-HIGH-FIXTURE"
+        - "backlog has"
+        - "Open backlog"
+      not_contains:
+        - "no backlog items"
+        - "backlog is empty"
+    max_retries: 2
+
+  - id: S23
+    name: "session:start suppresses backlog surfacing when active WIP is present"
+    skill: session-start
+    # Empty args + an active WIP fixture + a populated backlog. Step 1 should detect
+    # the WIP, mention it, ask resume-vs-new, and NOT show the backlog (SKILL.md line 73
+    # requires "all three sources are empty" for surfacing to fire).
+    args: ""
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-autopilot-active.md
+      backlog: fixtures/backlog/with-three-open.md
+    expect:
+      contains_any:
+        - "notification-preferences"
+        - "resume"
+        - "active"
+      # Strict negative: if the backlog SURFACE-IDs appear, surfacing wasn't suppressed.
+      not_contains:
+        - "FAKE-HIGH-FIXTURE"
+        - "FAKE-MED-FIXTURE"
+        - "FAKE-LOW-FIXTURE"
+      not_contains_strict: true
+    max_retries: 2

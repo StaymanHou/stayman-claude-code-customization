@@ -122,6 +122,7 @@ run_test() {
   local fixture_wip; fixture_wip=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "wip")
   local fixture_product_dir; fixture_product_dir=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "product_dir")
   local fixture_session; fixture_session=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "session")
+  local fixture_backlog; fixture_backlog=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "backlog")
 
   # Apply filters
   if [ -n "$FILTER_IDS" ]; then
@@ -192,6 +193,10 @@ ${extra_prompt}"
 
   if [ -n "$fixture_session" ] && [ -f "$SCRIPT_DIR/$fixture_session" ]; then
     cp "$SCRIPT_DIR/$fixture_session" "$tmpdir/workflow/.session.md"
+  fi
+
+  if [ -n "$fixture_backlog" ] && [ -f "$SCRIPT_DIR/$fixture_backlog" ]; then
+    cp "$SCRIPT_DIR/$fixture_backlog" "$tmpdir/workflow/backlog.md"
   fi
 
   local attempt=0
