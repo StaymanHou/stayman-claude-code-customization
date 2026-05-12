@@ -66,7 +66,7 @@
 - **Context:** The feature-finalize SKILL §3b says "Write a short retrospect in the WIP file before archiving it" but doesn't enforce or remind to `git add` the WIP file before `git mv`. The natural sequence — edit, then `git mv` — leaves edits unstaged because `git mv` operates on the index entry of the file, not on the working tree edits. A correct sequence would be: edit, `git add <wip-file>`, `git mv <wip-file> <archive-path>`, commit. Or: edit, commit the WIP file in place with retrospect, then `git mv`, then commit the rename.
 - **Suggested action:** Update `skills/feature-finalize/SKILL.md` §3 (Archive) to either (a) add explicit guidance: "If you've edited the WIP file since the last commit (e.g., to add the §3b Retrospect), run `git add <wip-file>` *before* `git mv` so the edits are staged with the rename. Verify with `git diff --cached --stat` that the rename diff shows non-zero insertions." Or (b) reorder the procedure: write the retrospect and commit-in-place first, then archive in a second commit. The second framing is more robust against the operational mistake.
 - **Priority:** medium (recurrence likely without a SKILL fix; cost is small but creates orphaned commits)
-- **Status:** open
+- **Status:** resolved — closed by per-project-changelog feature (2026-05-12, commit `dcd0d6b`). All 4 closing SKILLs now include an explicit "Operational sequence" block documenting append→`git add`→`git mv`→commit ordering. Adopts option (a) from the suggested-action list — explicit staging guidance rather than procedure-reorder.
 
 ## SURFACE-2026-05-11-STORE-LEARNING-NO-TRANSITION-ID
 - **Source:** feature:verify-codify (reflect-store-local-only feature, Phase 1, 2026-05-11)
