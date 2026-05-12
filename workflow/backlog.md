@@ -58,16 +58,6 @@
 - **Priority:** medium (improves quality of every workflow's first step; worth designing carefully before implementing)
 - **Status:** open
 
-## SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV
-- **Source:** feature:finalize (incident-codify feature, 2026-05-10)
-- **Target level:** task:plan (skill wording fix)
-- **Type:** workflow-gap (operational ordering)
-- **Summary:** During `/feature-finalize`, the Retrospect and Communicate sections were edited into the WIP file *after* the ship commit, then the file was moved via `git mv workflow/wip/<file>.md workflow/archive/<file>.md`. The rename was staged but the unstaged content edits were lost from the rename commit — the archive landed with state line updated but missing the §3b artifact. Required a follow-up commit (d423123) to restore. The rename commit reported "0 insertions, 0 deletions" which was the warning sign.
-- **Context:** The feature-finalize SKILL §3b says "Write a short retrospect in the WIP file before archiving it" but doesn't enforce or remind to `git add` the WIP file before `git mv`. The natural sequence — edit, then `git mv` — leaves edits unstaged because `git mv` operates on the index entry of the file, not on the working tree edits. A correct sequence would be: edit, `git add <wip-file>`, `git mv <wip-file> <archive-path>`, commit. Or: edit, commit the WIP file in place with retrospect, then `git mv`, then commit the rename.
-- **Suggested action:** Update `skills/feature-finalize/SKILL.md` §3 (Archive) to either (a) add explicit guidance: "If you've edited the WIP file since the last commit (e.g., to add the §3b Retrospect), run `git add <wip-file>` *before* `git mv` so the edits are staged with the rename. Verify with `git diff --cached --stat` that the rename diff shows non-zero insertions." Or (b) reorder the procedure: write the retrospect and commit-in-place first, then archive in a second commit. The second framing is more robust against the operational mistake.
-- **Priority:** medium (recurrence likely without a SKILL fix; cost is small but creates orphaned commits)
-- **Status:** resolved — closed by per-project-changelog feature (2026-05-12, commit `dcd0d6b`). All 4 closing SKILLs now include an explicit "Operational sequence" block documenting append→`git add`→`git mv`→commit ordering. Adopts option (a) from the suggested-action list — explicit staging guidance rather than procedure-reorder.
-
 ## SURFACE-2026-05-11-STORE-LEARNING-NO-TRANSITION-ID
 - **Source:** feature:verify-codify (reflect-store-local-only feature, Phase 1, 2026-05-11)
 - **Target level:** Phase 3 of the same feature
@@ -157,22 +147,3 @@
 - **Suggested action:** Investigate session-start/SKILL.md "Mode 3" guidance. Consider adding "When describing Mode 3's behavior, do not use 'auto-chain' even in negation — say 'pauses at verify-human' affirmatively." Test with `--id S12` after edit.
 - **Priority:** medium
 - **Status:** pending — discovered by strict-mode harness; surfaces a wording/clarity issue, not a structural one.
-
----
-
-## Resolved (chronological log)
-
-- **SURFACE-2026-05-11-ORCHESTRATED-PAUSES-BETWEEN-PER-PHASE-STEPS** — RESOLVED 2026-05-11 (via incident workflow, archived as `incident-orchestrated-spurious-pauses.md`): Root cause was that 5 per-phase feature SKILLs (`feature-build`, `feature-verify-auto`, `feature-verify-self`, `feature-verify-human`, `feature-verify-codify`) did not instruct the model to emit canonical `TRANSITION: <id>` tokens — so the orchestrator had no machine signal to act on and fell back to honoring "Run /x" prose as a stop. Fix: added `### Emit Transition` sections to all 5 SKILLs enumerating valid transition IDs; added explicit anti-example to `session-start/SKILL.md` step 4 showing the exact buggy shape. Regression gate: new scenario `S21` in `tests/scenarios/session.yaml` (PASSes on haiku + sonnet, dual-identity `transition_id_any: [S21, F8, F10]` + strict `not_contains` on user-deferral phrases). Adjacent coverage gaps logged as `SURFACE-2026-05-11-PER-PHASE-CHAINING-SCENARIO-COVERAGE`.
-
-- **SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT** — RESOLVED 2026-05-10: Implemented `incident-codify` skill between mitigate and resolve. Added transitions I17 (mitigate→codify default), I18 (codify→resolve), I19 (codify→mitigate back-loop), I20 (codify→investigate back-loop); kept I9 as defer-with-SURFACE path. New SKILL adapts feature-verify-codify's highest-level test rule, integration-boundary check, and six-case triage table — with incident-context semantic flip ("code regression" → back-loop to mitigate, not auto-fix) and speed-aware paths (Path A reuses reproduce-artifact, Path B writes from scratch, defer path with SURFACE→task:plan). Wiring across `agents/incident-workflow/AGENTS.md` (skills frontmatter, diagram, states table, transition table, pause policy with conditional AUTO/PAUSE), `docs/product/transitions.md` (transition table, pause-policy table, new Codify-step paragraph), and three existing SKILLs (incident-mitigate, incident-resolve, incident-reproduce). New test fixtures (`incident-codify-with-reproduce-artifact.md`, `incident-codify-no-reproduce.md`) and scenarios (I17, I18 Path A, I18-defer, I19); existing I9 scenario rewritten to assert defer semantics. CLAUDE.md updated.
-- **SURFACE-2026-05-06-FEATURE-WORKFLOW-MISSING-REPRO-STEP** — RESOLVED 2026-05-09: Implemented option 1 (new `feature-reproduce` and `incident-reproduce` skills). Feature workflow gained F31–F35 transitions; incident workflow gained I13–I16 transitions; session-start gained S18 routing for bug-shape language. Backlog spinouts: SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT (incident codify gap, medium) and SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD (low, deferred). Open known issues: F31 prose-leak (SOFT_PASS, same family as S12 leak); I13 wrong-transition-emission (SOFT_PASS, model emits I2 instead of I13 — test-design / SKILL clarity tradeoff). Both logged as Test Triage blocks in `workflow/wip/reproduce-step.md`.
-- **SURFACE-2026-05-08-SETTINGS-JSON-ALLOWLIST-CRUFT** — RESOLVED 2026-05-08: deleted four token-hardcoded GET allowlist entries (getUpdates x3, getWebhookInfo); kept POST pattern as generic fallback. Hook smoke-tested.
-- **SURFACE-2026-05-06-S9-S11-S14-DUAL-IDENTITY** — RESOLVED 2026-05-06: `transition_id_any` added to `tests/lib/verify.sh`; S9/S11/S12/S13/S14 updated. S9 PASSes via S9|F19 union. (S12 strict-mode regression spun out as SURFACE-2026-05-06-S12-AUTOCHAIN-LEAK-IN-AUTOPILOT, still open above.)
-- **SURFACE-2026-05-06-S10-S13-ROUTING-OVERRIDES-DRIVE-MODE** — RESOLVED 2026-05-06: `transition_id_any: [S10, S3]` and `[S13, F8]` applied. Some haiku-noise SOFT_PASS shape remains.
-- **SURFACE-2026-05-05-D2** — RESOLVED 2026-05-06: `not_contains_strict` opt-in added to `tests/lib/verify.sh`. Strict mode applied to S12 and S14; caught a real prose-leak bug in S12 (logged separately).
-- **SURFACE-2026-05-05-HIDDEN-FAIL-F4** — RESOLVED 2026-05-06: `model: sonnet` added; PASSes via tests/run-all.sh sonnet pass.
-- **SURFACE-2026-05-05-HIDDEN-FAIL-S3** — RESOLVED 2026-05-06: Valid transitions section added to session-start/SKILL.md; S3 also tagged `model: sonnet`. Sonnet PASSes consistently.
-- **SURFACE-2026-05-05-HIDDEN-FAIL-S6** — RESOLVED 2026-05-06: Valid transitions section added to session-resume/SKILL.md; S6 PASSes on haiku.
-- **SURFACE-2026-05-05-F22-FLAKY-REGRESSED-TO-FAIL** — RESOLVED 2026-05-06: `model: sonnet` added; PASSes via tests/run-all.sh sonnet pass.
-- **SURFACE-2026-05-05-HIDDEN-FAIL-S10** — RESOLVED 2026-05-06: `transition_id_any: [S10, S3]` applied (see ROUTING-OVERRIDES-DRIVE-MODE entry above).
-- **SURFACE-2026-05-05-HIDDEN-FAIL-S13** — RESOLVED 2026-05-06: `transition_id_any: [S13, F8]` applied (see ROUTING-OVERRIDES-DRIVE-MODE entry above).
