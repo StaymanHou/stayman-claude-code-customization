@@ -4,6 +4,8 @@
 
 - **Feature shipped:** Per-project `CHANGELOG.md` auto-populated by terminal-close skills — `feature-finalize`, `task-close`, `incident-resolve`, and `product-finalize` now append one-line entries on close, per the `## CHANGELOG.md convention` section of `CLAUDE.snippet.md`.
 - **Backlog resolved:** SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV — closed by per-project-changelog feature; all four closing SKILLs now document the append-before-`git mv` operational sequence.
+- **Feature shipped:** `/session-start` now surfaces the top-3 open backlog items as candidate work when no paused session, active WIP, in-progress product doc, or `{{args}}` is present — ranked by priority tier then SURFACE date descending, with a "more backlog" affordance and SURFACE-ID-anchored numbering to defend against sub-list reindexing bugs.
+- **Backlog resolved:** SURFACE-2026-05-11-SESSION-START-SUGGEST-FROM-BACKLOG — closed by the session-start backlog-surfacing feature; step 1 of `skills/session-start/SKILL.md` now reads `workflow/backlog.md` when no other active work is found, and step 2 resolves backlog references back to the matching entry.
 
 ## 2026-05-11
 

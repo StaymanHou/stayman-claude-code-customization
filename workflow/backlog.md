@@ -22,20 +22,6 @@
 - **Priority:** low (mitigation applied across all 5 skills; this is defense-in-depth)
 - **Status:** open
 
-## SURFACE-2026-05-11-SESSION-START-SUGGEST-FROM-BACKLOG
-- **Source:** user-initiated (session-start dispatch, 2026-05-11)
-- **Target level:** feature:plan (small/simple — single skill, prose addition)
-- **Type:** workflow-enhancement
-- **Summary:** When `/session-start` finds no paused session and no active WIP, have it also check `workflow/backlog.md` and surface open items to the user as candidate work. Today step 1 only checks `workflow/.session.md`, `workflow/wip/`, and `docs/product/*.md` frontmatter. The backlog is the natural next place to look — open SURFACE items are exactly the "what could I work on?" list.
-- **Context:** Observed live in this session — user asked "anything in the backlog?" after session-start said no active work. The skill could volunteer that.
-- **Suggested action:** Update `skills/session-start/SKILL.md` step 1 to also read `workflow/backlog.md` (if present), parse open items (Status: open or no Status line), and present a short list as candidates *before* asking "What are you tackling?". Decide: show all open, or only top-N by priority? Probably top-3 by priority, with a "more" affordance.
-- **Open questions:**
-  - Should the suggestion appear only when nothing else is active, or always as a "by the way" footer?
-  - How to rank — by priority field, by recency, by target level (task < feature)?
-  - Does this risk overwhelming the user when the backlog is long? Probably not at current volume; revisit if backlog grows past ~20 items.
-- **Priority:** medium (low cost, high relevance for daily use)
-- **Status:** open
-
 ## SURFACE-2026-05-11-ENTRYPOINT-SKILLS-LOAD-PRODUCT-CONTEXT
 - **Source:** user-initiated (session-start dispatch, 2026-05-11)
 - **Target level:** feature:spec (touches multiple entry-point skills; needs design before implementation)
@@ -57,13 +43,6 @@
 - **Suggested action:** Open a feature-spec to design the mapping table and load strategy. Likely deliverable is a small shared snippet in `CLAUDE.snippet.md` ("Entry-point skills check `docs/product/<file>.md` for ...") plus per-skill prompt edits.
 - **Priority:** medium (improves quality of every workflow's first step; worth designing carefully before implementing)
 - **Status:** open
-
-## SURFACE-2026-05-11-STORE-LEARNING-NO-TRANSITION-ID
-- **Source:** feature:verify-codify (reflect-store-local-only feature, Phase 1, 2026-05-11)
-- **Target level:** Phase 3 of the same feature
-- **Type:** gap (test infrastructure consistency)
-- **Summary:** `session-store-learning` had no S-transition-ID and emitted no `TRANSITION:` line. Resolved 2026-05-11: added S20 to transitions.md and `TRANSITION: S20` emission in Step 3 of SKILL.md. S19 now PASSes strictly.
-- **Status:** resolved (Phase 3, this feature)
 
 ## SURFACE-2026-05-10-I20-SCENARIO-MISSING
 - **Source:** feature:verify-codify (incident-codify feature, Phase 3, 2026-05-10)

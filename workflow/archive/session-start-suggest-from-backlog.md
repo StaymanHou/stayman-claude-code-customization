@@ -1,6 +1,7 @@
 ---
 workflow: feature
-state: plan (complete)
+state: finalize (complete)
+completed: 2026-05-12
 created: 2026-05-12
 drive_mode: autopilot
 surface_id: SURFACE-2026-05-11-SESSION-START-SUGGEST-FROM-BACKLOG
@@ -37,15 +38,28 @@ When `/session-start` finds no paused session and no active WIP, it asks "What a
   - [x] verify-codify  <!-- status: complete: S22 + S23 added (SOFT_PASS — expected, empty-args path emits no transition); new fixture tests/fixtures/backlog/with-three-open.md; runner gained `fixtures.backlog` key (5 lines); S1 PASS regression check; check-structure 34/34 PASS, 130 scenarios registered (up from 128) -->
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** ship
+- **Path:** Feature > finalize
+- **Active scope:** finalize
 - **Blocked:** none
-- **Unvisited:** finalize
+- **Unvisited:** none
 - **Open discoveries:** none
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
      Each entry also logged to workflow/backlog.md -->
+
+## Retrospect
+
+- **What changed in our understanding:** The verify-codify scoping question turned non-trivial — there's no transition ID for the empty-args path because the skill is mid-flow at the drive-mode menu before classification. SOFT_PASS on content match is the *intended* outcome for these scenarios, not a degradation. This is a generalizable lesson for any future scenarios that test mid-skill behavior rather than terminal transitions.
+- **Assumptions that held:** Single-phase scope was correct — no architectural ripples, no contract changes across artifacts. The test harness's fixture model extended cleanly with one new key (`fixtures.backlog`). The numbering-anchor defense against the STORE-LEARNING-WRONG-ITEM bug class was straightforward to bake in alongside the new feature rather than as a separate concern.
+- **Assumptions that were wrong:** None significant. The plan's "≤200 LOC" estimate held (160 lines).
+- **Approach delta:** Plan had 2 impl tasks (P1.1 step-1, P1.2 step-2 reference parsing). Both shipped as planned. One ad-hoc decision during verify-codify: added a new `fixtures.backlog` key to the test runner — this was a 5-line testing-infrastructure addition, not pre-planned, but necessary because the runner had no existing way to stage `workflow/backlog.md` in test project dirs.
+
+## Communicate
+
+> **Feature complete:** session-start now surfaces top-3 open backlog items as candidate work when no paused session, active WIP, in-progress product doc, or `{{args}}` is present. Ranking is priority-tier first (high → medium-high → medium → low) then SURFACE date descending within tier. To verify: run `/session-start` in this repo with no active work — you'll see the top-3 backlog items before the "What are you tackling?" prompt. Resolves SURFACE-2026-05-11-SESSION-START-SUGGEST-FROM-BACKLOG.
+
+Requester = operator — closure notice for self-record.
 
 ## Notes for downstream skills
 
