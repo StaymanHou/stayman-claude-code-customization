@@ -92,6 +92,19 @@ Move the following to `docs/product/archive/<cycle-name>/`:
 
 Before moving each file, confirm it is not referenced by any currently active workflow item in `workflow/wip/`.
 
+### 6b. Append to CHANGELOG (required)
+
+Append closure entries to `<proj_root>/CHANGELOG.md` per the **CHANGELOG.md convention** in `~/.claude/CLAUDE.md` (injected from `CLAUDE.snippet.md`). Read that section for the canonical rules — file shape, heading case, same-day grouping, entry-kind vocabulary, append-before-`git mv` discipline.
+
+For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
+
+1. **One `**Product cycle complete:**` summary bullet** — composed from the cycle name and one-sentence summary of what the cycle delivered. Per-WP `**Milestone:**` lines are emitted by `feature-finalize` at WP-completion time and are not re-emitted here.
+2. **Zero or more `**Backlog resolved:**` bullets** — one per item that step 4 (Backlog Sweep) marked as resolved by this cycle's work. Each bullet leads with the SURFACE ID.
+
+**Operational sequence:** edit `CHANGELOG.md` before the file-move operations in step 6 are committed. Stage CHANGELOG together with the archive moves so the entire cycle-close lands in one commit (or a tightly grouped commit pair if 6 already commits separately).
+
+**Idempotency:** if a `**Product cycle complete:**` bullet for this cycle name already exists in CHANGELOG.md, skip the append (re-running product-finalize on an already-closed cycle is a no-op).
+
 ### 7. Confirm and Exit
 
 After archiving:

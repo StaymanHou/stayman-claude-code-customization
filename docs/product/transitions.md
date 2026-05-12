@@ -194,6 +194,10 @@ Current workflow pauses, another workflow/step runs, original resumes:
    - If **no**: auto-flow results into plan, annotate, continue
    - If **yes**: re-plan before resuming
 
+### CHANGELOG.md append (write-side, cross-workflow)
+
+Four terminal-close skills append a one-line entry to `<proj_root>/CHANGELOG.md` as part of their close procedure: `feature-finalize` (F19/F30), `task-close` (T10/T11), `incident-resolve` (I10 + the fast-close I4/I7 paths via §4b), and `product-finalize` (P13). The canonical rules — file shape, heading case (`# Changelog` + `## YYYY-MM-DD`), fixed entry-kind vocabulary (`Feature shipped`, `Task closed`, `Incident resolved`, `Backlog resolved`, `Milestone`, `Product cycle complete`), same-day grouping, and append-before-`git mv` sequencing — live in `CLAUDE.snippet.md` (`## CHANGELOG.md convention`) and are injected globally into `~/.claude/CLAUDE.md`. Each closing skill references the snippet rather than inlining the rules so wording cannot drift. This is a side-effect of the terminal transitions listed above, not a transition in its own right.
+
 ---
 
 ## Product Workflow

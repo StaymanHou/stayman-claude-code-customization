@@ -1380,3 +1380,30 @@ scenarios:
         - "/feature-spec"
         - "/feature-plan"
     max_retries: 2
+
+  # F-CHGLOG-1: feature-finalize appends to project CHANGELOG.md
+  # Test-only ID — no entry in transitions.md's main table; this asserts a side-effect of F19.
+  - id: F-CHGLOG-1
+    name: "feature:finalize appends Feature shipped + Backlog resolved lines to CHANGELOG.md"
+    skill: feature-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-no-debt.md
+    system_prompt_extra: |
+      Documentation updated. No tech debt. Feature is complete.
+      During the Full Backlog Review step you identified two backlog items
+      that this feature resolved: SURFACE-2026-05-01-NOTIFICATION-CATEGORY-MISSING
+      and SURFACE-2026-05-03-PREFERENCES-API-SHAPE. Per the CHANGELOG.md
+      convention documented in ~/.claude/CLAUDE.md (injected from
+      CLAUDE.snippet.md), append one **Feature shipped:** bullet plus two
+      **Backlog resolved:** bullets (one per SURFACE ID) to
+      <proj_root>/CHANGELOG.md under today's date heading. Follow the
+      append-before-`git mv` operational sequence.
+    expect:
+      transition_id: F19
+      contains_any:
+        - "CHANGELOG"
+        - "**Feature shipped:**"
+        - "Feature shipped"
+      not_contains: []
+    max_retries: 2

@@ -81,6 +81,63 @@ Every feature WIP file uses the Work Tree format. All skills that read or write 
 - **Observable outcomes at plan time** — written by `feature-plan`, read by `feature-verify-self`; never written post-hoc
 - **Tree update on every exit** — every skill that touches a WIP file must update leaf statuses AND Current Node before handing off
 
+## CHANGELOG.md convention (GLOBAL)
+
+Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at the project root (`<proj_root>/CHANGELOG.md`). It is the narrative record of what shipped, closed, or resolved — and it is the canonical destination for the kind of one-line closure notes that used to live in `workflow/backlog.md`'s "Resolved" section.
+
+The four terminal-close skills append to it automatically:
+
+| Skill | Emits on close |
+|-------|---------------|
+| `feature-finalize` | one `**Feature shipped:**` line + zero-or-more `**Backlog resolved:**` lines + zero-or-one `**Milestone:**` line (if this feature completes a WBS WP) |
+| `task-close` | one `**Task closed:**` line + zero-or-more `**Backlog resolved:**` lines |
+| `incident-resolve` | one `**Incident resolved:**` line + zero-or-more `**Backlog resolved:**` lines (fires on every resolve path, including fast-close I4/I7) |
+| `product-finalize` | one `**Product cycle complete:**` summary line + zero-or-more `**Backlog resolved:**` lines (for items closed during the §4 Backlog Sweep) |
+
+### File shape
+
+```markdown
+# Changelog
+
+## 2026-05-12
+
+- **Feature shipped:** <one-sentence summary>
+- **Backlog resolved:** <SURFACE-ID> — <one-sentence what closed it>
+- **Milestone:** <WP name from wbs.md>
+
+## 2026-05-11
+
+- **Incident resolved:** <one-sentence summary>
+- **Task closed:** <one-sentence summary>
+```
+
+### Rules
+
+1. **Heading case.** Top-level heading is `# Changelog` (cased, not SHOUT-case).
+2. **Date headings as `## YYYY-MM-DD`.** ISO-8601, sortable, no version numbers, no `[v1.2.3]` Keep-a-Changelog-style anchors. Closing skills always use **today's date** (the date the skill runs) — never the WIP file's creation date or any commit date.
+3. **Reverse chronological across days; chronological within a day.** Newest day at the top of the file (under `# Changelog`); new same-day entries are appended to the **bottom** of that day's bullet list (so a day's bullets read top-to-bottom in execution order).
+4. **Entry-kind vocabulary is fixed.** Each bullet starts with one of: `**Feature shipped:**`, `**Task closed:**`, `**Incident resolved:**`, `**Backlog resolved:**`, `**Milestone:**`, `**Product cycle complete:**`. No other prefixes. Closing skills do not invent new ones.
+5. **One sentence per entry.** A reader six months later should understand the entry without opening any archive file. Don't paste archive paths or SURFACE prose — the entry stands alone.
+6. **First-write file shape.** If `CHANGELOG.md` doesn't exist at append time, create it as:
+   ```
+   # Changelog
+
+   ## <today YYYY-MM-DD>
+
+   - <first entry>
+   ```
+   No preamble paragraph. No "this file is auto-generated" note.
+7. **Same-day grouping.** If `## <today>` already exists at the top of the file, append the new bullet(s) to the bottom of that day's bullet list. If it doesn't, insert a new `## <today>` section above the previous newest day, with a blank line separator on either side.
+8. **One bullet per resolved backlog item.** A close that resolves multiple SURFACE items emits one `**Backlog resolved:**` bullet per SURFACE ID. Do not aggregate into "Resolved 5 backlog items" — each SURFACE ID should be grep-able.
+
+### Append discipline (write-side rules for closing skills)
+
+- **Append before `git mv`.** When the closing skill archives the WIP file (`git mv workflow/wip/<f>.md workflow/archive/`), the CHANGELOG append must happen *before* the move, and both files must be staged together in the same commit. Sequence: edit CHANGELOG.md → `git add CHANGELOG.md <wip-file>` → `git mv <wip-file> <archive-path>` → commit. This avoids the failure mode logged as SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV (rename commits dropping unstaged content edits).
+- **Idempotency by archival.** Re-running a closing skill on a WIP path that is already inside `workflow/archive/` is a no-op for the append step. The skill detects this and skips. Re-running on an active WIP that has not yet been archived appends normally.
+- **Deterministic line composition.** The skill composes the entry line from data already in the WIP file (title, completion type) plus today's date. The model does not invent wording — it follows the entry-kind vocabulary and writes one sentence drawn from the WIP's problem statement or closure message.
+- **Project root detection.** "Project root" = `git rev-parse --show-toplevel` if the working dir is in a git repo; otherwise the current working directory.
+- **No backdating.** The skill always writes today's date, regardless of when the WIP was created or when work actually finished.
+
 ## Pre-risky-action checklist (GLOBAL)
 
 **Before running any destructive-capable CLI** — scaffolders (`create-*`, `npm create *`), initializers (`*-init`, `yo *`), codegen tools that write to the working directory, or anything with an `--overwrite` / `--force` flag — run through this checklist:

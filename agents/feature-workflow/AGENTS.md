@@ -68,7 +68,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | verify-human | `/feature-verify-human` | Manual verification |
 | verify-codify | `/feature-verify-codify` | Codify tests from verification |
 | ship | `/feature-ship` | Cleanup and PR prep |
-| finalize | `/feature-finalize` | Docs, backlog review, archive |
+| finalize | `/feature-finalize` | Docs, backlog review, archive, append to CHANGELOG.md |
 | refactor | `/feature-refactor` | Tech debt cleanup |
 
 ### Full Transition Table

@@ -25,7 +25,7 @@ Entry → plan → act → close → Exit
 |-------|-------|---------|
 | plan | `/task-plan` | Context discovery, scope assessment, plan creation |
 | act | `/task-act` | Implementation guided by the plan |
-| close | `/task-close` | Documentation, backlog review, archival |
+| close | `/task-close` | Documentation, backlog review, archival, append to CHANGELOG.md |
 
 ### Transitions (from docs/product/transitions.md)
 

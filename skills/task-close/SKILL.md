@@ -34,14 +34,9 @@ Scan `workflow/backlog.md` for ALL unresolved items (not just high-priority). Fo
 
 Present the backlog summary to the user.
 
-### 4. Archive
-- Update the WIP plan file: mark as "Completed", record completion date
-- Move the plan file to `workflow/archive/` (create directory if needed)
-- Clean up the `workflow/wip/` directory
+### 4. Retrospect + Communicate (required — two separate outputs)
 
-### 5. Retrospect + Communicate (required — two separate outputs)
-
-These two steps are mandatory before closing, regardless of whether learnings occurred.
+These two steps are mandatory before closing, regardless of whether learnings occurred. **Order matches `feature-finalize` so the canonical close sequence is consistent across the workflow system: Retrospect → CHANGELOG append → Archive.**
 
 **Output A — Retrospect artifact:** Write a short retrospect in the WIP file before archiving it:
 
@@ -61,7 +56,31 @@ If the task was exactly as planned with no surprises, record that explicitly ("N
 
 If the requester is the same person running the agent (solo developer), note it as: "Requester = operator — closure notice for self-record."
 
-### 6. Reflect Check
+### 5. Append to CHANGELOG (required)
+
+Append closure entries to `<proj_root>/CHANGELOG.md` per the **CHANGELOG.md convention** in `~/.claude/CLAUDE.md` (injected from `CLAUDE.snippet.md`). Read that section for the canonical rules — file shape, heading case, same-day grouping, entry-kind vocabulary, append-before-`git mv` discipline.
+
+For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
+
+1. **One `**Task closed:**` bullet** — composed from the task's title and one-sentence summary of what was done.
+2. **Zero or more `**Backlog resolved:**` bullets** — one per backlog item that step 3 (Full Backlog Review) marked as resolved by this task's work. Each bullet leads with the SURFACE ID.
+
+**Idempotency:** if the WIP file is already inside `workflow/archive/`, skip the append.
+
+### 6. Archive
+- Update the WIP plan file: mark as "Completed", record completion date
+- Move the plan file to `workflow/archive/` (create directory if needed)
+- Clean up the `workflow/wip/` directory
+
+**Operational sequence (must be in this order to avoid the SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV failure mode):**
+
+1. Retrospect already written into the WIP file by §4.
+2. CHANGELOG already edited by §5.
+3. `git add CHANGELOG.md <wip-file>` — stage CHANGELOG + the WIP file with retrospect together.
+4. `git mv <wip-file> workflow/archive/<wip-file>` — perform the archive move now.
+5. Single commit captures retrospect edit + CHANGELOG append + archive move.
+
+### 7. Reflect Check
 Evaluate whether significant learning occurred during this task (beyond what was captured in the retrospect):
 - Were there wrong assumptions that were corrected?
 - Were there unexpected discoveries?

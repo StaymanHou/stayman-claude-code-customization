@@ -430,3 +430,28 @@ scenarios:
       not_contains:
         - "/incident-resolve"
     max_retries: 2
+
+  # F-CHGLOG-2: incident-resolve appends to project CHANGELOG.md
+  # Test-only ID — no entry in transitions.md's main table; this asserts a side-effect of I10.
+  - id: F-CHGLOG-2
+    name: "incident:resolve appends Incident resolved line to CHANGELOG.md"
+    skill: incident-resolve
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-mitigated.md
+    system_prompt_extra: |
+      The incident is fully resolved. Monitoring period passed with no
+      regressions. The hotfix is stable. Per the CHANGELOG.md convention
+      documented in ~/.claude/CLAUDE.md (injected from CLAUDE.snippet.md),
+      append one **Incident resolved:** bullet to <proj_root>/CHANGELOG.md
+      under today's date heading, summarizing the incident and its mitigation
+      in one sentence. Follow the append-before-`git mv` operational sequence.
+    expect:
+      transition_id: I10
+      contains_any:
+        - "CHANGELOG"
+        - "**Incident resolved:**"
+        - "Incident resolved"
+      not_contains: []
+    max_retries: 2

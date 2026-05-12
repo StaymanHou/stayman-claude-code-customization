@@ -298,3 +298,27 @@ scenarios:
         - "/task-close"
         - "ESCALATE"
     max_retries: 2
+
+  # F-CHGLOG-3: task-close appends to project CHANGELOG.md
+  # Test-only ID — no entry in transitions.md's main table; this asserts a side-effect of T10/T11.
+  - id: F-CHGLOG-3
+    name: "task:close appends Task closed line to CHANGELOG.md"
+    skill: task-close
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-act-complete.md
+    system_prompt_extra: |
+      The task is complete. Implementation went as planned, no surprises.
+      Per the CHANGELOG.md convention documented in ~/.claude/CLAUDE.md
+      (injected from CLAUDE.snippet.md), append one **Task closed:** bullet
+      to <proj_root>/CHANGELOG.md under today's date heading, summarizing
+      what the task accomplished in one sentence. Follow the canonical
+      close order: Retrospect → CHANGELOG append → Archive.
+    expect:
+      transition_id_any: [T10, T11]
+      contains_any:
+        - "CHANGELOG"
+        - "**Task closed:**"
+        - "Task closed"
+      not_contains: []
+    max_retries: 2

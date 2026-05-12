@@ -90,6 +90,14 @@ grep_check "CLAUDE.md contains 'Observable Outcomes'" "CLAUDE.md" "Observable Ou
 grep_check "CLAUDE.md contains severity taxonomy (BLOCKING or severity)" "CLAUDE.md" "BLOCKING|severity" 1
 grep_check "CLAUDE.md mentions verify-self" "CLAUDE.md" "verify-self" 1
 
+# CHANGELOG convention is defined in the snippet and referenced by all four closing SKILLs.
+# If any of these drop the reference, the close path silently stops writing to CHANGELOG.
+grep_check "CLAUDE.snippet.md defines 'CHANGELOG.md convention'" "CLAUDE.snippet.md" "^## CHANGELOG.md convention" 1
+grep_check "feature-finalize references CHANGELOG convention" "skills/feature-finalize/SKILL.md" "CHANGELOG.md convention" 1
+grep_check "incident-resolve references CHANGELOG convention" "skills/incident-resolve/SKILL.md" "CHANGELOG.md convention" 1
+grep_check "task-close references CHANGELOG convention" "skills/task-close/SKILL.md" "CHANGELOG.md convention" 1
+grep_check "product-finalize references CHANGELOG convention" "skills/product-finalize/SKILL.md" "CHANGELOG.md convention" 1
+
 echo ""
 
 # ── Phase 4: install.sh and symlinks ──────────────────────────────────────

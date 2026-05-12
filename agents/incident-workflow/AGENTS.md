@@ -37,7 +37,7 @@ report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → c
 | investigate | `/incident-investigate` | Forensic evidence gathering |
 | mitigate | `/incident-mitigate` | Apply fix or workaround |
 | codify | `/incident-codify` | Codify regression coverage between mitigate and resolve (Path A reuses reproduce-artifact; Path B writes from scratch; defer path available for active P0s) |
-| resolve | `/incident-resolve` | Verify, archive, surface follow-ups |
+| resolve | `/incident-resolve` | Verify, archive, surface follow-ups, append to CHANGELOG.md |
 
 ### Full Transition Table
 

@@ -1,5 +1,17 @@
 # Backlog
 
+## SURFACE-2026-05-12-STORE-LEARNING-WRONG-ITEM-SELECTED
+- **Source:** user-observed (live use of `session-store-learning` after the global-scope/learnings split, 2026-05-12, ops-data-hub WP9.5 reflection)
+- **Target level:** task:plan (likely small/simple — SKILL prose tightening + selection discipline)
+- **Type:** bug (item-selection drift — user asks for X, skill operates on Y)
+- **Summary:** During reflection of ops-data-hub WP9.5, `/session-reflect` listed 4 learnings: #1 Telegram MarkdownV1 (project), #2 waiting_human pause-aware timeouts (project), #3 verify-human catches external-system defects (global), #4 mock + structural-shape testing pattern (global). User asked: "store learning #2 only" (project-scope, waiting_human). `/session-store-learning` instead drafted **#4** (mock + structural-shape, global-scope) to `.claude/learnings/2026-05-12-mock-plus-structural-shape-test.md`. The classification reasoning was sound *for the item it analyzed* — it just analyzed the wrong item.
+- **Plausible mechanism:** the reflection's "Recommendations for /session-store-learning" sub-section listed *only* the two global-scope learnings (#3 and #4) as candidates for store-learning, with the project ones marked "lower priority — embedded in codebase." The store-learning skill likely re-indexed within that recommendation block (so its "#2" = the second item in the global-only candidate list = #4 of the full list). User intent referenced the full reflection's numbering.
+- **Suggested action (investigate, do not commit):**
+  1. **Reproduce.** Set up a fixture reflection output with 4 learnings numbered 1–4, where the "Recommendations" sub-section at the end lists only a subset (e.g. items 3 and 4). Invoke `/session-store-learning` with an explicit number: "store learning #2 only" (where #2 in the full list is *not* in the Recommendations subset). Verify which learning the skill picks.
+  2. **Tighten selection discipline in the SKILL.** Step §1 (Analyze) should: (a) explicitly state that "#N" refers to the full reflection's enumeration, not any sub-list like "Recommendations"; (b) if a "Recommendations" sub-section exists, ignore it for selection purposes — it's reflection's advice, not a renumbering. Alternative: require the user to paste the learning text, not just a number, when invoking outside an interactive selection menu.
+- **Priority:** medium-high — silently subverts user intent (user asks for X, gets Y) without any prompt for confirmation. The skill's "4. Confirm" step at the end *did* show the drafted file path, so the user could in theory have caught it — but the bug primary is at item selection, which happens silently.
+- **Status:** open
+
 ## SURFACE-2026-05-11-PER-PHASE-CHAINING-SCENARIO-COVERAGE
 - **Source:** incident:codify (incident-orchestrated-spurious-pauses, 2026-05-11)
 - **Target level:** task:plan

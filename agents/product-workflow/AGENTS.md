@@ -41,7 +41,7 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 | arch | `/product-arch` | System design for current phase |
 | wbs | `/product-wbs` | Work breakdown into packages |
 | context | `/product-context` | Generate CLAUDE.md, transition to features |
-| product-finalize | `/product-finalize` | Resync durable docs, sweep backlog, archive cycle-scoped docs |
+| product-finalize | `/product-finalize` | Resync durable docs, sweep backlog, archive cycle-scoped docs, append to CHANGELOG.md |
 
 ### Full Transition Table
 
