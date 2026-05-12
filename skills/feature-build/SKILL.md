@@ -110,4 +110,15 @@ When all impl tasks in the current phase are done (verify nodes will be handled 
 - Update `## Current Node` to point to `verify-auto` for this phase
 - Tell user to run `/feature-verify-auto` to verify this phase
 
+### 9. Emit Transition
+End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
+
+- `TRANSITION: F8` — phase complete, hand off to verify-auto (default exit)
+- `TRANSITION: F9b` — back-loop re-verify passed, hand off to verify-auto after scoped re-entry
+- `TRANSITION: F22` — REDIRECT to research (unknown encountered)
+- `TRANSITION: F23` — back-loop to plan (plan was wrong)
+- `TRANSITION: F25` — SURFACE to product:wbs (note-and-continue, then return)
+- `TRANSITION: F26` — SURFACE to product:arch (pause-and-escalate)
+- `TRANSITION: F27` — escalate to incident (something broke)
+
 **Current Step/Focus:** {{args}}

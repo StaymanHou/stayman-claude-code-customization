@@ -63,4 +63,11 @@ Present a clear summary:
 - Any warnings from linters or static analysis
 - Recommendation for next step
 
+### 5. Emit Transition
+End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
+
+- `TRANSITION: F10` — tests pass, hand off to verify-self
+- `TRANSITION: F9` — tests fail (code bug), back-loop to build
+- `TRANSITION: F24` — tests reveal spec was wrong, back-loop to spec
+
 **Scope:** {{args}}

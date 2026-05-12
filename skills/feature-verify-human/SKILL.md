@@ -114,4 +114,11 @@ As the human works through each item, record their result per leaf:
 - Update `## Current Node`: set Active scope to the specific failed leaf IDs (e.g. `P1.verify-human.2, P1.verify-human.3`)
 - Tell user to run `/feature-build P1.verify-human.2,P1.verify-human.3` with the exact failed leaf IDs as args
 
+### 8. Emit Transition
+End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
+
+- `TRANSITION: F13` — human approves all leaves, hand off to verify-codify
+- `TRANSITION: F11` — human confirmed skip (no integration boundary, isolated artifacts only), hand off to verify-codify
+- `TRANSITION: F12` — human rejected one or more leaves, back-loop to build with scoped leaf IDs
+
 **Scope:** {{args}}

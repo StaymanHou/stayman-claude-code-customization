@@ -101,4 +101,11 @@ Action: <what you did, or what you are waiting for human approval to do>
 - Document the findings clearly
 - Tell user to run `/feature-verify-human` to re-verify with the new information
 
+### 5. Emit Transition
+End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
+
+- `TRANSITION: F15` — tests pass, more phases remain, hand off to build (next phase)
+- `TRANSITION: F16` — tests pass, all phases complete, hand off to ship
+- `TRANSITION: F14` — new tests reveal issues, back-loop to verify-human
+
 **Scope:** {{args}}

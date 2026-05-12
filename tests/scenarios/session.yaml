@@ -455,6 +455,74 @@ scenarios:
         - "/product-vision"
     max_retries: 2
 
+  - id: S21
+    name: "session:orchestrator (mode 2) ignores skill-emitted 'Run /feature-X' prose and auto-chains"
+    skill: session-start
+    args: "Continue notification preferences feature"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      You are orchestrating the feature workflow in **Orchestrated mode (Mode 2)**.
+      The user already selected Mode 2 earlier in the session — do NOT re-present
+      the drive-mode menu.
+
+      The `feature-build` Skill just returned. Its output ended with:
+
+          Phase 1 impl complete:
+          - Migration applied, schema updated
+          - Manual smoke check passes
+
+          **Next:** Run `/feature-verify-auto` to verify Phase 1.
+
+          TRANSITION: F8
+
+      Per `skills/session-start/SKILL.md` step 4 and the Mode-2 pause policy in
+      `agents/feature-workflow/AGENTS.md`:
+      - `feature-build` is AUTO in Mode 2.
+      - The orchestrator MUST NOT treat the skill's `"Run /feature-verify-auto"`
+        prose as a stop signal — it is advisory text for single-step users only.
+      - The only authoritative signal is `TRANSITION: F8`, which means "build →
+        verify-auto, chain to it now."
+
+      What do you do next? Demonstrate the correct orchestrator behavior:
+      invoke `feature-verify-auto` immediately via the Skill tool (describe it,
+      since you're not running it for real here) — do NOT stop, do NOT ask the
+      user to confirm, do NOT echo "/feature-verify-auto" as a next-step for the
+      user to type.
+    expect:
+      # Dual-identity, two layers deep: the orchestrator chaining build → verify-auto
+      # is genuinely emitting F8. If the model has mentally chained through verify-auto
+      # already, F10 (verify-auto pass) is also honest. S21 is the session-level
+      # decoration. Any of these is acceptable — what matters is that the model is
+      # narrating forward orchestration, not user-deferral (caught by not_contains).
+      transition_id_any: [S21, F8, F10]
+      contains_any:
+        - "invoke"
+        - "invoking"
+        - "chaining"
+        - "Skill"
+        - "auto-chain"
+        - "verify-self"
+        - "verify-auto"
+      # Strict: any of these phrases means the orchestrator stopped and asked
+      # the user instead of chaining. That is the exact bug under reproduction.
+      not_contains:
+        - "let me know"
+        - "ready to proceed"
+        - "shall I"
+        - "should I"
+        - "type /feature-verify-auto"
+        - "please run"
+        - "you'll need to run"
+        - "you need to run"
+        - "you need to supply"
+        - "waiting for"
+        - "awaiting your"
+        - "when prompted"
+      not_contains_strict: true
+    max_retries: 2
+
   - id: S19
     name: "session:store-learning drafts global-scope learnings to .claude/learnings/, never to ~/.claude/"
     skill: session-store-learning

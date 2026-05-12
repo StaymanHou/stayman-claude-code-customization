@@ -126,4 +126,10 @@ Read the `result` block from the subagent's output. For each outcome:
 - Update Current Node: active scope = failed leaf IDs
 - Tell user to run `/feature-build <failed-leaf-IDs>` to fix before re-running verify-self
 
+### 6. Emit Transition
+End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
+
+- `TRANSITION: F10b` — all blocking outcomes pass (cosmetic-only is fine), hand off to verify-human
+- `TRANSITION: F9b` — blocking failure found, back-loop to build with scoped leaf IDs
+
 **Scope:** {{args}}

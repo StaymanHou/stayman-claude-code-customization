@@ -120,6 +120,27 @@ You are now the orchestrator for the classified workflow. You do **NOT** spawn a
 4. If the policy says AUTO (or SKIP for verify-human in Mode 3): invoke the next skill immediately — do **not** ask the user to retype a slash command, and do **not** treat `"Run /x"` or `**STOP**` in the skill's output as a stop signal.
 5. Repeat until the workflow reaches a terminal state or the user explicitly pauses.
 
+**Anti-example — the exact failure pattern this rule prevents:**
+
+A buggy run looks like this. Skill returns with:
+
+```
+Phase 1 impl complete:
+- Migration applied, schema updated
+- Manual smoke check passes
+
+**Next:** Run `/feature-verify-auto` to verify Phase 1.
+
+TRANSITION: F8
+```
+
+The orchestrator must read `TRANSITION: F8`, look up F8 in the pause-policy table (build is AUTO in Mode 2/3/4), and **immediately invoke `feature-verify-auto` via the Skill tool**. It must NOT do any of these:
+- "Phase 1 done. Ready to run verify-auto when you are." (waiting on user — wrong)
+- "Phase 1 done. Type `/feature-verify-auto` to continue." (deferring to user — wrong)
+- "Phase 1 done. You'll need to supply the dev URL when prompted." (mixing chain narration with user-deferral — wrong)
+
+The "Run /feature-verify-auto" prose in the skill output is advisory for single-step users who invoked the skill directly via slash command. When *you* invoked it via the Skill tool, that prose is not addressed to you — it's noise. The machine signal is `TRANSITION: F8`, full stop.
+
 **Persist progress.** After each completed step, update the active state file on disk (the skill itself writes this — you just trust it) and optionally touch `workflow/.session.md` if the user steps away.
 
 ### 5. Cross-workflow handoff (EXIT→<other-workflow> transitions)

@@ -1,5 +1,51 @@
 # Backlog
 
+## SURFACE-2026-05-11-PER-PHASE-CHAINING-SCENARIO-COVERAGE
+- **Source:** incident:codify (incident-orchestrated-spurious-pauses, 2026-05-11)
+- **Target level:** task:plan
+- **Type:** test-coverage (adjacent gap)
+- **Summary:** S21 covers `build → verify-auto` chaining under Mode 2. The other per-phase chain points (`verify-auto → verify-self`, `verify-self → verify-human` PAUSE, `verify-human → verify-codify`, `verify-codify → ship`) lack equivalent scenarios. S7/S8/S12 cover *some* of these in lenient form but with weaker assertions (no strict `not_contains` on user-deferral phrases like "you'll need to run").
+- **Context:** Codify for incident-orchestrated-spurious-pauses chose minimum viable coverage (one test that would have caught the specific incident). Adjacent gaps are logged here rather than written now. The same TRANSITION-emission mitigation applied to all five per-phase skills — so the bug class is fixed everywhere, but only the build→verify-auto transition has tight regression coverage.
+- **Suggested action:** Add scenarios S22 (verify-auto→verify-self chaining), S23 (verify-codify→ship chaining), each with strict `not_contains` on user-deferral phrases. Optionally harden S7 and S8 with the same strict assertions S21 uses.
+- **Priority:** low (mitigation applied across all 5 skills; this is defense-in-depth)
+- **Status:** open
+
+## SURFACE-2026-05-11-SESSION-START-SUGGEST-FROM-BACKLOG
+- **Source:** user-initiated (session-start dispatch, 2026-05-11)
+- **Target level:** feature:plan (small/simple — single skill, prose addition)
+- **Type:** workflow-enhancement
+- **Summary:** When `/session-start` finds no paused session and no active WIP, have it also check `workflow/backlog.md` and surface open items to the user as candidate work. Today step 1 only checks `workflow/.session.md`, `workflow/wip/`, and `docs/product/*.md` frontmatter. The backlog is the natural next place to look — open SURFACE items are exactly the "what could I work on?" list.
+- **Context:** Observed live in this session — user asked "anything in the backlog?" after session-start said no active work. The skill could volunteer that.
+- **Suggested action:** Update `skills/session-start/SKILL.md` step 1 to also read `workflow/backlog.md` (if present), parse open items (Status: open or no Status line), and present a short list as candidates *before* asking "What are you tackling?". Decide: show all open, or only top-N by priority? Probably top-3 by priority, with a "more" affordance.
+- **Open questions:**
+  - Should the suggestion appear only when nothing else is active, or always as a "by the way" footer?
+  - How to rank — by priority field, by recency, by target level (task < feature)?
+  - Does this risk overwhelming the user when the backlog is long? Probably not at current volume; revisit if backlog grows past ~20 items.
+- **Priority:** medium (low cost, high relevance for daily use)
+- **Status:** open
+
+## SURFACE-2026-05-11-ENTRYPOINT-SKILLS-LOAD-PRODUCT-CONTEXT
+- **Source:** user-initiated (session-start dispatch, 2026-05-11)
+- **Target level:** feature:spec (touches multiple entry-point skills; needs design before implementation)
+- **Type:** workflow-enhancement
+- **Summary:** Entry-point skills (the ones run first in a workflow — `task-plan`, `feature-spec`, `feature-plan`, `feature-reproduce`, `incident-report`, `product-vision`) should optionally load relevant context files from `docs/product/` (e.g., `arch.md`, `wbs.md`, `vision.md`, `roadmap.md`, `context.md`) when present, so the planning step starts with strategic context rather than working from a blank slate.
+- **Context:** Today, an entry skill knows nothing about the project's product docs unless the user pastes them in. For tasks/features that touch architectural decisions or relate to a WBS work package, this is wasteful — the docs already exist on disk. The user flagged this as needing debate: *which* file to load is non-obvious and varies by skill.
+- **Open design questions (the "debate" the user called out):**
+  - **Per-skill mapping.** Which docs are relevant for which entry skill? Sketch:
+    - `task-plan` → maybe `context.md` only (lightweight); arch/wbs may be overkill for atomic tasks
+    - `feature-spec` → `vision.md`, `arch.md`, `wbs.md`, `roadmap.md` (full strategic context)
+    - `feature-plan` → `arch.md`, `wbs.md` (just enough to align with existing work and constraints)
+    - `feature-reproduce` → minimal — maybe `context.md` (bug context is in the bug itself, not in product docs)
+    - `incident-report` → `arch.md`, `context.md` (where in the system did this happen?)
+    - `product-vision` → none (it WRITES vision.md; loading it would be backward)
+  - **Load strategy.** Read full file every time? Or summarize on first load and cache? Full read is simpler; cost is context-window bloat for docs the planning step doesn't need.
+  - **Optional vs required.** Some projects (like this one) skip `context.md` deliberately. Should the skill no-op silently when a file is absent, or warn?
+  - **Mid-skill vs entry-time loading.** Load all relevant docs up front, or lazily when the skill's reasoning surfaces a question that needs them? Up-front is simpler; lazy is more context-efficient but harder to write into a skill prompt.
+  - **Interaction with CLAUDE.md.** CLAUDE.md is already auto-loaded by the harness — it overlaps with `context.md`. Avoid double-loading.
+- **Suggested action:** Open a feature-spec to design the mapping table and load strategy. Likely deliverable is a small shared snippet in `CLAUDE.snippet.md` ("Entry-point skills check `docs/product/<file>.md` for ...") plus per-skill prompt edits.
+- **Priority:** medium (improves quality of every workflow's first step; worth designing carefully before implementing)
+- **Status:** open
+
 ## SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV
 - **Source:** feature:finalize (incident-codify feature, 2026-05-10)
 - **Target level:** task:plan (skill wording fix)
@@ -103,6 +149,8 @@
 ---
 
 ## Resolved (chronological log)
+
+- **SURFACE-2026-05-11-ORCHESTRATED-PAUSES-BETWEEN-PER-PHASE-STEPS** — RESOLVED 2026-05-11 (via incident workflow, archived as `incident-orchestrated-spurious-pauses.md`): Root cause was that 5 per-phase feature SKILLs (`feature-build`, `feature-verify-auto`, `feature-verify-self`, `feature-verify-human`, `feature-verify-codify`) did not instruct the model to emit canonical `TRANSITION: <id>` tokens — so the orchestrator had no machine signal to act on and fell back to honoring "Run /x" prose as a stop. Fix: added `### Emit Transition` sections to all 5 SKILLs enumerating valid transition IDs; added explicit anti-example to `session-start/SKILL.md` step 4 showing the exact buggy shape. Regression gate: new scenario `S21` in `tests/scenarios/session.yaml` (PASSes on haiku + sonnet, dual-identity `transition_id_any: [S21, F8, F10]` + strict `not_contains` on user-deferral phrases). Adjacent coverage gaps logged as `SURFACE-2026-05-11-PER-PHASE-CHAINING-SCENARIO-COVERAGE`.
 
 - **SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT** — RESOLVED 2026-05-10: Implemented `incident-codify` skill between mitigate and resolve. Added transitions I17 (mitigate→codify default), I18 (codify→resolve), I19 (codify→mitigate back-loop), I20 (codify→investigate back-loop); kept I9 as defer-with-SURFACE path. New SKILL adapts feature-verify-codify's highest-level test rule, integration-boundary check, and six-case triage table — with incident-context semantic flip ("code regression" → back-loop to mitigate, not auto-fix) and speed-aware paths (Path A reuses reproduce-artifact, Path B writes from scratch, defer path with SURFACE→task:plan). Wiring across `agents/incident-workflow/AGENTS.md` (skills frontmatter, diagram, states table, transition table, pause policy with conditional AUTO/PAUSE), `docs/product/transitions.md` (transition table, pause-policy table, new Codify-step paragraph), and three existing SKILLs (incident-mitigate, incident-resolve, incident-reproduce). New test fixtures (`incident-codify-with-reproduce-artifact.md`, `incident-codify-no-reproduce.md`) and scenarios (I17, I18 Path A, I18-defer, I19); existing I9 scenario rewritten to assert defer semantics. CLAUDE.md updated.
 - **SURFACE-2026-05-06-FEATURE-WORKFLOW-MISSING-REPRO-STEP** — RESOLVED 2026-05-09: Implemented option 1 (new `feature-reproduce` and `incident-reproduce` skills). Feature workflow gained F31–F35 transitions; incident workflow gained I13–I16 transitions; session-start gained S18 routing for bug-shape language. Backlog spinouts: SURFACE-2026-05-08-INCIDENT-CODIFY-EQUIVALENT (incident codify gap, medium) and SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD (low, deferred). Open known issues: F31 prose-leak (SOFT_PASS, same family as S12 leak); I13 wrong-transition-emission (SOFT_PASS, model emits I2 instead of I13 — test-design / SKILL clarity tradeoff). Both logged as Test Triage blocks in `workflow/wip/reproduce-step.md`.
