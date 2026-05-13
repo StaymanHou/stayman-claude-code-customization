@@ -135,7 +135,7 @@
   4. Investigation question: did the *closing prose of feature-verify-codify* in the bad run contradict the skill's stated F16 → `/feature-ship` directive? If the agent went off-script there, the bug is upstream of finalize. Worth replaying the run's verify-codify output if available.
 - **Why this hurts:** the bug is silent. The state machine never errored; both skills ran cleanly; the WIP file was archived. The only signal that the order was wrong was the user noticing the closure message claimed "shipped" before any push. With auto-archival, recovering requires un-archiving the WIP file and rolling back roadmap edits.
 - **Priority:** medium — has not recurred in tests (this is a real-run observation, not a transition-test failure), but blast radius is high when it happens (false roadmap claims, missing artifact for ship).
-- **Status:** open — diagnosis only; no fix attempted.
+- **Status:** resolved 2026-05-13 by feature `finalize-before-ship-order-flip` (commit ff3c70d). Three defense layers landed: Unvisited: spec tightened to ordered/sequence-of-execution; AGENTS.md ship→finalize order-of-ops line + feature-finalize §0 precondition guard; verify-codify F16 prose forbids enumerating finalize. Regression scenario F16-order-flip codifies the fix.
 
 ## SURFACE-2026-05-06-S12-AUTOCHAIN-LEAK-IN-AUTOPILOT
 - **Source:** feature:verify-auto (full-autopilot dual-identity + strict feature, S12 strict assertion)

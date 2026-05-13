@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05-13
+
+- **Feature shipped:** Three-layer defense against the finalize-before-ship order-flip bug — `Unvisited:` field tightened to ordered/sequence-of-execution semantics, `agents/feature-workflow/AGENTS.md` pins the post-verify-codify ship→finalize order, `skills/feature-finalize/SKILL.md` gains a §0 precondition guard that refuses to run when ship has not happened, and `skills/feature-verify-codify/SKILL.md` F16 prose forbids enumerating downstream steps.
+- **Backlog resolved:** SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP — closed by the three-layer defense above; regression-gated by new scenario `F16-order-flip` in `tests/scenarios/feature.yaml` using the reproduction fixture from the bug's confirmed reproduction.
+
 ## 2026-05-12
 
 - **Feature shipped:** Per-project `CHANGELOG.md` auto-populated by terminal-close skills — `feature-finalize`, `task-close`, `incident-resolve`, and `product-finalize` now append one-line entries on close, per the `## CHANGELOG.md convention` section of `CLAUDE.snippet.md`.
