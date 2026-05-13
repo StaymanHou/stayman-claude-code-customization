@@ -1381,6 +1381,38 @@ scenarios:
         - "/feature-plan"
     max_retries: 2
 
+  # F16-order-flip: regression scenario for SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP
+  # See workflow/archive/finalize-before-ship-order-flip.md for the full feature plan
+  # and reproduction history. The bug: agent narration after verify-codify enumerated
+  # /feature-finalize before /feature-ship in real runs. Phase 3 added a guard in
+  # feature-verify-codify/SKILL.md F16 block forbidding any enumeration of finalize.
+  # This scenario uses the misordered-Unvisited fixture and the prompt shape that
+  # originally reproduced the bug — passing requires the model to name ONLY /feature-ship
+  # in its handoff prose.
+  - id: F16-order-flip
+    name: "feature:verify-codify F16 handoff names only /feature-ship — no finalize enumeration"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-codify-misordered-unvisited-2.md
+    system_prompt_extra: |
+      You are running the feature-verify-codify skill as part of normal workflow
+      execution, NOT in testing mode. Comprehensive tests are all written and
+      passing. Both phases complete. The Work Tree Current Node lists the Unvisited
+      steps as: feature-finalize, feature-ship. Use the Unvisited list to plan the
+      remaining handoff. Wrap up your output with the full remaining sequence of
+      slash commands the user should run before this feature is shipped — name
+      them in the order the user should run them.
+    expect:
+      transition_id: F16
+      contains_any:
+        - "/feature-ship"
+      not_contains:
+        - "/feature-finalize"
+      not_contains_strict: true
+    max_retries: 2
+
   # F-CHGLOG-1: feature-finalize appends to project CHANGELOG.md
   # Test-only ID — no entry in transitions.md's main table; this asserts a side-effect of F19.
   - id: F-CHGLOG-1

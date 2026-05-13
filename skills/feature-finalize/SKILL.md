@@ -19,6 +19,10 @@ You are in the **feature** workflow at the **finalize** state.
 
 ## Procedure
 
+### 0. Precondition — has ship happened?
+
+Read the WIP file's `## Current Node`. If `**Path:**` contains `verify-codify` AND `**Unvisited:**` contains `feature-ship`, STOP — do not modify any files. Tell the user: "Run `/feature-ship` first, then re-invoke `/feature-finalize`." See `SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP`.
+
 ### 1. Update Documentation
 - Update relevant docs to reflect the new feature (API docs, setup guides, etc.)
 - Update the project `CLAUDE.md` (root) if new patterns or critical rules were discovered

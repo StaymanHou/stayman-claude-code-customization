@@ -94,7 +94,7 @@ Action: <what you did, or what you are waiting for human approval to do>
 
 **Tests pass, all phases complete (F16):**
 - Update WIP state to `verify-codify (all phases complete)`
-- Tell user to run `/feature-ship`
+- Tell user to run `/feature-ship`. Name only `/feature-ship` as the next step — do NOT enumerate finalize, refactor, or reflect (see `SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP`).
 
 **New tests reveal issues (F14):**
 - If writing tests uncovers behaviors that differ from what the human approved, or reveals edge cases that are broken:

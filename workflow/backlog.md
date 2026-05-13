@@ -1,5 +1,25 @@
 # Backlog
 
+## SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG
+- **Source:** feature:verify-codify (finalize-before-ship-order-flip Phase 3 regression slice, 2026-05-13)
+- **Target level:** task:plan
+- **Type:** test-infra (recon discipline pending)
+- **Summary:** 6 verify-codify scenarios SOFT_PASS on haiku but should be tagged `model: sonnet` per the recon discipline documented in CLAUDE.md. F-boundary-codify confirmed: SOFT_PASS on haiku (`/feature-ship` leaks in non-`/feature-ship` scenario), PASS strictly on sonnet (verified 2026-05-13). Other 5 SOFT_PASSes (F14, F15, F16-triage-ambiguous, F16-triage-flaky, F16-triage-regression) fail on output-shape issues (missing TRANSITION line, prose-leak family) — same haiku-noise class. **Extension (2026-05-13 full-sweep):** F13-prefiltered also FAILs on haiku with the "no structured TRANSITION line" pattern — likely same class. Include in the sonnet-tag recon pass.
+- **Suggested action:** Apply the documented recon discipline (`see haiku failure → run on sonnet → confirm PASS → tag`). For each of the 6, run on sonnet; for those that PASS strictly, add `model: sonnet` to the scenario in `tests/scenarios/feature.yaml` and a one-line comment citing the haiku flake pattern. Likely all 6 fall into this category given the failure shapes.
+- **Priority:** medium (only matters when running the haiku-only partition; current Phase 3 work was unblocked by recon on the most concerning case)
+- **Status:** open
+
+## SURFACE-2026-05-13-SETTINGS-FIXTURE-EFFORTLEVEL-DRIFT
+- **Source:** feature:verify-auto (finalize-before-ship-order-flip Phase 3, 2026-05-13)
+- **Target level:** task:plan (small/simple — single-line edit + re-run check-structure.sh)
+- **Type:** drift (test infra hygiene)
+- **Summary:** `tests/check-structure.sh` reports `effortLevel: live=<missing> fixture="xhigh"` — the test settings fixture (`tests/fixtures/settings.json:47`) has `"effortLevel": "xhigh"` but the live `~/.claude/settings.json` has removed this field. Pre-existing drift; surfaced when re-running check-structure.sh during Phase 3 verify-auto.
+- **Suggested action:** Either remove `effortLevel` from the fixture to match live, or add it to INTENTIONAL_DIFFS in `tests/check-structure.sh`. Pick based on whether the field's semantics matter to test behavior (likely not — it's a UX-level setting).
+- **Priority:** low (single failing structural check; does not block the test harness itself)
+- **Status:** open
+
+
+
 ## SURFACE-2026-05-12-STORE-LEARNING-WRONG-ITEM-SELECTED
 - **Source:** user-observed (live use of `session-store-learning` after the global-scope/learnings split, 2026-05-12, ops-data-hub WP9.5 reflection)
 - **Target level:** task:plan (likely small/simple — SKILL prose tightening + selection discipline)

@@ -97,7 +97,7 @@ Before writing the plan, check whether this feature depends on any 3rd-party ser
 - **Path:** Feature > Phase 1 > P1.1
 - **Active scope:** P1.1 (first task)
 - **Blocked:** none
-- **Unvisited:** <list phases beyond Phase 1>
+- **Unvisited:** <phases beyond Phase 1, in the order they will execute (sequence-of-execution — NOT alphabetical or order-of-thought)>
 - **Open discoveries:** none
 
 ## Discoveries

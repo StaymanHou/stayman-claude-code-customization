@@ -40,6 +40,8 @@ Entry (simple)  ─────────────────────�
     └─────────────────── ship → finalize → [refactor] → Exit
 ```
 
+**Order after verify-codify (final phase):** ship → finalize, never the reverse. Finalize archives the WIP file that ship reads from; reversing emits premature "shipped" claims. See `SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP`.
+
 ### Small/Simple Criteria (skip spec, enter at plan)
 All must hold:
 1. No new data models or API endpoints

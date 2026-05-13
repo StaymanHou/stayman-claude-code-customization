@@ -55,7 +55,7 @@ Every feature WIP file uses the Work Tree format. All skills that read or write 
 - **Path:** <Feature > Phase > specific node>
 - **Active scope:** <node IDs currently in focus>
 - **Blocked:** <node IDs blocked and why>
-- **Unvisited:** <phases not yet started>
+- **Unvisited:** <phases not yet started, listed in the order the workflow will execute them — sequence-of-execution>
 - **Open discoveries:** <none | summary>
 
 ## Discoveries
@@ -80,6 +80,7 @@ Every feature WIP file uses the Work Tree format. All skills that read or write 
 - **Current Node is authoritative** — written on every skill exit, read first on every skill entry; if it diverges from the tree, the tree wins and Current Node is rewritten
 - **Observable outcomes at plan time** — written by `feature-plan`, read by `feature-verify-self`; never written post-hoc
 - **Tree update on every exit** — every skill that touches a WIP file must update leaf statuses AND Current Node before handing off
+- **`Unvisited:` is ordered, sequence-of-execution** — list remaining phases/steps in the order the workflow will actually execute them, not alphabetically or in order-of-thought. When skills read this field later they may treat it as a sequence; an out-of-order list is a confabulation channel (see SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP)
 
 ## CHANGELOG.md convention (GLOBAL)
 
