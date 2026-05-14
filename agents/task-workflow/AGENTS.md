@@ -88,6 +88,16 @@ Mode 1 pauses: every step.
 Mode 2 happy-path pauses: plan confirm + close confirm (2 total).
 Mode 3/4 happy-path pauses: none (ESCALATE/REDIRECT excepted).
 
+### Debug techniques (agent-pulled sidebars)
+
+The following `debug-*` skills are available as sidebars from within task workflow states. They are **NOT** workflow states (no entry in the pause-policy table above, no T-ID transition), but the orchestrator (or user) may invoke them inline when their trigger conditions are met. Each sidebar runs to completion and emits a `RETURN-TO:` token so this orchestrator resumes the caller state.
+
+| Sidebar | Caller state(s) | Trigger summary |
+|---------|-----------------|-----------------|
+| `/debug-bisect-known-good` | `task-act` | Straight-line debugging during act has stalled (≥3 failed attempts) AND a structurally similar known-good path exists in the same environment |
+
+See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE.md`) for the category convention. The full procedure and gate-check for each sidebar lives in its own `SKILL.md`. New `debug-*` skills are added to this table when they ship.
+
 ## Workflow State File
 
 The canonical record of progress is `workflow/wip/<task-slug>.md`. This file tracks:

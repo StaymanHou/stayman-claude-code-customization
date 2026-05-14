@@ -52,6 +52,10 @@ This check must be completed before implementing. Its purpose: prevent working o
 - Mark each step `[x]` in the Work Tree as it completes
 - Before using project-specific CLI tools, verify their syntax (e.g., `--help`)
 
+### 3b. Debug-technique Sidebar (optional)
+
+If straight-line debugging during act has stalled (≥3 failed attempts to localize a bug) AND a structurally similar known-good path exists in the same environment, consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: task-act` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID, no plan revision needed. See `agents/task-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list.
+
 ### 4. Attach Discoveries to the Tree
 
 When you discover something new while working on a step:

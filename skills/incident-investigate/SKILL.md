@@ -36,6 +36,10 @@ You are in the **incident** workflow at the **investigate** state.
   - **Observed Facts:** Things you can prove with evidence
   - **Hypotheses:** Theories that still need verification
 
+### 3b. Debug-technique Sidebar (optional)
+
+If straight-line investigation has stalled (≥3 self-loop iterations without converging on a root cause, or repeated hypothesis-rejected cycles) AND a structurally similar known-good path exists in the same environment (e.g. a working customer/tenant/region exhibiting the same workload), consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: incident-investigate` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID. See `agents/incident-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list.
+
 ### 4. Update Report
 Append to the incident file:
 

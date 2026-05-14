@@ -1,0 +1,76 @@
+group: debug
+scenarios:
+  # debug-bisect-known-good has TWO conjunctive gates. The first scenario asserts
+  # that the procedure activates when both gates clearly hold. The next two assert
+  # that the gate-check exits cleanly (DEBUG-BISECT-SKIP) when either gate fails —
+  # because misapplying bisect is wasted effort, and the SKILL's first §1 step is
+  # an explicit Gate Check that writes a SKIP token on either failure.
+
+  - id: DEBUG-BISECT-GATE-MET
+    name: "debug-bisect-known-good: both gates hold → procedure activates"
+    skill: debug-bisect-known-good
+    args: >
+      Playwright window invisible on amazon-affiliate worker; ebay-affiliate worker
+      (same base class, same Docker container, same Playwright version) shows the
+      window correctly. 4 failed straight-line debug attempts, no converging
+      hypothesis. Need to localize the cause.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-bisect-gates-met.md
+    # No `not_contains` — this is an entry-state scenario where the skill stays
+    # IN the bisect procedure. Per CLAUDE.md routing-fork guidance, aggressive
+    # not_contains constraints on entry-state scenarios are prose-leak-fragile
+    # (the model often mentions alternative tokens in negation when describing
+    # the procedure). The structured transition_id assertion is sufficient.
+    expect:
+      transition_id: DEBUG-BISECT-START
+      contains_any:
+        - "B0"
+        - "baseline"
+        - "Building"
+        - "clone"
+    max_retries: 2
+
+  - id: DEBUG-BISECT-NO-KNOWN-GOOD
+    name: "debug-bisect-known-good: no known-good sibling → SKIP"
+    skill: debug-bisect-known-good
+    args: >
+      Single-tenant data-export job hangs after ~30 min for tenant acme-corp.
+      No other tenant uses this code path — there is no sibling working runner
+      to bisect from. Multiple straight-line debug attempts already tried.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-bisect-no-known-good.md
+    expect:
+      transition_id: DEBUG-BISECT-SKIP
+      contains_any:
+        - "no known-good"
+        - "not applicable"
+        - "Gate 1"
+        - "sibling"
+      not_contains:
+        - "DEBUG-BISECT-START"
+        - "DEBUG-BISECT-COMPLETE"
+    max_retries: 2
+
+  - id: DEBUG-BISECT-INSUFFICIENT-ATTEMPTS
+    name: "debug-bisect-known-good: only 1 straight-line attempt → SKIP"
+    skill: debug-bisect-known-good
+    args: >
+      Premium-plan digest send fails on digest_renderer.render_premium_section;
+      free-plan and team-plan digests work (known-good siblings exist). Only one
+      straight-line debug attempt so far — read the stack trace.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-bisect-insufficient-attempts.md
+    expect:
+      transition_id: DEBUG-BISECT-SKIP
+      contains_any:
+        - "Gate 2"
+        - "fewer than 3"
+        - "straight-line"
+        - "attempts"
+      not_contains:
+        - "DEBUG-BISECT-START"
+        - "DEBUG-BISECT-COMPLETE"
+    max_retries: 2

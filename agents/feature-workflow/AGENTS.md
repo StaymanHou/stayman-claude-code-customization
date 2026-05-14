@@ -175,3 +175,13 @@ Mode 1 pauses: every step.
 Mode 2 happy-path pauses per feature: 1 on spec, 1 on plan, 1 per phase at verify-human, 1 at finalize.
 Mode 3 happy-path pauses: 1 per phase at verify-human only.
 Mode 4 happy-path pauses: none (ESCALATE excepted).
+
+### Debug techniques (agent-pulled sidebars)
+
+The following `debug-*` skills are available as sidebars from within feature workflow states. They are **NOT** workflow states (no entry in the pause-policy table above, no F-ID transition), but the orchestrator (or user) may invoke them inline when their trigger conditions are met. Each sidebar runs to completion and emits a `RETURN-TO:` token so this orchestrator resumes the caller state.
+
+| Sidebar | Caller state(s) | Trigger summary |
+|---------|-----------------|-----------------|
+| `/debug-bisect-known-good` | `feature-build` | Straight-line debugging has stalled (≥3 failed attempts) AND a structurally similar known-good path exists in the same environment |
+
+See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE.md`) for the category convention. The full procedure and gate-check for each sidebar lives in its own `SKILL.md`. New `debug-*` skills are added to this table when they ship.

@@ -111,3 +111,13 @@ This section is the **reference procedure** followed by `/session-start` when dr
 | Surface (I11, I12) | **PAUSE** | Root-cause follow-up needs human prioritization |
 
 Happy path: report → triage pause → investigate → mitigate pause → (monitor) → codify (AUTO Path A or PAUSE Path B) → resolve → done. Typical: 3–4 human pauses depending on codify path.
+
+### Debug techniques (agent-pulled sidebars)
+
+The following `debug-*` skills are available as sidebars from within incident workflow states. They are **NOT** workflow states (no entry in the pause-policy table above, no I-ID transition), but the orchestrator (or user) may invoke them inline when their trigger conditions are met. Each sidebar runs to completion and emits a `RETURN-TO:` token so this orchestrator resumes the caller state.
+
+| Sidebar | Caller state(s) | Trigger summary |
+|---------|-----------------|-----------------|
+| `/debug-bisect-known-good` | `incident-investigate` | Straight-line investigation has stalled (≥3 failed attempts to localize) AND a structurally similar known-good path exists in the same environment |
+
+See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE.md`) for the category convention. The full procedure and gate-check for each sidebar lives in its own `SKILL.md`. New `debug-*` skills are added to this table when they ship.

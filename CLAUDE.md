@@ -94,6 +94,35 @@ Three ways one workflow interacts with another — understand the distinction be
 - **ESCALATE** (task → feature, etc.): current item is closed/archived; work is absorbed into a higher-level item. No resume.
 - **REDIRECT** (e.g., `build → research`): current workflow pauses, other workflow runs, original resumes — possibly with re-planning.
 
+### `debug-*` Skill Category
+
+Not all skills are workflow states. `debug-*` skills are **agent-pulled sidebars** — ad-hoc debugging/troubleshooting techniques that the orchestrator (or the user) reaches for when standard debugging stalls inside an existing workflow state. They are tools, not states.
+
+**How `debug-*` differs from workflow skills:**
+
+| | Workflow skill (e.g. `feature-build`, `incident-investigate`) | Debug skill (`debug-*`) |
+|---|---|---|
+| State machine | Owns a state node in F/I/T/P/S | None — no state, no entry/exit transitions |
+| Listed in `agents/*/AGENTS.md` `skills:` frontmatter | Yes | **No** |
+| Transition tokens | `F8`, `I6`, `T2`, etc. (numbered, integer namespace) | `DEBUG-<TECHNIQUE>-<OUTCOME>` (descriptive, namespaced prefix) |
+| Returns to caller | Workflow advances to next state | Yes — emits `RETURN-TO: <caller-skill>` to resume |
+| Invocation | By orchestrator or user, per state-machine rules | Pulled by orchestrator from within a workflow state, OR directly by user via slash command |
+| Pause policy table entry | Yes | **No** — sidebars don't appear in pause-policy tables |
+
+**Required SKILL.md sections** (every `debug-*` skill must have these):
+- `## Category Context` — brief paragraph confirming "this is a sidebar, not a workflow state" and naming the caller skills that may invoke it
+- `## When to use` — conjunctive trigger preconditions (the gate boundary)
+- `## When NOT to use` — explicit non-applicability conditions
+- `## Procedure` — first step is a **Gate Check** that re-confirms the preconditions in writing and emits a `DEBUG-<TECHNIQUE>-SKIP` token + `RETURN-TO:` if the gates don't hold
+- `## Pitfalls` — load-bearing failure modes of the technique
+- `## Termination` — table of TRANSITION tokens the skill emits, with the `RETURN-TO: <caller>` convention
+
+The `## When to use` and `## When NOT to use` sections are checked by `tests/check-structure.sh` (Phase 3b) — removing them is a regression.
+
+**Caller-skill prose only.** Workflow skills that may benefit from a `debug-*` sidebar (`feature-build`, `incident-investigate`, `task-act`) mention the option in prose under their procedure section. No transition table edits, no new F/I/T IDs — the sidebar returns to the same workflow state, so the state machine is unchanged.
+
+**Where to find the list of available techniques.** Each orchestrator AGENTS.md has a "Debug techniques (agent-pulled sidebars)" subsection naming the available `debug-*` skills and the states from which they may be invoked. See also: `docs/product/transitions.md` → "Sidebar skills (`debug-*` category)" under Cross-level mechanisms.
+
 ### Telegram notifications
 
 Telegram notifications are wired via a Claude Code hook (`hooks/notify-telegram.sh`, symlinked into `~/.claude/hooks/` by `install.sh`) configured under `hooks.Notification` and `hooks.Stop` in `~/.claude/settings.json`. The harness fires the script on every Notification event (Claude is blocked, awaiting input/permission) and Stop event (turn ended) — deterministic, no model involvement. Requires `CLAUDE_TELEGRAM_BOT_TOKEN` and `CLAUDE_TELEGRAM_CHAT_ID` in `~/.claude/settings.json` env; the hook no-ops silently if either is unset. This replaced an earlier `notify-human` skill that relied on the model remembering to invoke it before each question — see `docs/product/transitions.md` change-log for the migration.

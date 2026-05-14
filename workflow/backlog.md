@@ -1,5 +1,26 @@
 # Backlog
 
+## SURFACE-2026-05-13-DEFAULT-DRIVE-MODE-AUTOPILOT
+- **Source:** user-initiated (live observation during debug-skills feature, 2026-05-13)
+- **Target level:** task:plan (small/simple — wording change in session-start + one or two test scenarios updated)
+- **Type:** workflow-enhancement
+- **Summary:** Change the default drive mode in `/session-start` from Orchestrated (Mode 2) to Autopilot (Mode 3). User has run multiple workflow sessions in Mode 3 and it has consistently worked well — verify-human pauses give enough human checkpoints; the extra Mode 2 pauses at spec/plan/finalize add friction without adding value once the user trusts the agent's outputs at those steps. Mode 2 remains available; default just flips.
+- **Suggested action:**
+  1. Edit `skills/session-start/SKILL.md` → "Confirm and select drive mode" section: change the mode menu's parenthetical from `(Type 1–4 — or just press Enter for Orchestrated)` to `(Type 1–4 — or just press Enter for Autopilot)`. Update the "Interpreting the reply" rules so the Enter / blank / "yes" reply maps to Mode 3 instead of Mode 2.
+  2. Verify whether any test scenarios assert on the old default (S10, S22 are the likely candidates — they exercise the routing/menu prose). Update assertions if needed.
+  3. Consider updating `docs/product/transitions.md` → "Drive modes" if it documents Mode 2 as the default anywhere.
+- **Priority:** high (user-requested top priority)
+- **Status:** open
+
+## SURFACE-2026-05-13-FRONTMATTER-NAME-VS-DIR-DRIFT
+- **Source:** feature:verify-codify (debug-skills-category-and-bisect-known-good Phase 1, 2026-05-13)
+- **Target level:** task:plan (small/simple — single bash loop added to `tests/check-structure.sh`)
+- **Type:** gap (test coverage)
+- **Summary:** No structural check asserts that each `skills/<name>/SKILL.md`'s frontmatter `name:` field matches its parent directory name. If they diverge (e.g. someone renames the dir without updating frontmatter), the skill may stop being invokable via its slash command and the discovery is silent — `install.sh` only checks the directory, and the harness only reads frontmatter. Caught while reasoning about what to codify in the debug-bisect-known-good Phase 1, but the gap applies project-wide to all 35 skills.
+- **Suggested action:** Add to `tests/check-structure.sh` a Phase that iterates `skills/*/SKILL.md`, extracts the `name:` field from frontmatter, and asserts it equals `basename "$(dirname "$f")"`. Should be <10 lines of bash. Likely all current skills pass already; the check is a regression guard.
+- **Priority:** low (no current regression; defensive)
+- **Status:** open
+
 ## SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG
 - **Source:** feature:verify-codify (finalize-before-ship-order-flip Phase 3 regression slice, 2026-05-13)
 - **Target level:** task:plan

@@ -31,7 +31,12 @@ verify_result() {
   local negative_hits=""
 
   # 1. Structured check: look for TRANSITION: <id>
-  found_transition=$(echo "$result_text" | sed -n 's/.*TRANSITION:[[:space:]]*\([A-Za-z0-9_]*\).*/\1/p' | head -1)
+  # Tolerances built into this regex:
+  #   - Leading/trailing markdown decoration (e.g. `**TRANSITION:**` from bold-mark)
+  #     — strip `*` between colon and the ID, plus any whitespace
+  #   - Hyphens in the ID — captures `DEBUG-BISECT-SKIP` as well as `F1`, `T2`
+  #     (debug-* sidebar tokens are hyphenated; legacy IDs are alphanumeric+_)
+  found_transition=$(echo "$result_text" | sed -n 's/.*TRANSITION:[*[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' | head -1)
 
   # 2. Negative check
   if [ -n "$not_contains" ]; then

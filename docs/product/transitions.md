@@ -194,6 +194,27 @@ Current workflow pauses, another workflow/step runs, original resumes:
    - If **no**: auto-flow results into plan, annotate, continue
    - If **yes**: re-plan before resuming
 
+### Sidebar skills (`debug-*` category)
+
+A **sidebar** is a skill invoked from within a workflow state that **returns to the same state** when done. Sidebars are NOT workflow transitions — they do not advance the state machine, do not consume an F/I/T/P/S transition ID, and do not appear in any orchestrator's pause-policy table.
+
+The `debug-*` skill prefix is reserved for sidebars: agent-pulled debugging/troubleshooting techniques that workflow skills can reach for when standard procedure stalls. Examples: `/debug-bisect-known-good` (codified 2026-05-13).
+
+**How sidebars differ from REDIRECT:**
+
+| | REDIRECT (e.g. F22 build → research) | Sidebar (e.g. `feature-build` → `/debug-bisect-known-good`) |
+|---|---|---|
+| Crosses workflow state? | Yes — moves from one state to another | No — stays in the same state |
+| Consumes a transition ID? | Yes (F22, T4, etc.) | No |
+| Listed in pause-policy table? | Yes | No |
+| Listed in `agents/*/AGENTS.md` `skills:` frontmatter? | Yes | No |
+| Resume mechanism | Re-enter the original state (often with re-plan check) | `RETURN-TO: <caller-skill>` token in sidebar's terminal output |
+| When chosen | Workflow logic requires another state's procedure | Workflow state's normal procedure has stalled; sidebar is a technique |
+
+**Why no new transition IDs:** the sidebar runs and returns; from the state machine's perspective, the caller state stayed active throughout. Adding F/I/T-ID entries for sidebars would imply they participate in pause-policy decisions, which they don't — they are purely tools the caller state's procedure reaches for.
+
+**Discoverability:** each orchestrator AGENTS.md has a "Debug techniques (agent-pulled sidebars)" subsection enumerating the available `debug-*` skills and the caller states that may invoke them. The full required SKILL.md shape (When-to-use / When-NOT-to-use / Gate Check / Procedure / Pitfalls / Termination) is documented in this repo's `CLAUDE.md` under "`debug-*` Skill Category" and enforced by `tests/check-structure.sh` (Phase 3b — required-section grep).
+
 ### CHANGELOG.md append (write-side, cross-workflow)
 
 Four terminal-close skills append a one-line entry to `<proj_root>/CHANGELOG.md` as part of their close procedure: `feature-finalize` (F19/F30), `task-close` (T10/T11), `incident-resolve` (I10 + the fast-close I4/I7 paths via §4b), and `product-finalize` (P13). The canonical rules — file shape, heading case (`# Changelog` + `## YYYY-MM-DD`), fixed entry-kind vocabulary (`Feature shipped`, `Task closed`, `Incident resolved`, `Backlog resolved`, `Milestone`, `Product cycle complete`), same-day grouping, and append-before-`git mv` sequencing — live in `CLAUDE.snippet.md` (`## CHANGELOG.md convention`) and are injected globally into `~/.claude/CLAUDE.md`. Each closing skill references the snippet rather than inlining the rules so wording cannot drift. This is a side-effect of the terminal transitions listed above, not a transition in its own right.
@@ -501,6 +522,8 @@ Procedure:
 ---
 
 ## Change Log
+
+- **2026-05-13 — `debug-*` skill category introduced; first member `debug-bisect-known-good` shipped.** Adds a new category of agent-pulled sidebar skills that workflow states (`feature-build`, `incident-investigate`, `task-act`) can invoke when standard debugging stalls. Sidebars are NOT workflow transitions — they emit descriptive `DEBUG-<TECHNIQUE>-<OUTCOME>` tokens (outside the F/I/T/P/S namespace) plus a `RETURN-TO: <caller>` line to resume the caller state. No new transition IDs added to any workflow's transition table. `debug-bisect-known-good` codifies the technique from `.claude/learnings/2026-05-13-known-good-bisect.md`: clone a known-good runner as a sibling, add the broken path's distinguishing variables one at a time, first reproduce = cause. Two conjunctive gates enforced at SKILL entry: (1) a structurally similar known-good path exists in the same environment, (2) straight-line debugging has failed ≥3 times. Affects: new `skills/debug-bisect-known-good/SKILL.md`; new "`debug-*` Skill Category" section in `CLAUDE.md`; new "Debug techniques (agent-pulled sidebars)" subsection in all three orchestrator AGENTS.md files; prose mentions in `skills/feature-build/SKILL.md` §4b, `skills/incident-investigate/SKILL.md` §3b, `skills/task-act/SKILL.md` §3b; this new "Sidebar skills (`debug-*` category)" subsection under Cross-level mechanisms; new `[Phase 3b]` check in `tests/check-structure.sh` asserting required gate-boundary sections. Test scenarios in `tests/scenarios/debug.yaml`.
 
 - **2026-05-11 — `session-store-learning` global path redirected away from `~/.claude/`.** Project-scope behavior is unchanged (still writes to the project's own `.claude/CLAUDE.md` / `.claude/memory/` / `.claude/skills/`). Global-scope learnings — previously written into `~/.claude/CLAUDE.md` / `~/.claude/projects/*/memory/` / `~/.claude/skills/` — are now drafted to `.claude/learnings/<YYYY-MM-DD>-<slug>.md` (project-local, gitignored) for manual curation into a source repo (e.g., `my-claude-code-customization`). Rationale: a project session should not silently mutate global Claude Code configuration; the curation step belongs to the human, by hand, in the source repo. New transition ID **S20** registers the skill's terminal output for the test harness. Affects: `skills/session-store-learning/SKILL.md`, `tests/scenarios/session.yaml` (S19 updated, S20 introduced).
 

@@ -100,6 +100,125 @@ grep_check "product-finalize references CHANGELOG convention" "skills/product-fi
 
 echo ""
 
+# ── Phase 3b: debug-* skill category invariants ────────────────────────────
+#
+# `debug-*` skills are agent-pulled sidebars (not workflow states). The trigger
+# boundary lives in two required sections — `## When to use` and `## When NOT to use`.
+# If those are removed, the skill loses its self-documenting gate boundary and
+# becomes silently more permissive. A grep check catches the regression.
+
+echo "[Phase 3b] debug-* skill category invariants"
+
+for debug_skill in skills/debug-*/SKILL.md; do
+  [ -f "$debug_skill" ] || continue
+  name=$(basename "$(dirname "$debug_skill")")
+  grep_check "$name has '## When to use' section (gate boundary)" "$debug_skill" "^## When to use$" 1
+  grep_check "$name has '## When NOT to use' section (gate boundary)" "$debug_skill" "^## When NOT to use$" 1
+done
+
+echo ""
+
+# ── Phase 3c: debug-* sidebar discoverability surfaces ─────────────────────
+#
+# Each debug-* sidebar relies on three discoverability surfaces:
+#   1. Prose mention in each caller workflow skill's SKILL.md (so the agent
+#      executing the caller state knows to reach for the sidebar)
+#   2. Row in each relevant orchestrator's "Debug techniques (agent-pulled
+#      sidebars)" subsection (so /session-start can enumerate available techniques)
+#   3. Mention in docs/product/transitions.md "Sidebar skills" subsection (so
+#      contributors editing the state machine know the category exists)
+#
+# A regression on (1) or (2) silently makes the sidebar undiscoverable from
+# that caller — the skill still works if invoked directly, but the system loses
+# the surface that prompts the agent to invoke it. Worth catching.
+
+echo "[Phase 3c] debug-* sidebar discoverability"
+
+# debug-bisect-known-good: callers are feature-build, incident-investigate, task-act
+for caller in skills/feature-build/SKILL.md skills/incident-investigate/SKILL.md skills/task-act/SKILL.md; do
+  caller_name=$(basename "$(dirname "$caller")")
+  grep_check "$caller_name mentions /debug-bisect-known-good" "$caller" "/debug-bisect-known-good" 1
+done
+
+for orch in agents/feature-workflow/AGENTS.md agents/incident-workflow/AGENTS.md agents/task-workflow/AGENTS.md; do
+  orch_name=$(basename "$(dirname "$orch")")
+  grep_check "$orch_name has 'Debug techniques (agent-pulled sidebars)' subsection" "$orch" "Debug techniques \(agent-pulled sidebars\)" 1
+done
+
+grep_check "transitions.md has 'Sidebar skills' subsection (under Cross-level mechanisms)" "docs/product/transitions.md" "^### Sidebar skills" 1
+
+echo ""
+
+# ── Phase 3d: TRANSITION-line regex in tests/lib/verify.sh ────────────────
+#
+# verify.sh's regex extracts the transition ID from model output. It must
+# handle the full namespace of ID shapes used by scenarios:
+#   - Plain alphanumeric workflow IDs (F1, T2, I3, P10, S18)
+#   - IDs with letter suffix (F9b, F10b)
+#   - Compound legacy scenario IDs (F-CHGLOG-1, F16-triage-ambiguous)
+#   - Hyphenated debug-* sidebar tokens (DEBUG-BISECT-START, DEBUG-BISECT-SKIP)
+#   - With markdown decoration: **TRANSITION:**, *TRANSITION:*
+#   - With "(<from> → <to>)" suffix
+# And it must NOT match obvious non-ID usages of the word TRANSITION.
+#
+# This regex is load-bearing: every scenario consumes it. A silent regression
+# would cause widespread SOFT_PASS-with-no-structured-line failures.
+#
+# Source-of-truth: the regex is in tests/lib/verify.sh. We re-derive it from
+# the file (rather than hardcoding here) so this test stays honest if the
+# regex evolves.
+
+echo "[Phase 3d] TRANSITION-line regex (tests/lib/verify.sh)"
+
+# Extract the actual regex used by verify.sh (the line we care about).
+REGEX_PATTERN=$(grep -oE 's/\.\*TRANSITION:[^/]*/\\1/p' tests/lib/verify.sh | head -1)
+if [ -z "$REGEX_PATTERN" ]; then
+  check "verify.sh contains a TRANSITION regex" "fail" "could not locate sed pattern in tests/lib/verify.sh"
+else
+  check "verify.sh contains a TRANSITION regex" "pass"
+  # Replace the captured pattern with the literal regex we want to run sed with
+  regex_test() {
+    local label="$1"
+    local input="$2"
+    local expected="$3"
+    local actual
+    actual=$(echo "$input" | sed -n "$REGEX_PATTERN")
+    if [ "$actual" = "$expected" ]; then
+      check "regex: $label" "pass"
+    else
+      check "regex: $label" "fail" "input='$input' expected='$expected' got='$actual'"
+    fi
+  }
+
+  # Positive cases — should capture the ID
+  regex_test "plain workflow ID (F1)" "TRANSITION: F1" "F1"
+  regex_test "workflow ID with arrow decoration (T2)" "TRANSITION: T2 (plan → act)" "T2"
+  regex_test "markdown bold (F1)" "**TRANSITION:** F1 (entry → spec)" "F1"
+  regex_test "back-loop suffix (F9b)" "TRANSITION: F9b" "F9b"
+  regex_test "compound legacy ID (F-CHGLOG-1)" "TRANSITION: F-CHGLOG-1" "F-CHGLOG-1"
+  regex_test "compound legacy ID (F16-triage-ambiguous)" "TRANSITION: F16-triage-ambiguous" "F16-triage-ambiguous"
+  regex_test "hyphenated debug token (DEBUG-BISECT-START)" "TRANSITION: DEBUG-BISECT-START" "DEBUG-BISECT-START"
+  regex_test "hyphenated debug token with markdown bold (SKIP)" "**TRANSITION:** DEBUG-BISECT-SKIP" "DEBUG-BISECT-SKIP"
+  regex_test "long debug token (NO-CONVERGE)" "TRANSITION: DEBUG-BISECT-NO-CONVERGE" "DEBUG-BISECT-NO-CONVERGE"
+
+  # Negative cases — should NOT match (capture empty)
+  regex_test_negative() {
+    local label="$1"
+    local input="$2"
+    local actual
+    actual=$(echo "$input" | sed -n "$REGEX_PATTERN")
+    if [ -z "$actual" ]; then
+      check "regex no-match: $label" "pass"
+    else
+      check "regex no-match: $label" "fail" "input='$input' matched='$actual'"
+    fi
+  }
+  regex_test_negative "no TRANSITION in text" "No transition emitted here"
+  regex_test_negative "TRANSITION without colon" "TRANSITION needs to be added"
+fi
+
+echo ""
+
 # ── Phase 4: install.sh and symlinks ──────────────────────────────────────
 
 echo "[Phase 4] install.sh idempotence and symlink integrity"
