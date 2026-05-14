@@ -3,6 +3,8 @@
 ## 2026-05-14
 
 - **Feature shipped:** `debug-*` skill category introduced as a new namespace for agent-pulled sidebar techniques that workflow states (`feature-build`, `incident-investigate`, `task-act`) can invoke when standard debugging stalls; first member `debug-bisect-known-good` codifies the known-good-bisection technique with two conjunctive gates (known-good sibling present AND ≥3 failed straight-line attempts) enforced at SKILL entry, returns to the caller without consuming a workflow transition ID.
+- **Task closed:** Default drive mode in `/session-start` flipped from Orchestrated (Mode 2) to Autopilot (Mode 3) — Enter / blank / "yes" now maps to Mode 3 in both `skills/session-start/SKILL.md` and `docs/product/transitions.md`; the stale 3-mode prompt example in transitions.md was refreshed to the live 4-mode menu in the same pass.
+- **Backlog resolved:** SURFACE-2026-05-13-DEFAULT-DRIVE-MODE-AUTOPILOT — closed by the default-flip task above; no test scenarios needed updating since S10's substring check on "Orchestrated" still holds and S22 didn't reference the default.
 
 ## 2026-05-13
 

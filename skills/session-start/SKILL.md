@@ -119,12 +119,12 @@ State your classification (1–2 sentences), then present the mode menu (the har
 >   3. Autopilot      — only pauses at verify-human; everything else chains automatically
 >   4. Full-autopilot — no pauses; verify-human skipped; runs to completion
 >
-> (Type 1–4 — or just press Enter for Orchestrated)
+> (Type 1–4 — or just press Enter for Autopilot)
 
 **Interpreting the reply:**
 - "1" / "step" / "step-by-step" / "manual" → **Mode 1** (pause after every skill; hand control back after each step)
-- "2" / Enter / blank / "yes" / "orchestrated" → **Mode 2**
-- "3" / "autopilot" → **Mode 3**
+- "2" / "orchestrated" → **Mode 2**
+- "3" / Enter / blank / "yes" / "autopilot" → **Mode 3**
 - "4" / "full" / "full-autopilot" / "no stops" / "end-to-end" / "drive it end-to-end" → **Mode 4**
 - "no" → tell the user which entry skill to run manually (e.g. `/feature-plan`). Stop. You're done.
 

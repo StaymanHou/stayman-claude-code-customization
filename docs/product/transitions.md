@@ -38,8 +38,8 @@ The full pause policy per workflow and per drive mode is in the **Drive modes** 
 |---|------|-------------|-------------|
 | 0 | **Direct** | Direct slash command (e.g. `/feature-plan`) — not via session-start | One skill runs, then stops. The skill's own "Hand Off" prose is authoritative. No chaining. |
 | 1 | **Step-by-step** | session-start option 1 | Pause after every skill. The orchestrator summarises what was done and tells the user which slash command to run next — but does not invoke it automatically. |
-| 2 | **Orchestrated** | session-start option 2 / default (Enter) | Follows the pause-policy table in `agents/<workflow>-workflow/AGENTS.md` exactly. Skill-level stop signals are ignored; `TRANSITION: <id>` tokens are the sole machine signal. |
-| 3 | **Autopilot** | session-start option 3 | All steps AUTO except `verify-human` (still PAUSE) and ESCALATE (always PAUSE). |
+| 2 | **Orchestrated** | session-start option 2 | Follows the pause-policy table in `agents/<workflow>-workflow/AGENTS.md` exactly. Skill-level stop signals are ignored; `TRANSITION: <id>` tokens are the sole machine signal. |
+| 3 | **Autopilot** | session-start option 3 / default (Enter) | All steps AUTO except `verify-human` (still PAUSE) and ESCALATE (always PAUSE). |
 | 4 | **Full-autopilot** | session-start option 4 | All steps AUTO. `verify-human` is **skipped** — `verify-self` result is the acceptance gate. ESCALATE remains PAUSE. Runs until terminal state. |
 
 #### Mode precedence
@@ -127,14 +127,15 @@ When `/session-start` confirms the work classification, it presents the mode cho
 ```
 I'll drive the <workflow> workflow. Which drive mode do you want?
 
-  1. Orchestrated  — follows the standard pause policy (spec, plan, verify-human, finalize)
-  2. Autopilot     — only pauses at verify-human; everything else chains automatically
-  3. Full-autopilot — no pauses; verify-human skipped; runs to completion
+  1. Step-by-step   — pause after every skill; you confirm each transition
+  2. Orchestrated   — standard pauses (spec, plan, verify-human, finalize)
+  3. Autopilot      — only pauses at verify-human; everything else chains automatically
+  4. Full-autopilot — no pauses; verify-human skipped; runs to completion
 
-(Type 1, 2, or 3 — or just press Enter for Orchestrated)
+(Type 1–4 — or just press Enter for Autopilot)
 ```
 
-The selected mode is stored in `workflow/wip/<item>.md` frontmatter as `drive_mode: orchestrated | autopilot | full-autopilot` and honoured for the full workflow duration including cross-workflow handoffs. The mode persists across `/session-pause` and `/session-resume`.
+The selected mode is stored in `workflow/wip/<item>.md` frontmatter as `drive_mode: step-by-step | orchestrated | autopilot | full-autopilot` and honoured for the full workflow duration including cross-workflow handoffs. The mode persists across `/session-pause` and `/session-resume`.
 
 ### Back-loop guard
 

@@ -10,7 +10,7 @@
   2. Verify whether any test scenarios assert on the old default (S10, S22 are the likely candidates — they exercise the routing/menu prose). Update assertions if needed.
   3. Consider updating `docs/product/transitions.md` → "Drive modes" if it documents Mode 2 as the default anywhere.
 - **Priority:** high (user-requested top priority)
-- **Status:** open
+- **Status:** resolved 2026-05-14 by task `default-drive-mode-autopilot`. SKILL menu parenthetical flipped to "press Enter for Autopilot"; Interpreting-the-reply maps Enter/blank/"yes" to Mode 3; transitions.md mode-definitions table moves "default (Enter)" from Mode 2 to Mode 3; stale 3-mode prompt example refreshed to 4-mode menu. No scenario edits needed (S10, S22 assertions remained compatible — S10 still uses substring "Orchestrated" via `contains_any`; S22 doesn't reference the default).
 
 ## SURFACE-2026-05-13-FRONTMATTER-NAME-VS-DIR-DRIFT
 - **Source:** feature:verify-codify (debug-skills-category-and-bisect-known-good Phase 1, 2026-05-13)
