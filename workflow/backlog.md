@@ -37,7 +37,7 @@
 - **Summary:** `tests/check-structure.sh` reports `effortLevel: live=<missing> fixture="xhigh"` — the test settings fixture (`tests/fixtures/settings.json:47`) has `"effortLevel": "xhigh"` but the live `~/.claude/settings.json` has removed this field. Pre-existing drift; surfaced when re-running check-structure.sh during Phase 3 verify-auto.
 - **Suggested action:** Either remove `effortLevel` from the fixture to match live, or add it to INTENTIONAL_DIFFS in `tests/check-structure.sh`. Pick based on whether the field's semantics matter to test behavior (likely not — it's a UX-level setting).
 - **Priority:** low (single failing structural check; does not block the test harness itself)
-- **Status:** open
+- **Status:** resolved 2026-05-14 as side-effect of feature `entrypoint-skills-load-product-context` (commit 786c03f). Root cause: user had switched from xhigh→max→auto, which dropped the field. Fixed by re-adding `"effortLevel": "xhigh"` to live `~/.claude/settings.json` (user-confirmed xhigh is the intended default). Fixture stays unchanged. check-structure.sh now 63 PASS / 0 FAIL.
 
 
 
@@ -83,7 +83,7 @@
   - **Interaction with CLAUDE.md.** CLAUDE.md is already auto-loaded by the harness — it overlaps with `context.md`. Avoid double-loading.
 - **Suggested action:** Open a feature-spec to design the mapping table and load strategy. Likely deliverable is a small shared snippet in `CLAUDE.snippet.md` ("Entry-point skills check `docs/product/<file>.md` for ...") plus per-skill prompt edits.
 - **Priority:** medium (improves quality of every workflow's first step; worth designing carefully before implementing)
-- **Status:** open
+- **Status:** resolved 2026-05-14 by feature `entrypoint-skills-load-product-context` (commit 786c03f). Landed: per-skill mapping table in `CLAUDE.snippet.md` "Entry-skill product-context loading (GLOBAL)" section + cross-level note in `transitions.md` + `## Step 0` sections in all 6 entry-point SKILL.md files + 8 grep_check assertions in `tests/check-structure.sh`. Load discipline tightened past the spec's original sketch: pointer-default for all skills, eager-read only for feature-spec (arch.md+wbs.md) and feature-plan (wbs.md with conversation-context skip), conditional-read for task-plan/incident-report (arch.md only on trigger phrases), 300-line size guard, no context.md anywhere.
 
 ## SURFACE-2026-05-10-I20-SCENARIO-MISSING
 - **Source:** feature:verify-codify (incident-codify feature, Phase 3, 2026-05-10)
