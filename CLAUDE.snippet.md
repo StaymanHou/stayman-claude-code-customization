@@ -82,6 +82,29 @@ Every feature WIP file uses the Work Tree format. All skills that read or write 
 - **Tree update on every exit** — every skill that touches a WIP file must update leaf statuses AND Current Node before handing off
 - **`Unvisited:` is ordered, sequence-of-execution** — list remaining phases/steps in the order the workflow will actually execute them, not alphabetically or in order-of-thought. When skills read this field later they may treat it as a sequence; an out-of-order list is a confabulation channel (see SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP)
 
+## Entry-skill product-context loading (GLOBAL)
+
+Entry-point skills may consult `docs/product/*.md` at start to ground planning in strategic context. Each entry-point SKILL.md spells its own load points out concretely in a `## Step 0: Available product context` section — the snippet documents the *rules*, the SKILL.md documents the *concrete paths*.
+
+### Per-skill mapping
+
+| Skill | Load mode | Eager reads | Pointer-only mentions |
+|-------|-----------|-------------|-----------------------|
+| `task-plan` | conditional-read | `arch.md` *only if* the task touches a public API, data shape, cross-module boundary, or workflow state machine | `wbs.md`, `vision.md`, `roadmap.md` |
+| `feature-spec` | eager-read | `arch.md`, `wbs.md` | `vision.md`, `roadmap.md`, `research.md` |
+| `feature-plan` | eager-read with context-skip | `wbs.md` — **skipped if already in conversation context** (e.g., loaded earlier by `feature-spec`) | `arch.md`, `vision.md`, `roadmap.md`, `research.md` |
+| `feature-reproduce` | pointer-only | (none) | All `docs/product/*.md` |
+| `incident-report` | conditional-read | `arch.md` *only if* the incident involves cross-component or system-architecture-level effects | `wbs.md`, `vision.md`, `roadmap.md` |
+| `product-vision` | excluded | (none — it writes `vision.md`) | (none) |
+
+### Rules
+
+1. **Pointer-default.** Step 0 always lists which `docs/product/*.md` files exist (one-line each). Absent files are silent no-ops — no warnings.
+2. **Size guard: 300 lines.** Eager/conditional reads exceeding ~300 lines read first 100 lines + `^#+ ` headings only, and append `[SURFACED-<date>] <skill> — <doc>.md exceeds size guard (N lines)` to the WIP `## Discoveries`.
+3. **No `context.md`.** Excluded everywhere — `CLAUDE.md` is the harness-loaded equivalent.
+
+`tests/check-structure.sh` enforces that each entry-point SKILL.md has its `## Step 0` section.
+
 ## CHANGELOG.md convention (GLOBAL)
 
 Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at the project root (`<proj_root>/CHANGELOG.md`). It is the narrative record of what shipped, closed, or resolved — and it is the canonical destination for the kind of one-line closure notes that used to live in `workflow/backlog.md`'s "Resolved" section.

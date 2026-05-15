@@ -25,6 +25,26 @@ This state is the entry point for **complex** features — those that fail the s
 
 **Bug-fix discoverability:** If `{{args}}` describes an undesirable behavior (bug, regression, broken state, wrong output) and you have not been entered via F32/F34 from `feature-reproduce`, surface a one-line suggestion to the user: "If this describes a bug-fix or regression and you haven't run reproduction, consider running `/feature-reproduce` first to capture a failing test before specifying the fix." Then proceed with spec — this is a soft pointer, not a gate.
 
+## Step 0: Available product context
+
+Before eliciting requirements, ground the spec in current strategic context. Run `ls docs/product/` to see which docs exist. The docs you may find:
+
+- `docs/product/arch.md` — architectural decisions and system design
+- `docs/product/wbs.md` — active work breakdown structure (current cycle)
+- `docs/product/vision.md` — high-level product vision
+- `docs/product/roadmap.md` — strategic roadmap
+- `docs/product/research.md` — cycle-scoped research findings
+
+**Eager read — `arch.md` AND `wbs.md`:** spec is the most upstream complex-feature decision point, and divergence from architecture or the active WBS cycle is expensive to unwind downstream. Read both files (when present) at the start of step 1 below.
+
+**Size guard:** if either `arch.md` or `wbs.md` exceeds ~300 lines, read only the first 100 lines of that file (via the `Read` tool's `limit:` parameter) plus a `Grep` for `^#+ ` headings to capture structure. Append one line to the WIP file's `## Discoveries` section: `[SURFACED-<date>] feature-spec — <doc>.md exceeds size guard (N lines), truncated to first 100. Consider summarizing.`
+
+**`vision.md`, `roadmap.md`, `research.md`:** pointer-only. These are too high-level (vision/roadmap) or too cycle-scoped (research) to mechanically constrain a spec. If your reasoning surfaces a question they'd answer, read them on your own initiative.
+
+**Absent files:** silent no-op. No warning, no prompt. Many projects deliberately skip product docs.
+
+See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for the canonical mapping these rules follow.
+
 ## Procedure
 
 ### 1. Elicit Requirements

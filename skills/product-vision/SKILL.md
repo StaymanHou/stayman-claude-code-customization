@@ -16,6 +16,12 @@ This is the entry point for all new product initiatives.
 **Valid transitions from here:**
 - **P2 → roadmap:** Vision doc created → tell user to run `/product-roadmap`
 
+## Step 0: Available product context
+
+**Excluded — this skill reads nothing.** `product-vision` *writes* `docs/product/vision.md`; reading it (or any other product doc) at entry time would be circular — the vision is precisely what this skill is creating. If a `vision.md` already exists, you are either re-entering the workflow intentionally (in which case read it manually as part of step 1) or about to overwrite it (in which case the user should confirm first). The other docs (`arch.md`, `wbs.md`, `roadmap.md`) are downstream of vision and shouldn't constrain it.
+
+See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for the canonical mapping (product-vision is marked as `excluded`).
+
 ## Procedure
 
 ### 1. Define the Vision

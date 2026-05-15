@@ -98,6 +98,19 @@ grep_check "incident-resolve references CHANGELOG convention" "skills/incident-r
 grep_check "task-close references CHANGELOG convention" "skills/task-close/SKILL.md" "CHANGELOG.md convention" 1
 grep_check "product-finalize references CHANGELOG convention" "skills/product-finalize/SKILL.md" "CHANGELOG.md convention" 1
 
+# Entry-skill product-context loading convention has three discoverability surfaces:
+# (1) canonical mapping in CLAUDE.snippet.md, (2) cross-level note in transitions.md,
+# (3) per-skill `## Step 0` sections in each entry-point SKILL.md. If any of these goes missing
+# the agent loses its load-discipline guidance. The grep_check pairs below catch each surface.
+grep_check "CLAUDE.snippet.md defines 'Entry-skill product-context loading'" "CLAUDE.snippet.md" "^## Entry-skill product-context loading" 1
+grep_check "transitions.md has 'Entry-skill context loading' cross-level subsection" "docs/product/transitions.md" "^### Entry-skill context loading" 1
+grep_check "task-plan SKILL.md has Step 0 section" "skills/task-plan/SKILL.md" "^## Step 0: Available product context" 1
+grep_check "feature-spec SKILL.md has Step 0 section" "skills/feature-spec/SKILL.md" "^## Step 0: Available product context" 1
+grep_check "feature-plan SKILL.md has Step 0 section" "skills/feature-plan/SKILL.md" "^## Step 0: Available product context" 1
+grep_check "feature-reproduce SKILL.md has Step 0 section" "skills/feature-reproduce/SKILL.md" "^## Step 0: Available product context" 1
+grep_check "incident-report SKILL.md has Step 0 section" "skills/incident-report/SKILL.md" "^## Step 0: Available product context" 1
+grep_check "product-vision SKILL.md has Step 0 section" "skills/product-vision/SKILL.md" "^## Step 0: Available product context" 1
+
 echo ""
 
 # ── Phase 3b: debug-* skill category invariants ────────────────────────────

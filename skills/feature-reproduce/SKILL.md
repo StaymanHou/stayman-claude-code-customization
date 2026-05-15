@@ -20,6 +20,22 @@ This state is the **optional** entry point for **bug-fix features** — features
 - **F34 → spec (preventive hardening):** Could not reproduce, but the user wants a preventive fix → tell user to run `/feature-spec` with the framing reset to "preventive hardening: bug not reproducible in current state"
 - **F35 → terminate:** Could not reproduce, no preventive fix needed → close the workflow with the reproduce attempt as the record
 
+## Step 0: Available product context
+
+Run `ls docs/product/` to see which strategic docs exist (silent no-op if absent):
+
+- `docs/product/arch.md` — architectural decisions and system design
+- `docs/product/wbs.md` — active work breakdown structure (current cycle)
+- `docs/product/vision.md` — high-level product vision
+- `docs/product/roadmap.md` — strategic roadmap
+- `docs/product/research.md` — cycle-scoped research findings
+
+**No eager reads.** Reproduction work is grounded in the bug itself — the failing condition, the suspected commit range, the failing test — not in strategic docs. Loading product docs at reproduce time biases the agent toward over-scoping (e.g., reframing a one-line regression as an arch-level concern). The docs are pointer-only here; read on your own initiative only if reasoning surfaces a specific question that needs them.
+
+**Absent files:** silent no-op. No warning, no prompt.
+
+See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for the canonical mapping.
+
 ## Procedure
 
 ### 1. Confirm the Reported Behavior

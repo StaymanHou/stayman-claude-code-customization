@@ -24,6 +24,26 @@ Also entered via:
 
 **Bug-fix discoverability:** If `{{args}}` describes an undesirable behavior (bug, regression, broken state, wrong output) and you have not been entered via F33 from `feature-reproduce`, surface a one-line suggestion to the user: "If this describes a bug-fix or regression and you haven't run reproduction, consider running `/feature-reproduce` first to capture a failing test before planning the fix." Then proceed with planning — this is a soft pointer, not a gate.
 
+## Step 0: Available product context
+
+Before planning, align phasing with the active WBS cycle. Run `ls docs/product/` to see which docs exist. The docs you may find:
+
+- `docs/product/arch.md` — architectural decisions and system design
+- `docs/product/wbs.md` — active work breakdown structure (current cycle)
+- `docs/product/vision.md` — high-level product vision
+- `docs/product/roadmap.md` — strategic roadmap
+- `docs/product/research.md` — cycle-scoped research findings
+
+**Eager read — `wbs.md` with conversation-context skip:** WBS context grounds plan phasing in the active cycle. **However**, if `wbs.md` content is already in your conversation context — typically because `feature-spec` ran earlier in this same conversation and loaded it — skip the read and note "wbs.md already in context (loaded by feature-spec)" in your reasoning. The agent (you) introspects its own conversation context to decide; do **not** inspect the WIP file's state for this decision. If the conversation is fresh (e.g., resumed via `/session-resume` after a pause, or this skill was entered directly via F2 with no prior spec), `wbs.md` is not in context — read it.
+
+**Size guard:** if `wbs.md` exceeds ~300 lines, read only the first 100 lines (via the `Read` tool's `limit:` parameter) plus a `Grep` for `^#+ ` headings. Append one line to the WIP file's `## Discoveries` section: `[SURFACED-<date>] feature-plan — wbs.md exceeds size guard (N lines), truncated to first 100. Consider summarizing.`
+
+**`arch.md`, `vision.md`, `roadmap.md`, `research.md`:** pointer-only. `arch.md` is spec's concern (constraints already in the spec by the time plan runs). The others are too coarse to constrain phase-level planning.
+
+**Absent files:** silent no-op. No warning, no prompt.
+
+See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for the canonical mapping these rules follow.
+
 ## Procedure
 
 ### 1. Backlog Check

@@ -19,6 +19,25 @@ You are in the **task** workflow at the **plan** state.
 - **T3 → ESCALATE to feature:spec:** "This is bigger than a task" — close the task plan, update docs, tell user to run `/feature-spec`
 - **T4 → REDIRECT to feature:research:** Research needed before acting — pause task, tell user to run the research, then return
 
+## Step 0: Available product context
+
+Before planning, check whether the project has strategic product docs that should inform the task plan. Run `ls docs/product/` (silently no-op if the directory is absent). The docs you may find:
+
+- `docs/product/arch.md` — architectural decisions and system design
+- `docs/product/wbs.md` — active work breakdown structure (current cycle)
+- `docs/product/vision.md` — high-level product vision
+- `docs/product/roadmap.md` — strategic roadmap
+
+**Conditional read — `arch.md` only:** if the task description appears to touch architectural decisions — renaming a public API, changing a data shape, modifying a cross-module boundary, altering a workflow state machine — read `docs/product/arch.md` and reflect any constraint in the plan. If the trigger doesn't apply, skip the read; the pointer above is sufficient.
+
+**`wbs.md`, `vision.md`, `roadmap.md`:** pointer-only. Don't read these for task-level work — they're too coarse for atomic changes. If the task surprisingly needs WBS context, the user will paste it into args.
+
+**Size guard:** if `arch.md` exceeds ~300 lines, read only the first 100 lines (via the `Read` tool's `limit:` parameter) plus a `Grep` for `^#+ ` headings. Append one line to the WIP file's `## Discoveries` section noting the truncation.
+
+**Absent files:** silent no-op. No warning, no prompt.
+
+See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for the canonical mapping these rules follow.
+
 ## Procedure
 
 ### 1. Backlog Check
