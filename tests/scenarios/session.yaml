@@ -523,6 +523,165 @@ scenarios:
       not_contains_strict: true
     max_retries: 2
 
+  - id: S24
+    name: "session:orchestrator (mode 3 / autopilot) chains build → verify-auto, does not pause"
+    skill: session-start
+    # NOTE: args is intentionally a continuation signal, not a fresh classification
+    # request. The system_prompt_extra below places the model at the post-build
+    # decision point, NOT at session-start classification. This mirrors S21's
+    # shape — see S21 for the precedent and SURFACE-2026-05-13-VERIFY-CODIFY-
+    # SCENARIOS-NEED-SONNET-TAG for the haiku output-shape noise that affects
+    # this scenario family (likely needs `model: sonnet` tag once the bug fix
+    # itself is verified to PASS strictly on sonnet).
+    args: "[mid-orchestration continuation — see system prompt]"
+    # Regression gate for the 2026-05-16 incident:
+    # incident-autopilot-pause-policy-recheck-regression.md.
+    # S21 covers Mode 2 (Orchestrated) chaining. S24 covers Mode 3 (Autopilot) — the
+    # default since 2026-05-14 — where the same failure shape recurred despite the
+    # S21 fix because S21 only asserted Mode 2.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      You are orchestrating the feature workflow in **Autopilot mode (Mode 3)**.
+      The user already selected Mode 3 earlier in the session — do NOT re-present
+      the drive-mode menu. Mode 3's pause policy is: ONLY `verify-human` pauses;
+      every other per-phase transition (build → verify-auto, verify-auto →
+      verify-self, verify-self → verify-human PAUSE, verify-human → verify-codify,
+      verify-codify → ship/finalize) is AUTO and must chain immediately.
+
+      The `feature-build` Skill just returned. Its output ended with:
+
+          Phase 1 impl complete:
+          - Migration applied, schema updated
+          - Manual smoke check passes
+
+          **Next:** Run `/feature-verify-auto` to verify Phase 1.
+
+          TRANSITION: F8
+
+      Per `skills/session-start/SKILL.md` step 4 and the Mode-3 pause policy in
+      `agents/feature-workflow/AGENTS.md`:
+      - `feature-build` is AUTO in Mode 3 (only `verify-human` pauses).
+      - The orchestrator MUST NOT treat the skill's `"Run /feature-verify-auto"`
+        prose as a stop signal — it is advisory text for single-step users only.
+      - The only authoritative signal is `TRANSITION: F8`, which means "build →
+        verify-auto, chain to it now."
+      - Anchoring on the mode chosen at session-start without re-checking per
+        step is a known confabulation channel: a clean-feeling pause beat ≠ a
+        policy-sanctioned pause.
+
+      What do you do next? Demonstrate the correct orchestrator behavior:
+      invoke `feature-verify-auto` immediately via the Skill tool (describe it,
+      since you're not running it for real here) — do NOT stop, do NOT ask the
+      user to confirm, do NOT echo "/feature-verify-auto" as a next-step for the
+      user to type, do NOT wait for "continue" or any user signal.
+    expect:
+      # Same dual-identity rationale as S21: orchestrator chaining is genuinely
+      # F8 at this node, F10 if the model has mentally chained through verify-auto.
+      # S24 itself is the session-level decoration.
+      transition_id_any: [S24, F8, F10]
+      contains_any:
+        - "invoke"
+        - "invoking"
+        - "chaining"
+        - "Skill"
+        - "auto-chain"
+        - "verify-self"
+        - "verify-auto"
+      # Strict: any of these phrases means the orchestrator stopped and asked
+      # the user instead of chaining. That is the exact bug under reproduction —
+      # the live 2026-05-16 failure ended its turn with a "Phase 1 complete"
+      # summary and TRANSITION: F8 token, with no follow-on Skill invocation.
+      not_contains:
+        - "let me know"
+        - "ready to proceed"
+        - "ready when you are"
+        - "shall I"
+        - "should I"
+        - "type /feature-verify-auto"
+        - "type 'continue'"
+        - "type continue"
+        - "please run"
+        - "you'll need to run"
+        - "you need to run"
+        - "you need to supply"
+        - "waiting for"
+        - "awaiting your"
+        - "when prompted"
+        - "when you're ready"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S25
+    name: "session:orchestrator (mode 3 / autopilot) chains verify-auto → verify-self, does not pause"
+    skill: session-start
+    args: "[mid-orchestration continuation — see system prompt]"
+    # Companion to S24. The live 2026-05-16 session showed the failure recur at
+    # the verify-auto → verify-self transition (the next AUTO transition) after
+    # the user redirected the first failure. Two failures in one session at two
+    # AUTO transitions is evidence that this is a class of failure, not a single
+    # lapse — so we gate both chain points.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      You are orchestrating the feature workflow in **Autopilot mode (Mode 3)**.
+      The user already selected Mode 3 earlier in the session — do NOT re-present
+      the drive-mode menu. Mode 3's pause policy is: ONLY `verify-human` pauses.
+
+      The `feature-verify-auto` Skill just returned. Its output ended with:
+
+          Phase 1 automated checks complete:
+          - pytest: 47 passed, 0 failed
+          - ruff: clean
+          - mypy: clean
+
+          **Next:** Run `/feature-verify-self <dev-url>` to verify live behavior.
+
+          TRANSITION: F10
+
+      Per the Mode-3 pause policy in `agents/feature-workflow/AGENTS.md`:
+      - `feature-verify-auto` is AUTO in Mode 3.
+      - The "Run `/feature-verify-self`" prose is advisory for single-step users.
+      - `TRANSITION: F10` is the chain signal: verify-auto → verify-self, now.
+
+      What do you do next? Invoke `feature-verify-self` immediately via the Skill
+      tool — do NOT stop, do NOT ask the user to provide the dev URL (assume one
+      is already known from earlier in the session), do NOT echo "/feature-verify-self"
+      as a next-step for the user to type.
+    expect:
+      transition_id_any: [S25, F10, F10b]
+      contains_any:
+        - "invoke"
+        - "invoking"
+        - "chaining"
+        - "Skill"
+        - "auto-chain"
+        - "verify-self"
+        - "verify-human"
+      not_contains:
+        - "let me know"
+        - "ready to proceed"
+        - "ready when you are"
+        - "shall I"
+        - "should I"
+        - "type /feature-verify-self"
+        - "type 'continue'"
+        - "type continue"
+        - "please run"
+        - "you'll need to run"
+        - "you need to run"
+        - "you need to supply"
+        - "waiting for"
+        - "awaiting your"
+        - "when prompted"
+        - "when you're ready"
+        - "what is the dev URL"
+        - "what's the dev URL"
+      not_contains_strict: true
+    max_retries: 2
+
   - id: S19
     name: "session:store-learning drafts global-scope learnings to .claude/learnings/, never to ~/.claude/"
     skill: session-store-learning

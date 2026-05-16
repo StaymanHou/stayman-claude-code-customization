@@ -1,5 +1,16 @@
 # Backlog
 
+## SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS
+- **Source:** feature:build (session-replay-harness Phase 2 P2.5 STOP point, 2026-05-16)
+- **Target level:** feature:spec (architectural — extends test-harness with new mechanism)
+- **Type:** test-infra (gap in reproduction fidelity)
+- **Summary:** Build a multi-turn extension to the session-replay harness. Single-shot replay (which Phase 2 of the session-replay-harness feature shipped) loads a captured `.jsonl` slice as conversation prefix and runs one continuation turn — but proven inadequate for reproducing the narrative-cadence-drift bug class (autopilot Mode 3 stopping after `TRANSITION: F8` instead of chaining). 3/3 PASS even with system_prompt_extra stripped to nothing. The bug requires the model to be *driving* a multi-turn workflow where narrative-cadence drift accumulates across many skill invocations.
+- **Context:** This is THE structural gate the paused incident `workflow/wip/incident-autopilot-pause-policy-recheck-regression.md` (P1) needs for a true red→green reproduction. Without multi-turn replay, any fix to the autopilot-pause-policy bug ships untested at the level where it manifests in production. The 2026-05-11 fix (commit `33cf5c9`) had this same gap and regressed; the 2026-05-16 fix risks the same recurrence without this harness.
+- **Sketch of mechanism:** load the slice, get the first model response, append it to history, prompt the next turn (e.g., "the build skill returned this output: ... what's your next action?"), repeat for N turns. Stop after a fixed turn budget or when the model emits a TRANSITION token that doesn't match the auto-chain target. Assert on the *sequence* of responses, not a single output. Likely 4–8 hours of harness work; needs design (turn-limit semantics, per-turn assertion shape, slice-vs-injected-tool-results disambiguation).
+- **Suggested action:** Open `/feature-spec` for "multi-turn session-replay harness." Spec must address: (1) how the harness manufactures the equivalent of a Skill tool_result between turns (the model needs to "see" what its emitted Skill invocation would return — fake it from the slice's next assistant turn? generate plausible content?); (2) per-turn assertion schema (do we assert per turn, or on the full sequence?); (3) cost surface (multi-turn replay multiplies token usage); (4) cwd-slug handling (the dot-free workaround in single-shot replay still applies).
+- **Priority:** high — load-bearing for the paused P1 incident's "really fix it, no resurface" mandate. Should be the immediate next feature after session-replay-harness ships.
+- **Status:** open
+
 ## SURFACE-2026-05-13-DEFAULT-DRIVE-MODE-AUTOPILOT
 - **Source:** user-initiated (live observation during debug-skills feature, 2026-05-13)
 - **Target level:** task:plan (small/simple — wording change in session-start + one or two test scenarios updated)

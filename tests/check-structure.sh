@@ -588,6 +588,70 @@ fi
 
 echo ""
 
+# ── Phase 8: capture-session-slice.sh contract ─────────────────────────────
+# Regression coverage for tools/capture-session-slice.sh, written 2026-05-16
+# during the session-replay-harness feature (Phase 1 verify-codify). This
+# catches the class of regression that surfaced in P1.5: --help silently
+# exiting non-zero. Also catches: script removed, shebang broken, executable
+# bit cleared.
+
+echo "[Phase 8] capture-session-slice.sh contract"
+
+if [ -f tools/capture-session-slice.sh ]; then
+  check "tools/capture-session-slice.sh exists" "pass"
+
+  if [ -x tools/capture-session-slice.sh ]; then
+    check "tools/capture-session-slice.sh is executable" "pass"
+  else
+    check "tools/capture-session-slice.sh is executable" "fail" "chmod +x missing"
+  fi
+
+  if bash -n tools/capture-session-slice.sh 2>/dev/null; then
+    check "tools/capture-session-slice.sh has valid bash syntax" "pass"
+  else
+    check "tools/capture-session-slice.sh has valid bash syntax" "fail"
+  fi
+
+  # --help must exit 0 (regression catch for the P1.5 bug)
+  if tools/capture-session-slice.sh --help >/dev/null 2>&1; then
+    check "tools/capture-session-slice.sh --help exits 0" "pass"
+  else
+    check "tools/capture-session-slice.sh --help exits 0" "fail" "exits $?"
+  fi
+
+  if tools/capture-session-slice.sh -h >/dev/null 2>&1; then
+    check "tools/capture-session-slice.sh -h exits 0" "pass"
+  else
+    check "tools/capture-session-slice.sh -h exits 0" "fail" "exits $?"
+  fi
+
+  # Error paths must exit 1 (regression catch: P1.5 fix must not over-broaden
+  # the success path).
+  set +e
+  tools/capture-session-slice.sh >/dev/null 2>&1
+  rc=$?
+  set -e
+  if [ "$rc" = "1" ]; then
+    check "tools/capture-session-slice.sh missing-arg exits 1" "pass"
+  else
+    check "tools/capture-session-slice.sh missing-arg exits 1" "fail" "got $rc"
+  fi
+
+  set +e
+  tools/capture-session-slice.sh --bogus-flag >/dev/null 2>&1
+  rc=$?
+  set -e
+  if [ "$rc" = "1" ]; then
+    check "tools/capture-session-slice.sh unknown-arg exits 1" "pass"
+  else
+    check "tools/capture-session-slice.sh unknown-arg exits 1" "fail" "got $rc"
+  fi
+else
+  check "tools/capture-session-slice.sh exists" "fail" "file not found"
+fi
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="
