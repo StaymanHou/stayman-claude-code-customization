@@ -21,6 +21,22 @@ You are in the **feature** workflow at the **build** state.
 - **F26 → SURFACE to product:arch:** Architectural change needed (pause-and-escalate)
 - **F27 → incident:report:** Something breaks
 
+## Orchestrator Pause Policy (cheat-sheet)
+
+When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for build's exits:
+
+| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|---|---|---|---|---|
+| F8 (build → verify-auto) | PAUSE | AUTO | AUTO | AUTO |
+| F9b (back-loop re-verify passed → verify-auto) | PAUSE | AUTO | AUTO | AUTO |
+| F22 (REDIRECT to research) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| F23 (back-loop to plan) | PAUSE | AUTO | AUTO | AUTO |
+| F25 (SURFACE to product:wbs, note-and-continue) | PAUSE | AUTO | AUTO | AUTO |
+| F26 (SURFACE to product:arch, pause-and-escalate) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| F27 (incident:report interrupt) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
+
+**Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode, the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F8` followed by a polite narrative summary ("Phase 1 complete; ready to run verify-auto") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
 ## Procedure
 
 ### 1. Context Recovery

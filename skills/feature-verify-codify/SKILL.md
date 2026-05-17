@@ -18,6 +18,18 @@ This is the final step of the per-phase verification loop: `build → verify-aut
 - **F16 → ship:** Tests written, all phases complete → tell user to run `/feature-ship`
 - **F14 → verify-human (back-loop):** New tests reveal issues human missed → document findings, tell user to run `/feature-verify-human`
 
+## Orchestrator Pause Policy (cheat-sheet)
+
+When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for verify-codify's exits:
+
+| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|---|---|---|---|---|
+| F15 (verify-codify → build, next phase) | PAUSE | AUTO | AUTO | AUTO |
+| F16 (verify-codify → ship, all phases complete) | PAUSE | AUTO | AUTO | AUTO |
+| F14 (back-loop to verify-human) | PAUSE | AUTO | AUTO | AUTO |
+
+**Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode, the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F16` followed by a polite narrative summary ("All phases complete; ready to run ship") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
 ## Procedure
 
 ### 1. Review What Was Verified

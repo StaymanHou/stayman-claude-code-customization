@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-05-17
+
+- **Incident resolved:** P1 autopilot-pause-policy regression — agent stopped after clean `TRANSITION: F8` emission instead of chaining to verify-auto in Autopilot Mode 3, recurring at the next AUTO transition in the same session; mitigated by adding an `## Orchestrator Pause Policy (cheat-sheet)` block to 8 feature SKILL.md files (spec, research, plan, build, verify-auto, verify-self, verify-human, verify-codify) with per-skill rows from the canonical pause-policy table plus a load-bearing `Hard rule for AUTO exits` imperative requiring the orchestrator to invoke the next `Skill` immediately when the emitted transition is AUTO; reproduction abandoned (Claude `--print` family runs an opaque internal agentic loop with no programmatic pause-decision surface — logged as SURFACE-2026-05-17-CLAUDE-PRINT-AGENTIC-LOOP-SUPPRESSES-PAUSE-DECISION), so codify took Path B with `tests/check-structure.sh` Phase 9 (24 assertions: heading + imperative anchor + 4-mode table row per file) as the structural pure-prose contract; negative-control verified by stripping the block from feature-build/SKILL.md → 3 FAILs, restore → 94/94 PASS.
+
 ## 2026-05-16
 
 - **Feature shipped:** Session-slice capture tooling (salvaged from the abandoned session-replay-harness feature) — `tools/capture-session-slice.sh` extracts a slice of a Claude Code `.jsonl` session log, rewrites `sessionId` to a fresh uuid, applies Tier-1 redaction across 13 token patterns (Anthropic / OpenAI / GitHub PAT / AWS / Stripe / Google / SendGrid / Slack / JWT / Facebook / private-key BEGIN), emits a side-by-side diff sidecar, and prompts the human for Tier-2 audit before commit; `tests/sessions/` introduced with the first captured slice (2026-05-16 autopilot F8 pause) plus `AUDIT-LOG.md` convention and Tier-2 reviewer checklist; `tests/check-structure.sh` Phase 8 adds 7 regression-guard checks on the capture tool's contract.

@@ -22,6 +22,17 @@ This is the second step of the per-phase verification loop: `build → verify-au
 - **F10b → verify-human:** All blocking issues resolved (or none found) → tell user to run `/feature-verify-human`
 - **F9b → build (back-loop):** Blocking issue found that agent can fix → document it, tell user to run `/feature-build`
 
+## Orchestrator Pause Policy (cheat-sheet)
+
+When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for verify-self's exits:
+
+| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|---|---|---|---|---|
+| F10b (verify-self → verify-human) | PAUSE | AUTO (chain into verify-human, which itself PAUSEs) | AUTO (chain into verify-human, which itself PAUSEs) | AUTO — **skip verify-human entirely**, chain directly to `feature-verify-codify` |
+| F9b (back-loop to build) | PAUSE | AUTO | AUTO | AUTO |
+
+**Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode, the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F10b` followed by a polite narrative summary ("Verify-self complete; ready to run verify-human") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
 ## Severity Taxonomy
 
 Use this taxonomy consistently when classifying failures. It is also embedded in the subagent prompt.

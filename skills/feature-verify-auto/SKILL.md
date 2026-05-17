@@ -18,6 +18,18 @@ This is the first step of the per-phase verification loop: `build → verify-aut
 - **F9 → build (back-loop):** Tests fail → document failures, tell user to run `/feature-build` to fix
 - **F24 → spec (back-loop):** Tests reveal the spec was wrong → document what's wrong, tell user to run `/feature-spec`
 
+## Orchestrator Pause Policy (cheat-sheet)
+
+When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for verify-auto's exits:
+
+| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|---|---|---|---|---|
+| F10 (verify-auto → verify-self) | PAUSE | AUTO | AUTO | AUTO |
+| F9 (back-loop to build) | PAUSE | AUTO | AUTO | AUTO |
+| F24 (back-loop to spec) | PAUSE | AUTO | AUTO | AUTO |
+
+**Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode, the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F10` followed by a polite narrative summary ("Tests pass; ready to run verify-self") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
 ## Role and Scope
 
 **verify-auto is a cheap, fast, early-indicator check — not a full QA pass.**

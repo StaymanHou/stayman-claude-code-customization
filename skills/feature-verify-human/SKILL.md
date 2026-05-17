@@ -23,6 +23,21 @@ This is the third step of the per-phase verification loop: `build → verify-aut
 - **F11 → verify-codify:** Nothing for human to test (with confirmation) → tell user to run `/feature-verify-codify`
 - **F12 → build (back-loop):** Human rejects → document issues, tell user to run `/feature-build`
 
+## Orchestrator Pause Policy (cheat-sheet)
+
+This skill is the **one forced human-pause** in the per-phase loop for Modes 1–3 — invocation itself PAUSEs while the human walks the checklist (§5 of the Procedure). Mode 4 SKIPs invocation entirely.
+
+Once the human has responded and this skill emits an exit transition, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause:
+
+| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|---|---|---|---|---|
+| Skill invocation (entry — present checklist) | PAUSE | **PAUSE** (await human) | **PAUSE** (await human) | **SKIP** (orchestrator chains verify-self → verify-codify directly) |
+| F13 (human approves → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
+| F11 (human-confirmed skip → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
+| F12 (back-loop to build with scoped leaves) | PAUSE | AUTO | AUTO | n/a (skipped) |
+
+**Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode (i.e., the human has already responded), the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user a second time after the human's reply. Emitting a clean `TRANSITION: F13` followed by a polite narrative summary ("Phase approved; ready to run verify-codify") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
 ## Procedure
 
 ### 1. Read Current Node

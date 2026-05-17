@@ -22,6 +22,22 @@ Also used as a **REDIRECT** target:
 
 If this is a REDIRECT, note the source workflow/state so you can hand back correctly.
 
+## Orchestrator Pause Policy (cheat-sheet)
+
+When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for research's exits:
+
+| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|---|---|---|---|---|
+| Skill invocation (entry — research review point) | PAUSE | **PAUSE** | AUTO | AUTO |
+| F5 (research → plan, findings clear) | PAUSE | (pause already taken at entry) | AUTO | AUTO |
+| F6 (research → spec, back-loop) | PAUSE | AUTO | AUTO | AUTO |
+
+REDIRECT returns (from `feature-build` F22 or `task:plan` T4): on completion, the orchestrator returns control to the caller workflow. The hard rule below still applies — chain back via `Skill` in AUTO modes, do not turn-end.
+
+**Hard rule for AUTO exits.** In Modes 3 and 4, research is AUTO — when this skill emits `TRANSITION: F5` (or `F6`, or returns from a REDIRECT) in Mode 3/4, the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F5` followed by a polite narrative summary ("Research complete; ready to run /feature-plan") in Mode 3/4 is the regression mode this block exists to prevent (P1 incident, 2026-05-16, scope-extended 2026-05-17): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end.
+
+In Modes 1–2 the user reviews research findings before continuing — that pause is taken at skill *entry*. After the user's response, F5 chains forward without a second pause. F6 (back-loop) is AUTO in Modes 2–4 (back-loops are always AUTO). See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
 ## Procedure
 
 ### 1. Identify Questions

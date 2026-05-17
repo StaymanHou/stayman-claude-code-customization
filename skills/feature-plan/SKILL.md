@@ -24,6 +24,24 @@ Also entered via:
 
 **Bug-fix discoverability:** If `{{args}}` describes an undesirable behavior (bug, regression, broken state, wrong output) and you have not been entered via F33 from `feature-reproduce`, surface a one-line suggestion to the user: "If this describes a bug-fix or regression and you haven't run reproduction, consider running `/feature-reproduce` first to capture a failing test before planning the fix." Then proceed with planning — this is a soft pointer, not a gate.
 
+## Orchestrator Pause Policy (cheat-sheet)
+
+When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for plan's exits:
+
+| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+|---|---|---|---|---|
+| Skill invocation (entry — plan review point) | PAUSE | **PAUSE** | AUTO | AUTO |
+| F7 (plan → build, Phase 1) | PAUSE | (pause already taken at entry) | AUTO | AUTO |
+
+Also entered via:
+- **F20 (refactor → plan):** plan-as-cleanup. Same pause policy as above.
+- **F23 (build → plan, back-loop):** AUTO in Modes 2–4 (back-loops are AUTO).
+- **F33 (reproduce → plan):** Same pause policy as F2 entry (entry-point review point).
+
+**Hard rule for AUTO exits.** In Modes 3 and 4, plan is AUTO — when this skill emits `TRANSITION: F7` in Mode 3 or 4, the orchestrator **must immediately invoke `feature-build` via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F7` followed by a polite narrative summary ("Plan complete; ready to run /feature-build for Phase 1") in Mode 3/4 is the regression mode this block exists to prevent (P1 incident, 2026-05-16, scope-extended 2026-05-17): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end.
+
+In Modes 1–2 the user reviews the plan before build — that pause is taken at skill *entry*. After the user's response, F7 then chains forward without a second pause. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
 ## Step 0: Available product context
 
 Before planning, align phasing with the active WBS cycle. Run `ls docs/product/` to see which docs exist. The docs you may find:
@@ -171,6 +189,6 @@ Set state to `plan (complete)` in the WIP file.
 ### 6. Hand Off
 Tell the user to run `/feature-build` to start Phase 1.
 
-**Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator chains to build automatically based on the drive mode's pause policy.
+**Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator decides whether to pause or chain per the **Orchestrator Pause Policy (cheat-sheet)** block at the top of this SKILL. The hard rule for AUTO exits applies — see that block.
 
 **User Request:** {{args}}

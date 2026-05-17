@@ -652,6 +652,73 @@ fi
 
 echo ""
 
+# ── Phase 9: Orchestrator pause-policy cheat-sheet block ──────────────────
+#
+# Each feature SKILL.md affected by incident
+# "autopilot-pause-policy-recheck-regression" (2026-05-17) must carry a hard
+# in-skill cheat-sheet block. The block is what load-bears the fix: SKILL.md
+# prose is reliably loaded into context at every Skill tool invocation, so
+# the pause-policy decision sits next to the transition emission instead of
+# relying on AGENTS.md prose the orchestrator read once at session start.
+#
+# Three structural assertions per file:
+#   (1) the canonical heading is present
+#   (2) the "Hard rule for AUTO exits" semantic anchor is present — the
+#       imperative wording is the load-bearing part; if it weakens to
+#       "should" or a softer phrasing, the regression mode returns
+#   (3) the block contains a per-skill pause-policy table referencing all
+#       four drive modes
+#
+# If this phase fails, the mitigation has been silently weakened — that is
+# the regression signal the original incident WIP file says we must catch.
+
+echo "[Phase 9] Orchestrator pause-policy cheat-sheet presence"
+
+PAUSE_POLICY_FILES=(
+  skills/feature-spec/SKILL.md
+  skills/feature-research/SKILL.md
+  skills/feature-plan/SKILL.md
+  skills/feature-build/SKILL.md
+  skills/feature-verify-auto/SKILL.md
+  skills/feature-verify-self/SKILL.md
+  skills/feature-verify-human/SKILL.md
+  skills/feature-verify-codify/SKILL.md
+)
+
+for f in "${PAUSE_POLICY_FILES[@]}"; do
+  if [ ! -f "$f" ]; then
+    check "$f exists" "fail" "file missing"
+    continue
+  fi
+
+  # (1) Canonical heading
+  if grep -qF "## Orchestrator Pause Policy (cheat-sheet)" "$f"; then
+    check "$f has Orchestrator Pause Policy block" "pass"
+  else
+    check "$f has Orchestrator Pause Policy block" "fail" \
+      "missing '## Orchestrator Pause Policy (cheat-sheet)' heading"
+  fi
+
+  # (2) Load-bearing imperative "Hard rule for AUTO exits"
+  if grep -qF "Hard rule for AUTO exits" "$f"; then
+    check "$f has 'Hard rule for AUTO exits' anchor" "pass"
+  else
+    check "$f has 'Hard rule for AUTO exits' anchor" "fail" \
+      "missing 'Hard rule for AUTO exits' phrase (semantic anchor)"
+  fi
+
+  # (3) Per-skill pause-policy table referencing all four drive modes.
+  # The block contains a markdown row mentioning all four mode names.
+  if grep -qE "Mode 1.*Mode 2.*Mode 3.*Mode 4" "$f"; then
+    check "$f has pause-policy table with all 4 drive modes" "pass"
+  else
+    check "$f has pause-policy table with all 4 drive modes" "fail" \
+      "no single line references all four modes (table row missing or malformed)"
+  fi
+done
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="
