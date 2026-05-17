@@ -1,5 +1,33 @@
 # Backlog
 
+## SURFACE-2026-05-17-CLAUDE-PRINT-AGENTIC-LOOP-SUPPRESSES-PAUSE-DECISION
+- **Source:** feature:research (multi-turn session-replay harness research spike, 2026-05-17)
+- **Target level:** future-design constraint (not actionable on its own; informs any future attempt to test agent-driven workflow behavior headlessly)
+- **Type:** structural-finding (durable knowledge captured to prevent re-attempting a known dead-end)
+- **Summary:** `claude --print` and `claude --print --output-format=stream-json` both run an **internal agentic loop** that runs to terminal completion (`end_turn` / `max_turns` / error). Neither mode exposes a programmatic control point between assistant turns — the CLI auto-satisfies emitted `tool_use` blocks with real tool execution, feeds the result back, and continues. The "show prompt to user → wait for input" decision boundary that defines Claude Code's interactive REPL is **bypassed by design** in `--print` mode.
+- **Why this matters:** the autopilot-pause-policy bug class (agent emits text-only response after `TRANSITION: F8`, REPL shows prompt instead of chaining the next Skill) is, by construction, **only observable at the interactive-REPL boundary**. The model's decision to emit text-vs-tool_use is observable inside the agentic loop, but the *consequence* of that decision — REPL pause vs auto-continue — happens at a CLI layer that `--print` modes skip. Any harness built on `claude --resume <uuid> --print` is structurally incapable of reproducing this bug class.
+- **Spike evidence (2026-05-17, ~$2.84 total spend across 3 invocations against the 2026-05-16 F8 pause slice on Opus 4.7):**
+  1. v1 — `--print --output-format json`, rewrote slice cwd to `/private/tmp/claude-replay-<hex>` dot-free path. After fixing `/tmp` → `/private/tmp` macOS resolution: $0.54, 22s, 3 internal turns, model anchored on cwd-divergence sandbox confound and "paused" for a *different* surface reason than production.
+  2. v2 — same flags but kept the slice's original `cwd` field intact and invoked claude from the original project root. $1.60, 13min, 29 internal turns. Model ran the agentic loop through real Bash + Read tool calls against the live project state, ultimately emitted `TRANSITION: F10` (verify-auto → verify-self) — i.e. **chained correctly through multiple internal turns**. The bug did not reproduce because the agentic loop never reached a "stop and let user see prompt" boundary.
+  3. v3 — `--print --input-format=stream-json --output-format=stream-json --verbose`. $0.69, 47s, 10 internal turns. Stream-json surfaced granular per-message events (`system`, `assistant`, `user`, `tool_use`, `tool_result`, `result`) but the underlying loop is identical to v2: CLI runs the agentic loop, emits events live, returns one `result` at completion. Stream is observational only — no injection point between turns.
+- **Cumulative invariant across all three spikes:** model invoked **zero Skill tool calls** in the continuation despite all 40+ workflow skills being correctly registered in the session (verified in v3 `system` event listing `slash_commands` + `skills` + `agents`). The model's reasoning after "continue" went down Bash exploration paths, not Skill chaining paths — sensitive to the continuation prompt and accumulated context, not to the harness mechanism. So the spike result is silent on whether AGENTS.md orchestrator prose is load-bearing in production; it cannot disprove it.
+- **What this rules out for future harness work:**
+  - Single-shot replay via `claude --print` — already known dead-end as of 2026-05-16; this finding generalizes the reason.
+  - Multi-turn replay via `claude --print --input-format=stream-json` injecting synthesized tool_results between turns — the CLI doesn't expose that injection point; the agentic loop is opaque from outside.
+  - Any harness shape that relies on capturing a slice and "replaying with control" via the `claude` binary's `--print` family.
+- **What remains theoretically viable (NOT recommended for near-term work):**
+  - **PTY-driven interactive `claude`** (`expect` / `pexpect`-style) — spawns the real interactive CLI, watches for the REPL prompt, sends "continue" or similar, observes the next response. Mirrors production exactly but is brittle to CLI cosmetic changes (prompt text, ANSI codes) and expensive to build.
+  - **Direct Anthropic SDK harness** — bypass `claude` entirely; load the slice as API messages, programmatically control turn boundaries and tool_result injection. Loses Claude Code's specific scaffolding (CLAUDE.md auto-load, hooks, settings); only tests the *model* on the conversation prefix, not the *harness*. The bug may or may not reproduce here depending on whether it lives in the model's narrative-cadence reasoning vs Claude Code's scaffolding.
+  - **Hook-based instrumentation canary** — add a hook that logs every `Notification` event (Claude blocked, awaiting input) with context (skill that just ran, transition emitted, drive mode). Runs in real sessions; captures the bug when it happens. Not a *test* harness — a *production observability* surface.
+- **Salvaged infrastructure NOT to throw away** (still useful regardless of harness shape):
+  - `tools/capture-session-slice.sh` — slice extraction + Tier-1 redaction + dot-free cwd workaround discovery
+  - `tests/sessions/2026-05-16-autopilot-f8-pause.jsonl` (audited)
+  - `tests/sessions/AUDIT-LOG.md` two-tier audit convention
+  - `tests/check-structure.sh` Phase 8 regression guards
+  - Recipe for `claude --resume` working against a fresh-uuid'd staged slice: stage at `~/.claude/projects/<slug>/<new-uuid>.jsonl` with `sessionId` rewritten, invoke from the slice's original `cwd` (or rewrite both cwd field and runtime cwd to a `/private/tmp/...` resolved dot-free path).
+- **Priority:** none — this is a durable learning, not actionable work. Filed so future attempts to reproduce agent-driven bugs via `claude --print` are pre-warned.
+- **Status:** closed (knowledge captured)
+
 ## SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS
 - **Source:** feature:build (session-replay-harness Phase 2 P2.5 STOP point, 2026-05-16)
 - **Target level:** feature:spec (architectural — extends test-harness with new mechanism)
@@ -9,7 +37,7 @@
 - **Sketch of mechanism:** load the slice, get the first model response, append it to history, prompt the next turn (e.g., "the build skill returned this output: ... what's your next action?"), repeat for N turns. Stop after a fixed turn budget or when the model emits a TRANSITION token that doesn't match the auto-chain target. Assert on the *sequence* of responses, not a single output. Likely 4–8 hours of harness work; needs design (turn-limit semantics, per-turn assertion shape, slice-vs-injected-tool-results disambiguation).
 - **Suggested action:** Open `/feature-spec` for "multi-turn session-replay harness." Spec must address: (1) how the harness manufactures the equivalent of a Skill tool_result between turns (the model needs to "see" what its emitted Skill invocation would return — fake it from the slice's next assistant turn? generate plausible content?); (2) per-turn assertion schema (do we assert per turn, or on the full sequence?); (3) cost surface (multi-turn replay multiplies token usage); (4) cwd-slug handling (the dot-free workaround in single-shot replay still applies).
 - **Priority:** high — load-bearing for the paused P1 incident's "really fix it, no resurface" mandate. Should be the immediate next feature after session-replay-harness ships.
-- **Status:** open
+- **Status:** superseded 2026-05-17 by `SURFACE-2026-05-17-CLAUDE-PRINT-AGENTIC-LOOP-SUPPRESSES-PAUSE-DECISION`. The research spike for this entry proved the proposed mechanism (multi-turn via `claude --print` / `claude --print --input-format=stream-json`) is structurally inadequate for the same reason single-shot replay was — the `claude --print` family runs an internal agentic loop with no programmatic pause-decision surface. Reproduction abandoned per 2026-05-17 user decision. P1 incident continues via semantic prompt fix (move pause-policy from `agents/feature-workflow/AGENTS.md` into per-skill `SKILL.md` files), not via reproduction-gated red→green discipline.
 
 ## SURFACE-2026-05-13-DEFAULT-DRIVE-MODE-AUTOPILOT
 - **Source:** user-initiated (live observation during debug-skills feature, 2026-05-13)
