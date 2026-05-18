@@ -355,11 +355,21 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
 
 ## Current Node
 
-- **Path:** Feature > ship
-- **Active scope:** All 4 phases complete (Phase 1 → Phase 4 all `[x]`); 110/0 structure suite, 55 test assertions across 7 test scripts all PASS; feature is ready to ship
+- **Path:** Feature > finalize (complete)
+- **Active scope:** all 4 phases shipped on `feature/claude-code-time-tracking-phase-1`; backlog swept; CHANGELOG appended; WIP archived
 - **Blocked:** none
-- **Unvisited:** ship, finalize
-- **Open discoveries:** 1 SURFACED to backlog (per-project breakdown — v2 enhancement, medium, deferred)
+- **Unvisited:** (none)
+- **Open discoveries:** 1 SURFACED to backlog (per-project breakdown — v2 enhancement, medium, deferred for v2)
+
+## Retrospect
+
+- **What changed in our understanding:** The "5ms p99 hook budget" written into the spec was decided without measurement; first-build empirical run revealed it was unachievable on stock macOS with any zero-dep stack. The whole spec-amendment-via-F23 dance (build → plan revision → re-build) was the right shape — the *bug* was committing to a number we hadn't measured, not the budget itself. We also learned (the hard way, in Phase 3) that Perl's `require + ->import('time')` doesn't override the already-parsed built-in `time()` because the compiler resolves built-ins before runtime imports — a subtle gotcha that produced silent second-precision timestamps until the CLI surfaced the bug. Took a CLI-level smoke test that *computed durations* to expose what the lower-level "row exists" tests couldn't.
+
+- **Assumptions that held:** WAL mode handles concurrent writers across multiple Claude Code instances exactly as advertised — 50 parallel `xargs -P 50` writers with zero overwrites, zero "database is locked" errors. SQLite's job. The two-step opt-in (env var + settings.json edit) felt right and stayed in the design unchanged. The privacy invariant (length-only for prompts, no logging of tool_input / tool_result) was straightforward to implement and to verify via grep-the-binary.
+
+- **Assumptions that were wrong:** (1) "bash + jq + sqlite3 is the obvious low-overhead choice" — turned out to be the *slowest* of the candidates measured (~95ms/call vs Perl's 10ms). (2) "We can lazy-load Perl modules with `require + ->import` and have the imported functions behave normally" — true for non-builtin overrides, false for `time`. (3) "verify-self covers the same ground as a CLI-level end-to-end test" — false in Phase 3, where unit tests on pure functions passed and verify-self on individual hook events passed, but the timestamp bug only surfaced when the CLI tried to compute a duration.
+
+- **Approach delta:** Spec planned a bash hook with jq for JSON parsing — measurement during the very first build attempt killed that and pivoted to Perl (single-process, JSON::PP stdlib, Time::HiRes for ms). Phase 2's "8 separate impl tasks" collapsed into a single dispatch-table refactor — turned out the right shape was one `%handlers` hash, not eight branches in sequence. Phase 4 ended up partly redundant with earlier-phase tests (bench.sh duplicates test_hook.sh's 100-call loop; multi_instance.sh duplicates the cross-session unit test) but earned its place by exercising real two-process WAL contention end-to-end (which no prior test did) and producing the measured-numbers table for the README. The biggest planning miss was the spec's perf budget — every other deliverable shipped close to what the plan said.
 
 ## Discoveries
 

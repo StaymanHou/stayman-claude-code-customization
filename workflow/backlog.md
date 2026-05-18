@@ -62,7 +62,7 @@
 - **Priority:** low (the path is rare in practice; cost of adding a scenario is small but not urgent)
 - **Status:** open
 
-## SURFACE-2026-05-10-CLAUDE-CODE-TIME-TRACKING
+## SURFACE-2026-05-10-CLAUDE-CODE-TIME-TRACKING  (RESOLVED 2026-05-18)
 - **Source:** user-initiated (exploration idea, 2026-05-10 — logged during incident-codify feature work)
 - **Target level:** feature:spec (likely complex — multi-component, persistent storage, cross-session)
 - **Type:** new-work
@@ -85,7 +85,7 @@
   - Whether session correlation across `/clear`, `/session-pause`, `/session-resume` is feasible with current hook payloads
   - Whether the centralized DB should be queryable in-session (slash command `/usage-today`) or only via external dashboard
 - **Priority:** medium (bumped from low 2026-05-17 — user re-evaluation during backlog grooming)
-- **Status:** open — idea-only, no spec yet
+- **Status:** RESOLVED 2026-05-18 — shipped as `tools/claude-time/` on branch `feature/claude-code-time-tracking-phase-1`. 4 phases delivered: opt-in Perl hook + 10-event logging + Python reclassifier CLI + perf/multi-instance verification. v1 scope per spec; v2 enhancement (per-project grouping) logged as SURFACE-2026-05-18-CLAUDE-TIME-REPORT-BY-PROJECT. Two of the six "Suggested action" sub-items in the original SURFACE became spec acceptance criteria (storage in §1, agent-side instrumentation in §2); the offline-vs-idle hybrid (§3) was deferred to v2 (spec's "Out of Scope" → OS-level idle signals).
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
