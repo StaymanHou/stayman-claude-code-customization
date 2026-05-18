@@ -93,6 +93,13 @@ claude-time report --session <session_uuid>
 # Filter to one working directory
 claude-time report --cwd /Users/me/projects/my-thing
 
+# Group rows by working directory (one row per project)
+claude-time report --by cwd
+
+# Group rows by session_id or by calendar date
+claude-time report --by session
+claude-time report --by day --weekly
+
 # Inspect a non-default DB (e.g. during testing)
 claude-time report --db /tmp/test.sqlite
 ```
@@ -101,6 +108,22 @@ Combine filters freely. For example, "last week's time in my work project":
 
 ```bash
 claude-time report --weekly --cwd /Users/me/work
+```
+
+`--by` shifts the report shape from "where the time went by metric" to "where the time went by group": one row per distinct value of the dimension, columns for tool / active / reading / thinking / away. Rows are sorted by engagement total (tool + active) descending. Example:
+
+```
+claude-time report --by cwd
+
+── Grouped by cwd ──
+  thresholds: reading ≤ 120s,  thinking ≤ 300s,  away > 300s
+  typing debit: 6.0 chars/sec
+
+  cwd                                tool    active   reading   thinking    away
+  /Users/me/projects/my-thing        4m12s    1h08m       8m         3m     0ms
+  /Users/me/projects/scratch         48s       4m20s     5m       1m20s     0ms
+
+  TOTAL                              5m       1h12m     13m       4m20s     0ms
 ```
 
 ### Example output
@@ -135,13 +158,16 @@ sessions: 2   events: 47
 
 ## Tuning
 
-`~/.claude-time/config.json` (created by hand, optional) overrides reclassifier defaults:
+`~/.claude-time/config.json` (created by hand, optional) overrides reclassifier defaults and optionally aliases multiple cwds under one project name:
 
 ```json
 {
   "chars_per_sec": 6.0,
   "reading_threshold_sec": 120,
-  "thinking_threshold_sec": 300
+  "thinking_threshold_sec": 300,
+  "project_names": {
+    "my-thing": ["/Users/me/projects/my-thing", "/Users/me/projects/my-thing-worktree"]
+  }
 }
 ```
 
@@ -150,6 +176,16 @@ Field meanings:
 - **`chars_per_sec`** (default `6.0`): assumed typing speed when computing how much of a gap to attribute to "user was typing the next prompt." 6 cps ≈ 30 wpm. Bump up if you type fast; bump down if you tend to paste long prompts.
 - **`reading_threshold_sec`** (default `120`): gaps ≤ this duration (after typing-debit subtraction) are classified as `reading`.
 - **`thinking_threshold_sec`** (default `300`): gaps ≤ this (and > reading_threshold) are `thinking`. Gaps over this threshold are `away`.
+- **`project_names`** (default `{}`): map from a human-readable project name to a list of cwd paths that should be grouped under that name when running `claude-time report --by cwd`. Useful when one logical project lives in two cwds — e.g. a main repo and a git worktree of the same repo, or when you want a short label like `"my-thing"` instead of the auto-derived basename. Malformed entries (e.g. value not a list of strings) are silently dropped — only valid mappings take effect. Has no effect on `--by session` or `--by day`.
+
+### Auto-alias for `--by cwd`
+
+When no explicit `project_names` entry matches a cwd, `--by cwd` derives a label automatically:
+
+1. **cwd is inside a git repo** → label = `basename(repo_root)` (e.g. `/Users/me/projects/my-thing/src/foo` → `my-thing`)
+2. **cwd is not a git repo** (or no longer exists on disk) → label = `misc`
+
+All non-project cwds collapse into a single `misc` row. The result: zero-config `--by cwd` already shows one row per project for the common case, and `project_names` becomes an opt-in override for cases where you want a custom label or want to merge multiple repos.
 
 ## How it works
 

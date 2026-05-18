@@ -7,6 +7,9 @@ Usage:
   claude-time report --date 2026-05-15      # specific day
   claude-time report --session <uuid>       # filter by session_id
   claude-time report --cwd /Users/me/proj   # filter by working dir
+  claude-time report --by cwd               # group by working directory
+  claude-time report --by session           # group by session_id
+  claude-time report --by day               # group by calendar date
   claude-time report --db /tmp/test.sqlite  # override DB path
 
 All filters can be combined. Output is a plain text table.
@@ -18,6 +21,7 @@ import argparse
 import json
 import os
 import sqlite3
+import subprocess
 import sys
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -33,7 +37,23 @@ DEFAULT_CONFIG = {
     "chars_per_sec": 6.0,
     "reading_threshold_sec": 120,
     "thinking_threshold_sec": 300,
+    "project_names": {},
 }
+
+
+def _validate_project_names(raw) -> dict[str, list[str]]:
+    """Accept only {name: [path, ...]} with string keys and list-of-strings values.
+    Silent drop on any malformed entry."""
+    if not isinstance(raw, dict):
+        return {}
+    cleaned: dict[str, list[str]] = {}
+    for name, paths in raw.items():
+        if not isinstance(name, str) or not isinstance(paths, list):
+            continue
+        if not all(isinstance(p, str) for p in paths):
+            continue
+        cleaned[name] = list(paths)
+    return cleaned
 
 
 def load_config(claude_time_dir: Path) -> dict:
@@ -44,7 +64,11 @@ def load_config(claude_time_dir: Path) -> dict:
         try:
             user_cfg = json.loads(cfg_path.read_text())
             if isinstance(user_cfg, dict):
-                cfg.update({k: v for k, v in user_cfg.items() if k in cfg})
+                for k, v in user_cfg.items():
+                    if k == "project_names":
+                        cfg[k] = _validate_project_names(v)
+                    elif k in cfg:
+                        cfg[k] = v
         except (json.JSONDecodeError, OSError):
             pass  # silent fallback to defaults
     return cfg
@@ -124,6 +148,157 @@ def fmt_ms(ms: int) -> str:
         return f"{minutes}m{sec}s" if sec else f"{minutes}m"
     hours, minutes = divmod(minutes, 60)
     return f"{hours}h{minutes}m" if minutes else f"{hours}h"
+
+
+GROUP_DIMS = ("cwd", "session", "day")
+MISC_LABEL = "misc"
+
+
+def _auto_alias_for_cwd(cwd: str, _cache: dict[str, str] = {}) -> str:
+    """Auto-derive a friendly label for a cwd when no explicit alias is set.
+
+    Resolution:
+      - cwd is inside a git repo → basename(repo_root)
+      - cwd is not in a git repo, or the cwd no longer exists → MISC_LABEL
+
+    Results are memoized in `_cache` to avoid re-running git for repeated cwds
+    in the same report. The mutable-default-arg pattern is intentional here as
+    a process-scoped LRU; module is also short-lived (one `claude-time` run).
+    """
+    if cwd in _cache:
+        return _cache[cwd]
+    label = MISC_LABEL
+    try:
+        if cwd and Path(cwd).exists():
+            result = subprocess.run(
+                ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+            if result.returncode == 0:
+                repo_root = result.stdout.strip()
+                if repo_root:
+                    label = Path(repo_root).name or MISC_LABEL
+    except (subprocess.SubprocessError, OSError):
+        pass  # silent fallback to MISC_LABEL
+    _cache[cwd] = label
+    return label
+
+
+def _group_key(ev: dict, dim: str) -> str:
+    """Return the grouping key for an event under the chosen dimension."""
+    if dim == "cwd":
+        return ev.get("cwd") or "<unknown>"
+    if dim == "session":
+        return ev.get("session_id") or "<unknown>"
+    if dim == "day":
+        ts = ev.get("ts", 0)
+        return datetime.fromtimestamp(ts / 1000).date().isoformat()
+    raise ValueError(f"unknown group dimension: {dim}")
+
+
+def _short_label(label: str, dim: str, width: int) -> str:
+    """Truncate session IDs (long UUIDs) for the grouped table; pass others through."""
+    if dim == "session" and len(label) > width:
+        return label[: width - 1] + "…"
+    return label
+
+
+def render_grouped(events: list[dict], cfg: dict, label: str, dim: str) -> str:
+    """Build the grouped report: rows = distinct values of `dim`, columns = metric totals."""
+    if not events:
+        return f"(no events in window: {label})"
+
+    # When grouping by cwd, build the alias resolution. Precedence:
+    #   1. Explicit `project_names` entry → that name
+    #   2. cwd is inside a git repo → basename(repo_root)
+    #   3. Otherwise → MISC_LABEL ("misc")
+    # Cwds not in any alias list don't pass through raw — the auto-alias path
+    # always produces a friendly label.
+    cwd_alias: dict[str, str] = {}
+    if dim == "cwd":
+        for name, paths in cfg.get("project_names", {}).items():
+            for p in paths:
+                cwd_alias[p] = name
+
+    # Partition events by group key. Each group is rendered as one row.
+    groups: dict[str, list[dict]] = {}
+    for ev in events:
+        key = _group_key(ev, dim)
+        if dim == "cwd":
+            if key in cwd_alias:
+                key = cwd_alias[key]
+            else:
+                key = _auto_alias_for_cwd(key)
+        groups.setdefault(key, []).append(ev)
+
+    # Compute per-group metrics. tool_durations / session_active are already
+    # per-event aggregators; gap_buckets returns a flat list we sum per-group.
+    rows: list[tuple[str, int, int, int, int, int]] = []
+    for key, sub_events in groups.items():
+        tool_totals = reclassify.tool_durations_ms(sub_events)
+        tool_total_ms = sum(tool_totals.values())
+        active_per_session = reclassify.session_active_ms(sub_events)
+        active_total_ms = sum(active_per_session.values())
+        gaps = reclassify.gap_buckets(
+            sub_events,
+            chars_per_sec=cfg["chars_per_sec"],
+            reading_threshold_sec=cfg["reading_threshold_sec"],
+            thinking_threshold_sec=cfg["thinking_threshold_sec"],
+        )
+        reading_ms = sum(g.effective_ms for g in gaps if g.bucket == "reading")
+        thinking_ms = sum(g.effective_ms for g in gaps if g.bucket == "thinking")
+        away_ms = sum(g.effective_ms for g in gaps if g.bucket == "away")
+        rows.append((key, tool_total_ms, active_total_ms, reading_ms, thinking_ms, away_ms))
+
+    # Sort by engagement total (tool + active) desc, tie-break alphabetically.
+    rows.sort(key=lambda r: (-(r[1] + r[2]), r[0]))
+
+    # Truncate session labels for readability; cwd/day pass through full.
+    label_width = 14 if dim == "session" else max((len(r[0]) for r in rows), default=8)
+    label_width = max(label_width, len(dim))
+
+    lines: list[str] = []
+    lines.append(f"claude-time report — {label}")
+    sessions = sorted({e["session_id"] for e in events if e.get("session_id")})
+    lines.append(f"sessions: {len(sessions)}   events: {len(events)}")
+    lines.append("")
+    lines.append(f"── Grouped by {dim} ──")
+    lines.append(
+        f"  thresholds: reading ≤ {cfg['reading_threshold_sec']}s,  "
+        f"thinking ≤ {cfg['thinking_threshold_sec']}s,  away > {cfg['thinking_threshold_sec']}s"
+    )
+    lines.append(f"  typing debit: {cfg['chars_per_sec']} chars/sec")
+    lines.append("")
+
+    header = (
+        f"  {dim:<{label_width}}  "
+        f"{'tool':>8}  {'active':>8}  {'reading':>8}  {'thinking':>9}  {'away':>6}"
+    )
+    lines.append(header)
+    for key, tool_ms, active_ms, reading_ms, thinking_ms, away_ms in rows:
+        shown = _short_label(key, dim, label_width)
+        lines.append(
+            f"  {shown:<{label_width}}  "
+            f"{fmt_ms(tool_ms):>8}  {fmt_ms(active_ms):>8}  "
+            f"{fmt_ms(reading_ms):>8}  {fmt_ms(thinking_ms):>9}  {fmt_ms(away_ms):>6}"
+        )
+
+    # Aggregate totals row.
+    tot_tool = sum(r[1] for r in rows)
+    tot_active = sum(r[2] for r in rows)
+    tot_reading = sum(r[3] for r in rows)
+    tot_thinking = sum(r[4] for r in rows)
+    tot_away = sum(r[5] for r in rows)
+    lines.append("")
+    lines.append(
+        f"  {'TOTAL':<{label_width}}  "
+        f"{fmt_ms(tot_tool):>8}  {fmt_ms(tot_active):>8}  "
+        f"{fmt_ms(tot_reading):>8}  {fmt_ms(tot_thinking):>9}  {fmt_ms(tot_away):>6}"
+    )
+
+    return "\n".join(lines)
 
 
 def render_report(events: list[dict], cfg: dict, label: str) -> str:
@@ -230,6 +405,11 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--session", help="filter by session_id")
     report.add_argument("--cwd", help="filter by working directory")
     report.add_argument(
+        "--by",
+        choices=GROUP_DIMS,
+        help="group output by a dimension instead of the default per-metric breakdown",
+    )
+    report.add_argument(
         "--db",
         help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
     )
@@ -259,7 +439,10 @@ def main(argv: list[str] | None = None) -> int:
         cwd_filter=args.cwd,
     )
 
-    print(render_report(events, cfg, label))
+    if args.by:
+        print(render_grouped(events, cfg, label, args.by))
+    else:
+        print(render_report(events, cfg, label))
     return 0
 
 

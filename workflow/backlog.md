@@ -1,5 +1,25 @@
 # Backlog
 
+## SURFACE-2026-05-18-CLAUDE-TIME-TOTAL-COL-ROW
+- **Source:** feature:verify-human (claude-time-report-by-project Phase 2, 2026-05-18)
+- **Target level:** feature:plan (small/simple — adds derived columns + reuses existing TOTAL row pattern)
+- **Type:** new-work / ergonomics
+- **Summary:** Add a total column (sum of tool + active + reading + thinking + away per row) to `claude-time report --by <dim>` grouped output. The TOTAL row already exists at the bottom; this is the orthogonal complement — per-row total at the right. Together they give the user an instant "where's the time" cross-pivot without mental math.
+- **Context:** Surfaced during Phase 2 verify-human acceptance. User accepted the project_names + auto-alias work and immediately requested this as the **next feature** ("That should be the next feature we work on"). High signal: real ergonomic gap observed while actually using the grouped report on real data.
+- **Suggested action:** Extend `render_grouped` in `tools/claude-time/claude-time`: add a `TOTAL` column header to the column row in the grouped table (rightmost), compute per-row totals as `tool_ms + active_ms + reading_ms + thinking_ms + away_ms`, render in the same fmt_ms format as other cells. The existing bottom TOTAL row gets a corresponding rightmost cell = sum of all per-row totals (which should equal the sum-down of any single column, useful as a sanity check). One impl task; one new observable outcome; verify-codify gets a new assertion that the per-row total = sum of the other 5 cells.
+- **Priority:** high — user explicitly designated this as the next feature.
+- **Status:** open
+
+## SURFACE-2026-05-18-SETTINGS-FIXTURE-DRIFT-CLAUDE-TIME
+- **Source:** feature:verify-codify (claude-time-report-by-project Phase 1, 2026-05-18)
+- **Target level:** task:plan (small/simple — fixture update or INTENTIONAL_DIFFS allow-list)
+- **Type:** test-infra / gap (test fixture out of sync with documented install end-state)
+- **Summary:** `tests/check-structure.sh` Phase 7 (settings-drift check) fails with 9 drift lines — all of them claude-time hook entries (UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, SessionStart, SessionEnd, SubagentStart, SubagentStop) plus the `CLAUDE_TIME_TRACKING` env var. These are present in the user's live `~/.claude/settings.json` because the user followed the install instructions in `tools/claude-time/README.md` steps 2 and 3 (the shipped previous feature documents this as the required install state). The fixture `tests/fixtures/settings.json` doesn't know about them.
+- **Context:** Surfaced during Phase 1 verify-codify of the `--by` grouping feature. The drift is pre-existing relative to that feature — none of the `--by` feature's changes touched fixtures, install.sh, or settings. It's the previous claude-time feature's install state being correctly applied to the user's machine.
+- **Suggested action:** Choose one of (a) extend `tests/fixtures/settings.json` to include the claude-time hooks block + env (treating them as documented standard install state for this repo), or (b) add the relevant keys to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` (treating them as per-machine opt-in state that varies legitimately). (a) is preferable if the repo wants the structure check to assert "claude-time is wired up correctly for any contributor"; (b) is preferable if opting in is intentionally per-machine. Probably (b) since the README explicitly frames the install as opt-in.
+- **Priority:** medium — structural check currently fails on a clean run, which obscures real regressions.
+- **Status:** open
+
 ## SURFACE-2026-05-18-CLAUDE-TIME-REPORT-BY-PROJECT
 - **Source:** feature:verify-human (claude-code-time-tracking Phase 3, 2026-05-18)
 - **Target level:** feature:spec (v2 enhancement)
