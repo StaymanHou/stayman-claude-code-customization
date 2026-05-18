@@ -376,3 +376,7 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
 - [RESOLVED-2026-05-18] Phase 1 hook perf budget (was SURFACED at P1.3 via F23 build → plan back-loop). Resolution: language pivoted from bash+jq+sqlite3 stack to Perl single-process; spec acceptance #10 amended from "< 50ms total across 10 calls" to "< 200ms on macOS / < 50ms on Linux"; performance contract amended to "10ms typical, 30ms p99 on macOS; 5ms / 15ms on Linux." Measurement evidence: bash stack = ~95ms/call; pyenv-Python = ~76ms; /usr/bin/python3 = ~27ms; Perl = ~10ms (all on macOS, 100-call batches). Logged to backlog as SURFACE-2026-05-18-CLAUDE-TIME-HOOK-PERF-BUDGET-INFEASIBLE → status: resolved-via-plan-revision.
 
 TRANSITION: F7
+
+## Session Pause — 2026-05-18 13:54
+Paused after finalize. See `workflow/.session.md` to resume.
+Feature is fully closed (4 phases shipped, retrospect written, CHANGELOG appended, branch local-only per user choice). On resume, `/session-reflect` will surface this session's three rich learnings: Perl runtime-import gotcha, empirical-grounding for spec budgets, and the "higher-level tests catch what lower-level miss" pattern.

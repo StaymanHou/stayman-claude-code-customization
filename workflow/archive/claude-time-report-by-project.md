@@ -148,3 +148,7 @@ A follow-up enhancement (Phase 2) adds optional `~/.claude-time/config.json` `pr
 - **Sort order:** sort rows by `tool_total + active` descending (the "engagement total"). Tie-break alphabetically on the label.
 - **Day grouping TZ:** use the same `date.today()` local-TZ logic the `window_ms` helper already uses. Don't introduce UTC — would create an off-by-one display issue at midnight-local for the user.
 - **Phase 2 aliasing is independent.** If anything goes wrong in Phase 1 verify-human, Phase 2 can be dropped (or back-burnered) without affecting the primary `--by` value. Don't couple them.
+
+## Session Pause — 2026-05-18 15:30
+Paused after finalize + reflect. See `workflow/.session.md` to resume.
+Feature is fully closed (Phases 1+2 shipped, retrospect written, CHANGELOG appended, branch local-only on `feature/claude-code-time-tracking-phase-1`). On resume, `/session-start` should pick up `SURFACE-2026-05-18-CLAUDE-TIME-TOTAL-COL-ROW` as the next feature.
