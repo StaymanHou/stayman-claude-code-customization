@@ -28,7 +28,7 @@
 - **Context:** User asked during Phase 3 verify-human review whether the system supports per-project breakdown. Today the answer is "filter to one project at a time"; what the user actually wants is "show me all projects side by side." The spec listed `--cwd` only as a filter (acceptance #5), not as a grouping dimension. Hits the "self-awareness of where time goes" use case from the original problem statement more directly than per-session view.
 - **Suggested action:** Add a `--by <dim>` flag to `claude-time report` where `<dim>` is one of `cwd | session | day`. Render a grouped table: each row is one value of the chosen dimension, columns are the existing totals (tool time, active time, gap buckets). Optional follow-up: `~/.claude-time/config.json` `project_names` map for human-readable `cwd → name` aliasing (e.g., `{"my-thing": ["/Users/me/repo", "/Users/me/repo-worktree"]}`) so a logical project that lives in two cwds (worktree + main) shows as one row.
 - **Priority:** medium — real user request observed in real verify-human flow; not blocking v1 ship; the captured data already supports it so v2 cost is bounded.
-- **Status:** open
+- **Status:** RESOLVED 2026-05-18 by feature `claude-time-report-by-project`. Shipped `--by cwd | session | day` grouped report, optional `project_names` aliasing in `~/.claude-time/config.json`, and auto-alias (git-repo basename | misc) so the zero-config case already renders project rows by name. test_cli.sh extended 10 → 25 assertions. Mid-phase user request for total-col/total-row split out as a separate follow-up: `SURFACE-2026-05-18-CLAUDE-TIME-TOTAL-COL-ROW`.
 
 ## SURFACE-2026-05-18-CLAUDE-TIME-HOOK-PERF-BUDGET-INFEASIBLE
 - **Source:** feature:build (claude-code-time-tracking Phase 1, P1.3, 2026-05-18)
