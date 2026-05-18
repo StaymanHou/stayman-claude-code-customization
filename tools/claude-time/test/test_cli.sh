@@ -468,6 +468,106 @@ else
 fi
 rm -f "$TMPDIR/config.json"
 
+# ── 23. --by cwd: header has 'total' as rightmost token ────────────────
+sqlite3 "$DB" <<SQL
+DELETE FROM events;
+INSERT INTO events VALUES ($TODAY_NOON_MS,         's', '/foo', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars":0}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+100)), 's', '/foo', 'PreToolUse',  'Bash', NULL, '{"tool_use_id":"t1"}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+5100)),'s', '/foo', 'PostToolUse', 'Bash', NULL, '{"tool_use_id":"t1"}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+200)), 's', '/bar', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars":0}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+300)), 's', '/bar', 'PreToolUse',  'Edit', NULL, '{"tool_use_id":"t2"}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+800)), 's', '/bar', 'PostToolUse', 'Edit', NULL, '{"tool_use_id":"t2"}');
+SQL
+cat > "$TMPDIR/config.json" <<'JSON'
+{"project_names": {"foo-alias": ["/foo"], "bar-alias": ["/bar"]}}
+JSON
+
+OUT=$("$CLI" report --by cwd 2>&1)
+HEADER=$(echo "$OUT" | grep -E '^  cwd ' | head -1)
+if echo "$HEADER" | grep -qE 'total$'; then
+    check "--by cwd: header has 'total' as rightmost token" pass
+else
+    check "--by cwd: header rightmost token is 'total'" fail "header='$HEADER'"
+fi
+
+# ── 24. --by cwd: each data row has 6 metric cells (was 5) ─────────────
+foo_metrics=$(echo "$OUT" | grep -E '^  foo-alias' | awk '{print NF-1}')
+bar_metrics=$(echo "$OUT" | grep -E '^  bar-alias' | awk '{print NF-1}')
+total_metrics=$(echo "$OUT" | grep -E '^  TOTAL' | awk '{print NF-1}')
+if [ "$foo_metrics" = "6" ] && [ "$bar_metrics" = "6" ] && [ "$total_metrics" = "6" ]; then
+    check "--by cwd: each data row + TOTAL row has 6 metric cells" pass
+else
+    check "--by cwd: data row metric-cell count" fail "foo=$foo_metrics bar=$bar_metrics TOTAL=$total_metrics (expect 6 each)"
+fi
+rm -f "$TMPDIR/config.json"
+
+# ── 25. --by cwd: grand-total cell math cross-checks (integer-ms) ──────
+# Use the reclassify module directly to compute totals at integer-ms; assert that
+# sum(column totals) == sum(per-row totals). This is what render_grouped's
+# grand_total cell value should equal. Bypasses fmt_ms display lossiness.
+sqlite3 "$DB" <<SQL
+DELETE FROM events;
+INSERT INTO events VALUES ($TODAY_NOON_MS,         's', '/foo', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars":0}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+100)), 's', '/foo', 'PreToolUse',  'Bash', NULL, '{"tool_use_id":"t1"}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+5100)),'s', '/foo', 'PostToolUse', 'Bash', NULL, '{"tool_use_id":"t1"}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+200)), 's', '/bar', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars":0}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+300)), 's', '/bar', 'PreToolUse',  'Edit', NULL, '{"tool_use_id":"t2"}');
+INSERT INTO events VALUES ($((TODAY_NOON_MS+800)), 's', '/bar', 'PostToolUse', 'Edit', NULL, '{"tool_use_id":"t2"}');
+SQL
+
+CROSSCHECK=$(REPO_ROOT="$REPO_ROOT" DB="$DB" python3 <<'PY'
+import os, sqlite3, sys
+sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "tools/claude-time"))
+import reclassify
+
+conn = sqlite3.connect(os.environ["DB"])
+conn.row_factory = sqlite3.Row
+events = [dict(r) for r in conn.execute("SELECT * FROM events ORDER BY ts")]
+conn.close()
+
+groups = {}
+for ev in events:
+    groups.setdefault(ev["cwd"], []).append(ev)
+
+rows = []
+for sub in groups.values():
+    tool = sum(reclassify.tool_durations_ms(sub).values())
+    active = sum(reclassify.session_active_ms(sub).values())
+    gaps = reclassify.gap_buckets(sub, chars_per_sec=6.0,
+                                  reading_threshold_sec=120, thinking_threshold_sec=300)
+    reading  = sum(g.effective_ms for g in gaps if g.bucket=="reading")
+    thinking = sum(g.effective_ms for g in gaps if g.bucket=="thinking")
+    away     = sum(g.effective_ms for g in gaps if g.bucket=="away")
+    rows.append((tool, active, reading, thinking, away))
+
+sum_of_per_row_totals = sum(sum(r) for r in rows)
+col_totals = [sum(r[i] for r in rows) for i in range(5)]
+sum_of_col_totals = sum(col_totals)
+
+if sum_of_per_row_totals == sum_of_col_totals:
+    print(f"ok:{sum_of_col_totals}")
+else:
+    print(f"mismatch:rows={sum_of_per_row_totals}:cols={sum_of_col_totals}")
+PY
+)
+
+if echo "$CROSSCHECK" | grep -q '^ok:'; then
+    check "--by cwd: grand-total math cross-check (sum cols == sum rows, integer-ms)" pass
+else
+    check "--by cwd: grand-total math cross-check" fail "$CROSSCHECK"
+fi
+
+# ── 26. --by cwd --date 1970-01-01: empty-window message still works ───
+# (Regression guard — total-col change must not break the early-return path.)
+OUT=$("$CLI" report --by cwd --date 1970-01-01 2>&1)
+rc=$?
+no_total_col=$(echo "$OUT" | grep -cE 'total$' || true)
+if [ $rc -eq 0 ] && echo "$OUT" | grep -q '(no events in window' && [ "$no_total_col" = "0" ]; then
+    check "--by + empty-window: empty message preserved, no table rendered" pass
+else
+    check "--by + empty-window" fail "rc=$rc, out='$OUT', total_col_leak=$no_total_col"
+fi
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== claude-time CLI test summary ==="

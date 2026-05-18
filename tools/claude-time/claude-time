@@ -274,28 +274,30 @@ def render_grouped(events: list[dict], cfg: dict, label: str, dim: str) -> str:
 
     header = (
         f"  {dim:<{label_width}}  "
-        f"{'tool':>8}  {'active':>8}  {'reading':>8}  {'thinking':>9}  {'away':>6}"
+        f"{'tool':>8}  {'active':>8}  {'reading':>8}  {'thinking':>9}  {'away':>6}  {'total':>8}"
     )
     lines.append(header)
     for key, tool_ms, active_ms, reading_ms, thinking_ms, away_ms in rows:
         shown = _short_label(key, dim, label_width)
+        row_total = tool_ms + active_ms + reading_ms + thinking_ms + away_ms
         lines.append(
             f"  {shown:<{label_width}}  "
             f"{fmt_ms(tool_ms):>8}  {fmt_ms(active_ms):>8}  "
-            f"{fmt_ms(reading_ms):>8}  {fmt_ms(thinking_ms):>9}  {fmt_ms(away_ms):>6}"
+            f"{fmt_ms(reading_ms):>8}  {fmt_ms(thinking_ms):>9}  {fmt_ms(away_ms):>6}  {fmt_ms(row_total):>8}"
         )
 
-    # Aggregate totals row.
+    # Aggregate totals row. Grand total = sum of column totals (== sum of per-row totals).
     tot_tool = sum(r[1] for r in rows)
     tot_active = sum(r[2] for r in rows)
     tot_reading = sum(r[3] for r in rows)
     tot_thinking = sum(r[4] for r in rows)
     tot_away = sum(r[5] for r in rows)
+    grand_total = tot_tool + tot_active + tot_reading + tot_thinking + tot_away
     lines.append("")
     lines.append(
         f"  {'TOTAL':<{label_width}}  "
         f"{fmt_ms(tot_tool):>8}  {fmt_ms(tot_active):>8}  "
-        f"{fmt_ms(tot_reading):>8}  {fmt_ms(tot_thinking):>9}  {fmt_ms(tot_away):>6}"
+        f"{fmt_ms(tot_reading):>8}  {fmt_ms(tot_thinking):>9}  {fmt_ms(tot_away):>6}  {fmt_ms(grand_total):>8}"
     )
 
     return "\n".join(lines)
