@@ -232,20 +232,43 @@ rm -rf ~/.claude-time
 
 ## Performance
 
-The hook adds ~15ms per Claude Code event on macOS (~5ms on Linux). When `CLAUDE_TIME_TRACKING` is unset, the fast-fail path is ~3ms. The hook never blocks an upstream tool call — any write failure (read-only DB, missing `sqlite3` binary, etc.) results in exit 0 with no output.
+Measured on this dev machine (macOS, /usr/bin/perl 5.34, sqlite3 3.51) via `test/bench.sh`, 100 invocations per scenario:
 
-A 100-call benchmark (`test/test_hook.sh` + Phase 4's `bench.sh`) verifies these numbers as part of every structural check.
+| Scenario | Total | Per-call |
+|---|---|---|
+| Fast-fail (`CLAUDE_TIME_TRACKING` unset) | 370ms | ~4ms |
+| Set-path Stop event ×100 | 1391ms | ~14ms |
+| Set-path mixed events (10 of each, all 10 event names) | 1376ms | ~14ms |
+
+Linux should be ~5× faster (GNU `date` supports millisecond precision natively, avoiding a fallback). The spec's amended performance contract budgets < 20ms/call on macOS and < 5ms on Linux.
+
+**The hook never blocks an upstream tool call.** Any write failure (read-only DB, missing `sqlite3` binary, locked file, malformed JSON, etc.) results in `exit 0` with no output.
+
+**Concurrent writers are supported** via SQLite WAL mode. `test/stress_concurrent.sh` spawns 50 parallel hook invocations against the same DB — all 50 rows persist with no overwrites and no `database is locked` errors.
+
+Run the bench yourself:
+
+```bash
+tools/claude-time/test/bench.sh           # measure + assert budget
+tools/claude-time/test/bench.sh --no-fail # measure only, don't fail on slow hardware
+tools/claude-time/test/stress_concurrent.sh
+tools/claude-time/test/multi_instance.sh  # 2-session cross-session reattribution
+```
 
 ## Files
 
 ```
 tools/claude-time/
-  hook.pl                # Perl hook script (event-dispatch)
-  reclassify.py          # Pure reclassification functions (stdlib only)
-  claude-time            # Python CLI (argparse + sqlite3 reader + table renderer)
-  README.md              # This file
+  hook.pl                  # Perl hook script (event-dispatch)
+  reclassify.py            # Pure reclassification functions (stdlib only)
+  claude-time              # Python CLI (argparse + sqlite3 reader + table renderer)
+  README.md                # This file
   test/
-    test_hook.sh         # Behavioral test for hook.pl (17 assertions)
-    test_reclassify.py   # Unit tests for reclassify.py (24 assertions)
-    privacy_check.sh     # Single-purpose privacy regression check
+    test_hook.sh           # Behavioral test for hook.pl (17 assertions)
+    test_reclassify.py     # Unit tests for reclassify.py (24 assertions)
+    test_cli.sh            # End-to-end test for claude-time CLI (10 assertions)
+    privacy_check.sh       # Single-purpose privacy regression check
+    bench.sh               # Performance benchmark + budget assertion
+    multi_instance.sh      # Two-session cross-session reattribution scenario
+    stress_concurrent.sh   # 50-parallel-writer concurrency stress test
 ```

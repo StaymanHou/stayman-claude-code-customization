@@ -328,31 +328,37 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
     - [x] Integration-boundary check satisfied: Phase 3's consuming surface is the `claude-time` CLI binary; new test exercises it end-to-end against seeded DBs
     - [x] No new test triage — 10/10 PASS, no failures, no regressions in the rest of the suite
 
-- [ ] Phase 4: Performance measurement + multi-instance verification  <!-- status: NOT-STARTED; depends on Phase 3 -->
+- [x] Phase 4: Performance measurement + multi-instance verification  <!-- status: complete 2026-05-18; build → verify-auto → verify-self → verify-human (F11 skip) → verify-codify all complete -->
+  **Relevance check (before Phase 4):**
+  - Requester still needs this: yes, with caveat — perf budget is already empirically met (verify-self measured 14.3ms/call against the 20ms budget); cross-session reattribution math is already tested in `test_reclassify.py::CrossSessionOverlapTests`. The genuine new value: (1) a concurrent-write stress test not yet exercised, (2) measured numbers in README "Performance" paragraph (currently placeholder language).
+  - Requirements unchanged: yes (acceptance #7 + #10 still in spec)
+  - Solution still feasible: yes
+  - No superior alternative discovered: partial no — P4.1 bench.sh and P4.2 multi_instance.sh are partly redundant with existing tests, but exercise different surfaces (user-invokable scripts vs internal unit tests) so they still earn their keep
+  **Verdict:** proceed, with honest scope acknowledgment in the impl notes
   **Observable outcomes:**
   - CLI: A repeatable benchmark script (`tools/claude-time/test/bench.sh`) runs 100 successive hook invocations (mix of events) with tracking ENABLED and reports total wall-clock. Target: < 2000ms total on macOS (< 20ms avg). Per the amended performance contract; baseline measurement during F23 plan revision showed Perl single-process at ~10ms/call → 1000ms/100calls.
   - CLI: Same benchmark with `CLAUDE_TIME_TRACKING` UNSET reports total < 500ms across 100 invocations (< 5ms per call avg — measured 2.5ms in F23 baseline).
   - CLI: Multi-instance scenario script (`tools/claude-time/test/multi_instance.sh`) launches two parallel subshells each writing alternating `UserPromptSubmit`/`Stop` events at known timestamps via `hook.sh`, then runs `claude-time report --session <B>` and asserts session B's reported gap-bucket totals match the expected post-reattribution values.
   - CLI: Concurrent-write stress: 50 hook invocations launched in parallel (xargs -P 50) all succeed (exit 0); `SELECT count(*) FROM events` returns 50; no SQLite `database is locked` errors in stderr.
-  - [ ] P4.1 Create `tools/claude-time/test/bench.sh` — clean DB, run 100 hook calls, time them, print result; assert < 2000ms total on macOS when enabled (Linux target: < 500ms)  <!-- status: NOT-STARTED -->
-  - [ ] P4.2 Create `tools/claude-time/test/multi_instance.sh` — two parallel sessions writing events with controlled `sleep`s, then run reclassifier and diff against expected output  <!-- status: NOT-STARTED -->
-  - [ ] P4.3 Concurrent-write test: spawn 50 parallel hook calls with `xargs -P 50`, assert all succeed and DB has 50 rows  <!-- status: NOT-STARTED -->
-  - [ ] P4.4 Document benchmark results in `tools/claude-time/README.md` (one-paragraph "Performance" section with measured numbers)  <!-- status: NOT-STARTED -->
-  - [ ] verify-auto  <!-- status: NOT-STARTED -->
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
-  - [ ] verify-human  <!-- status: NOT-STARTED -->
-    - [ ] `bench.sh` reports < 2000ms total wall-clock for 100 hook calls on macOS (tracking on); Linux target < 500ms  <!-- status: NOT-STARTED -->
-    - [ ] `multi_instance.sh` reports session B's reattributed gap as expected (within 2s of computed target)  <!-- status: NOT-STARTED -->
-    - [ ] 50-parallel-writer test: all exit 0, DB has exactly 50 rows  <!-- status: NOT-STARTED -->
-    - [ ] README "Performance" section contains the measured numbers  <!-- status: NOT-STARTED -->
-  - [ ] verify-codify  <!-- status: NOT-STARTED -->
+  - [x] P4.1 `tools/claude-time/test/bench.sh` — 3-scenario benchmark (fast-fail, set-path Stop ×100, set-path mixed events). Auto-detects OS (macOS budget 2000ms, Linux 500ms) and asserts. `--no-fail` flag for measurement-only mode. Measured on dev machine: fast-fail 3.7ms/call, set-path 13.9ms/call (within macOS 20ms budget by 30% margin).
+  - [x] P4.2 `tools/claude-time/test/multi_instance.sh` — Two parallel subshells write to the same DB through the deployed hook. Session A: UPS/Stop/UPS spanning 1.5s. Session B fires a 600-char UPS during A's gap. Reclassifier asserts `cross_session_ms = 100000` (exactly 600/6 cps = 100s). PASS — exactly the expected 100000.
+  - [x] P4.3 `tools/claude-time/test/stress_concurrent.sh` — `xargs -P 50` spawns 50 concurrent hook invocations with distinct session_ids. Asserts: xargs exit 0, 50 rows persist, 50 distinct session_ids (no overwrites), zero stderr noise. PASS.
+  - [x] P4.4 `README.md` "Performance" section updated with measured table (fast-fail vs set-path scenarios). File map updated to list all 6 test artifacts. Also documents how to run each script manually.
+  - [SCOPE-CHECK 2026-05-18] Bench.sh + multi_instance.sh acknowledged partly redundant with existing `test_hook.sh` (already runs 100-call sequences) and `test_reclassify.py::CrossSessionOverlapTests` (already validates the math), but exercise different surfaces (user-invokable scripts producing human-readable output vs internal test fixtures), so they earn their place. Stress_concurrent.sh is net-new coverage (no prior test exercised real `xargs -P 50` concurrency against the deployed symlink).
+  - [x] verify-auto  <!-- status: 2026-05-18 — bash -n OK on 3 new scripts + check-structure.sh, bench within budget (13ms/call), multi_instance PASS (cross_session_ms=100000 exact), stress_concurrent PASS (50 rows, 0 stderr), all 3 regression test suites still PASS (17+10+24) -->
+  - [x] verify-self  <!-- status: 2026-05-18 — all 4 Phase 4 outcomes PASS against deployed symlink: bench within budget (14ms/call), cross_session_ms exact 100000, 50 concurrent rows, README Performance table present -->
+  - [x] verify-human  <!-- status: 2026-05-18 F11-skip — affirmed isolated artifacts (new test scripts only, no consuming surface modified); all 4 verify-self outcomes PASS so all sub-leaves excluded -->
+    - [x] (F11 skip — verify-self covered all 4 outcomes; nothing for human to manually walk through)  <!-- status: covered-by-verify-self -->
+  - [x] verify-codify  <!-- status: 2026-05-18 — no new artifacts needed; codification happened during build (the 3 new test scripts ARE the codification, and they're wired into check-structure.sh Phase 5b). All 7 test scripts PASS (55 total assertions). Structure suite 110/0. No test triage required. -->
+    - [x] Coverage decision: Phase 4's deliverables are themselves test scripts; they self-codify. No need to write tests *about* the test scripts.
+    - [x] Conscious gap noted: bench.sh asserts the set-path budget (load-bearing for spec acceptance #10) but does NOT assert the fast-fail budget (5ms target, 3.7ms measured). Fast-fail timing fluctuates enough that asserting it would create flake risk. Documented in this WIP for future-self.
 
 ## Current Node
 
-- **Path:** Feature > Phase 4 > P4.1 (entry — relevance check pending)
-- **Active scope:** Phase 3 complete; advancing to Phase 4 (perf bench + multi-instance verification). Phase-Advance Relevance Gate runs before P4.1.
+- **Path:** Feature > ship
+- **Active scope:** All 4 phases complete (Phase 1 → Phase 4 all `[x]`); 110/0 structure suite, 55 test assertions across 7 test scripts all PASS; feature is ready to ship
 - **Blocked:** none
-- **Unvisited:** Phase 4 (P4.1 → P4.4 → all 5 verify nodes), ship, finalize
+- **Unvisited:** ship, finalize
 - **Open discoveries:** 1 SURFACED to backlog (per-project breakdown — v2 enhancement, medium, deferred)
 
 ## Discoveries

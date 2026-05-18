@@ -461,6 +461,38 @@ else
   check "tools/claude-time/test/test_cli.sh exists + executable" "fail" "missing or not executable"
 fi
 
+# Multi-instance scenario (real two-process reattribution end-to-end)
+if [ -x tools/claude-time/test/multi_instance.sh ]; then
+  if REPO_ROOT="$(pwd)" tools/claude-time/test/multi_instance.sh > /dev/null 2>&1; then
+    check "tools/claude-time/test/multi_instance.sh — cross-session reattribution" "pass"
+  else
+    err=$(REPO_ROOT="$(pwd)" tools/claude-time/test/multi_instance.sh 2>&1 | grep '\[FAIL\]' | head -3)
+    check "tools/claude-time/test/multi_instance.sh — cross-session reattribution" "fail" "$err"
+  fi
+else
+  check "tools/claude-time/test/multi_instance.sh exists + executable" "fail" "missing or not executable"
+fi
+
+# Concurrent-write stress (50 parallel writers, WAL safety)
+if [ -x tools/claude-time/test/stress_concurrent.sh ]; then
+  if tools/claude-time/test/stress_concurrent.sh > /dev/null 2>&1; then
+    check "tools/claude-time/test/stress_concurrent.sh — 50 concurrent writers" "pass"
+  else
+    err=$(tools/claude-time/test/stress_concurrent.sh 2>&1 | grep '\[FAIL\]' | head -3)
+    check "tools/claude-time/test/stress_concurrent.sh — 50 concurrent writers" "fail" "$err"
+  fi
+else
+  check "tools/claude-time/test/stress_concurrent.sh exists + executable" "fail" "missing or not executable"
+fi
+
+# bench.sh: existence only (perf assertion is OS-dependent; runs on demand via
+# `tools/claude-time/test/bench.sh`, not on every structural check)
+if [ -x tools/claude-time/test/bench.sh ]; then
+  check "tools/claude-time/test/bench.sh exists + executable" "pass"
+else
+  check "tools/claude-time/test/bench.sh exists + executable" "fail" "missing or not executable"
+fi
+
 echo ""
 
 # ── Phase 6: notify-human skill is gone ───────────────────────────────────
