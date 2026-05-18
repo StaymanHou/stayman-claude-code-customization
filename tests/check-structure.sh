@@ -413,6 +413,54 @@ else
   check "tools/claude-time/test/privacy_check.sh exists + executable" "fail" "missing or not executable"
 fi
 
+# Phase 3 additions: reclassifier module + CLI + unit tests
+if [ -f tools/claude-time/reclassify.py ]; then
+  check "tools/claude-time/reclassify.py exists" "pass"
+else
+  check "tools/claude-time/reclassify.py exists" "fail" "file missing"
+fi
+
+if [ -x tools/claude-time/claude-time ]; then
+  check "tools/claude-time/claude-time CLI is executable" "pass"
+else
+  check "tools/claude-time/claude-time CLI is executable" "fail" "missing executable bit"
+fi
+
+if python3 -m py_compile tools/claude-time/reclassify.py 2>/dev/null && \
+   python3 -m py_compile tools/claude-time/claude-time 2>/dev/null; then
+  check "tools/claude-time Python sources compile" "pass"
+else
+  check "tools/claude-time Python sources compile" "fail" "py_compile failed"
+fi
+
+ct_cli_link_target=$(readlink ~/.claude/bin/claude-time 2>/dev/null || echo "")
+if echo "$ct_cli_link_target" | grep -q "my-claude-code-customization/tools/claude-time/claude-time"; then
+  check "~/.claude/bin/claude-time symlink resolves to this repo" "pass"
+else
+  check "~/.claude/bin/claude-time symlink resolves to this repo" "fail" \
+    "target: ${ct_cli_link_target:-missing}"
+fi
+
+# Reclassifier unit tests
+if (cd tools/claude-time/test && python3 -m unittest test_reclassify > /dev/null 2>&1); then
+  check "tools/claude-time/test/test_reclassify.py — unit tests" "pass"
+else
+  err=$(cd tools/claude-time/test && python3 -m unittest test_reclassify 2>&1 | tail -3)
+  check "tools/claude-time/test/test_reclassify.py — unit tests" "fail" "$err"
+fi
+
+# CLI end-to-end tests
+if [ -x tools/claude-time/test/test_cli.sh ]; then
+  if tools/claude-time/test/test_cli.sh > /dev/null 2>&1; then
+    check "tools/claude-time/test/test_cli.sh — CLI end-to-end" "pass"
+  else
+    err=$(tools/claude-time/test/test_cli.sh 2>&1 | grep '\[FAIL\]' | head -3)
+    check "tools/claude-time/test/test_cli.sh — CLI end-to-end" "fail" "$err"
+  fi
+else
+  check "tools/claude-time/test/test_cli.sh exists + executable" "fail" "missing or not executable"
+fi
+
 echo ""
 
 # ── Phase 6: notify-human skill is gone ───────────────────────────────────

@@ -19,8 +19,12 @@ use warnings;
 exit 0 unless $ENV{CLAUDE_TIME_TRACKING};
 
 # From here on, tracking is enabled — load the modules we need.
+# Note: Time::HiRes is loaded WITHOUT `import('time')` because at runtime,
+# `require` + `->import` cannot override the already-parsed built-in `time()`
+# (the compiler resolved it to CORE::time before our import ran). Call
+# `Time::HiRes::time()` with the fully-qualified name to get ms precision.
 require JSON::PP;     JSON::PP->import('decode_json', 'encode_json');
-require Time::HiRes;  Time::HiRes->import('time');
+require Time::HiRes;
 
 # Drain stdin. Some Claude Code hook invocations may have no payload (manual test).
 my $raw = '';
@@ -97,7 +101,7 @@ my ($tool_name, $agent_type, $meta_json) = $handlers{$event_name}->();
 
 my $session_id = $payload->{session_id} // 'unknown';
 my $cwd        = $payload->{cwd} // '';
-my $ts_ms      = int(time() * 1000);
+my $ts_ms      = int(Time::HiRes::time() * 1000);
 
 # ---- DB location. Tests override via CLAUDE_TIME_DIR. ----
 my $db_dir = $ENV{CLAUDE_TIME_DIR} // "$ENV{HOME}/.claude-time";

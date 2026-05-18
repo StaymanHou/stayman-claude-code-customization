@@ -1,5 +1,15 @@
 # Backlog
 
+## SURFACE-2026-05-18-CLAUDE-TIME-REPORT-BY-PROJECT
+- **Source:** feature:verify-human (claude-code-time-tracking Phase 3, 2026-05-18)
+- **Target level:** feature:spec (v2 enhancement)
+- **Type:** new-work
+- **Summary:** `--cwd` works as a *filter* in v1 (verified in Phase 3 verify-self outcome 4); add a *grouping dimension* (`--by cwd` or `report projects`) that shows one row per distinct cwd with tool / active / gap-bucket totals side-by-side. The data is already captured (`cwd` is a column on every event row in the existing schema), so this is CLI-side only — no schema migration.
+- **Context:** User asked during Phase 3 verify-human review whether the system supports per-project breakdown. Today the answer is "filter to one project at a time"; what the user actually wants is "show me all projects side by side." The spec listed `--cwd` only as a filter (acceptance #5), not as a grouping dimension. Hits the "self-awareness of where time goes" use case from the original problem statement more directly than per-session view.
+- **Suggested action:** Add a `--by <dim>` flag to `claude-time report` where `<dim>` is one of `cwd | session | day`. Render a grouped table: each row is one value of the chosen dimension, columns are the existing totals (tool time, active time, gap buckets). Optional follow-up: `~/.claude-time/config.json` `project_names` map for human-readable `cwd → name` aliasing (e.g., `{"my-thing": ["/Users/me/repo", "/Users/me/repo-worktree"]}`) so a logical project that lives in two cwds (worktree + main) shows as one row.
+- **Priority:** medium — real user request observed in real verify-human flow; not blocking v1 ship; the captured data already supports it so v2 cost is bounded.
+- **Status:** open
+
 ## SURFACE-2026-05-18-CLAUDE-TIME-HOOK-PERF-BUDGET-INFEASIBLE
 - **Source:** feature:build (claude-code-time-tracking Phase 1, P1.3, 2026-05-18)
 - **Target level:** feature:plan (back-loop F23 — already taken in this session)

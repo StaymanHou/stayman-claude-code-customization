@@ -295,7 +295,13 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
     - [x] Standalone `privacy_check.sh` — run-on-demand single-purpose check; also wired into Phase 5b for every-build assertion
     - [x] No new test artifact needed at Phase 2 codify (built during build phase)
 
-- [ ] Phase 3: Reclassifier CLI — `claude-time report`  <!-- status: NOT-STARTED; depends on Phase 2 -->
+- [x] Phase 3: Reclassifier CLI — `claude-time report`  <!-- status: complete 2026-05-18; build → verify-auto → verify-self → verify-human (F13 approved) → verify-codify all complete -->
+  **Relevance check (before Phase 3):**
+  - Requester still needs this: yes — reclassifier is the *point* of the system; without it Phase 1+2 produces unread data
+  - Requirements unchanged: yes — spec acceptance #5–7 untouched; Phase 2's data shape matches what reclassifier reads
+  - Solution still feasible: yes — Python 3 stdlib (sqlite3, argparse, datetime, json); algorithm is straightforward "rows → per-session gap analysis"
+  - No superior alternative discovered: yes
+  **Verdict:** proceed
   **Observable outcomes:**
   - CLI: `claude-time report --help` exits 0 and lists `--weekly`, `--session`, `--cwd`, `--date` flags.
   - CLI: Against a seeded DB with one session containing `UserPromptSubmit → PreToolUse(Bash) → PostToolUse(Bash) → Stop → UserPromptSubmit`, `claude-time report` produces a text table with rows for "Tool time: Bash", "Active session time", and one gap bucket.
@@ -305,23 +311,22 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
   - CLI: `claude-time report --cwd /foo` against a DB with events in `/foo` and `/bar` only counts rows where `cwd='/foo'`.
   - CLI: `claude-time report --session <id>` filters identically.
   - CLI: Empty window: `claude-time report --date 1970-01-01` exits 0 and prints `(no events in window)`.
-  - [ ] P3.1 Create `tools/claude-time/reclassify.py` — pure functions: `gap_buckets(events) → list[Gap]`, `tool_durations(events) → dict[tool_name, seconds]`, `cross_session_overlap(gap, all_events) → seconds`, `typing_debit(chars, cps) → seconds`  <!-- status: NOT-STARTED -->
-  - [ ] P3.2 Create `tools/claude-time/claude-time` (executable Python script) — argparse CLI, dispatch to `reclassify.py` functions, format output as text table  <!-- status: NOT-STARTED -->
-  - [ ] P3.3 Config loader: read `~/.claude-time/config.json` if present; default `chars_per_sec=6`, `reading_threshold_sec=120`, `thinking_threshold_sec=300`  <!-- status: NOT-STARTED -->
-  - [ ] P3.4 Date-window logic: `--date YYYY-MM-DD` filters to that day (00:00–23:59 local); `--weekly` is last 7 days ending today; default = today  <!-- status: NOT-STARTED -->
-  - [ ] P3.5 Update `install.sh` to symlink `tools/claude-time/claude-time` → `~/.claude/bin/claude-time` (creating `~/.claude/bin/` if missing)  <!-- status: NOT-STARTED -->
-  - [ ] P3.6 Flesh out `tools/claude-time/README.md` — install steps, settings.json snippet, CLI usage examples, the "two-step opt-in" warning (env var AND settings edit)  <!-- status: NOT-STARTED -->
-  - [ ] P3.7 Unit tests in `tools/claude-time/test/test_reclassify.py` covering bucketing edges (120s, 121s, 300s, 301s), typing-debit clamp-at-0, cross-session overlap arithmetic  <!-- status: NOT-STARTED -->
-  - [ ] verify-auto  <!-- status: NOT-STARTED -->
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
-  - [ ] verify-human  <!-- status: NOT-STARTED -->
-    - [ ] `claude-time report --help` exits 0, lists all 4 filter flags  <!-- status: NOT-STARTED -->
-    - [ ] Seeded reading/thinking/away DB → correct bucket counts in output  <!-- status: NOT-STARTED -->
-    - [ ] Cross-session reattribution: alternating sessions seed → session B's effective gap reflects A's typing debit  <!-- status: NOT-STARTED -->
-    - [ ] `--cwd` filter works: report counts only matching rows  <!-- status: NOT-STARTED -->
-    - [ ] Empty-window: report prints `(no events in window)` exit 0  <!-- status: NOT-STARTED -->
-    - [ ] Config override: `~/.claude-time/config.json` with `chars_per_sec=12` produces half the typing debit  <!-- status: NOT-STARTED -->
-  - [ ] verify-codify  <!-- status: NOT-STARTED -->
+  - [x] P3.1 Created `tools/claude-time/reclassify.py` — pure stdlib functions: `gap_buckets`, `tool_durations_ms`, `subagent_durations_ms`, `cross_session_overlap_ms`, `typing_debit_ms`, `session_active_ms`. Operates on lists of event-dicts (no DB I/O — unit-testable without fixtures).
+  - [x] P3.2 Created `tools/claude-time/claude-time` (executable Python) — argparse with `report` subcommand, sqlite3 reader (read-only mode), `render_report` produces 4-section text table.
+  - [x] P3.3 Config loader: `~/.claude-time/config.json` read on top of defaults (`chars_per_sec=6.0`, `reading_threshold_sec=120`, `thinking_threshold_sec=300`); JSON parse errors silent-fallback to defaults.
+  - [x] P3.4 Date-window logic: `--date YYYY-MM-DD` = single day, `--weekly` = last 7 days ending today, default = today. Boundaries are local-tz midnight; end is exclusive.
+  - [x] P3.5 `install.sh` extended: refactored to a `link_artifact` helper that handles both hook + CLI symlinks idempotently. Creates `~/.claude/bin/` on first run.
+  - [x] P3.6 `README.md` polished: 5-section doc covering installation (3 steps), usage examples with output sample, tuning (config.json), how it works (schema + privacy + reclassifier algorithm + multi-instance), disabling, performance, file map.
+  - [x] P3.7 `tools/claude-time/test/test_reclassify.py` — 24 unit tests across 6 classes: TypingDebit (5), GapBucket (6 boundary tests at 120/121/300/301), CrossSessionOverlap (3), ToolDurations (4), SubagentDurations (3), SessionActive (3). All PASS.
+  - [SURFACED-2026-05-18 RESOLVED] P3.2 / hook.pl — During CLI end-to-end smoke, discovered all timestamps were second-precision (5 events ~500ms apart all stored same ts). Root cause: `require Time::HiRes; Time::HiRes->import('time')` at *runtime* cannot override the already-parsed built-in `time()` (the compiler resolved it to `CORE::time` before our import ran). Fixed by calling `Time::HiRes::time()` with fully-qualified name. Two regressions caught downstream: tool_durations showed 0ms (Pre/Post on same ts), session_active showed 0ms. Both work correctly after fix. **General learning:** in Perl, `use` does compile-time symbol-table changes; `require + ->import` does runtime — which means built-in overrides only apply to calls *parsed after* the import. Use fully-qualified function names (or use `use`) when you need a built-in override.
+  - [x] verify-auto  <!-- status: 2026-05-18 — py_compile OK on both Python sources, perl -c OK, bash -n install.sh OK, import smoke OK, --help OK, unit tests 24/24, behavioral tests 17/17 (no regression on Time::HiRes fix) -->
+  - [x] verify-self  <!-- status: 2026-05-18 — all 6 Phase 3 observable outcomes PASS against deployed CLI symlink: --help flags, bucket assignment (60s reading / 180s thinking / 600s away), cross-session reattribution (100s of B's typing subtracted from A's gap), --cwd filter (correctly partitions Bash/Edit), empty-window message, config override (cps=12 produces half typing-debit) -->
+  - [x] verify-human  <!-- status: 2026-05-18 F13 — human ran the seeded-DB demo (4-event session producing 540ms Bash tool time, 1.3s active time), then approved. SURFACED during this step: per-project breakdown report dimension (logged as SURFACE-2026-05-18-CLAUDE-TIME-REPORT-BY-PROJECT, medium priority, v2 enhancement). -->
+    - [x] (F13 — all 6 verify-self outcomes excluded by pre-filter; happy-path demo run by human; approved with one v2 SURFACE)
+  - [x] verify-codify  <!-- status: 2026-05-18 — 3 gaps codified into new tools/claude-time/test/test_cli.sh (10 CLI end-to-end assertions: --help flags, empty-window, --cwd filter, --session filter, --db override, --weekly window, config override, malformed-config fallback). Wired into Phase 5b. Structure suite 107/0 (was 106). No test triage required. -->
+    - [x] New artifact: `tools/claude-time/test/test_cli.sh` covers CLI-level behaviors (`--cwd`, `--session`, `--db`, `--weekly`, config-load) that weren't reachable from the pure-function reclassify.py unit tests
+    - [x] Integration-boundary check satisfied: Phase 3's consuming surface is the `claude-time` CLI binary; new test exercises it end-to-end against seeded DBs
+    - [x] No new test triage — 10/10 PASS, no failures, no regressions in the rest of the suite
 
 - [ ] Phase 4: Performance measurement + multi-instance verification  <!-- status: NOT-STARTED; depends on Phase 3 -->
   **Observable outcomes:**
@@ -344,11 +349,11 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
 
 ## Current Node
 
-- **Path:** Feature > Phase 3 > P3.1 (entry — relevance check pending)
-- **Active scope:** Phase 2 complete; advancing to Phase 3 (reclassifier CLI). Phase-Advance Relevance Gate runs before P3.1.
+- **Path:** Feature > Phase 4 > P4.1 (entry — relevance check pending)
+- **Active scope:** Phase 3 complete; advancing to Phase 4 (perf bench + multi-instance verification). Phase-Advance Relevance Gate runs before P4.1.
 - **Blocked:** none
-- **Unvisited:** Phase 3 (P3.1 → P3.7 → all 5 verify nodes), Phase 4, ship, finalize
-- **Open discoveries:** 0
+- **Unvisited:** Phase 4 (P4.1 → P4.4 → all 5 verify nodes), ship, finalize
+- **Open discoveries:** 1 SURFACED to backlog (per-project breakdown — v2 enhancement, medium, deferred)
 
 ## Discoveries
 

@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""claude-time CLI — query the local claude-time SQLite database.
+
+Usage:
+  claude-time report                        # today
+  claude-time report --weekly               # last 7 days
+  claude-time report --date 2026-05-15      # specific day
+  claude-time report --session <uuid>       # filter by session_id
+  claude-time report --cwd /Users/me/proj   # filter by working dir
+  claude-time report --db /tmp/test.sqlite  # override DB path
+
+All filters can be combined. Output is a plain text table.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sqlite3
+import sys
+from datetime import date, datetime, time, timedelta
+from pathlib import Path
+
+# Make sibling reclassify module importable.
+_HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE))
+import reclassify  # noqa: E402
+
+
+# ── Defaults ────────────────────────────────────────────────────────────────
+DEFAULT_CONFIG = {
+    "chars_per_sec": 6.0,
+    "reading_threshold_sec": 120,
+    "thinking_threshold_sec": 300,
+}
+
+
+def load_config(claude_time_dir: Path) -> dict:
+    """Load ~/.claude-time/config.json on top of defaults. Silent fallback."""
+    cfg_path = claude_time_dir / "config.json"
+    cfg = dict(DEFAULT_CONFIG)
+    if cfg_path.exists():
+        try:
+            user_cfg = json.loads(cfg_path.read_text())
+            if isinstance(user_cfg, dict):
+                cfg.update({k: v for k, v in user_cfg.items() if k in cfg})
+        except (json.JSONDecodeError, OSError):
+            pass  # silent fallback to defaults
+    return cfg
+
+
+# ── Date-window logic ───────────────────────────────────────────────────────
+def window_ms(
+    *, weekly: bool, date_str: str | None
+) -> tuple[int, int, str]:
+    """Compute the (start_ms, end_ms_exclusive, label) for the report window.
+
+    Boundaries are local-timezone midnight. The end boundary is exclusive
+    so a single-day window contains exactly that day's events.
+    """
+    today = date.today()
+    if date_str:
+        start_day = date.fromisoformat(date_str)
+        end_day_excl = start_day + timedelta(days=1)
+        label = f"date {start_day.isoformat()}"
+    elif weekly:
+        end_day_excl = today + timedelta(days=1)
+        start_day = today - timedelta(days=6)
+        label = f"week ending {today.isoformat()}"
+    else:
+        start_day = today
+        end_day_excl = today + timedelta(days=1)
+        label = f"today ({today.isoformat()})"
+    start_dt = datetime.combine(start_day, time.min)
+    end_dt = datetime.combine(end_day_excl, time.min)
+    return (
+        int(start_dt.timestamp() * 1000),
+        int(end_dt.timestamp() * 1000),
+        label,
+    )
+
+
+# ── DB read ─────────────────────────────────────────────────────────────────
+def load_events(
+    db_path: Path,
+    *,
+    start_ms: int,
+    end_ms: int,
+    session_filter: str | None,
+    cwd_filter: str | None,
+) -> list[dict]:
+    """Read events from the DB within the window, optionally filtered."""
+    if not db_path.exists():
+        return []
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        sql = "SELECT * FROM events WHERE ts >= ? AND ts < ?"
+        params: list = [start_ms, end_ms]
+        if session_filter:
+            sql += " AND session_id = ?"
+            params.append(session_filter)
+        if cwd_filter:
+            sql += " AND cwd = ?"
+            params.append(cwd_filter)
+        sql += " ORDER BY ts"
+        rows = [dict(r) for r in conn.execute(sql, params)]
+    finally:
+        conn.close()
+    return rows
+
+
+# ── Output formatting ──────────────────────────────────────────────────────
+def fmt_ms(ms: int) -> str:
+    """Human-readable duration. 1500 → '1.5s'; 90000 → '1m30s'; 3700000 → '1h1m'."""
+    if ms < 1000:
+        return f"{ms}ms"
+    seconds = ms / 1000
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes, sec = divmod(int(seconds), 60)
+    if minutes < 60:
+        return f"{minutes}m{sec}s" if sec else f"{minutes}m"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}h{minutes}m" if minutes else f"{hours}h"
+
+
+def render_report(events: list[dict], cfg: dict, label: str) -> str:
+    """Build the plain-text report from events + config."""
+    if not events:
+        return f"(no events in window: {label})"
+
+    sessions = sorted({e["session_id"] for e in events if e.get("session_id")})
+    gaps = reclassify.gap_buckets(
+        events,
+        chars_per_sec=cfg["chars_per_sec"],
+        reading_threshold_sec=cfg["reading_threshold_sec"],
+        thinking_threshold_sec=cfg["thinking_threshold_sec"],
+    )
+    tool_totals = reclassify.tool_durations_ms(events)
+    agent_totals = reclassify.subagent_durations_ms(events)
+    active_per_session = reclassify.session_active_ms(events)
+
+    lines: list[str] = []
+    lines.append(f"claude-time report — {label}")
+    lines.append(f"sessions: {len(sessions)}   events: {len(events)}")
+    lines.append("")
+
+    # Tool time
+    lines.append("── Tool time (Pre→Post wall-clock, summed) ──")
+    if tool_totals:
+        max_name = max(len(t) for t in tool_totals)
+        for tool in sorted(tool_totals, key=lambda t: -tool_totals[t]):
+            lines.append(f"  {tool:<{max_name}}  {fmt_ms(tool_totals[tool])}")
+    else:
+        lines.append("  (no tool calls in window)")
+    lines.append("")
+
+    # Subagent time
+    lines.append("── Subagent time (Start→Stop wall-clock, summed) ──")
+    if agent_totals:
+        max_name = max(len(t) for t in agent_totals)
+        for atype in sorted(agent_totals, key=lambda t: -agent_totals[t]):
+            lines.append(f"  {atype:<{max_name}}  {fmt_ms(agent_totals[atype])}")
+    else:
+        lines.append("  (no subagent spawns in window)")
+    lines.append("")
+
+    # Active session time
+    lines.append("── Active session time (UserPromptSubmit → Stop windows) ──")
+    if active_per_session:
+        total_active = sum(active_per_session.values())
+        lines.append(f"  total across {len(active_per_session)} session(s):  {fmt_ms(total_active)}")
+        if len(active_per_session) > 1:
+            for sid in sorted(active_per_session, key=lambda s: -active_per_session[s]):
+                short_sid = sid[:12] + ("…" if len(sid) > 12 else "")
+                lines.append(f"    {short_sid}  {fmt_ms(active_per_session[sid])}")
+    else:
+        lines.append("  (no complete UserPromptSubmit→Stop windows)")
+    lines.append("")
+
+    # Reclassified gaps
+    lines.append("── Reclassified gap buckets (per session) ──")
+    if gaps:
+        by_session: dict[str, dict[str, int]] = {}
+        for g in gaps:
+            row = by_session.setdefault(
+                g.session_id, {"reading": 0, "thinking": 0, "away": 0}
+            )
+            row[g.bucket] += g.effective_ms
+        lines.append(f"  thresholds: reading ≤ {cfg['reading_threshold_sec']}s,  "
+                     f"thinking ≤ {cfg['thinking_threshold_sec']}s,  away > {cfg['thinking_threshold_sec']}s")
+        lines.append(f"  typing debit: {cfg['chars_per_sec']} chars/sec")
+        lines.append("")
+        lines.append("  session         reading    thinking    away")
+        for sid in sorted(by_session):
+            row = by_session[sid]
+            short_sid = sid[:12] + ("…" if len(sid) > 12 else "")
+            lines.append(
+                f"  {short_sid:<14}  {fmt_ms(row['reading']):>8}  {fmt_ms(row['thinking']):>9}  {fmt_ms(row['away']):>6}"
+            )
+        # Aggregate totals
+        totals = {"reading": 0, "thinking": 0, "away": 0}
+        for row in by_session.values():
+            for k in totals:
+                totals[k] += row[k]
+        lines.append("")
+        lines.append(
+            f"  TOTAL           {fmt_ms(totals['reading']):>8}  "
+            f"{fmt_ms(totals['thinking']):>9}  {fmt_ms(totals['away']):>6}"
+        )
+    else:
+        lines.append("  (no Stop→UserPromptSubmit gaps in window)")
+
+    return "\n".join(lines)
+
+
+# ── CLI entry point ─────────────────────────────────────────────────────────
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="claude-time",
+        description="Query the local claude-time SQLite database.",
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    report = sub.add_parser("report", help="render a usage report")
+    report.add_argument("--weekly", action="store_true", help="last 7 days")
+    report.add_argument("--date", help="single day, YYYY-MM-DD")
+    report.add_argument("--session", help="filter by session_id")
+    report.add_argument("--cwd", help="filter by working directory")
+    report.add_argument(
+        "--db",
+        help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
+    )
+
+    args = parser.parse_args(argv)
+
+    # Resolve DB + config dir.
+    if args.db:
+        db_path = Path(args.db).expanduser()
+        claude_time_dir = db_path.parent
+    else:
+        claude_time_dir = Path(os.environ.get("CLAUDE_TIME_DIR") or
+                               Path.home() / ".claude-time")
+        db_path = claude_time_dir / "events.sqlite"
+
+    cfg = load_config(claude_time_dir)
+
+    start_ms, end_ms, label = window_ms(
+        weekly=args.weekly, date_str=args.date
+    )
+
+    events = load_events(
+        db_path,
+        start_ms=start_ms,
+        end_ms=end_ms,
+        session_filter=args.session,
+        cwd_filter=args.cwd,
+    )
+
+    print(render_report(events, cfg, label))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
