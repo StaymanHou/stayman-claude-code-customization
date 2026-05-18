@@ -8,7 +8,7 @@
 - **Context:** Surfaced during Phase 2 verify-human acceptance. User accepted the project_names + auto-alias work and immediately requested this as the **next feature** ("That should be the next feature we work on"). High signal: real ergonomic gap observed while actually using the grouped report on real data.
 - **Suggested action:** Extend `render_grouped` in `tools/claude-time/claude-time`: add a `TOTAL` column header to the column row in the grouped table (rightmost), compute per-row totals as `tool_ms + active_ms + reading_ms + thinking_ms + away_ms`, render in the same fmt_ms format as other cells. The existing bottom TOTAL row gets a corresponding rightmost cell = sum of all per-row totals (which should equal the sum-down of any single column, useful as a sanity check). One impl task; one new observable outcome; verify-codify gets a new assertion that the per-row total = sum of the other 5 cells.
 - **Priority:** high — user explicitly designated this as the next feature.
-- **Status:** open
+- **Status:** RESOLVED 2026-05-18 by feature `claude-time-total-col-row`. Shipped rightmost `total` column on `--by` grouped output: header gains `total` header, each data row sums its 5 metric cells, bottom-right cell shows the grand total (sum-of-col-totals == sum-of-per-row-totals — cross-pivot sanity check). test_cli.sh extended 25 → 29 assertions; full claude-time suite 70/70. Commit 3c605f0 on branch feature/claude-code-time-tracking-phase-1.
 
 ## SURFACE-2026-05-18-SETTINGS-FIXTURE-DRIFT-CLAUDE-TIME
 - **Source:** feature:verify-codify (claude-time-report-by-project Phase 1, 2026-05-18)

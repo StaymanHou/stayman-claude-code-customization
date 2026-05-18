@@ -110,7 +110,7 @@ Combine filters freely. For example, "last week's time in my work project":
 claude-time report --weekly --cwd /Users/me/work
 ```
 
-`--by` shifts the report shape from "where the time went by metric" to "where the time went by group": one row per distinct value of the dimension, columns for tool / active / reading / thinking / away. Rows are sorted by engagement total (tool + active) descending. Example:
+`--by` shifts the report shape from "where the time went by metric" to "where the time went by group": one row per distinct value of the dimension, columns for tool / active / reading / thinking / away / total. The rightmost `total` column sums the five metric cells per row; the bottom-right TOTAL cell is the grand total (sum of column totals == sum of per-row totals — a cross-pivot sanity check). Rows are sorted by engagement total (tool + active) descending. Example:
 
 ```
 claude-time report --by cwd
@@ -119,11 +119,11 @@ claude-time report --by cwd
   thresholds: reading ≤ 120s,  thinking ≤ 300s,  away > 300s
   typing debit: 6.0 chars/sec
 
-  cwd                                tool    active   reading   thinking    away
-  /Users/me/projects/my-thing        4m12s    1h08m       8m         3m     0ms
-  /Users/me/projects/scratch         48s       4m20s     5m       1m20s     0ms
+  cwd                                tool    active   reading   thinking    away     total
+  /Users/me/projects/my-thing        4m12s    1h08m       8m         3m     0ms    1h23m
+  /Users/me/projects/scratch         48s       4m20s     5m       1m20s     0ms     11m28s
 
-  TOTAL                              5m       1h12m     13m       4m20s     0ms
+  TOTAL                              5m       1h12m     13m       4m20s     0ms    1h34m
 ```
 
 ### Example output
