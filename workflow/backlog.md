@@ -1,5 +1,15 @@
 # Backlog
 
+## SURFACE-2026-05-18-CLAUDE-TIME-HOOK-PERF-BUDGET-INFEASIBLE
+- **Source:** feature:build (claude-code-time-tracking Phase 1, P1.3, 2026-05-18)
+- **Target level:** feature:plan (back-loop F23 — already taken in this session)
+- **Type:** spec/plan conflict surfaced by empirical measurement
+- **Summary:** Spec acceptance #10 ("Hook script overhead < 50ms total across 10 tool calls = < 5ms per hook average") plus the locked tech contract ("5ms typical, 20ms p99 when enabled") are unachievable on stock macOS with the plan-time language choice (bash + jq + sqlite3 + python3-for-ms-timestamp). Measured ~110ms per hook call (5-call mean, single Stop event, warm DB). Breakdown: bash ~3ms + 3× jq ~30ms + python3 for ms timestamp ~80ms + sqlite3 ~5ms. macOS BSD `date` lacks `%3N`; macOS default bash 3.2.57 lacks `EPOCHREALTIME` (added in bash 5). Even with perl substituted for python3 (~18ms cold), the 3× jq floor keeps total ~35-40ms.
+- **Context:** Surfaced during the very first Phase 1 build attempt (acceptance #10 specifically called out measurement as a plan deliverable — measuring at build time caught the conflict early, exactly as intended).
+- **Suggested action:** During the F23 plan revision: pick ONE of (a) consolidate to single Python script (one cold start ~80ms, then no jq), (b) consolidate to single Perl script (one cold start ~18ms, then no jq), (c) keep bash but use one jq pass extracting all fields (saves ~20ms), (d) relax the spec's 5ms budget to a measured-realistic number. Combine with whichever language gives the best Linux performance too (Linux GNU date supports `%3N` so bash stays viable there).
+- **Priority:** high (blocked Phase 1 completion)
+- **Status:** resolved-via-plan-revision (2026-05-18). Plan pivoted to Perl single-process hook (~10ms/call measured); spec acceptance #10 + performance contract amended in workflow/wip/claude-code-time-tracking.md. CHANGELOG entry will be emitted at feature-finalize per the convention (resolved during feature-active work — not feature-shipped yet).
+
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
 - **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
@@ -13,57 +23,6 @@
   Likely 30–60 lines of bash + a small awk/python helper. Single source of truth: AGENTS.md.
 - **Priority:** medium (not blocking; the regression mode (drift) is plausible but lower-probability than the regression mode Phase 9 already catches (prose removal/softening)).
 - **Status:** pending
-
-## SURFACE-2026-05-17-CLAUDE-PRINT-AGENTIC-LOOP-SUPPRESSES-PAUSE-DECISION
-- **Source:** feature:research (multi-turn session-replay harness research spike, 2026-05-17)
-- **Target level:** future-design constraint (not actionable on its own; informs any future attempt to test agent-driven workflow behavior headlessly)
-- **Type:** structural-finding (durable knowledge captured to prevent re-attempting a known dead-end)
-- **Summary:** `claude --print` and `claude --print --output-format=stream-json` both run an **internal agentic loop** that runs to terminal completion (`end_turn` / `max_turns` / error). Neither mode exposes a programmatic control point between assistant turns — the CLI auto-satisfies emitted `tool_use` blocks with real tool execution, feeds the result back, and continues. The "show prompt to user → wait for input" decision boundary that defines Claude Code's interactive REPL is **bypassed by design** in `--print` mode.
-- **Why this matters:** the autopilot-pause-policy bug class (agent emits text-only response after `TRANSITION: F8`, REPL shows prompt instead of chaining the next Skill) is, by construction, **only observable at the interactive-REPL boundary**. The model's decision to emit text-vs-tool_use is observable inside the agentic loop, but the *consequence* of that decision — REPL pause vs auto-continue — happens at a CLI layer that `--print` modes skip. Any harness built on `claude --resume <uuid> --print` is structurally incapable of reproducing this bug class.
-- **Spike evidence (2026-05-17, ~$2.84 total spend across 3 invocations against the 2026-05-16 F8 pause slice on Opus 4.7):**
-  1. v1 — `--print --output-format json`, rewrote slice cwd to `/private/tmp/claude-replay-<hex>` dot-free path. After fixing `/tmp` → `/private/tmp` macOS resolution: $0.54, 22s, 3 internal turns, model anchored on cwd-divergence sandbox confound and "paused" for a *different* surface reason than production.
-  2. v2 — same flags but kept the slice's original `cwd` field intact and invoked claude from the original project root. $1.60, 13min, 29 internal turns. Model ran the agentic loop through real Bash + Read tool calls against the live project state, ultimately emitted `TRANSITION: F10` (verify-auto → verify-self) — i.e. **chained correctly through multiple internal turns**. The bug did not reproduce because the agentic loop never reached a "stop and let user see prompt" boundary.
-  3. v3 — `--print --input-format=stream-json --output-format=stream-json --verbose`. $0.69, 47s, 10 internal turns. Stream-json surfaced granular per-message events (`system`, `assistant`, `user`, `tool_use`, `tool_result`, `result`) but the underlying loop is identical to v2: CLI runs the agentic loop, emits events live, returns one `result` at completion. Stream is observational only — no injection point between turns.
-- **Cumulative invariant across all three spikes:** model invoked **zero Skill tool calls** in the continuation despite all 40+ workflow skills being correctly registered in the session (verified in v3 `system` event listing `slash_commands` + `skills` + `agents`). The model's reasoning after "continue" went down Bash exploration paths, not Skill chaining paths — sensitive to the continuation prompt and accumulated context, not to the harness mechanism. So the spike result is silent on whether AGENTS.md orchestrator prose is load-bearing in production; it cannot disprove it.
-- **What this rules out for future harness work:**
-  - Single-shot replay via `claude --print` — already known dead-end as of 2026-05-16; this finding generalizes the reason.
-  - Multi-turn replay via `claude --print --input-format=stream-json` injecting synthesized tool_results between turns — the CLI doesn't expose that injection point; the agentic loop is opaque from outside.
-  - Any harness shape that relies on capturing a slice and "replaying with control" via the `claude` binary's `--print` family.
-- **What remains theoretically viable (NOT recommended for near-term work):**
-  - **PTY-driven interactive `claude`** (`expect` / `pexpect`-style) — spawns the real interactive CLI, watches for the REPL prompt, sends "continue" or similar, observes the next response. Mirrors production exactly but is brittle to CLI cosmetic changes (prompt text, ANSI codes) and expensive to build.
-  - **Direct Anthropic SDK harness** — bypass `claude` entirely; load the slice as API messages, programmatically control turn boundaries and tool_result injection. Loses Claude Code's specific scaffolding (CLAUDE.md auto-load, hooks, settings); only tests the *model* on the conversation prefix, not the *harness*. The bug may or may not reproduce here depending on whether it lives in the model's narrative-cadence reasoning vs Claude Code's scaffolding.
-  - **Hook-based instrumentation canary** — add a hook that logs every `Notification` event (Claude blocked, awaiting input) with context (skill that just ran, transition emitted, drive mode). Runs in real sessions; captures the bug when it happens. Not a *test* harness — a *production observability* surface.
-- **Salvaged infrastructure NOT to throw away** (still useful regardless of harness shape):
-  - `tools/capture-session-slice.sh` — slice extraction + Tier-1 redaction + dot-free cwd workaround discovery
-  - `tests/sessions/2026-05-16-autopilot-f8-pause.jsonl` (audited)
-  - `tests/sessions/AUDIT-LOG.md` two-tier audit convention
-  - `tests/check-structure.sh` Phase 8 regression guards
-  - Recipe for `claude --resume` working against a fresh-uuid'd staged slice: stage at `~/.claude/projects/<slug>/<new-uuid>.jsonl` with `sessionId` rewritten, invoke from the slice's original `cwd` (or rewrite both cwd field and runtime cwd to a `/private/tmp/...` resolved dot-free path).
-- **Priority:** none — this is a durable learning, not actionable work. Filed so future attempts to reproduce agent-driven bugs via `claude --print` are pre-warned.
-- **Status:** closed (knowledge captured)
-
-## SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS
-- **Source:** feature:build (session-replay-harness Phase 2 P2.5 STOP point, 2026-05-16)
-- **Target level:** feature:spec (architectural — extends test-harness with new mechanism)
-- **Type:** test-infra (gap in reproduction fidelity)
-- **Summary:** Build a multi-turn extension to the session-replay harness. Single-shot replay (which Phase 2 of the session-replay-harness feature shipped) loads a captured `.jsonl` slice as conversation prefix and runs one continuation turn — but proven inadequate for reproducing the narrative-cadence-drift bug class (autopilot Mode 3 stopping after `TRANSITION: F8` instead of chaining). 3/3 PASS even with system_prompt_extra stripped to nothing. The bug requires the model to be *driving* a multi-turn workflow where narrative-cadence drift accumulates across many skill invocations.
-- **Context:** This is THE structural gate the paused incident `workflow/wip/incident-autopilot-pause-policy-recheck-regression.md` (P1) needs for a true red→green reproduction. Without multi-turn replay, any fix to the autopilot-pause-policy bug ships untested at the level where it manifests in production. The 2026-05-11 fix (commit `33cf5c9`) had this same gap and regressed; the 2026-05-16 fix risks the same recurrence without this harness.
-- **Sketch of mechanism:** load the slice, get the first model response, append it to history, prompt the next turn (e.g., "the build skill returned this output: ... what's your next action?"), repeat for N turns. Stop after a fixed turn budget or when the model emits a TRANSITION token that doesn't match the auto-chain target. Assert on the *sequence* of responses, not a single output. Likely 4–8 hours of harness work; needs design (turn-limit semantics, per-turn assertion shape, slice-vs-injected-tool-results disambiguation).
-- **Suggested action:** Open `/feature-spec` for "multi-turn session-replay harness." Spec must address: (1) how the harness manufactures the equivalent of a Skill tool_result between turns (the model needs to "see" what its emitted Skill invocation would return — fake it from the slice's next assistant turn? generate plausible content?); (2) per-turn assertion schema (do we assert per turn, or on the full sequence?); (3) cost surface (multi-turn replay multiplies token usage); (4) cwd-slug handling (the dot-free workaround in single-shot replay still applies).
-- **Priority:** high — load-bearing for the paused P1 incident's "really fix it, no resurface" mandate. Should be the immediate next feature after session-replay-harness ships.
-- **Status:** superseded 2026-05-17 by `SURFACE-2026-05-17-CLAUDE-PRINT-AGENTIC-LOOP-SUPPRESSES-PAUSE-DECISION`. The research spike for this entry proved the proposed mechanism (multi-turn via `claude --print` / `claude --print --input-format=stream-json`) is structurally inadequate for the same reason single-shot replay was — the `claude --print` family runs an internal agentic loop with no programmatic pause-decision surface. Reproduction abandoned per 2026-05-17 user decision. P1 incident continues via semantic prompt fix (move pause-policy from `agents/feature-workflow/AGENTS.md` into per-skill `SKILL.md` files), not via reproduction-gated red→green discipline.
-
-## SURFACE-2026-05-13-DEFAULT-DRIVE-MODE-AUTOPILOT
-- **Source:** user-initiated (live observation during debug-skills feature, 2026-05-13)
-- **Target level:** task:plan (small/simple — wording change in session-start + one or two test scenarios updated)
-- **Type:** workflow-enhancement
-- **Summary:** Change the default drive mode in `/session-start` from Orchestrated (Mode 2) to Autopilot (Mode 3). User has run multiple workflow sessions in Mode 3 and it has consistently worked well — verify-human pauses give enough human checkpoints; the extra Mode 2 pauses at spec/plan/finalize add friction without adding value once the user trusts the agent's outputs at those steps. Mode 2 remains available; default just flips.
-- **Suggested action:**
-  1. Edit `skills/session-start/SKILL.md` → "Confirm and select drive mode" section: change the mode menu's parenthetical from `(Type 1–4 — or just press Enter for Orchestrated)` to `(Type 1–4 — or just press Enter for Autopilot)`. Update the "Interpreting the reply" rules so the Enter / blank / "yes" reply maps to Mode 3 instead of Mode 2.
-  2. Verify whether any test scenarios assert on the old default (S10, S22 are the likely candidates — they exercise the routing/menu prose). Update assertions if needed.
-  3. Consider updating `docs/product/transitions.md` → "Drive modes" if it documents Mode 2 as the default anywhere.
-- **Priority:** high (user-requested top priority)
-- **Status:** resolved 2026-05-14 by task `default-drive-mode-autopilot`. SKILL menu parenthetical flipped to "press Enter for Autopilot"; Interpreting-the-reply maps Enter/blank/"yes" to Mode 3; transitions.md mode-definitions table moves "default (Enter)" from Mode 2 to Mode 3; stale 3-mode prompt example refreshed to 4-mode menu. No scenario edits needed (S10, S22 assertions remained compatible — S10 still uses substring "Orchestrated" via `contains_any`; S22 doesn't reference the default).
 
 ## SURFACE-2026-05-13-FRONTMATTER-NAME-VS-DIR-DRIFT
 - **Source:** feature:verify-codify (debug-skills-category-and-bisect-known-good Phase 1, 2026-05-13)
@@ -82,61 +41,6 @@
 - **Suggested action:** Apply the documented recon discipline (`see haiku failure → run on sonnet → confirm PASS → tag`). For each of the 6, run on sonnet; for those that PASS strictly, add `model: sonnet` to the scenario in `tests/scenarios/feature.yaml` and a one-line comment citing the haiku flake pattern. Likely all 6 fall into this category given the failure shapes.
 - **Priority:** medium (only matters when running the haiku-only partition; current Phase 3 work was unblocked by recon on the most concerning case)
 - **Status:** open
-
-## SURFACE-2026-05-13-SETTINGS-FIXTURE-EFFORTLEVEL-DRIFT
-- **Source:** feature:verify-auto (finalize-before-ship-order-flip Phase 3, 2026-05-13)
-- **Target level:** task:plan (small/simple — single-line edit + re-run check-structure.sh)
-- **Type:** drift (test infra hygiene)
-- **Summary:** `tests/check-structure.sh` reports `effortLevel: live=<missing> fixture="xhigh"` — the test settings fixture (`tests/fixtures/settings.json:47`) has `"effortLevel": "xhigh"` but the live `~/.claude/settings.json` has removed this field. Pre-existing drift; surfaced when re-running check-structure.sh during Phase 3 verify-auto.
-- **Suggested action:** Either remove `effortLevel` from the fixture to match live, or add it to INTENTIONAL_DIFFS in `tests/check-structure.sh`. Pick based on whether the field's semantics matter to test behavior (likely not — it's a UX-level setting).
-- **Priority:** low (single failing structural check; does not block the test harness itself)
-- **Status:** resolved 2026-05-14 as side-effect of feature `entrypoint-skills-load-product-context` (commit 786c03f). Root cause: user had switched from xhigh→max→auto, which dropped the field. Fixed by re-adding `"effortLevel": "xhigh"` to live `~/.claude/settings.json` (user-confirmed xhigh is the intended default). Fixture stays unchanged. check-structure.sh now 63 PASS / 0 FAIL.
-
-
-
-## SURFACE-2026-05-12-STORE-LEARNING-WRONG-ITEM-SELECTED
-- **Source:** user-observed (live use of `session-store-learning` after the global-scope/learnings split, 2026-05-12, ops-data-hub WP9.5 reflection)
-- **Target level:** task:plan (likely small/simple — SKILL prose tightening + selection discipline)
-- **Type:** bug (item-selection drift — user asks for X, skill operates on Y)
-- **Summary:** During reflection of ops-data-hub WP9.5, `/session-reflect` listed 4 learnings: #1 Telegram MarkdownV1 (project), #2 waiting_human pause-aware timeouts (project), #3 verify-human catches external-system defects (global), #4 mock + structural-shape testing pattern (global). User asked: "store learning #2 only" (project-scope, waiting_human). `/session-store-learning` instead drafted **#4** (mock + structural-shape, global-scope) to `.claude/learnings/2026-05-12-mock-plus-structural-shape-test.md`. The classification reasoning was sound *for the item it analyzed* — it just analyzed the wrong item.
-- **Plausible mechanism:** the reflection's "Recommendations for /session-store-learning" sub-section listed *only* the two global-scope learnings (#3 and #4) as candidates for store-learning, with the project ones marked "lower priority — embedded in codebase." The store-learning skill likely re-indexed within that recommendation block (so its "#2" = the second item in the global-only candidate list = #4 of the full list). User intent referenced the full reflection's numbering.
-- **Suggested action (investigate, do not commit):**
-  1. **Reproduce.** Set up a fixture reflection output with 4 learnings numbered 1–4, where the "Recommendations" sub-section at the end lists only a subset (e.g. items 3 and 4). Invoke `/session-store-learning` with an explicit number: "store learning #2 only" (where #2 in the full list is *not* in the Recommendations subset). Verify which learning the skill picks.
-  2. **Tighten selection discipline in the SKILL.** Step §1 (Analyze) should: (a) explicitly state that "#N" refers to the full reflection's enumeration, not any sub-list like "Recommendations"; (b) if a "Recommendations" sub-section exists, ignore it for selection purposes — it's reflection's advice, not a renumbering. Alternative: require the user to paste the learning text, not just a number, when invoking outside an interactive selection menu.
-- **Priority:** medium-high — silently subverts user intent (user asks for X, gets Y) without any prompt for confirmation. The skill's "4. Confirm" step at the end *did* show the drafted file path, so the user could in theory have caught it — but the bug primary is at item selection, which happens silently.
-- **Status:** open
-
-## SURFACE-2026-05-11-PER-PHASE-CHAINING-SCENARIO-COVERAGE
-- **Source:** incident:codify (incident-orchestrated-spurious-pauses, 2026-05-11)
-- **Target level:** task:plan
-- **Type:** test-coverage (adjacent gap)
-- **Summary:** S21 covers `build → verify-auto` chaining under Mode 2. The other per-phase chain points (`verify-auto → verify-self`, `verify-self → verify-human` PAUSE, `verify-human → verify-codify`, `verify-codify → ship`) lack equivalent scenarios. S7/S8/S12 cover *some* of these in lenient form but with weaker assertions (no strict `not_contains` on user-deferral phrases like "you'll need to run").
-- **Context:** Codify for incident-orchestrated-spurious-pauses chose minimum viable coverage (one test that would have caught the specific incident). Adjacent gaps are logged here rather than written now. The same TRANSITION-emission mitigation applied to all five per-phase skills — so the bug class is fixed everywhere, but only the build→verify-auto transition has tight regression coverage.
-- **Suggested action:** Add scenarios S22 (verify-auto→verify-self chaining), S23 (verify-codify→ship chaining), each with strict `not_contains` on user-deferral phrases. Optionally harden S7 and S8 with the same strict assertions S21 uses.
-- **Priority:** low (mitigation applied across all 5 skills; this is defense-in-depth)
-- **Status:** open
-
-## SURFACE-2026-05-11-ENTRYPOINT-SKILLS-LOAD-PRODUCT-CONTEXT
-- **Source:** user-initiated (session-start dispatch, 2026-05-11)
-- **Target level:** feature:spec (touches multiple entry-point skills; needs design before implementation)
-- **Type:** workflow-enhancement
-- **Summary:** Entry-point skills (the ones run first in a workflow — `task-plan`, `feature-spec`, `feature-plan`, `feature-reproduce`, `incident-report`, `product-vision`) should optionally load relevant context files from `docs/product/` (e.g., `arch.md`, `wbs.md`, `vision.md`, `roadmap.md`, `context.md`) when present, so the planning step starts with strategic context rather than working from a blank slate.
-- **Context:** Today, an entry skill knows nothing about the project's product docs unless the user pastes them in. For tasks/features that touch architectural decisions or relate to a WBS work package, this is wasteful — the docs already exist on disk. The user flagged this as needing debate: *which* file to load is non-obvious and varies by skill.
-- **Open design questions (the "debate" the user called out):**
-  - **Per-skill mapping.** Which docs are relevant for which entry skill? Sketch:
-    - `task-plan` → maybe `context.md` only (lightweight); arch/wbs may be overkill for atomic tasks
-    - `feature-spec` → `vision.md`, `arch.md`, `wbs.md`, `roadmap.md` (full strategic context)
-    - `feature-plan` → `arch.md`, `wbs.md` (just enough to align with existing work and constraints)
-    - `feature-reproduce` → minimal — maybe `context.md` (bug context is in the bug itself, not in product docs)
-    - `incident-report` → `arch.md`, `context.md` (where in the system did this happen?)
-    - `product-vision` → none (it WRITES vision.md; loading it would be backward)
-  - **Load strategy.** Read full file every time? Or summarize on first load and cache? Full read is simpler; cost is context-window bloat for docs the planning step doesn't need.
-  - **Optional vs required.** Some projects (like this one) skip `context.md` deliberately. Should the skill no-op silently when a file is absent, or warn?
-  - **Mid-skill vs entry-time loading.** Load all relevant docs up front, or lazily when the skill's reasoning surfaces a question that needs them? Up-front is simpler; lazy is more context-efficient but harder to write into a skill prompt.
-  - **Interaction with CLAUDE.md.** CLAUDE.md is already auto-loaded by the harness — it overlaps with `context.md`. Avoid double-loading.
-- **Suggested action:** Open a feature-spec to design the mapping table and load strategy. Likely deliverable is a small shared snippet in `CLAUDE.snippet.md` ("Entry-point skills check `docs/product/<file>.md` for ...") plus per-skill prompt edits.
-- **Priority:** medium (improves quality of every workflow's first step; worth designing carefully before implementing)
-- **Status:** resolved 2026-05-14 by feature `entrypoint-skills-load-product-context` (commit 786c03f). Landed: per-skill mapping table in `CLAUDE.snippet.md` "Entry-skill product-context loading (GLOBAL)" section + cross-level note in `transitions.md` + `## Step 0` sections in all 6 entry-point SKILL.md files + 8 grep_check assertions in `tests/check-structure.sh`. Load discipline tightened past the spec's original sketch: pointer-default for all skills, eager-read only for feature-spec (arch.md+wbs.md) and feature-plan (wbs.md with conversation-context skip), conditional-read for task-plan/incident-report (arch.md only on trigger phrases), 300-line size guard, no context.md anywhere.
 
 ## SURFACE-2026-05-10-I20-SCENARIO-MISSING
 - **Source:** feature:verify-codify (incident-codify feature, Phase 3, 2026-05-10)
@@ -170,7 +74,7 @@
   - Whether Claude Code's hook system exposes input-box-focus / typing events (PreToolUse and Stop are confirmed; the rest may not exist)
   - Whether session correlation across `/clear`, `/session-pause`, `/session-resume` is feasible with current hook payloads
   - Whether the centralized DB should be queryable in-session (slash command `/usage-today`) or only via external dashboard
-- **Priority:** low (exploration — no commitment, no deadline)
+- **Priority:** medium (bumped from low 2026-05-17 — user re-evaluation during backlog grooming)
 - **Status:** open — idea-only, no spec yet
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
@@ -182,41 +86,3 @@
 - **Suggested action:** Add Fnew → build → reproduce REDIRECT transition. Update feature-build SKILL.md to surface this as a valid exit when "could not confirm fix worked" condition holds. Update reproduce SKILL.md to recognize REDIRECT entry and hand back to build.
 - **Priority:** low (deferred — wait until we observe the need in practice)
 - **Status:** open
-
-## SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP
-- **Source:** observed in a real feature run (canva-permission-warmup, replicator-1-0 project, 2026-05-06)
-- **Target level:** feature:spec (skills + orchestrator wording)
-- **Type:** bug (model-execution drift, not a state-machine bug)
-- **Summary:** After verify-codify on the final phase, the agent wrote a closing message that said "Ready for **feature-finalize → feature-ship**" — order inverted — and the user said "yes, proceed", which ran `/feature-finalize` first, then the agent finished with "Run `/feature-ship` to open the PR". The state machine is correct (F16 verify-codify→ship, F17 ship→finalize); the skills are correct (verify-codify/SKILL.md:18 says `/feature-ship` next; ship/SKILL.md:16 says `/feature-finalize` next). The bug was in the agent's *own next-step prose* between skill invocations.
-- **Evidence:**
-  - `agents/feature-workflow/AGENTS.md:38` diagram: `... ship → finalize → [refactor] → Exit`
-  - `agents/feature-workflow/AGENTS.md:90-91`: F16 verify-codify→ship, F17 ship→finalize
-  - `skills/feature-verify-codify/SKILL.md:96-97`: F16 path tells user `/feature-ship`
-  - `skills/feature-ship/SKILL.md:16`: F17 path tells user `/feature-finalize`
-  - The agent wrote `Unvisited: feature-finalize, feature-ship` in the WIP file's Current Node — listing finalize *before* ship. The Work Tree format docs don't specify whether `Unvisited:` is ordered by sequence-of-execution. The agent then read its own "Unvisited" list as a sequence and acted on it that way.
-- **Likely root cause hypotheses (need investigation, not yet confirmed):**
-  1. **`Unvisited:` field semantics undefined.** Work Tree spec in `CLAUDE.snippet.md` describes it as "phases not yet started" but doesn't say whether order matters. Agent may have written it in order-of-thought rather than order-of-execution. If the field is supposed to be ordered, the spec should say so; if it's a set, it shouldn't be read as a sequence.
-  2. **Single-step invocation prose drift.** When the agent runs in single-step mode (not `/session-start` orchestration), it owns the "what's next" message between skills. Nothing forces it to re-read `agents/feature-workflow/AGENTS.md` at that handoff. The skill it just ran (verify-codify) said "/feature-ship" but the agent's *summary message* added "feature-finalize → feature-ship" — a confabulation past the skill's directive.
-  3. **No assertion at skill entry.** When `/feature-finalize` ran, nothing checked "did ship happen first?" The skill executed cleanly even though the prerequisite F17 transition hadn't fired. Finalize's preconditions don't reference ship state.
-- **Side effects observed in the bad run:**
-  - Finalize wrote a "Feature complete: ... has shipped" closure message and updated `docs/product/roadmap.md` to mark the milestone done — *before* shipping. Roadmap is now claiming a shipped feature that hasn't been pushed.
-  - WIP file was archived (`mv` to `workflow/archive/`) — `/feature-ship` now has no WIP file to read state from.
-  - Backlog was scanned and the canva-permission-warmup-UX item was marked "resolved 2026-05-06" pre-ship.
-- **Suggested action (when picked up):**
-  1. Tighten `Unvisited:` spec — either make it explicitly "ordered, sequence of execution" or rename it. Lean toward ordered.
-  2. Add an explicit "Order of operations" line to `agents/feature-workflow/AGENTS.md` near the diagram: "After verify-codify F16 → ship → finalize. Never finalize before ship — finalize archives the WIP file that ship reads from."
-  3. Consider adding a check at the top of `feature-finalize/SKILL.md`: "If the WIP file's `Current Node` shows verify-codify just completed (not ship), STOP and tell user to run `/feature-ship` first."
-  4. Investigation question: did the *closing prose of feature-verify-codify* in the bad run contradict the skill's stated F16 → `/feature-ship` directive? If the agent went off-script there, the bug is upstream of finalize. Worth replaying the run's verify-codify output if available.
-- **Why this hurts:** the bug is silent. The state machine never errored; both skills ran cleanly; the WIP file was archived. The only signal that the order was wrong was the user noticing the closure message claimed "shipped" before any push. With auto-archival, recovering requires un-archiving the WIP file and rolling back roadmap edits.
-- **Priority:** medium — has not recurred in tests (this is a real-run observation, not a transition-test failure), but blast radius is high when it happens (false roadmap claims, missing artifact for ship).
-- **Status:** resolved 2026-05-13 by feature `finalize-before-ship-order-flip` (commit ff3c70d). Three defense layers landed: Unvisited: spec tightened to ordered/sequence-of-execution; AGENTS.md ship→finalize order-of-ops line + feature-finalize §0 precondition guard; verify-codify F16 prose forbids enumerating finalize. Regression scenario F16-order-flip codifies the fix.
-
-## SURFACE-2026-05-06-S12-AUTOCHAIN-LEAK-IN-AUTOPILOT
-- **Source:** feature:verify-auto (full-autopilot dual-identity + strict feature, S12 strict assertion)
-- **Target level:** feature:spec
-- **Type:** bug
-- **Summary:** S12 ("session:autopilot (mode 3) pauses at verify-human") FAILs strict mode because the model emits "auto-chain" in its prose despite Mode 3 explicitly stating verify-human is the only pause point. The structured TRANSITION emission is correct (S12); the prose is contradicting the assertion. Discovered when `not_contains_strict: true` was added to surface this kind of contradiction.
-- **Context:** run-2026-05-06-143839-combined.json. The model output structurally matches but text-content-leaks "auto-chain" while describing the autopilot pause. Likely the model is reasoning about what it WOULDN'T do and the negation slips. session-start/SKILL.md "Drive modes" section may need wording that suppresses prose mention of auto-chain when discussing pause points.
-- **Suggested action:** Investigate session-start/SKILL.md "Mode 3" guidance. Consider adding "When describing Mode 3's behavior, do not use 'auto-chain' even in negation — say 'pauses at verify-human' affirmatively." Test with `--id S12` after edit.
-- **Priority:** medium
-- **Status:** pending — discovered by strict-mode harness; surfaces a wording/clarity issue, not a structural one.
