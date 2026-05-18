@@ -263,7 +263,13 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
     - [x] Structural suite (tests/check-structure.sh Phase 5b) covers: file exists, executable bit, perl -c compile, symlink resolves to repo, README exists, behavioral suite invocation
     - [x] Skip-by-design: 100-call < 2000ms performance assertion (kept out of CI; environment-dependent flake risk; lives as a Phase 4 bench script per the WIP plan)
 
-- [ ] Phase 2: Wire all 10 hook events with correct meta payloads  <!-- status: NOT-STARTED; depends on Phase 1 -->
+- [x] Phase 2: Wire all 10 hook events with correct meta payloads  <!-- status: complete 2026-05-18; build → verify-auto → verify-self → verify-human (F11 skip) → verify-codify all complete -->
+  **Relevance check (before Phase 2):**
+  - Requester still needs this: yes — backlog priority bumped low→medium yesterday during grooming, signaling active interest
+  - Requirements unchanged: yes — spec amendment in Phase 1 was a perf-budget adjustment, no scope change to the 10-event matrix or meta-payload table
+  - Solution still feasible: yes — Phase 1 proved Perl hook works at ~15ms/call; adding 9 more event branches is an in-language dispatch refactor, no architectural surprises expected
+  - No superior alternative discovered: yes — no Phase 1 finding invalidates the Phase 2-4 plan
+  **Verdict:** proceed
   **Observable outcomes:**
   - CLI: For each of the 10 event names (UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, Notification, SessionStart, SessionEnd, SubagentStart, SubagentStop), piping a representative JSON payload to `hook.pl` produces exactly one row with `event=<name>`.
   - CLI: `UserPromptSubmit` payload with `"prompt":"hello world"` produces a row with `meta` containing `{"prompt_length_chars": 11}` and NO `prompt` text field.
@@ -272,22 +278,22 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
   - CLI: `SessionStart` payload with `source='resume'` produces `meta` containing `{"source": "resume"}`.
   - CLI: `Notification` payload with `message='X'×300` (300 chars) produces `meta.message` truncated to exactly 200 chars.
   - CLI: Privacy check — `grep -a "SECRET-MARKER" ~/.claude-time/events.sqlite` returns nothing after seeding a payload with that marker as the prompt text (privacy guarantee).
-  - [ ] P2.1 Refactor `hook.pl` to dispatch on `hook_event_name` via a hash-of-handlers. Each handler reads its specific fields from the parsed JSON and builds the column + meta values  <!-- status: NOT-STARTED -->
-  - [ ] P2.2 `UserPromptSubmit` handler: compute `prompt_length_chars` via `length($payload->{prompt} // '')`, embed as `{"prompt_length_chars": N}` JSON in `meta`, never embed the prompt text  <!-- status: NOT-STARTED -->
-  - [ ] P2.3 `PreToolUse`/`PostToolUse`/`PostToolUseFailure` handlers: populate `tool_name` column + `meta.tool_use_id`  <!-- status: NOT-STARTED -->
-  - [ ] P2.4 `SubagentStart`/`SubagentStop` handlers: populate `agent_type` column  <!-- status: NOT-STARTED -->
-  - [ ] P2.5 `SessionStart` handler: populate `meta.source`  <!-- status: NOT-STARTED -->
-  - [ ] P2.6 `Notification` handler: populate `meta.message` truncated to 200 chars (`substr($msg, 0, 200)`)  <!-- status: NOT-STARTED -->
-  - [ ] P2.7 `Stop`/`SessionEnd` handlers: NULL meta (only column-level fields)  <!-- status: NOT-STARTED -->
-  - [ ] P2.8 Privacy assertion script (`tools/claude-time/test/privacy_check.sh`): seeds known prompt text containing SECRET-MARKER, asserts no occurrence of that marker in the DB binary  <!-- status: NOT-STARTED -->
-  - [ ] verify-auto  <!-- status: NOT-STARTED -->
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
-  - [ ] verify-human  <!-- status: NOT-STARTED -->
-    - [ ] 10-event smoke: pipe one representative payload of each of the 10 events; `SELECT event, count(*) FROM events GROUP BY event` shows 1 of each  <!-- status: NOT-STARTED -->
-    - [ ] Prompt-length present, prompt-text absent: seed `"prompt":"SECRET-MARKER-XYZ"`, then `grep -a SECRET-MARKER-XYZ ~/.claude-time/events.sqlite` returns nothing  <!-- status: NOT-STARTED -->
-    - [ ] Notification truncation: 300-char message → `SELECT length(json_extract(meta,'$.message')) FROM events WHERE event='Notification'` → 200  <!-- status: NOT-STARTED -->
-    - [ ] Tool pairing: PreToolUse(`tool_use_id=ABC`) + PostToolUse(`tool_use_id=ABC`) produce two rows both showing `ABC` in `meta`  <!-- status: NOT-STARTED -->
-  - [ ] verify-codify  <!-- status: NOT-STARTED -->
+  - [x] P2.1 Refactored `hook.pl` to dispatch on `hook_event_name` via a `%handlers` hash. Each handler returns `($tool_name, $agent_type, $meta_json)` triple; main flow builds INSERT from the triple plus the unconditional columns (ts, session_id, cwd, event). Unrecognized events no-op silently (forward-compat).
+  - [x] P2.2 `UserPromptSubmit` handler: `length($payload->{prompt} // '')` then `encode_json({prompt_length_chars => $len})` into meta. Privacy invariant verified by `privacy_check.sh` — marker text never reaches the DB binary.
+  - [x] P2.3 `PreToolUse`/`PostToolUse`/`PostToolUseFailure` handlers (3 separate dispatch entries): populate `tool_name` column from `$payload->{tool_name}`, embed `tool_use_id` in `meta` JSON.
+  - [x] P2.4 `SubagentStart`/`SubagentStop` handlers: populate `agent_type` column from `$payload->{subagent_type}`, NULL meta.
+  - [x] P2.5 `SessionStart` handler: `encode_json({source => $src})` into meta.
+  - [x] P2.6 `Notification` handler: `substr($msg, 0, 200)` truncation, encoded as `{message: <truncated>}` JSON in meta. Spec acceptance #4 honored.
+  - [x] P2.7 `Stop`/`SessionEnd` handlers: return `(undef, undef, undef)` → INSERT writes NULL for tool_name, agent_type, and meta.
+  - [x] P2.8 `tools/claude-time/test/privacy_check.sh`: seeds 3 events (UserPromptSubmit with marker in prompt; PreToolUse with marker in tool_input; PostToolUse with marker in tool_result). Asserts marker is absent from DB binary, WAL, and SHM files via `grep -a`. Run-on-demand AND wired into `tests/check-structure.sh` Phase 5b.
+  - [x] verify-auto  <!-- status: 2026-05-18 — perl -c OK, bash -n OK on both test scripts, test_hook.sh 17/17 PASS, privacy_check.sh PASS -->
+  - [x] verify-self  <!-- status: 2026-05-18 — all 7 Phase 2 observable outcomes PASS against deployed symlink: 10-event matrix, prompt-length-only privacy, PreToolUse pairing pattern, SubagentStart agent_type, SessionStart meta.source, 200-char truncation, 3-marker privacy scan -->
+  - [x] verify-human  <!-- status: 2026-05-18 F11-skip — human affirmed isolated-change (existing file modified but no consuming surface enabled); all 7 verify-self outcomes excluded because PASS -->
+    - [x] (F11 skip — verify-self covered all 7 outcomes; nothing for human to manually walk through)  <!-- status: covered-by-verify-self -->
+  - [x] verify-codify  <!-- status: 2026-05-18 — no new tests needed; codification happened during build. test_hook.sh extended 10→17 assertions covers all 7 Phase 2 outcomes; privacy_check.sh covers the 3-marker invariant; both wired into check-structure.sh Phase 5b. Structure suite 101/0 (was 100/0 — +1 for new privacy check), behavioral 17/17, no triage required. -->
+    - [x] Coverage decision: extend `test_hook.sh` (was 10 assertions, now 17) — single test surface across Phase 1+2 keeps cognitive load low
+    - [x] Standalone `privacy_check.sh` — run-on-demand single-purpose check; also wired into Phase 5b for every-build assertion
+    - [x] No new test artifact needed at Phase 2 codify (built during build phase)
 
 - [ ] Phase 3: Reclassifier CLI — `claude-time report`  <!-- status: NOT-STARTED; depends on Phase 2 -->
   **Observable outcomes:**
@@ -338,10 +344,10 @@ The hook script dispatches on `hook_event_name` from stdin payload, so a single 
 
 ## Current Node
 
-- **Path:** Feature > Phase 2 > P2.1 (entry — relevance check pending)
-- **Active scope:** Phase 1 complete; advancing to Phase 2 (wire remaining 9 hook events). Phase-Advance Relevance Gate runs before P2.1.
+- **Path:** Feature > Phase 3 > P3.1 (entry — relevance check pending)
+- **Active scope:** Phase 2 complete; advancing to Phase 3 (reclassifier CLI). Phase-Advance Relevance Gate runs before P3.1.
 - **Blocked:** none
-- **Unvisited:** Phase 2 (P2.1 → P2.8 → all 5 verify nodes), Phase 3, Phase 4, ship, finalize
+- **Unvisited:** Phase 3 (P3.1 → P3.7 → all 5 verify nodes), Phase 4, ship, finalize
 - **Open discoveries:** 0
 
 ## Discoveries

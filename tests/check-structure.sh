@@ -350,7 +350,7 @@ echo ""
 # Phase 1 of the claude-code-time-tracking feature shipped tools/claude-time/hook.pl
 # (Perl). These structural assertions guard against regression of the artifact
 # itself — existence, executable bit, perl -c compile, symlink resolution.
-# Behavioral assertions live in tools/claude-time/test/test_hook_phase1.sh,
+# Behavioral assertions live in tools/claude-time/test/test_hook.sh,
 # which is invoked at the bottom of this Phase.
 
 echo "[Phase 5b] claude-time hook script integrity"
@@ -388,17 +388,29 @@ else
 fi
 
 # Behavioral end-to-end test for the hook. Lives in the tool's own test/ dir
-# rather than being inlined here — it's a behavioral suite (10 assertions),
-# not a structural one. We invoke it and surface its pass/fail.
-if [ -x tools/claude-time/test/test_hook_phase1.sh ]; then
-  if tools/claude-time/test/test_hook_phase1.sh > /dev/null 2>&1; then
-    check "tools/claude-time/test/test_hook_phase1.sh — 10 behavioral assertions" "pass"
+# rather than being inlined here — it's a behavioral suite, not a structural
+# one. We invoke it and surface its pass/fail.
+if [ -x tools/claude-time/test/test_hook.sh ]; then
+  if tools/claude-time/test/test_hook.sh > /dev/null 2>&1; then
+    check "tools/claude-time/test/test_hook.sh — behavioral assertions" "pass"
   else
-    err=$(tools/claude-time/test/test_hook_phase1.sh 2>&1 | grep '\[FAIL\]' | head -3)
-    check "tools/claude-time/test/test_hook_phase1.sh — 10 behavioral assertions" "fail" "$err"
+    err=$(tools/claude-time/test/test_hook.sh 2>&1 | grep '\[FAIL\]' | head -3)
+    check "tools/claude-time/test/test_hook.sh — behavioral assertions" "fail" "$err"
   fi
 else
-  check "tools/claude-time/test/test_hook_phase1.sh exists + executable" "fail" "missing or not executable"
+  check "tools/claude-time/test/test_hook.sh exists + executable" "fail" "missing or not executable"
+fi
+
+# Privacy assertion — single-purpose, run every structural check.
+if [ -x tools/claude-time/test/privacy_check.sh ]; then
+  if tools/claude-time/test/privacy_check.sh > /dev/null 2>&1; then
+    check "tools/claude-time/test/privacy_check.sh — privacy invariant" "pass"
+  else
+    err=$(tools/claude-time/test/privacy_check.sh 2>&1 | grep '\[FAIL\]' | head -3)
+    check "tools/claude-time/test/privacy_check.sh — privacy invariant" "fail" "$err"
+  fi
+else
+  check "tools/claude-time/test/privacy_check.sh exists + executable" "fail" "missing or not executable"
 fi
 
 echo ""

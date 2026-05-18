@@ -6,7 +6,7 @@
 # Exits 0 unconditionally — never blocks a tool call on a tracking failure.
 #
 # Why Perl: /usr/bin/perl is bundled on macOS and standard on Linux. Single-process
-# (no jq subprocess), JSON::PP + Time::HiRes are stdlib. Measured ~10ms/call on
+# (no jq subprocess), JSON::PP + Time::HiRes are stdlib. Measured ~15ms/call on
 # macOS — the lowest zero-dep cold-start of the candidates evaluated during the
 # F23 plan revision (vs ~95ms for bash+jq+python3, ~27ms for /usr/bin/python3).
 
@@ -19,7 +19,7 @@ use warnings;
 exit 0 unless $ENV{CLAUDE_TIME_TRACKING};
 
 # From here on, tracking is enabled — load the modules we need.
-require JSON::PP;     JSON::PP->import('decode_json');
+require JSON::PP;     JSON::PP->import('decode_json', 'encode_json');
 require Time::HiRes;  Time::HiRes->import('time');
 
 # Drain stdin. Some Claude Code hook invocations may have no payload (manual test).
@@ -37,9 +37,63 @@ if ($raw ne '') {
 }
 
 my $event_name = $payload->{hook_event_name} // '';
+exit 0 if $event_name eq '';
 
-# Phase 1 wires Stop only. Other events no-op until Phase 2.
-exit 0 unless $event_name eq 'Stop';
+# ---- Per-event handlers. Each returns ($tool_name, $agent_type, $meta_or_undef). ----
+# Privacy invariant: the only place we touch $payload->{prompt} is to read its
+# length. No handler may embed the prompt text itself in $tool_name, $agent_type,
+# or $meta. The privacy_check.sh test asserts this externally.
+my %handlers = (
+    'UserPromptSubmit' => sub {
+        my $len = length($payload->{prompt} // '');
+        return (undef, undef, encode_json({ prompt_length_chars => $len + 0 }));
+    },
+    'PreToolUse' => sub {
+        my $tool = $payload->{tool_name};
+        my $tuid = $payload->{tool_use_id};
+        my $meta = defined $tuid ? encode_json({ tool_use_id => "$tuid" }) : undef;
+        return ($tool, undef, $meta);
+    },
+    'PostToolUse' => sub {
+        my $tool = $payload->{tool_name};
+        my $tuid = $payload->{tool_use_id};
+        my $meta = defined $tuid ? encode_json({ tool_use_id => "$tuid" }) : undef;
+        return ($tool, undef, $meta);
+    },
+    'PostToolUseFailure' => sub {
+        my $tool = $payload->{tool_name};
+        my $tuid = $payload->{tool_use_id};
+        my $meta = defined $tuid ? encode_json({ tool_use_id => "$tuid" }) : undef;
+        return ($tool, undef, $meta);
+    },
+    'SubagentStart' => sub {
+        my $type = $payload->{subagent_type};
+        return (undef, $type, undef);
+    },
+    'SubagentStop' => sub {
+        my $type = $payload->{subagent_type};
+        return (undef, $type, undef);
+    },
+    'SessionStart' => sub {
+        my $src = $payload->{source};
+        my $meta = defined $src ? encode_json({ source => "$src" }) : undef;
+        return (undef, undef, $meta);
+    },
+    'SessionEnd' => sub { return (undef, undef, undef); },
+    'Stop'       => sub { return (undef, undef, undef); },
+    'Notification' => sub {
+        my $msg = $payload->{message};
+        return (undef, undef, undef) unless defined $msg;
+        # Truncate to 200 chars — spec acceptance #4 / Technical Constraints
+        $msg = substr($msg, 0, 200);
+        return (undef, undef, encode_json({ message => $msg }));
+    },
+);
+
+# Unrecognized event names no-op silently (forward-compat for new hook events).
+exit 0 unless exists $handlers{$event_name};
+
+my ($tool_name, $agent_type, $meta_json) = $handlers{$event_name}->();
 
 my $session_id = $payload->{session_id} // 'unknown';
 my $cwd        = $payload->{cwd} // '';
@@ -53,15 +107,20 @@ unless (-d $db_dir) {
 my $db_path = "$db_dir/events.sqlite";
 
 # ---- SQL-quote helper. Doubles single quotes per SQL standard. ----
+# Returns either a quoted SQL string literal or the bare token NULL for undef.
 sub sql_q {
-    my $s = shift // '';
+    my $s = shift;
+    return 'NULL' unless defined $s;
     $s =~ s/'/''/g;
     return "'$s'";
 }
 
-my $sid_sql = sql_q($session_id);
-my $cwd_sql = sql_q($cwd);
-my $evt_sql = sql_q($event_name);
+my $sid_sql  = sql_q($session_id);
+my $cwd_sql  = sql_q($cwd);
+my $evt_sql  = sql_q($event_name);
+my $tool_sql = sql_q($tool_name);
+my $type_sql = sql_q($agent_type);
+my $meta_sql = sql_q($meta_json);
 
 # ---- Schema bootstrap + INSERT in one sqlite3 subprocess. ----
 # IF NOT EXISTS makes this idempotent. PRAGMA journal_mode=WAL is also idempotent
@@ -82,7 +141,7 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_session_ts ON events(session_id, ts);
 CREATE INDEX IF NOT EXISTS idx_ts ON events(ts);
 INSERT INTO events (ts, session_id, cwd, event, tool_name, agent_type, meta)
-VALUES ($ts_ms, $sid_sql, $cwd_sql, $evt_sql, NULL, NULL, NULL);
+VALUES ($ts_ms, $sid_sql, $cwd_sql, $evt_sql, $tool_sql, $type_sql, $meta_sql);
 SQL
 
 # Pipe to sqlite3. If sqlite3 isn't on PATH or the DB is read-only, the pipe open
