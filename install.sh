@@ -91,6 +91,36 @@ if [ -d "$SOURCE_DIR/hooks" ]; then
   done
 fi
 
+# --- Symlink claude-time tool (hook + CLI) ---
+# The hook script lives under tools/claude-time/ rather than hooks/ because it's
+# part of a larger tool (with a CLI sibling). Symlink it into ~/.claude/hooks/
+# anyway so users can wire it from settings.json with the conventional path.
+CLAUDE_TIME_DIR="$SOURCE_DIR/tools/claude-time"
+if [ -d "$CLAUDE_TIME_DIR" ]; then
+  mkdir -p "$TARGET_DIR/hooks"
+
+  # The hook script.
+  hook_src="$CLAUDE_TIME_DIR/hook.pl"
+  hook_link="$TARGET_DIR/hooks/claude-time-hook.pl"
+  if [ -f "$hook_src" ]; then
+    if [ -L "$hook_link" ]; then
+      current_target="$(readlink "$hook_link")"
+      if [ "$current_target" = "$hook_src" ]; then
+        echo "  [ok] hooks/claude-time-hook.pl (already linked)"
+      else
+        echo "  [update] hooks/claude-time-hook.pl (repointing symlink)"
+        rm "$hook_link"
+        ln -s "$hook_src" "$hook_link"
+      fi
+    elif [ -e "$hook_link" ]; then
+      echo "  [skip] hooks/claude-time-hook.pl (exists but is not a symlink — manual resolution needed)"
+    else
+      ln -s "$hook_src" "$hook_link"
+      echo "  [new] hooks/claude-time-hook.pl"
+    fi
+  fi
+fi
+
 # --- Inject workflow snippet into ~/.claude/CLAUDE.md ---
 SNIPPET_FILE="$SOURCE_DIR/CLAUDE.snippet.md"
 GLOBAL_CLAUDE_MD="$TARGET_DIR/CLAUDE.md"

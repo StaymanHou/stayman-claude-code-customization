@@ -345,6 +345,64 @@ fi
 
 echo ""
 
+# ── Phase 5b: claude-time hook script integrity ───────────────────────────
+#
+# Phase 1 of the claude-code-time-tracking feature shipped tools/claude-time/hook.pl
+# (Perl). These structural assertions guard against regression of the artifact
+# itself — existence, executable bit, perl -c compile, symlink resolution.
+# Behavioral assertions live in tools/claude-time/test/test_hook_phase1.sh,
+# which is invoked at the bottom of this Phase.
+
+echo "[Phase 5b] claude-time hook script integrity"
+
+if [ -f tools/claude-time/hook.pl ]; then
+  check "tools/claude-time/hook.pl exists in repo" "pass"
+else
+  check "tools/claude-time/hook.pl exists in repo" "fail" "file missing"
+fi
+
+if [ -x tools/claude-time/hook.pl ]; then
+  check "tools/claude-time/hook.pl is executable" "pass"
+else
+  check "tools/claude-time/hook.pl is executable" "fail" "missing executable bit"
+fi
+
+if perl -c tools/claude-time/hook.pl 2>/dev/null; then
+  check "tools/claude-time/hook.pl passes perl -c" "pass"
+else
+  check "tools/claude-time/hook.pl passes perl -c" "fail" "perl -c failed"
+fi
+
+ct_link_target=$(readlink ~/.claude/hooks/claude-time-hook.pl 2>/dev/null || echo "")
+if echo "$ct_link_target" | grep -q "my-claude-code-customization/tools/claude-time/hook.pl"; then
+  check "~/.claude/hooks/claude-time-hook.pl symlink resolves to this repo" "pass"
+else
+  check "~/.claude/hooks/claude-time-hook.pl symlink resolves to this repo" "fail" \
+    "target: ${ct_link_target:-missing}"
+fi
+
+if [ -f tools/claude-time/README.md ]; then
+  check "tools/claude-time/README.md exists" "pass"
+else
+  check "tools/claude-time/README.md exists" "fail" "file missing"
+fi
+
+# Behavioral end-to-end test for the hook. Lives in the tool's own test/ dir
+# rather than being inlined here — it's a behavioral suite (10 assertions),
+# not a structural one. We invoke it and surface its pass/fail.
+if [ -x tools/claude-time/test/test_hook_phase1.sh ]; then
+  if tools/claude-time/test/test_hook_phase1.sh > /dev/null 2>&1; then
+    check "tools/claude-time/test/test_hook_phase1.sh — 10 behavioral assertions" "pass"
+  else
+    err=$(tools/claude-time/test/test_hook_phase1.sh 2>&1 | grep '\[FAIL\]' | head -3)
+    check "tools/claude-time/test/test_hook_phase1.sh — 10 behavioral assertions" "fail" "$err"
+  fi
+else
+  check "tools/claude-time/test/test_hook_phase1.sh exists + executable" "fail" "missing or not executable"
+fi
+
+echo ""
+
 # ── Phase 6: notify-human skill is gone ───────────────────────────────────
 #
 # The notify-human skill was replaced by the notify-telegram.sh hook.
