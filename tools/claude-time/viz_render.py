@@ -10,6 +10,11 @@ Reads `viz/template.html` + `viz/dashboard.jsx`, applies transforms that:
   5. Add the refresh-icon tooltip ("run: claude-time visualize").
   6. Render `interrupts: [<minutes>]` as vertical hairlines inside the
      active bar (Phase 2 added the data; Phase 3 renders it).
+  7. Render a `snapshot: HH:MM` caption in the toolbar (WP2). The caption
+     reads `window.CT_DATA.meta.snapshot`, populated by `_cmd_visualize`
+     in `claude-time` at emit time. Coexists with the live NOW marker
+     (computed client-side via `useNowMin()` in `dashboard.jsx`): the
+     cursor moves, the bars don't — the caption is how the user is told.
 
 Historically (v1) `viz/dashboard.jsx` was treated as immutable and Phase 5c
 byte-pinned it. Starting with the v2 cycle (claude-time-visualize-v2,
@@ -157,6 +162,7 @@ function Dashboard() {
         view={view}
         onViewChange={setView}
         dateLabel={isDay ? today.label : week.label}
+        snapshot={(window.CT_DATA.meta && window.CT_DATA.meta.snapshot) || null}
       />
       <SummaryStrip
         filterChips={filterChips}
@@ -243,7 +249,7 @@ function EmptyState({ date }) {
 }
 
 /* ── Toolbar — interactive variant with view switching ────────── */
-function InteractiveToolbar({ view, onViewChange, dateLabel }) {
+function InteractiveToolbar({ view, onViewChange, dateLabel, snapshot }) {
   const tabBtn = (label, value, current, enabled = true) => (
     <button
       key={value}
@@ -318,6 +324,18 @@ function InteractiveToolbar({ view, onViewChange, dateLabel }) {
         <IconCalendar size={12} />
         {dateLabel}
       </div>
+
+      {/* Snapshot caption — communicates that the data is point-in-time at emit
+          (the live NOW cursor moves; the bars do not until next visualize run). */}
+      {snapshot && (
+        <span
+          title="Data is a snapshot at emit time. The live NOW cursor moves; bars do not. Re-run `claude-time visualize` for fresh data."
+          style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11,
+            color: CT_TOKENS.textTertiary, cursor: 'help',
+          }}
+        >snapshot: {snapshot}</span>
+      )}
 
       <div style={{ flex: 1 }} />
 

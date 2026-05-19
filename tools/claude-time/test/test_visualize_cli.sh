@@ -218,7 +218,42 @@ else
     check "adaptive hour-ruler narrow-window" fail "rc=$adapt_rc, hour_range pattern not found"
 fi
 
-# ── 13. Re-running visualize overwrites in place (no archive) ─────────
+# ── 13. WP2: NOW marker is client-side (no hardcoded values, has Date.now + cleanup) ─
+# Codifies the WP2 contract: the emit-time NOW marker constant + label were
+# removed; the dashboard derives NOW from the system clock client-side; the
+# useNowMin hook installs a setInterval cleanup; the data payload carries a
+# meta.snapshot field that the toolbar caption renders.
+if grep -q 'NOW_MIN = 17 \* 60 + 22' "$OUT_HTML"; then
+    check "WP2: emitted HTML lacks v1 hardcoded NOW_MIN constant" fail "found 'NOW_MIN = 17 * 60 + 22' in $OUT_HTML"
+else
+    check "WP2: emitted HTML lacks v1 hardcoded NOW_MIN constant" pass
+fi
+
+if grep -q 'NOW · 17:22' "$OUT_HTML"; then
+    check "WP2: emitted HTML lacks v1 hardcoded 'NOW · 17:22' label" fail "found 'NOW · 17:22' in $OUT_HTML"
+else
+    check "WP2: emitted HTML lacks v1 hardcoded 'NOW · 17:22' label" pass
+fi
+
+if grep -qE 'Date\.now\(\)|new Date\(' "$OUT_HTML"; then
+    check "WP2: emitted HTML contains client-side timestamp source (Date.now() or new Date(...))" pass
+else
+    check "WP2: emitted HTML contains client-side timestamp source" fail "no Date.now()/new Date( in $OUT_HTML"
+fi
+
+if grep -q '"snapshot"' "$OUT_HTML"; then
+    check "WP2: emitted JSON payload contains \"snapshot\" key (meta.snapshot)" pass
+else
+    check "WP2: emitted JSON payload contains \"snapshot\" key" fail "no \"snapshot\" key in $OUT_HTML"
+fi
+
+if grep -q 'clearInterval' "$OUT_HTML"; then
+    check "WP2: emitted HTML contains clearInterval (useNowMin cleanup)" pass
+else
+    check "WP2: emitted HTML contains clearInterval cleanup" fail "no clearInterval in $OUT_HTML"
+fi
+
+# ── 14. Re-running visualize overwrites in place (no archive) ─────────
 "$CLI" visualize --no-open > /dev/null 2>&1
 mtime1=$(stat -f '%m' "$OUT_HTML" 2>/dev/null || stat -c '%Y' "$OUT_HTML")
 sleep 1

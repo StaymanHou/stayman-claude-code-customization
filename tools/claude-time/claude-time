@@ -485,9 +485,19 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
     # ISO week's Monday for the week-view data.
     monday = target_day - timedelta(days=target_day.weekday())
 
+    # Snapshot timestamp — the wall-clock at emit time. Surfaced in the dashboard
+    # as a "snapshot: HH:MM" caption next to the live NOW marker, so users can tell
+    # the data is point-in-time even though the NOW cursor moves.
+    snapshot_dt = datetime.now()
+    meta = {
+        "snapshot": snapshot_dt.strftime("%H:%M"),
+        "snapshot_iso": snapshot_dt.isoformat(timespec="seconds"),
+    }
+
     if args.demo:
         # Use the design's bundled mock data without touching SQLite.
         data = _load_demo_data(viz_dir)
+        data["meta"] = meta
     else:
         if not db_path.exists():
             print(f"error: {db_path} does not exist. Run Claude Code with CLAUDE_TIME_TRACKING=1 to populate it, "
@@ -502,7 +512,7 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
                                                 day_events, cfg, _auto_alias_for_cwd)
         week_payload = viz_data.build_week_data(monday.isoformat(),
                                                 events_by_day, cfg, _auto_alias_for_cwd)
-        data = {"today": today_payload, "week": week_payload}
+        data = {"today": today_payload, "week": week_payload, "meta": meta}
 
     initial_view = "week" if args.week else "day"
     html = viz_render.render_html(template_path, dashboard_jsx_path, data, initial_view)

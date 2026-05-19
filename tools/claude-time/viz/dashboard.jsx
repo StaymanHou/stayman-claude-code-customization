@@ -53,6 +53,26 @@ const fmtClock = (mins) => {
 const sumActive = (segs) => segs.filter(s => s.kind === 'active' || s.kind === 'subagent').reduce((a,s) => a + (s.end - s.start), 0);
 const sumKind = (segs, k) => segs.filter(s => s.kind === k).reduce((a,s) => a + (s.end - s.start), 0);
 
+// minutes-since-midnight from a Date (local-tz)
+const _nowMinFromDate = (d) => d.getHours() * 60 + d.getMinutes();
+// ISO YYYY-MM-DD in local-tz (matches how viz_data emits today's `iso`)
+const _todayISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+};
+
+// Live "now" hook: returns {nowMin, todayISO}, ticks every 60s.
+function useNowMin() {
+  const [tick, setTick] = React.useState(() => new Date());
+  React.useEffect(() => {
+    const id = setInterval(() => setTick(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  return { nowMin: _nowMinFromDate(tick), todayISO: _todayISO(tick) };
+}
+
 /* ── Segment fill ──────────────────────────────────────────── */
 const segStyle = (kind) => {
   if (kind === 'active')   return { background: CT_TOKENS.active };
@@ -294,7 +314,8 @@ const DAY_RANGE_MIN = DAY_END_MIN - DAY_START_MIN;
 const ROW_LEFT_WIDTH = 232;
 const ROW_HEIGHT = 36;
 const PROJECT_HEADER_HEIGHT = 40;
-const NOW_MIN = 17 * 60 + 22; // 17:22 — current marker
+// NOW marker is computed client-side via useNowMin() (see DayTimeline below).
+// v1 used a hardcoded module-level NOW_MIN that froze on every emit; removed in WP2.
 
 function pct(start, end) {
   const left = ((start - DAY_START_MIN) / DAY_RANGE_MIN) * 100;
@@ -302,7 +323,7 @@ function pct(start, end) {
   return { left: `${left}%`, width: `${width}%` };
 }
 
-function HourRuler({ nowFrac }) {
+function HourRuler({ nowFrac, nowLabel }) {
   return (
     <div style={{
       height: 30,
@@ -334,7 +355,7 @@ function HourRuler({ nowFrac }) {
             position: 'absolute', top: 4, left: 4,
             fontFamily: CT_TOKENS.mono, fontSize: 10,
             color: 'oklch(0.45 0.20 25)', fontWeight: 500,
-          }}>NOW · 17:22</span>
+          }}>NOW · {nowLabel}</span>
         </div>
       )}
     </div>
@@ -467,7 +488,14 @@ function SessionRow({ session, alt = false, selectedSegId = null, onSelect, last
 
 /* ── Day view (project list + sessions) ─────────────────────── */
 function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) {
-  const nowFrac = showNow ? (NOW_MIN - DAY_START_MIN) / DAY_RANGE_MIN : null;
+  const { nowMin, todayISO } = useNowMin();
+  // Only show the marker when (a) caller opts in, (b) the day being rendered IS today
+  // (compare ISO date, since "now" is undefined for past days), and (c) nowMin lies
+  // within the adaptive ruler window. The frac/label only render when all three hold.
+  const isToday = data && data.iso === todayISO;
+  const inWindow = nowMin >= DAY_START_MIN && nowMin < DAY_END_MIN;
+  const nowFrac = (showNow && isToday && inWindow) ? (nowMin - DAY_START_MIN) / DAY_RANGE_MIN : null;
+  const nowLabel = `${String(Math.floor(nowMin / 60)).padStart(2, '0')}:${String(nowMin % 60).padStart(2, '0')}`;
 
   // Compute project totals
   const totalsByProject = {};
@@ -504,7 +532,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
           }}>Active</span>
         </div>
         <div style={{ flex: 1 }}>
-          <HourRuler nowFrac={nowFrac} />
+          <HourRuler nowFrac={nowFrac} nowLabel={nowLabel} />
         </div>
       </div>
 

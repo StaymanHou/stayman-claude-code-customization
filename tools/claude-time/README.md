@@ -156,6 +156,8 @@ The day view shows one row per project, expanded into one row per Claude Code se
 
 The `Today` and `Week` toolbar tabs are interactive; `Month` and `Custom` are placeholders for future phases.
 
+**Live NOW marker, snapshot data.** The vertical NOW line (and its `NOW · HH:MM` label) is computed client-side from your system clock and advances every 60 seconds, so reopening a stale tab still shows the correct current-time cursor. The underlying session/segment data is a snapshot taken at the moment you ran `claude-time visualize` — re-run the command to refresh. The toolbar carries a small `snapshot: HH:MM` caption so you can tell at a glance how stale the bars are relative to the moving cursor. When viewing a non-today date via `--date`, the NOW marker is hidden (it's only meaningful for the current day).
+
 **Note:** opening `tools/claude-time/viz/index.html` directly via `file://` will NOT work — that path is the design prototype and uses external `text/babel` scripts that Chrome blocks for `file://` origins. Serve it with `python3 -m http.server` from the `viz/` directory if you want to preview the design canvas. The output of `claude-time visualize` inlines everything in one file and works from `file://` cleanly.
 
 ### Example output

@@ -56,16 +56,16 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [x] 1.4 `test_visualize_cli.sh` assertion #14: seeds 14:00–15:00 narrow-window DB, asserts emitted HTML contains `"hour_range": [13, 16]`.
 - [x] **Plus** byte-pin relaxation in `tests/check-structure.sh` Phase 5c + CLAUDE.md "Design-as-data" convention rewrite (historical-origin + current-state form, encoding the unlock-condition lesson).
 
-### WP2: NOW marker — client-side `Date.now()` + staleness indicator
+### WP2: NOW marker — client-side `Date.now()` + staleness indicator — [x] SHIPPED 2026-05-19
 **Description:** v1 emits the NOW marker position at HTML-generation time, so it freezes on every page. Move NOW computation to the client (`useEffect` + `setInterval(60s)`). Add a small "data snapshot: HH:MM (re-run for latest)" caption to communicate that the underlying *data* is still a snapshot.
 **Phase:** 0
 **Dependencies:** —
 **Size:** S
 **Tasks:**
-- [ ] 2.1 Strip emit-time `NOW_MIN` constant injection; compute NOW from `Date.now()` client-side via `useState` + `useEffect` ticker
-- [ ] 2.2 Hide NOW marker when viewing a non-today date (Day view with `--date 2026-05-01`)
-- [ ] 2.3 Render a "snapshot: HH:MM" caption near the toolbar so users know the data freshness vs. the live NOW line
-- [ ] 2.4 `test_visualize_cli.sh` assertion: emitted HTML contains `new Date()` (client-side) and does NOT contain a hardcoded `NOW_MIN = <integer>`
+- [x] 2.1 Stripped emit-time `NOW_MIN` constant; `useNowMin()` hook in `viz/dashboard.jsx` returns `{nowMin, todayISO}` from `Date.now()` via `React.useState` + `React.useEffect` with `setInterval(60_000)` and `clearInterval` cleanup.
+- [x] 2.2 NOW marker hidden when `data.iso !== todayISO` (e.g., `--date 2026-05-01` or any non-today date) — plus an `inWindow` guard so the marker also hides when clock is outside the adaptive ruler range.
+- [x] 2.3 `snapshot: HH:MM` caption rendered in `InteractiveToolbar` (`viz_render.py`), reading `window.CT_DATA.meta.snapshot` populated by `_cmd_visualize` at emit time. Hover tooltip explains the live-cursor + snapshot-data duality.
+- [x] 2.4 `test_visualize_cli.sh` extended 14 → 19 assertions: emitted HTML lacks `NOW_MIN = 17 * 60 + 22`; lacks `NOW · 17:22`; contains `Date.now()`/`new Date(`; contains `"snapshot"` key; contains `clearInterval` cleanup.
 
 ### WP3: Range-aware data layer — `build_range_data(start_iso, end_iso)`
 **Description:** Extract a single `build_range_data(start, end)` from the current `build_day_data` / `build_week_data`. The new function emits the same project/session/segment shape over any arbitrary `[start, end]` window. Day / week / custom / month all become thin wrappers that compute `(start, end)` and call this.

@@ -1,5 +1,15 @@
 # Backlog
 
+## SURFACE-2026-05-19-CLAUDE-TIME-VIZ-NOW-LABEL-OVERLAPS-RULER-TICK
+- **Source:** feature:verify-human (claude-time-visualize-v2 WP2 NOW marker, 2026-05-19)
+- **Target level:** task:plan (small/simple — single component, label-placement logic)
+- **Type:** polish / cosmetic
+- **Summary:** When the wall-clock time falls within roughly 10 minutes of a top-of-hour ruler tick (e.g., 11:52 with the next tick at 12:00), the `NOW · HH:MM` label rendered to the right of the NOW vertical line visually overlaps the next-hour ruler tick label. Marker placement is geometrically correct; only the text overlays.
+- **Context:** Surfaced and human-accepted at WP2 verify-human (2026-05-19). User explicitly chose to accept the cosmetic and ship without a fix to keep WP2 scope tight. The condition happens for ~10 minutes per hour, ~1/6 of the time.
+- **Suggested action:** Modify `HourRuler` in `viz/dashboard.jsx` to flip the `NOW · HH:MM` label to the left of the NOW line when `nowMin` is within ~10 minutes of a top-of-hour ruler tick (i.e., `nowMin % 60 >= 50` or `nowMin % 60 < 10`). Alternative: render the label below the line instead of beside it. Either is single-file scope.
+- **Priority:** low — cosmetic-only, marker correctness is intact, human accepted as-is.
+- **Status:** open
+
 ## SURFACE-2026-05-18-CLAUDE-TIME-RECLASSIFY-SESSION-ACTIVE-MS-CONSECUTIVE-UPS-UNDERCOUNT
 - **Source:** feature:verify-self (claude-time-visualize Phase 2, 2026-05-18)
 - **Target level:** task:plan (small/simple — single function change in reclassify.py + test addition)
