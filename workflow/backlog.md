@@ -1,5 +1,15 @@
 # Backlog
 
+## SURFACE-2026-05-19-CLAUDE-TIME-VIZ-DAY-HOURS-NOT-ADAPTIVE
+- **Source:** feature:finalize (claude-time-visualize, 2026-05-19) — tech-debt assessment
+- **Target level:** task:plan (small/simple — wire one already-computed field into JSX rendering)
+- **Type:** tech-debt
+- **Summary:** `viz_data.build_day_data` emits `hour_range: [start, end]` (adaptive to the day's actual event window), but the rendered dashboard ignores this field. `dashboard.jsx`'s `DAY_HOURS = [6, 7, ..., 22]` is hardcoded and produces the 06:00–22:00 ruler regardless. For a day with all events between 14:00 and 21:00, the dashboard wastes 8 hours of horizontal grid on empty morning; for a late-night session past 23:00, events get clipped at the right edge.
+- **Context:** Caught during finalize tech-debt sweep. The adaptive computation already works in viz_data + has 3 unit tests in test_viz_data.py (`HourRangeTests`). The JSX side just needs to consume the field — DAY_HOURS derived from `data.today.hour_range`, with DAY_START_MIN / DAY_END_MIN / DAY_RANGE_MIN computed from it.
+- **Suggested action:** In `viz_render.py`'s `_interactive_dashboard`, pass `today.hour_range` into the Dashboard's render path. Replace the module-level `const DAY_HOURS = [6, 7, ..., 22]` with a function or accept it as a prop. Update SegmentBar's `pct()` math accordingly. Verify the existing `test_visualize_cli.sh` HTML structure assertions still pass; add one new assertion that the ruler reflects `hour_range`. ~20-30 lines of JSX changes.
+- **Priority:** low — the 06:00–22:00 window covers most normal workdays; visual deviation is cosmetic, not data-loss. Becomes higher-priority for users whose work spans early-morning or post-midnight.
+- **Status:** open
+
 ## SURFACE-2026-05-18-CLAUDE-TIME-RECLASSIFY-SESSION-ACTIVE-MS-CONSECUTIVE-UPS-UNDERCOUNT
 - **Source:** feature:verify-self (claude-time-visualize Phase 2, 2026-05-18)
 - **Target level:** task:plan (small/simple — single function change in reclassify.py + test addition)
