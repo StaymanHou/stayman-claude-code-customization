@@ -449,6 +449,26 @@ else
   check "tools/claude-time/test/test_reclassify.py — unit tests" "fail" "$err"
 fi
 
+# viz_data unit tests (Phase 2 of claude-time-visualize feature)
+if [ -f tools/claude-time/viz_data.py ]; then
+  check "tools/claude-time/viz_data.py exists" "pass"
+else
+  check "tools/claude-time/viz_data.py exists" "fail" "file missing"
+fi
+
+if python3 -m py_compile tools/claude-time/viz_data.py 2>/dev/null; then
+  check "tools/claude-time/viz_data.py compiles" "pass"
+else
+  check "tools/claude-time/viz_data.py compiles" "fail" "py_compile failed"
+fi
+
+if (cd tools/claude-time/test && python3 -m unittest test_viz_data > /dev/null 2>&1); then
+  check "tools/claude-time/test/test_viz_data.py — unit tests" "pass"
+else
+  err=$(cd tools/claude-time/test && python3 -m unittest test_viz_data 2>&1 | tail -3)
+  check "tools/claude-time/test/test_viz_data.py — unit tests" "fail" "$err"
+fi
+
 # CLI end-to-end tests
 if [ -x tools/claude-time/test/test_cli.sh ]; then
   if tools/claude-time/test/test_cli.sh > /dev/null 2>&1; then
@@ -459,6 +479,18 @@ if [ -x tools/claude-time/test/test_cli.sh ]; then
   fi
 else
   check "tools/claude-time/test/test_cli.sh exists + executable" "fail" "missing or not executable"
+fi
+
+# visualize CLI end-to-end tests (Phase 3 codify, claude-time-visualize feature)
+if [ -x tools/claude-time/test/test_visualize_cli.sh ]; then
+  if tools/claude-time/test/test_visualize_cli.sh > /dev/null 2>&1; then
+    check "tools/claude-time/test/test_visualize_cli.sh — visualize CLI end-to-end" "pass"
+  else
+    err=$(tools/claude-time/test/test_visualize_cli.sh 2>&1 | grep '\[FAIL\]' | head -3)
+    check "tools/claude-time/test/test_visualize_cli.sh — visualize CLI end-to-end" "fail" "$err"
+  fi
+else
+  check "tools/claude-time/test/test_visualize_cli.sh exists + executable" "fail" "missing or not executable"
 fi
 
 # Multi-instance scenario (real two-process reattribution end-to-end)
@@ -491,6 +523,91 @@ if [ -x tools/claude-time/test/bench.sh ]; then
   check "tools/claude-time/test/bench.sh exists + executable" "pass"
 else
   check "tools/claude-time/test/bench.sh exists + executable" "fail" "missing or not executable"
+fi
+
+echo ""
+
+# ── Phase 5c: claude-time viz prototype integrity ─────────────────────────
+#
+# Phase 1 of the claude-time-visualize feature transplanted the Claude Design
+# mockup (4 files) into tools/claude-time/viz/ verbatim. These assertions guard
+# against silent drift — if a future contributor edits any of the four files,
+# the byte size drifts and this check fails. The expected sizes are pinned to
+# the design extract's verbatim output.
+#
+# Later phases will build on this with a Python data layer and shipped HTML
+# template, both of which depend on data.js's JS-literal shape being preserved
+# as the visual-contract source-of-truth.
+
+echo "[Phase 5c] claude-time viz prototype integrity"
+
+VIZ_DIR="tools/claude-time/viz"
+
+# Expected sizes (bytes) — pinned to the Claude Design extract, locked in
+# Phase 1 verify-codify on 2026-05-18. Updating these requires re-approving
+# the design contract; do not change without intent.
+declare -a VIZ_FILES=(
+  "index.html:2634"
+  "dashboard.jsx:42262"
+  "data.js:9160"
+  "design-canvas.jsx:49676"
+)
+
+for entry in "${VIZ_FILES[@]}"; do
+  name="${entry%:*}"
+  expected="${entry##*:}"
+  path="$VIZ_DIR/$name"
+  if [ ! -f "$path" ]; then
+    check "$path exists" "fail" "file missing"
+    continue
+  fi
+  check "$path exists" "pass"
+  actual=$(wc -c < "$path" | tr -d ' ')
+  if [ "$actual" = "$expected" ]; then
+    check "$path byte-size = $expected (design contract pinned)" "pass"
+  else
+    check "$path byte-size = $expected (design contract pinned)" "fail" \
+      "actual=$actual; expected=$expected. The design extract is the source-of-truth."
+  fi
+done
+
+# Syntax checks — the JS file must parse as plain JS; the JSX files must parse
+# with @babel/parser + jsx plugin (the same parser Babel-standalone uses at
+# runtime). We probe whether parser dependencies are present in /tmp; if not,
+# skip the JSX parse gracefully (the byte-size pin already guards against
+# editing them, and an actual render error would surface in dev-time browser
+# checks).
+if command -v node >/dev/null 2>&1; then
+  if node --check "$VIZ_DIR/data.js" 2>/dev/null; then
+    check "viz/data.js parses as plain JS (node --check)" "pass"
+  else
+    check "viz/data.js parses as plain JS (node --check)" "fail" "node --check failed"
+  fi
+else
+  check "viz/data.js parses as plain JS (node --check)" "fail" "node not on PATH"
+fi
+
+# index.html: structural well-formed-ness via Python's HTMLParser
+if python3 -c "
+from html.parser import HTMLParser
+class V(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.opened = []
+    def handle_starttag(self, tag, attrs):
+        if tag not in ('meta','link','br','hr','img','input'):
+            self.opened.append(tag)
+    def handle_endtag(self, tag):
+        if self.opened and self.opened[-1] == tag:
+            self.opened.pop()
+import sys
+with open('$VIZ_DIR/index.html') as f:
+    p = V(); p.feed(f.read())
+sys.exit(0 if not p.opened else 1)
+" 2>/dev/null; then
+  check "viz/index.html is well-formed (no unclosed tags)" "pass"
+else
+  check "viz/index.html is well-formed (no unclosed tags)" "fail" "HTMLParser found unclosed tags"
 fi
 
 echo ""

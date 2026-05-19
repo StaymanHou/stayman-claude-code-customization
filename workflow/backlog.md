@@ -1,5 +1,19 @@
 # Backlog
 
+## SURFACE-2026-05-18-CLAUDE-TIME-RECLASSIFY-SESSION-ACTIVE-MS-CONSECUTIVE-UPS-UNDERCOUNT
+- **Source:** feature:verify-self (claude-time-visualize Phase 2, 2026-05-18)
+- **Target level:** task:plan (small/simple — single function change in reclassify.py + test addition)
+- **Type:** gap (subtle semantic divergence between two aggregations of the same data)
+- **Summary:** `reclassify.session_active_ms` (used by `claude-time report`) and `viz_data._bursts_for_session` (used by the new dashboard) define "active engaged time" differently on consecutive-UPS event streams. `session_active_ms` overwrites `last_ups_ts` on each UPS, counting only the (last_UPS → Stop) window. `viz_data` counts the (first_UPS → Stop) window, ignoring intervening UPSes while a burst is open. On real ~/.claude-time data for today, this causes `claude-time report` to undercount session-active time by ~6.6% (13 min on 195 min).
+- **Context:** Surfaced during Phase 2 verify-self of the visualize feature when the subagent cross-checked viz totals against `session_active_ms`. The 6.6% drift was initially classified as a code regression in viz; drill-down localized the divergence to consecutive-UPS handling (7 consecutive-UPS pairs in session `d4e3fd34` alone). Both definitions are internally consistent; they answer different questions. The viz definition matches "user-facing engaged window" (which is what a Gantt chart should show). Both have regression-pin tests now (test_viz_data.py → DivergenceFromSessionActiveMsTests).
+- **Suggested action:** decide whether `claude-time report --by ...`'s "active" column should match the dashboard's wider definition. Options:
+  - (a) Update `reclassify.session_active_ms` to use first-UPS semantics (only set `last_ups_ts` when None). Pro: report and dashboard agree; user-facing reality is "I was working." Con: existing tests in `test_reclassify.py` may pin the current behavior — check.
+  - (b) Leave both as-is. Pro: zero churn; the divergence is small and the report has a documented conservative definition. Con: dashboard and report disagree on "active" by ~5%.
+  - (c) Add a third helper `session_active_engaged_ms` that uses first-UPS semantics, leave `session_active_ms` alone, route both consumers to whichever fits. Most explicit, most code.
+  Lean: (a) — the conservative "skip first UPS" behavior was never a documented intent; it's an artifact of the loop structure. Verify by reading test_reclassify.py for cases that pin it.
+- **Priority:** low — not blocking ship of this feature; the dashboard is correct, the report is mildly conservative. Becomes higher-priority if a future user explicitly notices the disagreement.
+- **Status:** RESOLVED 2026-05-18 in claude-time-visualize Phase 2 back-loop. User decided to keep the narrow definition for both consumers; extracted `reclassify.active_bursts` as shared source of truth; both `session_active_ms` and `viz_data._bursts_for_session` now consume it. Interrupt UPSes captured as `interrupts` field on viz-sessions for hairline rendering at Phase 3.
+
 ## SURFACE-2026-05-18-CLAUDE-TIME-TOTAL-COL-ROW
 - **Source:** feature:verify-human (claude-time-report-by-project Phase 2, 2026-05-18)
 - **Target level:** feature:plan (small/simple — adds derived columns + reuses existing TOTAL row pattern)

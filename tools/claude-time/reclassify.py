@@ -227,11 +227,20 @@ def subagent_durations_ms(events: list[dict]) -> dict[str, int]:
     return dict(totals)
 
 
-def session_active_ms(events: list[dict]) -> dict[str, int]:
-    """Per-session wall-clock from first UserPromptSubmit to last Stop.
+def active_bursts(events: list[dict]) -> dict[str, list[dict]]:
+    """Per-session list of active-burst windows.
 
-    "Active in this session" per the spec (acceptance #5). Distinct from
-    gap analysis: this is the sum of "while the user was engaged" windows.
+    A burst is one (UserPromptSubmit, next Stop) window. When multiple UPS
+    events arrive before a Stop closes the open burst (mid-turn interrupts),
+    the LATEST UPS is the burst's anchor — earlier UPSes are recorded as
+    `interrupts` on the burst and do NOT open new bursts. This is the
+    "narrow" definition of engaged-with-agent time: the user's last
+    keypress before the agent's Stop is the engagement anchor.
+
+    Returns:
+        {session_id: [{start_ts, end_ts, interrupts}, ...]}
+        where `interrupts` is a list of UPS timestamps that were superseded
+        by a later UPS within the same open burst.
     """
     by_session: dict[str, list[dict]] = defaultdict(list)
     for e in events:
@@ -241,17 +250,42 @@ def session_active_ms(events: list[dict]) -> dict[str, int]:
     for sid_events in by_session.values():
         sid_events.sort(key=lambda r: r.get("ts", 0))
 
-    totals: dict[str, int] = {}
+    out: dict[str, list[dict]] = {}
     for sid, sid_events in by_session.items():
-        # Sum each (UserPromptSubmit → next Stop in same session) window.
-        active = 0
+        bursts: list[dict] = []
         last_ups_ts: int | None = None
+        interrupts: list[int] = []
         for e in sid_events:
             evt = e.get("event")
+            ts = e.get("ts", 0)
             if evt == "UserPromptSubmit":
-                last_ups_ts = e.get("ts", 0)
+                if last_ups_ts is not None:
+                    # Mid-turn UPS — record the previous one as an interrupt,
+                    # advance the anchor to the new one.
+                    interrupts.append(last_ups_ts)
+                last_ups_ts = ts
             elif evt == "Stop" and last_ups_ts is not None:
-                active += max(0, e.get("ts", 0) - last_ups_ts)
+                bursts.append({
+                    "start_ts": last_ups_ts,
+                    "end_ts": ts,
+                    "interrupts": interrupts,
+                })
                 last_ups_ts = None
-        totals[sid] = active
+                interrupts = []
+        out[sid] = bursts
+    return out
+
+
+def session_active_ms(events: list[dict]) -> dict[str, int]:
+    """Per-session sum of (last_UPS → next Stop) windows.
+
+    "Active in this session" per the spec (acceptance #5). Distinct from
+    gap analysis: this is the sum of "while the user was engaged" windows.
+    Uses the narrow definition (consecutive UPSes overwrite — only the
+    last one before a Stop anchors the burst). See `active_bursts` for the
+    shared burst-pairing logic both this and viz_data consume.
+    """
+    totals: dict[str, int] = {}
+    for sid, bursts in active_bursts(events).items():
+        totals[sid] = sum(max(0, b["end_ts"] - b["start_ts"]) for b in bursts)
     return totals

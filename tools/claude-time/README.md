@@ -8,7 +8,7 @@ Opt-in, hook-driven time-tracking for Claude Code.
 - How much time am I spending in each tool? (`Bash`, `Edit`, `Read`, …)
 - When running two Claude Code instances side-by-side, was instance B really "idle" or was I just busy in instance A?
 
-It logs timing-relevant hook events to a local SQLite database (`~/.claude-time/events.sqlite`) and ships a small Python CLI (`claude-time report`) that buckets the data into readable summaries.
+It logs timing-relevant hook events to a local SQLite database (`~/.claude-time/events.sqlite`) and ships a small Python CLI with two views: `claude-time report` buckets the data into readable text tables, and `claude-time visualize` emits a Gantt-style HTML dashboard.
 
 The tool is fully opt-in (env var + manual `settings.json` edit), uses only macOS/Linux-bundled interpreters (Perl 5, Python 3, SQLite 3), writes no network traffic, and never records prompt text or tool input/output content.
 
@@ -125,6 +125,38 @@ claude-time report --by cwd
 
   TOTAL                              5m       1h12m     13m       4m20s     0ms    1h34m
 ```
+
+### Dashboard (`visualize`)
+
+If a text table doesn't give you the temporal intuition you want, render a Gantt-style HTML dashboard:
+
+```bash
+# Today, opens in your default browser
+claude-time visualize
+
+# Don't auto-open; just write the file and print the path
+claude-time visualize --no-open
+
+# Start in week-rollup view instead of day
+claude-time visualize --week
+
+# A specific past day
+claude-time visualize --date 2026-05-15
+
+# Custom output path
+claude-time visualize --out /tmp/dashboard.html
+
+# Render the bundled mock data (no DB access — useful for design review)
+claude-time visualize --demo
+```
+
+The output is a **single self-contained `.html` file** (default: `~/.claude-time/visualize.html`) that pulls React and Babel from `unpkg.com` at load time. Re-running the command overwrites the file in place — there's no archive.
+
+The day view shows one row per project, expanded into one row per Claude Code session within that project. Each session row tiles its window with colored segments: deep-indigo `active coding`, lavender `reading`, amber `thinking`, hairline-stripe `away`, teal `subagent`. Mid-turn user prompts (where you submitted again while the agent was still working) appear as vertical hairlines inside the active bar. Clicking any bar opens a side panel with the session's wall-vs-active time, activity breakdown, tool-call histogram, and prompt count. The week view collapses the same data into a 7-day per-project rollup.
+
+The `Today` and `Week` toolbar tabs are interactive; `Month` and `Custom` are placeholders for future phases.
+
+**Note:** opening `tools/claude-time/viz/index.html` directly via `file://` will NOT work — that path is the design prototype and uses external `text/babel` scripts that Chrome blocks for `file://` origins. Serve it with `python3 -m http.server` from the `viz/` directory if you want to preview the design canvas. The output of `claude-time visualize` inlines everything in one file and works from `file://` cleanly.
 
 ### Example output
 
@@ -295,16 +327,26 @@ tools/claude-time/test/multi_instance.sh  # 2-session cross-session reattributio
 
 ```
 tools/claude-time/
-  hook.pl                  # Perl hook script (event-dispatch)
-  reclassify.py            # Pure reclassification functions (stdlib only)
-  claude-time              # Python CLI (argparse + sqlite3 reader + table renderer)
-  README.md                # This file
+  hook.pl                    # Perl hook script (event-dispatch)
+  reclassify.py              # Pure reclassification functions (stdlib only)
+  viz_data.py                # Pure data layer for visualize: events → segment-model JSON
+  viz_render.py              # Emit-time transforms over viz/dashboard.jsx + template inlining
+  claude-time                # Python CLI: `report` + `visualize` subcommands
+  README.md                  # This file
+  viz/
+    index.html               # Design canvas prototype (open via local HTTP, not file://)
+    dashboard.jsx            # Dashboard React component (design source-of-truth, byte-pinned)
+    data.js                  # Bundled mock data for design / --demo mode
+    design-canvas.jsx        # DesignCanvas chrome — used by index.html only, stripped at emit
+    template.html            # HTML scaffold for `claude-time visualize` output
   test/
-    test_hook.sh           # Behavioral test for hook.pl (17 assertions)
-    test_reclassify.py     # Unit tests for reclassify.py (24 assertions)
-    test_cli.sh            # End-to-end test for claude-time CLI (10 assertions)
-    privacy_check.sh       # Single-purpose privacy regression check
-    bench.sh               # Performance benchmark + budget assertion
-    multi_instance.sh      # Two-session cross-session reattribution scenario
-    stress_concurrent.sh   # 50-parallel-writer concurrency stress test
+    test_hook.sh             # Behavioral test for hook.pl
+    test_reclassify.py       # Unit tests for reclassify.py (29 assertions)
+    test_viz_data.py         # Unit tests for viz_data.py (22 assertions)
+    test_cli.sh              # End-to-end test for `claude-time report`
+    test_visualize_cli.sh    # End-to-end test for `claude-time visualize` (13 assertions)
+    privacy_check.sh         # Single-purpose privacy regression check
+    bench.sh                 # Performance benchmark + budget assertion
+    multi_instance.sh        # Two-session cross-session reattribution scenario
+    stress_concurrent.sh     # 50-parallel-writer concurrency stress test
 ```

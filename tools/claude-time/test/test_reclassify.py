@@ -238,5 +238,78 @@ class SessionActiveTests(unittest.TestCase):
         self.assertEqual(reclassify.session_active_ms(events), {"s": 1000})
 
 
+class ActiveBurstsTests(unittest.TestCase):
+    """Direct tests for the `active_bursts` helper extracted as the shared
+    burst-pairing source of truth (used by both `session_active_ms` and the
+    dashboard's viz_data module).
+    """
+
+    def test_single_burst(self):
+        events = [
+            ev(1000, "s", "UserPromptSubmit"),
+            ev(5000, "s", "Stop"),
+        ]
+        out = reclassify.active_bursts(events)
+        self.assertEqual(out, {"s": [{"start_ts": 1000, "end_ts": 5000, "interrupts": []}]})
+
+    def test_consecutive_ups_records_interrupt(self):
+        """A UPS that arrives while a burst is open is recorded as an
+        `interrupt` on that burst; the burst's anchor advances to the new
+        UPS (narrow definition)."""
+        events = [
+            ev(1000, "s", "UserPromptSubmit"),
+            ev(2000, "s", "UserPromptSubmit"),  # overwrites — interrupt
+            ev(5000, "s", "Stop"),
+        ]
+        out = reclassify.active_bursts(events)
+        self.assertEqual(out, {
+            "s": [{"start_ts": 2000, "end_ts": 5000, "interrupts": [1000]}]
+        })
+
+    def test_three_consecutive_ups_two_interrupts(self):
+        events = [
+            ev(1000, "s", "UserPromptSubmit"),
+            ev(2000, "s", "UserPromptSubmit"),
+            ev(3000, "s", "UserPromptSubmit"),
+            ev(5000, "s", "Stop"),
+        ]
+        out = reclassify.active_bursts(events)
+        self.assertEqual(out["s"], [
+            {"start_ts": 3000, "end_ts": 5000, "interrupts": [1000, 2000]},
+        ])
+
+    def test_multiple_bursts_interrupts_reset_per_burst(self):
+        """The interrupts list resets between bursts — interrupts from burst N
+        don't leak into burst N+1."""
+        events = [
+            ev(1000, "s", "UserPromptSubmit"),
+            ev(2000, "s", "UserPromptSubmit"),  # interrupt for burst 1
+            ev(5000, "s", "Stop"),
+            ev(6000, "s", "UserPromptSubmit"),
+            ev(9000, "s", "Stop"),
+        ]
+        out = reclassify.active_bursts(events)
+        self.assertEqual(out["s"], [
+            {"start_ts": 2000, "end_ts": 5000, "interrupts": [1000]},
+            {"start_ts": 6000, "end_ts": 9000, "interrupts": []},
+        ])
+
+    def test_session_active_ms_consumes_active_bursts(self):
+        """Regression guard: session_active_ms must remain consistent with
+        what active_bursts returns. Sum of (end-start) per burst should equal
+        session_active_ms exactly.
+        """
+        events = [
+            ev(1000, "s", "UserPromptSubmit"),
+            ev(2000, "s", "UserPromptSubmit"),
+            ev(5000, "s", "Stop"),
+            ev(6000, "s", "UserPromptSubmit"),
+            ev(9000, "s", "Stop"),
+        ]
+        bursts = reclassify.active_bursts(events)["s"]
+        burst_sum = sum(b["end_ts"] - b["start_ts"] for b in bursts)
+        self.assertEqual(reclassify.session_active_ms(events)["s"], burst_sum)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -416,9 +416,23 @@ def main(argv: list[str] | None = None) -> int:
         help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
     )
 
+    viz = sub.add_parser("visualize", help="emit a self-contained dashboard HTML")
+    viz.add_argument("--date", help="single day, YYYY-MM-DD (default: today)")
+    viz.add_argument("--week", action="store_true",
+                     help="initial view is the week rollup (default: day)")
+    viz.add_argument("--demo", action="store_true",
+                     help="use the design's bundled mock data instead of real SQLite (no DB access)")
+    viz.add_argument("--no-open", action="store_true",
+                     help="don't auto-open the emitted HTML in the default browser")
+    viz.add_argument("--out", help="output path (default: ~/.claude-time/visualize.html)")
+    viz.add_argument(
+        "--db",
+        help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
+    )
+
     args = parser.parse_args(argv)
 
-    # Resolve DB + config dir.
+    # Resolve DB + config dir (shared by both subcommands).
     if args.db:
         db_path = Path(args.db).expanduser()
         claude_time_dir = db_path.parent
@@ -429,6 +443,10 @@ def main(argv: list[str] | None = None) -> int:
 
     cfg = load_config(claude_time_dir)
 
+    if args.cmd == "visualize":
+        return _cmd_visualize(args, cfg, db_path, claude_time_dir)
+
+    # `report` subcommand (default code path)
     start_ms, end_ms, label = window_ms(
         weekly=args.weekly, date_str=args.date
     )
@@ -446,6 +464,108 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(render_report(events, cfg, label))
     return 0
+
+
+def _cmd_visualize(args, cfg, db_path, claude_time_dir):
+    """Emit the dashboard HTML to disk. See `--help visualize`."""
+    import webbrowser
+    import viz_data  # noqa — siblings via sys.path insert at top of file
+    import viz_render  # noqa
+
+    # Resolve viz/ assets relative to *resolved* script path (handles symlinks).
+    viz_dir = Path(__file__).resolve().parent / "viz"
+    template_path = viz_dir / "template.html"
+    dashboard_jsx_path = viz_dir / "dashboard.jsx"
+    if not template_path.exists() or not dashboard_jsx_path.exists():
+        print(f"error: viz template assets not found under {viz_dir}", file=sys.stderr)
+        return 2
+
+    # Pick today (or --date) for the day-view data.
+    target_day = date.fromisoformat(args.date) if args.date else date.today()
+    # ISO week's Monday for the week-view data.
+    monday = target_day - timedelta(days=target_day.weekday())
+
+    if args.demo:
+        # Use the design's bundled mock data without touching SQLite.
+        data = _load_demo_data(viz_dir)
+    else:
+        if not db_path.exists():
+            print(f"error: {db_path} does not exist. Run Claude Code with CLAUDE_TIME_TRACKING=1 to populate it, "
+                  f"or use --demo to render with mock data.", file=sys.stderr)
+            return 2
+        day_events = _load_window_events(db_path, target_day)
+        events_by_day = {}
+        for i in range(7):
+            d = monday + timedelta(days=i)
+            events_by_day[d.isoformat()] = _load_window_events(db_path, d)
+        today_payload = viz_data.build_day_data(target_day.isoformat(),
+                                                day_events, cfg, _auto_alias_for_cwd)
+        week_payload = viz_data.build_week_data(monday.isoformat(),
+                                                events_by_day, cfg, _auto_alias_for_cwd)
+        data = {"today": today_payload, "week": week_payload}
+
+    initial_view = "week" if args.week else "day"
+    html = viz_render.render_html(template_path, dashboard_jsx_path, data, initial_view)
+
+    out_path = Path(args.out).expanduser() if args.out else (claude_time_dir / "visualize.html")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(html)
+    print(out_path)
+
+    if not args.no_open:
+        webbrowser.open(f"file://{out_path}")
+    return 0
+
+
+def _load_window_events(db_path: Path, day) -> list[dict]:
+    """Load a single day's events from the DB. Returns [] if DB missing."""
+    if not db_path.exists():
+        return []
+    start_dt = datetime.combine(day, time.min)
+    end_dt = datetime.combine(day + timedelta(days=1), time.min)
+    start_ms = int(start_dt.timestamp() * 1000)
+    end_ms = int(end_dt.timestamp() * 1000)
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM events WHERE ts >= ? AND ts < ? ORDER BY ts",
+            (start_ms, end_ms),
+        )]
+    finally:
+        conn.close()
+    return rows
+
+
+def _load_demo_data(viz_dir: Path) -> dict:
+    """Parse the design's bundled `data.js` IIFE into the dict the renderer
+    expects. Avoids running JS — we extract the literal via a small regex
+    over the well-known structure of the design's data.js.
+
+    The design's `data.js` is byte-pinned by Phase 5c structural checks, so
+    its shape is stable. If a future revision changes it, this loader will
+    fail loudly and Phase 5c will catch the drift.
+    """
+    text = (viz_dir / "data.js").read_text()
+    # The file is a self-contained IIFE that builds two objects: `today` and
+    # `week`. We extract them by running the file's body in a Python eval
+    # equivalent — but JS object literals aren't valid Python. Simplest fix:
+    # shell out to node to evaluate the file, then JSON-stringify the result.
+    # node is documented as a build-time dep (Phase 5c uses node --check).
+    import subprocess
+    js_eval = (
+        f"const window={{}};\n"
+        f"{text}\n"
+        f"console.log(JSON.stringify(window.CT_DATA));"
+    )
+    result = subprocess.run(
+        ["node", "-e", js_eval],
+        capture_output=True, text=True, timeout=10,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"node failed to evaluate viz/data.js: {result.stderr}")
+    import json as _json
+    return _json.loads(result.stdout)
 
 
 if __name__ == "__main__":
