@@ -1,6 +1,6 @@
 ---
 stage: wbs
-state: complete
+state: in-progress
 updated: 2026-05-19
 cycle: claude-time-visualize-v2
 ---
@@ -43,17 +43,18 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 
 **Phase rationale:** Several v2 features (custom-range, month, comparison, zoomable timeline) all need the data layer to emit arbitrary `[start, end]` windows, not just `today` / `current week`. Build the range-aware data path **before** any UI consumes it; otherwise we'd retrofit JSON shape mid-cycle and rework Phase 5c byte pins.
 
-### WP1: Adaptive hour-ruler (consume existing `hour_range`)
+### WP1: Adaptive hour-ruler (consume existing `hour_range`) — [x] SHIPPED 2026-05-19 (commit 2760c6b)
 **Description:** Wire the already-emitted `today.hour_range: [start, end]` field into `dashboard.jsx`'s ruler / segment-positioning math. Replaces the hardcoded `DAY_HOURS = [6..22]`. Resolves the deleted backlog item `SURFACE-2026-05-19-CLAUDE-TIME-VIZ-DAY-HOURS-NOT-ADAPTIVE`.
 **Phase:** 0
 **Dependencies:** —
 **Size:** XS
 **Why first:** smallest possible change, exercises the byte-pin + emit-time-transform pattern under low risk, validates the dev loop end-to-end before larger phases. Also unblocks: zoomable timeline needs flexible ruler math anyway.
 **Tasks:**
-- [ ] 1.1 Update `viz_render.py`'s emit-time transforms to inject `today.hour_range` into the Dashboard component's render path
-- [ ] 1.2 Replace `const DAY_HOURS = [6..22]` (in the appended interactive wrapper, not in the byte-pinned source) with computed values from `hour_range`
-- [ ] 1.3 Update SegmentBar's `pct()` math to use dynamic `DAY_START_MIN` / `DAY_END_MIN` / `DAY_RANGE_MIN`
-- [ ] 1.4 Add one assertion to `test_visualize_cli.sh` that the ruler reflects `hour_range` (extract from HTML, assert non-default values when day has narrow event window)
+- [x] 1.1 Edit `viz/dashboard.jsx` source directly: derive `DAY_HOURS` / `DAY_START_MIN` / `DAY_END_MIN` / `DAY_RANGE_MIN` from `window.CT_DATA.today.hour_range` at runtime (with `[6, 23]` fallback). v2 cycle's first source edit; emit-time-transform pattern replaced by direct edit since byte-pin is relaxed in this same WP.
+- [x] 1.2 Verified `--demo` path: `data.js` now includes `hour_range: [6, 23]`; derivation produces v1-identical 17-tick ruler.
+- [x] 1.3 No SegmentBar `pct()` math changes needed — it already reads from the module-level `DAY_*` constants which now derive adaptively. Single source change propagates.
+- [x] 1.4 `test_visualize_cli.sh` assertion #14: seeds 14:00–15:00 narrow-window DB, asserts emitted HTML contains `"hour_range": [13, 16]`.
+- [x] **Plus** byte-pin relaxation in `tests/check-structure.sh` Phase 5c + CLAUDE.md "Design-as-data" convention rewrite (historical-origin + current-state form, encoding the unlock-condition lesson).
 
 ### WP2: NOW marker — client-side `Date.now()` + staleness indicator
 **Description:** v1 emits the NOW marker position at HTML-generation time, so it freezes on every page. Move NOW computation to the client (`useEffect` + `setInterval(60s)`). Add a small "data snapshot: HH:MM (re-run for latest)" caption to communicate that the underlying *data* is still a snapshot.

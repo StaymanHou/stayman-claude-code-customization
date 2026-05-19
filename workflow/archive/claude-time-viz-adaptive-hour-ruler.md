@@ -1,9 +1,10 @@
 ---
 workflow: feature
-state: verify-codify (complete)
+state: ship (complete)
 created: 2026-05-19
 drive_mode: autopilot
 wbs_wp: WP1
+ship_commit: 2760c6b
 ---
 
 # Feature: claude-time visualize — adaptive hour-ruler
@@ -44,16 +45,41 @@ Per the WBS approval decision (2026-05-19): direct source edits to `viz/dashboar
   - [x] verify-codify — coverage assessment: all 4 verified behaviors already have regression-catching tests; no new tests needed. Integration-boundary requirement satisfied via `test_visualize_cli.sh` assertion #14 (consuming surface, end-to-end, narrow-window seed → emitted `hour_range [13, 16]`). Full test sweep: `test_viz_data` 22/22 + `test_reclassify` 29/29 + `test_visualize_cli.sh` 14/14 + `test_cli.sh` 29/29 + `test_hook.sh` 17/17 + `privacy_check.sh` PASS. `tests/check-structure.sh` 121/1 (1 pre-existing FAIL: SURFACE-2026-05-18-SETTINGS-FIXTURE-DRIFT-CLAUDE-TIME — unchanged from baseline). No triage artifact required (no test failures).  <!-- status: [x] complete -->
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** all phases complete (Phase 1 [x]); ready for /feature-ship
+- **Path:** Feature > finalize
+- **Active scope:** shipped to origin/main (commit 2760c6b); ready for /feature-finalize
 - **Blocked:** none
-- **Unvisited:** ship → finalize
+- **Unvisited:** finalize
 - **Open discoveries:** none
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
      Each entry is also logged to workflow/backlog.md -->
 (none yet)
+
+## Retrospect
+
+- **What changed in our understanding:**
+  - **Byte-pin convention has an asymmetric cost-benefit shape.** The convention introduced just one day earlier (2026-05-19 in commit `6e00ea2`) made *next* changes prohibitively expensive — every direct edit to `dashboard.jsx` now had to be relaxed AND backfilled with a CLAUDE.md history note. The original brittleness it protected against (emit-time text-replace transforms breaking on source edits) was real, but the lock's cost compounded fast once the cycle's UX evolution started. The unlock condition wasn't written into the original convention; this feature had to invent it. Lesson encoded into the new convention: structural locks need pre-written unlock conditions.
+  - **The "data layer emits, JSX consumes" contract was already half-built.** `viz_data.py` had `hour_range` and unit tests for it; the JSX side was the only side ignoring it. This isn't a unique to this feature — Phase 0's WP3 (range-aware data layer) will likely surface similar half-built contracts where the Python side already supports more than the JSX is wired for. Worth a quick scan during WP3 plan time.
+
+- **Assumptions that held:**
+  - The data layer's `hour_range` semantics were correct. Three unit tests (HourRangeTests) had pinned the math; no edits needed there.
+  - Direct source edit to `dashboard.jsx` (now permitted post-WBS-decision) was cleaner than adding emit-time text-replace transforms in `viz_render.py`. Confirmed: the diff is ~13 LOC, readable, and the `--demo` path still produces v1-identical mockup output.
+  - Defensive `[6, 23]` fallback in the JSX (when `window.CT_DATA` absent) keeps the design-canvas prototype loadable as a standalone artifact. Verified via the existing `viz/index.html` design-canvas which has no CT_DATA injection.
+
+- **Assumptions that were wrong:**
+  - None substantive — the feature shipped exactly as planned.
+
+- **Approach delta:**
+  - Plan said "edit, don't transform" — confirmed correct. Direct source edit, no `viz_render.py` changes for ruler logic.
+  - Plan's P1.3 anticipated "remove the byte-size assertions for editable files." Actual implementation also *added* existence-only checks for the same two files (since the byte-pin entries previously served double-duty as existence checks). One-line addition, kept the structural coverage symmetric.
+  - Plan's verify-self spec mentioned "narrow-window seed" but didn't fully specify how to seed. Implementation took the natural path: separate temp dir + sqlite3 INSERT + `--date 2026-05-01`. Took ~10 min, no surprises.
+
+## Communicate
+
+> **Feature complete:** `claude-time visualize` now adapts its hour-ruler to each day's actual event window. The dashboard derives `DAY_HOURS` from `window.CT_DATA.today.hour_range` at runtime, falling back to `[6, 23]` when CT_DATA is absent. For a day with events only between 14:00 and 16:00, the ruler renders 13:00–16:00 (3 ticks) instead of the old 06:00–22:00 (17 ticks). Verify by running `~/.claude/bin/claude-time visualize` — the rendered ruler should now match today's actual work window.
+
+Requester = operator — closure notice for self-record.
 
 ## Notes for build time
 
