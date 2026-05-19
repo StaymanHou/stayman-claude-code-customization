@@ -19,6 +19,7 @@ window.CT_DATA = (() => {
   const today = {
     label: 'WED · MAY 13',
     iso: '2026-05-13',
+    hour_range: [6, 23],  // [start, end_exclusive] — matches viz_data.build_day_data shape
     projects: [
       {
         id: 'claude-time',

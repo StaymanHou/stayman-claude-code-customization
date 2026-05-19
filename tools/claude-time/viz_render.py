@@ -11,10 +11,13 @@ Reads `viz/template.html` + `viz/dashboard.jsx`, applies transforms that:
   6. Render `interrupts: [<minutes>]` as vertical hairlines inside the
      active bar (Phase 2 added the data; Phase 3 renders it).
 
-The design contract (`viz/dashboard.jsx`) is treated as immutable — these
-transforms apply text replacements rather than asking the design source to
-carry interactivity-specific behavior. Phase 5c's structural-check pins the
-design file's byte size; modifying it would fail that check.
+Historically (v1) `viz/dashboard.jsx` was treated as immutable and Phase 5c
+byte-pinned it. Starting with the v2 cycle (claude-time-visualize-v2,
+2026-05-19), direct source edits to `dashboard.jsx` and `data.js` are
+permitted — the byte-pin is relaxed for those two files. The emit-time
+transforms below remain as the *additive* layer that wires interactivity
+on top of the (now-editable) design source. See `CLAUDE.md` →
+"Design-as-data" convention for the full history.
 
 Public API:
   render_html(template_path, dashboard_jsx_path, data, initial_view) -> str

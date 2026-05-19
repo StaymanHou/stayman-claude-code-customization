@@ -530,26 +530,30 @@ echo ""
 # ── Phase 5c: claude-time viz prototype integrity ─────────────────────────
 #
 # Phase 1 of the claude-time-visualize feature transplanted the Claude Design
-# mockup (4 files) into tools/claude-time/viz/ verbatim. These assertions guard
-# against silent drift — if a future contributor edits any of the four files,
-# the byte size drifts and this check fails. The expected sizes are pinned to
-# the design extract's verbatim output.
+# mockup (4 files) into tools/claude-time/viz/ verbatim and pinned all 4 to
+# their byte sizes — emit-time transforms in viz_render.py let the shipped
+# HTML diverge from the immutable source.
 #
-# Later phases will build on this with a Python data layer and shipped HTML
-# template, both of which depend on data.js's JS-literal shape being preserved
-# as the visual-contract source-of-truth.
+# The v2 cycle (claude-time-visualize-v2, started 2026-05-19) supersedes the
+# immutability pattern for editable files (`dashboard.jsx`, `data.js`):
+# direct source edits are now permitted because the cycle's UX evolution
+# (zoomable timeline, collapsible rows, etc.) exceeds what emit-time text
+# transforms can reasonably support. See docs/product/wbs.md and CLAUDE.md.
+#
+# `index.html` and `design-canvas.jsx` stay pinned — they remain immutable
+# in v2 (the design-canvas prototype is a reference artifact, and the page
+# template doesn't need source-level evolution).
 
 echo "[Phase 5c] claude-time viz prototype integrity"
 
 VIZ_DIR="tools/claude-time/viz"
 
-# Expected sizes (bytes) — pinned to the Claude Design extract, locked in
-# Phase 1 verify-codify on 2026-05-18. Updating these requires re-approving
-# the design contract; do not change without intent.
+# Expected sizes (bytes) — pinned only for files that v2 holds immutable.
+# `dashboard.jsx` and `data.js` are now editable; their integrity is guarded
+# by the JS-parse check below + downstream test coverage (test_visualize_cli.sh
+# asserts emitted-HTML behavior, which would break first if the source broke).
 declare -a VIZ_FILES=(
   "index.html:2634"
-  "dashboard.jsx:42262"
-  "data.js:9160"
   "design-canvas.jsx:49676"
 )
 
@@ -571,12 +575,21 @@ for entry in "${VIZ_FILES[@]}"; do
   fi
 done
 
+# Existence-only checks for the v2-editable files (no byte pin — see header).
+for editable in "dashboard.jsx" "data.js"; do
+  if [ -f "$VIZ_DIR/$editable" ]; then
+    check "$VIZ_DIR/$editable exists" "pass"
+  else
+    check "$VIZ_DIR/$editable exists" "fail" "file missing"
+  fi
+done
+
 # Syntax checks — the JS file must parse as plain JS; the JSX files must parse
 # with @babel/parser + jsx plugin (the same parser Babel-standalone uses at
 # runtime). We probe whether parser dependencies are present in /tmp; if not,
-# skip the JSX parse gracefully (the byte-size pin already guards against
-# editing them, and an actual render error would surface in dev-time browser
-# checks).
+# skip the JSX parse gracefully (the parsers are the v2 integrity check now
+# that two of the four files are no longer byte-pinned, and an actual render
+# error would surface in dev-time browser checks regardless).
 if command -v node >/dev/null 2>&1; then
   if node --check "$VIZ_DIR/data.js" 2>/dev/null; then
     check "viz/data.js parses as plain JS (node --check)" "pass"

@@ -183,6 +183,41 @@ else
     check "no DB + no --demo: helpful error" fail "rc=$rc, out='$OUT'"
 fi
 
+# ── 14. Adaptive hour-ruler reflects today.hour_range from data ───────
+# Seed a DB with events confined to 14:00–15:00 on a fixed past date.
+# Adaptive computation: viz_data._hour_range_for emits [min_hour-1, max_hour+1]
+# clamped to [0,24] — events at 14:00–15:00 → hour_range = [13, 16].
+# The emitted HTML's hour-ruler should reflect that range, not the default [6..22].
+ADAPT_DIR="$(mktemp -d -t claude-time-adaptive-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$ADAPT_DIR"' EXIT
+ADAPT_DB="$ADAPT_DIR/events.sqlite"
+# 2026-05-01 14:00 local → 2026-05-01 15:00 local. Compute via python.
+ADAPT_UPS_MS=$(python3 -c "
+from datetime import datetime
+print(int(datetime(2026, 5, 1, 14, 0).timestamp() * 1000))
+")
+ADAPT_STOP_MS=$((ADAPT_UPS_MS + 3600000))  # +1h
+sqlite3 "$ADAPT_DB" <<SQL
+CREATE TABLE events (
+  ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL,
+  event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT
+);
+CREATE INDEX idx_session_ts ON events(session_id, ts);
+CREATE INDEX idx_ts ON events(ts);
+INSERT INTO events VALUES
+  ($ADAPT_UPS_MS,   'sid-narrow', '/repo/narrow', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars":5}'),
+  ($ADAPT_STOP_MS,  'sid-narrow', '/repo/narrow', 'Stop',             NULL, NULL, NULL);
+SQL
+ADAPT_OUT="$ADAPT_DIR/adaptive.html"
+CLAUDE_TIME_DIR="$ADAPT_DIR" "$CLI" visualize --no-open --date 2026-05-01 --out "$ADAPT_OUT" > /dev/null 2>&1
+adapt_rc=$?
+if [ $adapt_rc -eq 0 ] && [ -f "$ADAPT_OUT" ] && \
+   grep -q '"hour_range": \[13, 16\]' "$ADAPT_OUT"; then
+    check "adaptive hour-ruler: narrow-event-window emits hour_range [13,16]" pass
+else
+    check "adaptive hour-ruler narrow-window" fail "rc=$adapt_rc, hour_range pattern not found"
+fi
+
 # ── 13. Re-running visualize overwrites in place (no archive) ─────────
 "$CLI" visualize --no-open > /dev/null 2>&1
 mtime1=$(stat -f '%m' "$OUT_HTML" 2>/dev/null || stat -c '%Y' "$OUT_HTML")

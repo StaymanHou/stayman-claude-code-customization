@@ -335,7 +335,7 @@ tools/claude-time/
   README.md                  # This file
   viz/
     index.html               # Design canvas prototype (open via local HTTP, not file://)
-    dashboard.jsx            # Dashboard React component (design source-of-truth, byte-pinned)
+    dashboard.jsx            # Dashboard React component (editable; integrity via JSX-parse + behavioral tests)
     data.js                  # Bundled mock data for design / --demo mode
     design-canvas.jsx        # DesignCanvas chrome — used by index.html only, stripped at emit
     template.html            # HTML scaffold for `claude-time visualize` output

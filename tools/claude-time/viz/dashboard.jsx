@@ -277,7 +277,17 @@ function Legend() {
 }
 
 /* ── Day-view timeline ──────────────────────────────────────── */
-const DAY_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+// Hour-ruler bounds derive from `window.CT_DATA.today.hour_range` (emitted
+// adaptively by viz_data.build_day_data as [start, end_exclusive] —
+// e.g. [6, 23] means 17 hour ticks: 06:00..22:00). Falls back to [6, 23]
+// when CT_DATA is absent (defensive — keeps the design-canvas prototype
+// happy if loaded standalone) or `hour_range` is missing.
+const _CT_HR = (
+  (typeof window !== 'undefined' && window.CT_DATA && window.CT_DATA.today && window.CT_DATA.today.hour_range)
+    ? window.CT_DATA.today.hour_range
+    : [6, 23]
+);
+const DAY_HOURS = Array.from({ length: Math.max(1, _CT_HR[1] - _CT_HR[0]) }, (_, i) => _CT_HR[0] + i);
 const DAY_START_MIN = DAY_HOURS[0] * 60;
 const DAY_END_MIN   = (DAY_HOURS[DAY_HOURS.length - 1] + 1) * 60;
 const DAY_RANGE_MIN = DAY_END_MIN - DAY_START_MIN;
