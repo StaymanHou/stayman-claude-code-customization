@@ -61,6 +61,19 @@ WP2 moves the NOW computation to the client: `useState` initialized from `Date.n
 - **Unvisited:** none
 - **Open discoveries:** cosmetic label-overlap accepted by user, logged as `SURFACE-2026-05-19-CLAUDE-TIME-VIZ-NOW-LABEL-OVERLAPS-RULER-TICK` in `workflow/backlog.md` (priority: low, status: open)
 
+## Retrospect
+
+- **What changed in our understanding:** The `data.iso` field (already emitted by `build_day_data`) is the natural primary key for "is this dashboard showing today?" — no new metadata needed for that gating. The `meta` namespace at the data-payload top level is a cheap extension point we hadn't planned to introduce, but it landed cleanly and gives Phase 3+ a place to attach future emit-time facts (snapshot, cycle id, future "data freshness" indicators) without modifying `build_day_data`'s contract.
+- **Assumptions that held:** (1) Direct-edit pattern from WP1's byte-pin relaxation worked smoothly again — no need to rebuild the emit-time-transform layer for this change. (2) `React.useState`/`React.useEffect` are in scope thanks to the v1 interactive Dashboard wrapper that already uses them. (3) Plan-time integration-boundary identification meant verify-codify's 5 assertions all targeted the right consuming surface (test_visualize_cli.sh) without scrambling at codify time.
+- **Assumptions that were wrong:** First verify-self pass FAILed Outcome 1 because I synthesized the live-today fixture with `empty: true` to keep the payload minimal. The dashboard's `today.empty ? <EmptyState> : <DayTimeline>` branch short-circuited before the `iso === todayISO` gating could even fire, so the marker code path was structurally unreachable in the test. **Fixture, not feature** — recovered by synthesizing a populated payload and re-running. Surfaceable lesson: when verifying a gated UI feature, the fixture must traverse the gate predicates in order to reach the gated branch — minimal-payload shortcuts can hide branches that would never execute under the test.
+- **Approach delta:** None substantive. The plan's 6 impl tasks landed in the order planned with task-level scope unchanged. The only minor delta: `_todayISO()` ended up as a helper function rather than baked into `useNowMin`'s return, because both `nowMin` and `todayISO` are needed by `DayTimeline`'s gating, so returning `{nowMin, todayISO}` from the hook is cleaner than calling two helpers.
+
+## Communicate
+
+**Feature complete:** WP2 of the `claude-time-visualize-v2` cycle — NOW marker client-side + snapshot caption — has shipped (commit `3a3f42c` on `origin/main`). The dashboard's NOW vertical line now tracks the system clock and ticks every 60s instead of freezing at HTML-emit time; it hides when viewing a past day (`--date 2026-05-15`); a `snapshot: HH:MM` mono-font caption near the toolbar tells the user how stale the bars are relative to the moving cursor. Verify by running `claude-time visualize` and leaving the tab open for a minute — the cursor advances; the snapshot caption does not.
+
+Requester = operator — closure notice for self-record.
+
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
      Each entry is also logged to workflow/backlog.md -->
