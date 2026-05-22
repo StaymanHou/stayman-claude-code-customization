@@ -32,6 +32,27 @@ Time semantics in the output:
   - `hour_range` is `[start_hour, end_hour_exclusive]` adapted to the day's
     data, with one-hour padding, clamped to [0, 24], falling back to [6, 23]
     on an empty day.
+
+WP3 (claude-time-visualize-v2): added `build_range_data(start_iso, end_iso, ...)`
+as a multi-day aggregator that coordinates per-day work. Range payload shape:
+
+  {
+    label, projects (cross-day union, sessions tagged with day_iso),
+    meta: {start, end, day_count},
+    hour_range_by_day: {iso: [start, end]},
+    day_window: [global_start, global_end],
+    # For day_count == 1: also includes top-level `iso` and `hour_range`
+    # so callers get back-compat day shape from a 1-day range.
+  }
+
+`build_day_data` and `build_week_data` are now thin wrappers — they preserve
+their pre-WP3 return shapes byte-for-byte (dashboard.jsx + the 22 pre-existing
+unit tests keep passing unchanged). The range `meta` field is intentionally
+NOT propagated into the day/week wrapper returns — the CLI's `_cmd_visualize`
+already injects a flat-level `meta: {snapshot, snapshot_iso}` at
+`window.CT_DATA.meta`, and surfacing a second `meta` inside `today` / `week`
+would invite key-collision confusion in JS consumers. Range `meta` is only
+visible to direct callers of `build_range_data`.
 """
 
 from __future__ import annotations
@@ -408,6 +429,121 @@ def build_day_data(
     }
 
 
+def build_range_data(
+    start_iso: str,
+    end_iso: str,
+    *,
+    events_by_day: dict[str, list[dict]],
+    cfg: dict,
+    auto_alias_fn,
+) -> dict:
+    """Construct a segment-model payload over an arbitrary [start, end] window.
+
+    Inputs:
+      start_iso, end_iso  — "YYYY-MM-DD" inclusive day bounds (end >= start)
+      events_by_day       — dict mapping "YYYY-MM-DD" → list of that day's events.
+                            Days missing from the dict are treated as empty.
+      cfg, auto_alias_fn  — same semantics as `build_day_data`
+
+    Returns:
+      {
+        label,
+        projects: [{id, alias, path, sessions: [...with day_iso tag]}],
+        meta: {start, end, day_count},
+        hour_range_by_day: {iso: [start_hour, end_hour]},
+        day_window: [global_start_hour, global_end_hour],
+        # For day_count == 1: also `iso` and `hour_range` for back-compat with
+        # the day shape — `build_day_data` is a thin wrapper that returns this
+        # unchanged.
+      }
+
+    Per-day work delegates to `build_day_data`'s body (via the internal
+    `_build_day_payload` helper). Cross-day project aggregation unions sessions
+    from the same alias across days, tagging each session with its `day_iso`
+    so multi-day renderers can place it on the correct row.
+    """
+    start = date.fromisoformat(start_iso)
+    end = date.fromisoformat(end_iso)
+    if end < start:
+        raise ValueError(f"end_iso {end_iso} precedes start_iso {start_iso}")
+    day_count = (end - start).days + 1
+    days_iso = [(start + timedelta(days=i)).isoformat() for i in range(day_count)]
+
+    # Per-day payloads — reuse `build_day_data`'s body for each day in range.
+    per_day_payloads: dict[str, dict] = {}
+    for day_iso in days_iso:
+        day_events = events_by_day.get(day_iso, [])
+        per_day_payloads[day_iso] = build_day_data(day_iso, day_events, cfg, auto_alias_fn)
+
+    # Cross-day project aggregation: union sessions by alias, tagging each
+    # with the day_iso it belongs to so multi-day renderers can place it.
+    by_alias: dict[str, dict] = defaultdict(lambda: {"path": "", "sessions": []})
+    for day_iso, payload in per_day_payloads.items():
+        for proj in payload["projects"]:
+            bucket = by_alias[proj["alias"]]
+            if not bucket["path"]:
+                bucket["path"] = proj.get("path", "")
+            for s in proj["sessions"]:
+                tagged = dict(s)
+                tagged["day_iso"] = day_iso
+                bucket["sessions"].append(tagged)
+
+    projects_out: list[dict] = []
+    for alias, bucket in by_alias.items():
+        sessions = bucket["sessions"]
+        sessions.sort(key=lambda s: (s["day_iso"], s["start"]))
+        projects_out.append({
+            "id": alias,
+            "alias": alias,
+            "path": bucket["path"],
+            "sessions": sessions,
+        })
+
+    # Sort cross-day projects by total active+subagent minutes desc.
+    def _project_active_min(p: dict) -> int:
+        total = 0
+        for s in p["sessions"]:
+            for seg in s["segs"]:
+                if seg["kind"] in (KIND_ACTIVE, KIND_SUBAGENT):
+                    total += seg["end"] - seg["start"]
+        return total
+    projects_out.sort(key=lambda p: (-_project_active_min(p), p["alias"]))
+
+    # Per-day hour ranges (read from each day payload — already adaptive,
+    # default [6, 23] on empty days).
+    hour_range_by_day = {
+        day_iso: per_day_payloads[day_iso]["hour_range"]
+        for day_iso in days_iso
+    }
+    # Global day_window — union of all per-day adaptive ranges.
+    starts = [hr[0] for hr in hour_range_by_day.values()]
+    ends = [hr[1] for hr in hour_range_by_day.values()]
+    day_window = [min(starts), max(ends)] if starts else [6, 23]
+
+    label = (
+        per_day_payloads[start_iso]["label"]
+        if day_count == 1
+        else f"{start.strftime('%b %d').upper()} — {end.strftime('%b %d').upper()}"
+    )
+
+    out: dict = {
+        "label": label,
+        "projects": projects_out,
+        "meta": {"start": start_iso, "end": end_iso, "day_count": day_count},
+        "hour_range_by_day": hour_range_by_day,
+        "day_window": day_window,
+    }
+    # Back-compat: for day_count == 1, surface flat `iso` and `hour_range` so
+    # the same payload can be consumed as a day shape if needed.
+    if day_count == 1:
+        out["iso"] = start_iso
+        out["hour_range"] = hour_range_by_day[start_iso]
+        # Propagate `empty` flag from the single day's payload.
+        if per_day_payloads[start_iso].get("empty"):
+            out["empty"] = True
+    return out
+
+
 def build_week_data(
     week_monday_iso: str,
     events_by_day: dict[str, list[dict]],
@@ -424,13 +560,15 @@ def build_week_data(
     For each project (resolved across the whole week), produce a 7-entry
     rollup with per-day {active, reading, thinking, away, subagent, prompts}
     minute totals.
+
+    Implementation (WP3): thin wrapper over `build_range_data` — coordinates
+    the 7-day window, then re-shapes the per-day payloads into the rollup
+    shape this function has always returned. Output shape unchanged from pre-WP3.
     """
     monday = date.fromisoformat(week_monday_iso)
     sunday = monday + timedelta(days=6)
     days_iso = [(monday + timedelta(days=i)).isoformat() for i in range(7)]
     days_labels = [(monday + timedelta(days=i)).strftime("%a %d").upper() for i in range(7)]
-
-    project_names_cfg = cfg.get("project_names", {}) or {}
 
     # alias → 7-entry rollup, initialised with zeros.
     def _empty_rollup() -> list[dict]:
@@ -439,28 +577,33 @@ def build_week_data(
 
     rollups: dict[str, list[dict]] = defaultdict(_empty_rollup)
 
-    for i, day_iso in enumerate(days_iso):
-        day_events = events_by_day.get(day_iso, [])
-        if not day_events:
-            continue
-        # Per-day, per-alias breakdown — use build_day_data and aggregate.
-        day_payload = build_day_data(day_iso, day_events, cfg, auto_alias_fn)
-        for proj in day_payload["projects"]:
+    # Re-use build_range_data per-day payloads (it calls build_day_data
+    # internally and tags sessions with day_iso). Then re-aggregate into the
+    # week rollup shape.
+    range_payload = build_range_data(
+        days_iso[0], days_iso[-1],
+        events_by_day=events_by_day, cfg=cfg, auto_alias_fn=auto_alias_fn,
+    )
+    day_iso_to_index = {iso: i for i, iso in enumerate(days_iso)}
+    for proj in range_payload["projects"]:
+        for s in proj["sessions"]:
+            i = day_iso_to_index.get(s["day_iso"])
+            if i is None:
+                continue
             cell = rollups[proj["alias"]][i]
-            for s in proj["sessions"]:
-                cell["prompts"] += s["prompts"]
-                for seg in s["segs"]:
-                    dur = seg["end"] - seg["start"]
-                    if seg["kind"] == KIND_ACTIVE:
-                        cell["active"] += dur
-                    elif seg["kind"] == KIND_READING:
-                        cell["reading"] += dur
-                    elif seg["kind"] == KIND_THINKING:
-                        cell["thinking"] += dur
-                    elif seg["kind"] == KIND_SUBAGENT:
-                        cell["subagent"] += dur
-                    elif seg["kind"] == KIND_AWAY:
-                        cell["away"] += dur
+            cell["prompts"] += s["prompts"]
+            for seg in s["segs"]:
+                dur = seg["end"] - seg["start"]
+                if seg["kind"] == KIND_ACTIVE:
+                    cell["active"] += dur
+                elif seg["kind"] == KIND_READING:
+                    cell["reading"] += dur
+                elif seg["kind"] == KIND_THINKING:
+                    cell["thinking"] += dur
+                elif seg["kind"] == KIND_SUBAGENT:
+                    cell["subagent"] += dur
+                elif seg["kind"] == KIND_AWAY:
+                    cell["away"] += dur
 
     # Build the projects list ordered by total active+subagent across the week.
     projects_out = []
