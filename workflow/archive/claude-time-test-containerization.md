@@ -1,9 +1,10 @@
 ---
 workflow: feature
-state: verify-codify (all phases complete)
+state: ship (complete)
 created: 2026-05-22
+shipped: 2026-05-22 (commit de89aef on origin/main)
 drive_mode: autopilot
-blocks: claude-time-visualize-v2 cycle WP5 Phase 4 (paused — unblocked by this feature; resume after ship+finalize)
+blocks: claude-time-visualize-v2 cycle WP5 Phase 4 (paused — unblocked by this feature; resume after finalize)
 ---
 
 # Feature: Containerize the `claude-time` test infrastructure
@@ -224,8 +225,8 @@ Plan skill confirms or revises.
   - **WP5 handoff:** the WP5 WIP file Current Node now says "Phase 4 build resumable" rather than "paused". The session pointer (`workflow/.session.md`) still says "paused" but it'll be overwritten or cleared when WP5 resumes; not worth a separate edit here — the finalize step's session-state hygiene handles it.
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** All 3 phases complete; ready for `/feature-ship` → `/feature-finalize`. After this feature ships, WP5 Phase 4 (paused) resumes.
+- **Path:** Feature > finalize
+- **Active scope:** Shipped at commit `de89aef` on `origin/main` (2026-05-22). Ready for `/feature-finalize`. After finalize: WP5 Phase 4 (paused) resumes.
 - **Blocked:** none
 - **Unvisited:** Phase 1 (remaining: verify-auto → verify-self → verify-human → verify-codify); Phase 2 (wrapper script + lifecycle + existing-tests-pass-inside, depends on Phase 1); Phase 3 (Playwright smoke + README + WP5 handoff, depends on Phase 2)
 - **Open discoveries:** 3 — image arch (aarch64 not x86_64), image size (3.56GB > 2GB budget), npx noise — all accepted as-is, no back-loops

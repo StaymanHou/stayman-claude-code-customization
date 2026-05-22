@@ -1,5 +1,15 @@
 # Backlog
 
+## SURFACE-2026-05-22-CLAUDE-MD-MISSING-CLAUDE-TIME-CONTAINER-NOTE
+- **Source:** feature:finalize (claude-time-test-containerization, 2026-05-22)
+- **Target level:** task:plan (small/simple — single paragraph append)
+- **Type:** doc-gap
+- **Summary:** Project root `CLAUDE.md` doesn't mention that `tools/claude-time/` tests now run inside a Docker container via `tools/claude-time/test/run-in-container.sh`. The README under `tools/claude-time/` covers it fully, but a contributor reading the project-root CLAUDE.md sees only the workflow-system test invocations and would assume host-side tests are supported.
+- **Context:** During finalize of `claude-time-test-containerization`, a brief paragraph was drafted to add under `## Commands` in CLAUDE.md but had to be reverted because of an operator mistake (`git checkout HEAD -- CLAUDE.md` while the file had cross-feature dirty state from WP5 — see lesson logged in retrospect of `claude-time-test-containerization`). Re-adding the paragraph would only collide with WP5's still-uncommitted CLAUDE.md edits; deferring to a clean window.
+- **Suggested action:** After WP5 of `claude-time-visualize-v2` ships and CLAUDE.md is clean again, append a paragraph under `## Commands` (right after the workflow-system test runner block) explaining: container is the canonical test path for `tools/claude-time/`; lifecycle wrapper at `tools/claude-time/test/run-in-container.sh` (start/stop/status/exec/restart/logs/help); bundles Python 3.12 + Perl + sqlite3 + jq + Node + Playwright + Chromium; project root bind-mounts at `/work` rw; see `tools/claude-time/README.md` → "Running tests" for canonical invocations. ~3 sentences, single hunk.
+- **Priority:** low — discoverable from `tools/claude-time/README.md` already; CLAUDE.md note is a nice signal for project-root readers but not a blocker.
+- **Status:** open
+
 ## SURFACE-2026-05-19-CLAUDE-TIME-VIZ-NOW-LABEL-OVERLAPS-RULER-TICK
 - **Source:** feature:verify-human (claude-time-visualize-v2 WP2 NOW marker, 2026-05-19)
 - **Target level:** task:plan (small/simple — single component, label-placement logic)
@@ -8,31 +18,30 @@
 - **Context:** Surfaced and human-accepted at WP2 verify-human (2026-05-19). User explicitly chose to accept the cosmetic and ship without a fix to keep WP2 scope tight. The condition happens for ~10 minutes per hour, ~1/6 of the time.
 - **Suggested action:** Modify `HourRuler` in `viz/dashboard.jsx` to flip the `NOW · HH:MM` label to the left of the NOW line when `nowMin` is within ~10 minutes of a top-of-hour ruler tick (i.e., `nowMin % 60 >= 50` or `nowMin % 60 < 10`). Alternative: render the label below the line instead of beside it. Either is single-file scope.
 - **Priority:** low — cosmetic-only, marker correctness is intact, human accepted as-is.
-- **Status:** open
+- **Status:** RESOLVED 2026-05-22 in claude-time-visualize-v2 WP5 Phase 2 (P2.7 opportunistic fold-in). Mechanical 3-line change inside HourRuler's adaptive-density refactor: `flipNowLeft = nowMin != null && (nowMin % intervalMin) >= (intervalMin - 10)` — when true, the `NOW · HH:MM` label gets `right: 4` instead of `left: 4`. Adapts to adaptive tick density: the 10-minute threshold uses the current `intervalMin` as reference so the fix works at any zoom level. CHANGELOG entry at finalize.
 
-## SURFACE-2026-05-18-CLAUDE-TIME-RECLASSIFY-SESSION-ACTIVE-MS-CONSECUTIVE-UPS-UNDERCOUNT
-- **Source:** feature:verify-self (claude-time-visualize Phase 2, 2026-05-18)
-- **Target level:** task:plan (small/simple — single function change in reclassify.py + test addition)
-- **Type:** gap (subtle semantic divergence between two aggregations of the same data)
-- **Summary:** `reclassify.session_active_ms` (used by `claude-time report`) and `viz_data._bursts_for_session` (used by the new dashboard) define "active engaged time" differently on consecutive-UPS event streams. `session_active_ms` overwrites `last_ups_ts` on each UPS, counting only the (last_UPS → Stop) window. `viz_data` counts the (first_UPS → Stop) window, ignoring intervening UPSes while a burst is open. On real ~/.claude-time data for today, this causes `claude-time report` to undercount session-active time by ~6.6% (13 min on 195 min).
-- **Context:** Surfaced during Phase 2 verify-self of the visualize feature when the subagent cross-checked viz totals against `session_active_ms`. The 6.6% drift was initially classified as a code regression in viz; drill-down localized the divergence to consecutive-UPS handling (7 consecutive-UPS pairs in session `d4e3fd34` alone). Both definitions are internally consistent; they answer different questions. The viz definition matches "user-facing engaged window" (which is what a Gantt chart should show). Both have regression-pin tests now (test_viz_data.py → DivergenceFromSessionActiveMsTests).
-- **Suggested action:** decide whether `claude-time report --by ...`'s "active" column should match the dashboard's wider definition. Options:
-  - (a) Update `reclassify.session_active_ms` to use first-UPS semantics (only set `last_ups_ts` when None). Pro: report and dashboard agree; user-facing reality is "I was working." Con: existing tests in `test_reclassify.py` may pin the current behavior — check.
-  - (b) Leave both as-is. Pro: zero churn; the divergence is small and the report has a documented conservative definition. Con: dashboard and report disagree on "active" by ~5%.
-  - (c) Add a third helper `session_active_engaged_ms` that uses first-UPS semantics, leave `session_active_ms` alone, route both consumers to whichever fits. Most explicit, most code.
-  Lean: (a) — the conservative "skip first UPS" behavior was never a documented intent; it's an artifact of the loop structure. Verify by reading test_reclassify.py for cases that pin it.
-- **Priority:** low — not blocking ship of this feature; the dashboard is correct, the report is mildly conservative. Becomes higher-priority if a future user explicitly notices the disagreement.
-- **Status:** RESOLVED 2026-05-18 in claude-time-visualize Phase 2 back-loop. User decided to keep the narrow definition for both consumers; extracted `reclassify.active_bursts` as shared source of truth; both `session_active_ms` and `viz_data._bursts_for_session` now consume it. Interrupt UPSes captured as `interrupts` field on viz-sessions for hairline rendering at Phase 3.
-
-## SURFACE-2026-05-18-CLAUDE-TIME-TOTAL-COL-ROW
-- **Source:** feature:verify-human (claude-time-report-by-project Phase 2, 2026-05-18)
-- **Target level:** feature:plan (small/simple — adds derived columns + reuses existing TOTAL row pattern)
-- **Type:** new-work / ergonomics
-- **Summary:** Add a total column (sum of tool + active + reading + thinking + away per row) to `claude-time report --by <dim>` grouped output. The TOTAL row already exists at the bottom; this is the orthogonal complement — per-row total at the right. Together they give the user an instant "where's the time" cross-pivot without mental math.
-- **Context:** Surfaced during Phase 2 verify-human acceptance. User accepted the project_names + auto-alias work and immediately requested this as the **next feature** ("That should be the next feature we work on"). High signal: real ergonomic gap observed while actually using the grouped report on real data.
-- **Suggested action:** Extend `render_grouped` in `tools/claude-time/claude-time`: add a `TOTAL` column header to the column row in the grouped table (rightmost), compute per-row totals as `tool_ms + active_ms + reading_ms + thinking_ms + away_ms`, render in the same fmt_ms format as other cells. The existing bottom TOTAL row gets a corresponding rightmost cell = sum of all per-row totals (which should equal the sum-down of any single column, useful as a sanity check). One impl task; one new observable outcome; verify-codify gets a new assertion that the per-row total = sum of the other 5 cells.
-- **Priority:** high — user explicitly designated this as the next feature.
-- **Status:** RESOLVED 2026-05-18 by feature `claude-time-total-col-row`. Shipped rightmost `total` column on `--by` grouped output: header gains `total` header, each data row sums its 5 metric cells, bottom-right cell shows the grand total (sum-of-col-totals == sum-of-per-row-totals — cross-pivot sanity check). test_cli.sh extended 25 → 29 assertions; full claude-time suite 70/70. Commit 3c605f0 on branch feature/claude-code-time-tracking-phase-1.
+## SURFACE-2026-05-22-CLAUDE-TIME-VIZ-DAY-VIEW-MULTI-DAY-DATA-WINDOW
+- **Source:** feature:verify-human (claude-time-visualize-v2 WP5 Phase 2 and 3, 2026-05-22)
+- **Target level:** feature:plan (resolves into a new dedicated WP — see Decision below)
+- **Type:** new-work / UX refinement uncovered during Phase 2 verify-human
+- **Summary:** User wants to pan the Day-view timeline beyond the current day (both past AND future) and see actual data, not empty time. Currently `_cmd_visualize` calls `build_day_data(date)` and emits only that day's events. The viewport math (WP5) lets you pan past the day boundary, but there's no data there.
+- **Context:** Surfaced at Phase 2 verify-human ("is it normal that it doesn't show data yet when I drag beyond yesterday?" → direct: "I want to be able to drag and pan beyond the current day (both past AND future)"). Re-discussed at Phase 3 verify-human pause: user emphasized "this feature really matters to me!" and clarified that this is NOT the same as WP8 (Custom-range, which is a *user-picked* start+end with a date-picker UI) and NOT the same as WP7 (Month, which is a different *aggregation* concern).
+- **Decision (2026-05-22):** Promote to a dedicated WP (working name **WP5b: Multi-day data window for Day view**). Slot after WP5 in the WBS to keep WP6..WP13 numbering stable. WP7 stays as planned (Month = high-level aggregated stats, like Week view but at month granularity — genuinely different concern). WP8 stays as planned (Custom-range = user-picked start+end via UI tab — distinct from "Day view extends its window automatically").
+- **Suggested WP5b plan (recorded now; WBS edit happens at WP5-finalize boundary):**
+  - **Description:** Day view loads trailing+leading context days into the data window. Current day is default-viewport center; pan reveals neighbors.
+  - **Phase:** 2 (sits with view-modes phase as a Day-view extension)
+  - **Dependencies:** WP3 (range-aware data layer — shipped), WP5 (viewport mechanic + URL hash — current WP)
+  - **Size:** S–M (data plumbing + label formatter; risk surface = extending `pickTickInterval`'s scale set to support day-level ticks for zoom-out across 21 days, otherwise ruler tick density blows past the 8–30 band)
+  - **Defaults (locked):** `viz_context_days_prior = 14`, `viz_context_days_after = 7`. Per-invocation override via CLI flags `--context-days-prior N` + `--context-days-after M` (or compact `--context PRIOR:AFTER`). Both CLI flags AND `~/.claude-time/config.json` config keys supported; CLI overrides config; config overrides defaults.
+  - **Tasks:**
+    1. Wire `_cmd_visualize` to call `build_range_data` with `[date − N_prior, date + N_after]` when context days > 0.
+    2. New CLI flags + config keys.
+    3. ISO-day-aware label formatter: `MMM DD HH:MM` when viewport crosses midnight; `HH:MM` within a single day (no regression on current default-hash demo).
+    4. Extend `pickTickInterval` scale set to include `[1440 (day), 360 (6h)]` for zoom-out across multi-day data windows. Adaptive ruler picks day-level ticks when viewport spans ≥ ~2 days.
+    5. Initial viewport stays centered on the requested day (no behavior change on default-hash path — WP5 verify-human regression-pinned).
+    6. Test: extend `test_visualize_cli.sh` to seed multi-day events and assert emitted CT_DATA + ruler tick density across day boundaries.
+- **Priority:** medium-high — directly user-prioritized ("this feature really matters to me!"). Bumped from medium. Picks up after WP5 (current) ships and finalizes.
+- **Status:** open — will become `RESOLVED` when WP5b ships and is logged to CHANGELOG.
 
 ## SURFACE-2026-05-18-SETTINGS-FIXTURE-DRIFT-CLAUDE-TIME
 - **Source:** feature:verify-codify (claude-time-report-by-project Phase 1, 2026-05-18)
@@ -43,26 +52,6 @@
 - **Suggested action:** Choose one of (a) extend `tests/fixtures/settings.json` to include the claude-time hooks block + env (treating them as documented standard install state for this repo), or (b) add the relevant keys to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` (treating them as per-machine opt-in state that varies legitimately). (a) is preferable if the repo wants the structure check to assert "claude-time is wired up correctly for any contributor"; (b) is preferable if opting in is intentionally per-machine. Probably (b) since the README explicitly frames the install as opt-in.
 - **Priority:** medium — structural check currently fails on a clean run, which obscures real regressions.
 - **Status:** open
-
-## SURFACE-2026-05-18-CLAUDE-TIME-REPORT-BY-PROJECT
-- **Source:** feature:verify-human (claude-code-time-tracking Phase 3, 2026-05-18)
-- **Target level:** feature:spec (v2 enhancement)
-- **Type:** new-work
-- **Summary:** `--cwd` works as a *filter* in v1 (verified in Phase 3 verify-self outcome 4); add a *grouping dimension* (`--by cwd` or `report projects`) that shows one row per distinct cwd with tool / active / gap-bucket totals side-by-side. The data is already captured (`cwd` is a column on every event row in the existing schema), so this is CLI-side only — no schema migration.
-- **Context:** User asked during Phase 3 verify-human review whether the system supports per-project breakdown. Today the answer is "filter to one project at a time"; what the user actually wants is "show me all projects side by side." The spec listed `--cwd` only as a filter (acceptance #5), not as a grouping dimension. Hits the "self-awareness of where time goes" use case from the original problem statement more directly than per-session view.
-- **Suggested action:** Add a `--by <dim>` flag to `claude-time report` where `<dim>` is one of `cwd | session | day`. Render a grouped table: each row is one value of the chosen dimension, columns are the existing totals (tool time, active time, gap buckets). Optional follow-up: `~/.claude-time/config.json` `project_names` map for human-readable `cwd → name` aliasing (e.g., `{"my-thing": ["/Users/me/repo", "/Users/me/repo-worktree"]}`) so a logical project that lives in two cwds (worktree + main) shows as one row.
-- **Priority:** medium — real user request observed in real verify-human flow; not blocking v1 ship; the captured data already supports it so v2 cost is bounded.
-- **Status:** RESOLVED 2026-05-18 by feature `claude-time-report-by-project`. Shipped `--by cwd | session | day` grouped report, optional `project_names` aliasing in `~/.claude-time/config.json`, and auto-alias (git-repo basename | misc) so the zero-config case already renders project rows by name. test_cli.sh extended 10 → 25 assertions. Mid-phase user request for total-col/total-row split out as a separate follow-up: `SURFACE-2026-05-18-CLAUDE-TIME-TOTAL-COL-ROW`.
-
-## SURFACE-2026-05-18-CLAUDE-TIME-HOOK-PERF-BUDGET-INFEASIBLE
-- **Source:** feature:build (claude-code-time-tracking Phase 1, P1.3, 2026-05-18)
-- **Target level:** feature:plan (back-loop F23 — already taken in this session)
-- **Type:** spec/plan conflict surfaced by empirical measurement
-- **Summary:** Spec acceptance #10 ("Hook script overhead < 50ms total across 10 tool calls = < 5ms per hook average") plus the locked tech contract ("5ms typical, 20ms p99 when enabled") are unachievable on stock macOS with the plan-time language choice (bash + jq + sqlite3 + python3-for-ms-timestamp). Measured ~110ms per hook call (5-call mean, single Stop event, warm DB). Breakdown: bash ~3ms + 3× jq ~30ms + python3 for ms timestamp ~80ms + sqlite3 ~5ms. macOS BSD `date` lacks `%3N`; macOS default bash 3.2.57 lacks `EPOCHREALTIME` (added in bash 5). Even with perl substituted for python3 (~18ms cold), the 3× jq floor keeps total ~35-40ms.
-- **Context:** Surfaced during the very first Phase 1 build attempt (acceptance #10 specifically called out measurement as a plan deliverable — measuring at build time caught the conflict early, exactly as intended).
-- **Suggested action:** During the F23 plan revision: pick ONE of (a) consolidate to single Python script (one cold start ~80ms, then no jq), (b) consolidate to single Perl script (one cold start ~18ms, then no jq), (c) keep bash but use one jq pass extracting all fields (saves ~20ms), (d) relax the spec's 5ms budget to a measured-realistic number. Combine with whichever language gives the best Linux performance too (Linux GNU date supports `%3N` so bash stays viable there).
-- **Priority:** high (blocked Phase 1 completion)
-- **Status:** resolved-via-plan-revision (2026-05-18). Plan pivoted to Perl single-process hook (~10ms/call measured); spec acceptance #10 + performance contract amended in workflow/wip/claude-code-time-tracking.md. CHANGELOG entry will be emitted at feature-finalize per the convention (resolved during feature-active work — not feature-shipped yet).
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
@@ -106,31 +95,6 @@
 - **Priority:** low (the path is rare in practice; cost of adding a scenario is small but not urgent)
 - **Status:** open
 
-## SURFACE-2026-05-10-CLAUDE-CODE-TIME-TRACKING  (RESOLVED 2026-05-18)
-- **Source:** user-initiated (exploration idea, 2026-05-10 — logged during incident-codify feature work)
-- **Target level:** feature:spec (likely complex — multi-component, persistent storage, cross-session)
-- **Type:** new-work
-- **Summary:** Automatically log and time Claude Code usage to a centralized database. Track time distribution across agent states (reasoning, waiting on commands like tests/npm install, idle awaiting human input, offline) AND human-side time (writing prompts, reading output, reasoning, context-switching between multiple CC instances, away). Goal: usage analytics + self-awareness of where time actually goes.
-- **Context:** Useful for cost/usage analysis, identifying friction points (e.g., am I spending more time waiting on tests than coding?), and quantifying value across multiple parallel CC sessions. The "real offline vs idle" distinction is non-trivial — see "Suggested action" §3.
-- **Suggested action — exploration outline (not a plan):**
-  1. **Storage:** centralized DB — local SQLite is the cheap default; consider Postgres if cross-machine aggregation is wanted later. Schema sketch: `sessions(id, project, started_at, ended_at)`, `events(session_id, ts, kind, duration_ms, meta)`. Kinds: `agent_reasoning`, `tool_running`, `idle_awaiting_human`, `human_typing`, `human_reading`, `away`, `session_paused`, `session_ended`.
-  2. **Agent-side instrumentation:** hooks are the natural surface. `PreToolUse` / `PostToolUse` for command timing; `Notification` for idle-awaiting-human start; `Stop` for turn end. Reasoning time = wall-clock between user submit and first assistant tool/text, minus tool wait time. Storage write should be async/append-only to avoid blocking the harness.
-  3. **The offline-vs-idle problem:** core ambiguity. When the harness is open but the user has stepped away, the agent and harness can't easily tell the difference between "user is reading slowly" and "user has gone to bed." Options to explore:
-     - **OS-level signals:** macOS idle time (`ioreg -c IOHIDSystem`), lock-screen events, sleep/wake events from `pmset -g log`. Treat OS sleep as authoritative "offline."
-     - **Heuristic timeout:** anything > N minutes (e.g., 15) without keystroke → reclassify as "away" retroactively. Cheap, model-agnostic, but always lossy at the boundary.
-     - **Explicit ritual:** opt-in `/away` and `/back` slash commands. Loses the "going to bed without thinking" goal but is unambiguous.
-     - **Hybrid:** OS sleep = offline (authoritative); else timeout heuristic for away; manual `/away` overrides both. Recommend this as the starting point.
-     - **Key constraint user stated:** "going to bed with or without Claude Code sessions terminated should mean the same thing" → the system must not punish leaving sessions open overnight. The hybrid above satisfies this — OS sleep retroactively reclassifies any pending "idle" time as "offline."
-  4. **Human-side time tracking:** harder. The harness can detect typing-vs-not via the input box state (if exposed via hooks/APIs — unclear). Reading-vs-reasoning is essentially unobservable without eye tracking; best approximation is "time between last assistant output and next user submit, capped by idle threshold." Context-switching between multiple CC instances → would need either a shared parent process tracker or each instance writing to the same DB with a session-foreground signal.
-  5. **Multi-instance handling:** if logging into one DB from multiple sessions concurrently, schema needs a session-foreground/background bit. macOS has frontmost-app APIs but not "frontmost terminal tab" without deeper integration.
-  6. **Privacy/storage hygiene:** decide whether prompt content is stored or only timing metadata. Recommend timing-only to start — easier to reason about and avoids accidentally piping sensitive prompts into a long-lived DB.
-- **Known unknowns to surface in spec:**
-  - Whether Claude Code's hook system exposes input-box-focus / typing events (PreToolUse and Stop are confirmed; the rest may not exist)
-  - Whether session correlation across `/clear`, `/session-pause`, `/session-resume` is feasible with current hook payloads
-  - Whether the centralized DB should be queryable in-session (slash command `/usage-today`) or only via external dashboard
-- **Priority:** medium (bumped from low 2026-05-17 — user re-evaluation during backlog grooming)
-- **Status:** RESOLVED 2026-05-18 — shipped as `tools/claude-time/` on branch `feature/claude-code-time-tracking-phase-1`. 4 phases delivered: opt-in Perl hook + 10-event logging + Python reclassifier CLI + perf/multi-instance verification. v1 scope per spec; v2 enhancement (per-project grouping) logged as SURFACE-2026-05-18-CLAUDE-TIME-REPORT-BY-PROJECT. Two of the six "Suggested action" sub-items in the original SURFACE became spec acceptance criteria (storage in §1, agent-side instrumentation in §2); the offline-vs-idle hybrid (§3) was deferred to v2 (spec's "Out of Scope" → OS-level idle signals).
-
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
@@ -139,4 +103,14 @@
 - **Context:** Useful for bug-fix features that didn't go through reproduce upfront but discover during build that they need a failing-test anchor. Without this transition, the agent has to either (a) continue without confirmation, or (b) abandon and restart at reproduce. A redirect would preserve build state and let reproduce run, then resume.
 - **Suggested action:** Add Fnew → build → reproduce REDIRECT transition. Update feature-build SKILL.md to surface this as a valid exit when "could not confirm fix worked" condition holds. Update reproduce SKILL.md to recognize REDIRECT entry and hand back to build.
 - **Priority:** low (deferred — wait until we observe the need in practice)
+- **Status:** open
+
+## SURFACE-2026-05-22-DEBUG-EMPIRICAL-TELEMETRY-SKILL
+- **Source:** user request (2026-05-22)
+- **Target level:** feature:spec (new `debug-*` sidebar skill — non-trivial design surface: trigger gate, instrumentation playbook, cleanup discipline)
+- **Type:** new-work / new debug skill in the agent-pulled sidebar category
+- **Summary:** Add a `debug-*` sidebar skill (working name: `debug-empirical-telemetry` or `debug-observe-runtime`) that forces a shift from static-analysis debugging ("read the code, reason about what it does, propose a fix") to empirical observation of the running system ("add logging/timing/counters, run, read the telemetry, then decide"). Triggered after N failed static-reasoning attempts on the same bug, or whenever the bug-shape involves runtime values the agent cannot derive from code alone (DB query plans/timing, race conditions, intermittent failures, perf regressions, "this variable is somehow the wrong value at this line").
+- **Context:** Agents (this one included) default to static analysis as the first and often only debugging mode — read code, build a mental model, propose a fix. Real debugging frequently requires runtime evidence: insert prints/logs, add timing instrumentation, dump intermediate state, capture a stack at the failure point, run EXPLAIN on a query, sample a hot loop. Without an explicit prompt to switch modes, the agent loops on the static approach even after it has demonstrably failed. A sidebar skill in the `debug-*` family is the right shape: agent-pulled when stalled, runs to completion, returns to caller. Parallels `debug-bisect-known-good` (also a stall-recovery technique) but with a different mechanism (observation vs. bisection).
+- **Suggested action:** Author `skills/debug-empirical-telemetry/SKILL.md` following the `debug-*` category convention (mandatory sections: `## Category Context`, `## When to use`, `## When NOT to use`, `## Procedure` with Gate Check, `## Pitfalls`, `## Termination` with `DEBUG-TELEMETRY-*` tokens + `RETURN-TO:` line). Gate suggestions: (a) ≥2–3 failed static-analysis fix attempts on the same bug, AND (b) the bug involves runtime values the agent cannot derive from code (timing, DB stats, env-dependent state, intermittency, perf). Procedure should walk: pick the smallest observable that would discriminate between current hypotheses → instrument (logging, timing, counter, EXPLAIN, etc.) → run → read telemetry → iterate or hand back a concrete cause. Include a cleanup-discipline step (remove or guard the instrumentation before exit) since stray prints in committed code is a real failure mode. Also: discoverability surfaces per the "new skill category needs three surfaces" lesson — caller-skill prose mentions in `feature-build`/`incident-investigate`/`task-act`, "Debug techniques" subsection rows in each relevant orchestrator AGENTS.md, note in `docs/product/transitions.md` sidebar section. Worth speccing rather than planning directly — the trigger gate and the instrumentation playbook both have non-obvious failure modes (over-instrumenting, leaving prints in code, instrumenting too late after the bug has been "guessed-fixed", picking the wrong observable).
+- **Priority:** medium — real recurring agent-behavior gap that costs wall-clock time when it bites, but no active bug forcing it now; pick up after WP5 of claude-time-visualize-v2 or interleave when next debugging an empirical-shaped bug.
 - **Status:** open
