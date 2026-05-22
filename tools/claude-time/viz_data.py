@@ -544,6 +544,221 @@ def build_range_data(
     return out
 
 
+# Segment kinds enumerated for the deltas computation. `total_active_subagent`
+# is synthesised (sum of active + subagent) because the headline-stats card
+# (WP10) wants it as a primary number — pre-computing it here saves the
+# consumer from duplicating the sum logic.
+_DELTA_KINDS = (KIND_ACTIVE, KIND_READING, KIND_THINKING, KIND_AWAY, KIND_SUBAGENT)
+_DELTA_SYNTH_TOTAL = "total_active_subagent"
+
+
+def _project_kind_minutes(project: dict) -> dict[str, int]:
+    """Sum per-segment-kind minutes across all sessions of one project.
+
+    Returns a dict with one entry per kind in _DELTA_KINDS plus the synthesised
+    `total_active_subagent`. Missing kinds default to 0.
+    """
+    totals: dict[str, int] = {k: 0 for k in _DELTA_KINDS}
+    for s in project.get("sessions", []):
+        for seg in s.get("segs", []):
+            kind = seg.get("kind")
+            if kind in totals:
+                totals[kind] += seg["end"] - seg["start"]
+    totals[_DELTA_SYNTH_TOTAL] = totals[KIND_ACTIVE] + totals[KIND_SUBAGENT]
+    return totals
+
+
+def _compute_deltas(a_payload: dict, b_payload: dict) -> dict[str, dict[str, dict]]:
+    """Join A and B by alias, compute per-segment-kind {abs_min, rel_pct} deltas.
+
+    For each (alias, kind):
+      abs_min = b_min - a_min  (positive = B has more)
+      rel_pct = (b_min - a_min) / a_min * 100  if a_min > 0  else None
+        - a_min == 0 with b_min > 0 → None (no baseline; consumer renders as N/A)
+        - a_min == 0 with b_min == 0 → None (no change to express)
+        - a_min > 0 with b_min == 0 → -100.0 (full regression)
+
+    Aliases present in only one side: deltas include them with the other side's
+    minutes treated as 0.
+    """
+    a_by_alias: dict[str, dict] = {p["alias"]: p for p in a_payload.get("projects", [])}
+    b_by_alias: dict[str, dict] = {p["alias"]: p for p in b_payload.get("projects", [])}
+    all_aliases = set(a_by_alias) | set(b_by_alias)
+
+    deltas: dict[str, dict[str, dict]] = {}
+    for alias in sorted(all_aliases):
+        a_proj = a_by_alias.get(alias, {"sessions": []})
+        b_proj = b_by_alias.get(alias, {"sessions": []})
+        a_mins = _project_kind_minutes(a_proj)
+        b_mins = _project_kind_minutes(b_proj)
+        per_kind: dict[str, dict] = {}
+        for kind in (*_DELTA_KINDS, _DELTA_SYNTH_TOTAL):
+            a_m = a_mins[kind]
+            b_m = b_mins[kind]
+            abs_min = b_m - a_m
+            rel_pct = (abs_min / a_m * 100) if a_m > 0 else None
+            per_kind[kind] = {"abs_min": abs_min, "rel_pct": rel_pct}
+        deltas[alias] = per_kind
+    return deltas
+
+
+def build_comparison_data(
+    start_a_iso: str,
+    end_a_iso: str,
+    start_b_iso: str,
+    end_b_iso: str,
+    *,
+    events_by_day_a: dict[str, list[dict]],
+    events_by_day_b: dict[str, list[dict]],
+    cfg: dict,
+    auto_alias_fn,
+) -> dict:
+    """Build a side-by-side payload for two windows with pre-computed deltas.
+
+    Coordinator pattern: two `build_range_data` calls (A and B) + a deltas
+    computation joining the two payloads by alias. The data layer is
+    policy-free — both `abs_min` (raw difference) and `rel_pct` (percentage
+    change) are emitted; the UI decides which lens to render.
+
+    Inputs:
+      start_a_iso, end_a_iso  — A-window inclusive day bounds
+      start_b_iso, end_b_iso  — B-window inclusive day bounds (can be any
+                                length relative to A — comparing a 1-day B to
+                                a 7-day A is valid and intended for
+                                day-vs-trailing-window comparisons)
+      events_by_day_a / _b    — separate per-window event dicts; the helpers
+                                in this module partition a single
+                                `events_by_day` into these two sub-dicts
+      cfg, auto_alias_fn      — same semantics as `build_range_data` / `build_day_data`
+
+    Returns:
+      {
+        a: <range_payload for A>,
+        b: <range_payload for B>,
+        deltas: {alias: {kind: {abs_min, rel_pct}}}  # kind ∈ {active, reading,
+                                                     # thinking, away, subagent,
+                                                     # total_active_subagent}
+        meta: {a_start, a_end, b_start, b_end, a_day_count, b_day_count},
+      }
+
+    `rel_pct` is `None` when `a_min == 0` for that (alias, kind) — the consumer
+    renders this as N/A rather than showing a misleading percentage.
+    """
+    a_payload = build_range_data(
+        start_a_iso, end_a_iso,
+        events_by_day=events_by_day_a, cfg=cfg, auto_alias_fn=auto_alias_fn,
+    )
+    b_payload = build_range_data(
+        start_b_iso, end_b_iso,
+        events_by_day=events_by_day_b, cfg=cfg, auto_alias_fn=auto_alias_fn,
+    )
+    deltas = _compute_deltas(a_payload, b_payload)
+    return {
+        "a": a_payload,
+        "b": b_payload,
+        "deltas": deltas,
+        "meta": {
+            "a_start": start_a_iso,
+            "a_end": end_a_iso,
+            "b_start": start_b_iso,
+            "b_end": end_b_iso,
+            "a_day_count": a_payload["meta"]["day_count"],
+            "b_day_count": b_payload["meta"]["day_count"],
+        },
+    }
+
+
+def _partition_events_by_day(
+    events_by_day: dict[str, list[dict]],
+    start_iso: str,
+    end_iso: str,
+) -> dict[str, list[dict]]:
+    """Extract the subset of `events_by_day` falling within [start_iso, end_iso].
+
+    Days inside the window but missing from `events_by_day` are not synthesised
+    (build_range_data treats missing days as empty already).
+    """
+    start = date.fromisoformat(start_iso)
+    end = date.fromisoformat(end_iso)
+    out: dict[str, list[dict]] = {}
+    for iso, evts in events_by_day.items():
+        d = date.fromisoformat(iso)
+        if start <= d <= end:
+            out[iso] = evts
+    return out
+
+
+def compare_week_over_week(
+    this_monday_iso: str,
+    *,
+    events_by_day: dict[str, list[dict]],
+    cfg: dict,
+    auto_alias_fn,
+) -> dict:
+    """Compare last week vs this week — both anchored to ISO-Monday weeks.
+
+    A = [this_monday - 7 days, this_monday - 1 day]  (the prior 7 days)
+    B = [this_monday, this_monday + 6 days]          (the current 7 days)
+
+    Single `events_by_day` is partitioned internally; the caller doesn't need
+    to know the window boundaries.
+    """
+    this_monday = date.fromisoformat(this_monday_iso)
+    prev_monday = this_monday - timedelta(days=7)
+    prev_sunday = this_monday - timedelta(days=1)
+    this_sunday = this_monday + timedelta(days=6)
+
+    a_start_iso = prev_monday.isoformat()
+    a_end_iso = prev_sunday.isoformat()
+    b_start_iso = this_monday.isoformat()
+    b_end_iso = this_sunday.isoformat()
+
+    return build_comparison_data(
+        a_start_iso, a_end_iso, b_start_iso, b_end_iso,
+        events_by_day_a=_partition_events_by_day(events_by_day, a_start_iso, a_end_iso),
+        events_by_day_b=_partition_events_by_day(events_by_day, b_start_iso, b_end_iso),
+        cfg=cfg, auto_alias_fn=auto_alias_fn,
+    )
+
+
+def compare_day_vs_trailing_window(
+    target_day_iso: str,
+    *,
+    window_days: int = 7,
+    events_by_day: dict[str, list[dict]],
+    cfg: dict,
+    auto_alias_fn,
+) -> dict:
+    """Compare one day against a trailing window (baseline).
+
+    A = [target - window_days, target - 1 day]  (the baseline window)
+    B = [target, target]                        (the single target day)
+
+    Note on naming: WBS task 4.4 called this `compare_day_vs_median`, but
+    the data layer just emits the baseline window's per-day payloads — the
+    actual median-vs-mean-vs-sum aggregation is a UI-side rendering choice
+    deferred to WP10 (headline-stats card). Renamed at build time to be
+    truthful about what this helper produces.
+    """
+    if window_days < 1:
+        raise ValueError(f"window_days must be >= 1, got {window_days}")
+    target = date.fromisoformat(target_day_iso)
+    a_start = target - timedelta(days=window_days)
+    a_end = target - timedelta(days=1)
+
+    a_start_iso = a_start.isoformat()
+    a_end_iso = a_end.isoformat()
+    b_start_iso = target_day_iso
+    b_end_iso = target_day_iso
+
+    return build_comparison_data(
+        a_start_iso, a_end_iso, b_start_iso, b_end_iso,
+        events_by_day_a=_partition_events_by_day(events_by_day, a_start_iso, a_end_iso),
+        events_by_day_b=_partition_events_by_day(events_by_day, b_start_iso, b_end_iso),
+        cfg=cfg, auto_alias_fn=auto_alias_fn,
+    )
+
+
 def build_week_data(
     week_monday_iso: str,
     events_by_day: dict[str, list[dict]],

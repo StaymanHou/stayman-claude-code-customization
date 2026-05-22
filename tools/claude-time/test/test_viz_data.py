@@ -607,5 +607,247 @@ class WrapperPreservationTests(unittest.TestCase):
                 self.assertEqual(ds, rs_clean)
 
 
+class BuildComparisonDataTests(unittest.TestCase):
+    """WP4: `build_comparison_data(start_a, end_a, start_b, end_b)` —
+    coordinator-on-top-of-build_range_data; emits {a, b, deltas, meta}."""
+
+    def _day_n_ms(self, day, hh, mm):
+        ds = int(_dt.datetime.combine(day, _dt.time.min).timestamp() * 1000)
+        return ds + (hh * 60 + mm) * 60_000
+
+    def _one_burst_events(self, day, hh_start, hh_end, *, sid=None, cwd="/repo/proj-a"):
+        """Helper: one UPS at hh_start, one Stop at hh_end on the given day.
+
+        Default session_id derives from the day so A-side and B-side bursts
+        don't collide when both windows are passed to comparison helpers."""
+        if sid is None:
+            sid = f"sid-{day.isoformat()}"
+        return [
+            ev(self._day_n_ms(day, hh_start, 0), sid, "UserPromptSubmit",
+               cwd=cwd, meta='{"prompt_length_chars": 0}'),
+            ev(self._day_n_ms(day, hh_end, 0), sid, "Stop", cwd=cwd),
+        ]
+
+    def test_empty_both_windows(self):
+        out = viz_data.build_comparison_data(
+            "2026-05-11", "2026-05-13", "2026-05-18", "2026-05-20",
+            events_by_day_a={}, events_by_day_b={},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(out["deltas"], {})
+        self.assertEqual(out["meta"]["a_day_count"], 3)
+        self.assertEqual(out["meta"]["b_day_count"], 3)
+        self.assertEqual(out["a"]["projects"], [])
+        self.assertEqual(out["b"]["projects"], [])
+
+    def test_empty_a_only(self):
+        """A empty, B has one project with 60min active → abs_min: +60, rel_pct: None."""
+        d_b = _dt.date(2026, 5, 20)
+        b_events = self._one_burst_events(d_b, 9, 10)  # 60 minutes
+        out = viz_data.build_comparison_data(
+            "2026-05-13", "2026-05-13", "2026-05-20", "2026-05-20",
+            events_by_day_a={},
+            events_by_day_b={"2026-05-20": b_events},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertIn("proj-a", out["deltas"])
+        active_d = out["deltas"]["proj-a"]["active"]
+        self.assertEqual(active_d["abs_min"], 60)
+        self.assertIsNone(active_d["rel_pct"])  # zero baseline → None
+        # total_active_subagent should also be +60 (no subagent here).
+        total_d = out["deltas"]["proj-a"]["total_active_subagent"]
+        self.assertEqual(total_d["abs_min"], 60)
+        self.assertIsNone(total_d["rel_pct"])
+
+    def test_empty_b_only(self):
+        """Symmetric inverse — A has 60min active, B empty → abs_min: -60, rel_pct: -100.0."""
+        d_a = _dt.date(2026, 5, 13)
+        a_events = self._one_burst_events(d_a, 9, 10)
+        out = viz_data.build_comparison_data(
+            "2026-05-13", "2026-05-13", "2026-05-20", "2026-05-20",
+            events_by_day_a={"2026-05-13": a_events},
+            events_by_day_b={},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertIn("proj-a", out["deltas"])
+        active_d = out["deltas"]["proj-a"]["active"]
+        self.assertEqual(active_d["abs_min"], -60)
+        self.assertEqual(active_d["rel_pct"], -100.0)
+
+    def test_identical_windows(self):
+        """Same events shape in A and B → all deltas zero, rel_pct == 0.0 for non-empty kinds."""
+        d_a = _dt.date(2026, 5, 13)
+        d_b = _dt.date(2026, 5, 20)
+        a_events = self._one_burst_events(d_a, 9, 10)
+        b_events = self._one_burst_events(d_b, 9, 10)
+        out = viz_data.build_comparison_data(
+            "2026-05-13", "2026-05-13", "2026-05-20", "2026-05-20",
+            events_by_day_a={"2026-05-13": a_events},
+            events_by_day_b={"2026-05-20": b_events},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        active_d = out["deltas"]["proj-a"]["active"]
+        self.assertEqual(active_d["abs_min"], 0)
+        self.assertEqual(active_d["rel_pct"], 0.0)
+        total_d = out["deltas"]["proj-a"]["total_active_subagent"]
+        self.assertEqual(total_d["abs_min"], 0)
+        self.assertEqual(total_d["rel_pct"], 0.0)
+
+    def test_regression_case(self):
+        """A has 120min active, B has 60min → abs_min: -60, rel_pct: -50.0."""
+        d_a = _dt.date(2026, 5, 13)
+        d_b = _dt.date(2026, 5, 20)
+        a_events = self._one_burst_events(d_a, 9, 11)   # 120 minutes
+        b_events = self._one_burst_events(d_b, 9, 10)   # 60 minutes
+        out = viz_data.build_comparison_data(
+            "2026-05-13", "2026-05-13", "2026-05-20", "2026-05-20",
+            events_by_day_a={"2026-05-13": a_events},
+            events_by_day_b={"2026-05-20": b_events},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        active_d = out["deltas"]["proj-a"]["active"]
+        self.assertEqual(active_d["abs_min"], -60)
+        self.assertEqual(active_d["rel_pct"], -50.0)
+
+    def test_meta_shape_exact_keys(self):
+        out = viz_data.build_comparison_data(
+            "2026-05-11", "2026-05-13", "2026-05-18", "2026-05-20",
+            events_by_day_a={}, events_by_day_b={},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(
+            set(out["meta"].keys()),
+            {"a_start", "a_end", "b_start", "b_end", "a_day_count", "b_day_count"},
+        )
+        self.assertEqual(out["meta"]["a_start"], "2026-05-11")
+        self.assertEqual(out["meta"]["a_end"], "2026-05-13")
+        self.assertEqual(out["meta"]["b_start"], "2026-05-18")
+        self.assertEqual(out["meta"]["b_end"], "2026-05-20")
+        self.assertEqual(out["meta"]["a_day_count"], 3)
+        self.assertEqual(out["meta"]["b_day_count"], 3)
+
+    def test_total_active_subagent_synthesised(self):
+        """The 6th synthesised `total_active_subagent` key equals active + subagent deltas
+        for the same project. Uses a subagent-bearing burst to exercise both kinds."""
+        d_a = _dt.date(2026, 5, 13)
+        d_b = _dt.date(2026, 5, 20)
+        # B-side: 60min burst with a 20min subagent inside (so the burst is
+        # split into active+subagent+active by _split_active_with_subagents).
+        b_events = [
+            ev(self._day_n_ms(d_b, 9, 0), "sid-b", "UserPromptSubmit",
+               cwd="/repo/proj-a", meta='{"prompt_length_chars": 0}'),
+            ev(self._day_n_ms(d_b, 9, 20), "sid-b", "SubagentStart",
+               cwd="/repo/proj-a", agent_type="explorer"),
+            ev(self._day_n_ms(d_b, 9, 40), "sid-b", "SubagentStop",
+               cwd="/repo/proj-a", agent_type="explorer"),
+            ev(self._day_n_ms(d_b, 10, 0), "sid-b", "Stop", cwd="/repo/proj-a"),
+        ]
+        out = viz_data.build_comparison_data(
+            "2026-05-13", "2026-05-13", "2026-05-20", "2026-05-20",
+            events_by_day_a={},
+            events_by_day_b={"2026-05-20": b_events},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        d = out["deltas"]["proj-a"]
+        # Verify the invariant directly: total_active_subagent.abs_min == active.abs_min + subagent.abs_min.
+        self.assertEqual(
+            d["total_active_subagent"]["abs_min"],
+            d["active"]["abs_min"] + d["subagent"]["abs_min"],
+        )
+        # And the actual numbers: B has 40min active (20 before sub + 20 after) and 20min subagent.
+        self.assertEqual(d["active"]["abs_min"], 40)
+        self.assertEqual(d["subagent"]["abs_min"], 20)
+        self.assertEqual(d["total_active_subagent"]["abs_min"], 60)
+
+    def test_compare_week_over_week_window_math(self):
+        """Helper produces a 7-day-vs-7-day comparison with correct meta dates."""
+        out = viz_data.compare_week_over_week(
+            "2026-05-18",  # this Monday
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        # A = 2026-05-11..2026-05-17  (prior 7 days, prev_monday..prev_sunday)
+        self.assertEqual(out["meta"]["a_start"], "2026-05-11")
+        self.assertEqual(out["meta"]["a_end"], "2026-05-17")
+        # B = 2026-05-18..2026-05-24  (this Monday + 6 days)
+        self.assertEqual(out["meta"]["b_start"], "2026-05-18")
+        self.assertEqual(out["meta"]["b_end"], "2026-05-24")
+        self.assertEqual(out["meta"]["a_day_count"], 7)
+        self.assertEqual(out["meta"]["b_day_count"], 7)
+
+    def test_compare_day_vs_trailing_window_math(self):
+        """Helper: A spans `window_days` days ending the day before `target_day_iso`,
+        B is the single target day."""
+        out = viz_data.compare_day_vs_trailing_window(
+            "2026-05-21",
+            window_days=7,
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        # A = 2026-05-14..2026-05-20  (7 days, ending day-before target)
+        self.assertEqual(out["meta"]["a_start"], "2026-05-14")
+        self.assertEqual(out["meta"]["a_end"], "2026-05-20")
+        self.assertEqual(out["meta"]["a_day_count"], 7)
+        # B = target only.
+        self.assertEqual(out["meta"]["b_start"], "2026-05-21")
+        self.assertEqual(out["meta"]["b_end"], "2026-05-21")
+        self.assertEqual(out["meta"]["b_day_count"], 1)
+
+    def test_compare_day_vs_trailing_window_invalid_window_raises(self):
+        """`window_days < 1` is a defensive guard — raises ValueError so a
+        caller passing 0 or a negative doesn't silently flip A and B."""
+        with self.assertRaises(ValueError):
+            viz_data.compare_day_vs_trailing_window(
+                "2026-05-21", window_days=0,
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+        with self.assertRaises(ValueError):
+            viz_data.compare_day_vs_trailing_window(
+                "2026-05-21", window_days=-3,
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+
+    def test_helpers_partition_events_by_day_across_windows(self):
+        """Both helpers take a single `events_by_day` and partition it internally
+        into A-window events and B-window events. This test verifies that
+        partitioning is real — events in window B do not bleed into A and
+        vice versa.
+
+        Scenario: same project alias active on one day in A and one day in B,
+        with different burst lengths so a misrouted event would visibly skew
+        the deltas. compare_week_over_week selects A = 2026-05-11..2026-05-17,
+        B = 2026-05-18..2026-05-24. Place 30 min of active in A (on 2026-05-14)
+        and 90 min of active in B (on 2026-05-20) for alias "proj-a". Correct
+        partition → deltas.active.abs_min == +60. A bleed-through would show
+        wrong numbers (e.g. if the B-day events leaked into A's range payload,
+        A would have 120 min instead of 30)."""
+        d_a = _dt.date(2026, 5, 14)  # inside week 1
+        d_b = _dt.date(2026, 5, 20)  # inside week 2
+        a_events = self._one_burst_events(d_a, 9, 9)  # 0 min — placeholder; replace below
+        # Re-build with explicit durations.
+        a_events = [
+            ev(self._day_n_ms(d_a, 10, 0), "sid-a", "UserPromptSubmit",
+               cwd="/repo/proj-a", meta='{"prompt_length_chars": 0}'),
+            ev(self._day_n_ms(d_a, 10, 30), "sid-a", "Stop", cwd="/repo/proj-a"),
+        ]  # 30 min active
+        b_events = [
+            ev(self._day_n_ms(d_b, 14, 0), "sid-b", "UserPromptSubmit",
+               cwd="/repo/proj-a", meta='{"prompt_length_chars": 0}'),
+            ev(self._day_n_ms(d_b, 15, 30), "sid-b", "Stop", cwd="/repo/proj-a"),
+        ]  # 90 min active
+        out = viz_data.compare_week_over_week(
+            "2026-05-18",  # this Monday → A = prev week, B = this week
+            events_by_day={d_a.isoformat(): a_events, d_b.isoformat(): b_events},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        # A correctly received only the d_a events (30 min in week-1 window).
+        self.assertEqual(len(out["a"]["projects"]), 1)
+        self.assertEqual(out["a"]["projects"][0]["alias"], "proj-a")
+        # B correctly received only the d_b events (90 min in week-2 window).
+        self.assertEqual(len(out["b"]["projects"]), 1)
+        self.assertEqual(out["b"]["projects"][0]["alias"], "proj-a")
+        # Delta math confirms partition correctness: +60 abs, +200% rel.
+        self.assertEqual(out["deltas"]["proj-a"]["active"]["abs_min"], 60)
+        self.assertEqual(out["deltas"]["proj-a"]["active"]["rel_pct"], 200.0)
+
+
 if __name__ == "__main__":
     unittest.main()
