@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-19
+updated: 2026-05-21
 cycle: claude-time-visualize-v2
 ---
 
@@ -67,17 +67,17 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [x] 2.3 `snapshot: HH:MM` caption rendered in `InteractiveToolbar` (`viz_render.py`), reading `window.CT_DATA.meta.snapshot` populated by `_cmd_visualize` at emit time. Hover tooltip explains the live-cursor + snapshot-data duality.
 - [x] 2.4 `test_visualize_cli.sh` extended 14 → 19 assertions: emitted HTML lacks `NOW_MIN = 17 * 60 + 22`; lacks `NOW · 17:22`; contains `Date.now()`/`new Date(`; contains `"snapshot"` key; contains `clearInterval` cleanup.
 
-### WP3: Range-aware data layer — `build_range_data(start_iso, end_iso)`
+### WP3: Range-aware data layer — `build_range_data(start_iso, end_iso)` — [x] SHIPPED 2026-05-21 (commit 9ebad84)
 **Description:** Extract a single `build_range_data(start, end)` from the current `build_day_data` / `build_week_data`. The new function emits the same project/session/segment shape over any arbitrary `[start, end]` window. Day / week / custom / month all become thin wrappers that compute `(start, end)` and call this.
 **Phase:** 0
 **Dependencies:** —
 **Size:** M
 **Tasks:**
-- [ ] 3.1 Refactor `viz_data.py`: extract `build_range_data(start_iso, end_iso, *, db_path, aliases)` as the single core
-- [ ] 3.2 Re-implement `build_day_data` and `build_week_data` as wrappers
-- [ ] 3.3 Decide range-aware `hour_range` semantics for multi-day ranges (likely: emit per-day `hour_range` map + a global `day_window` for the overall ruler)
-- [ ] 3.4 Add `meta: {start, end, day_count}` to the emitted JSON so the JS layer knows the window shape
-- [ ] 3.5 Update `test_viz_data.py` — keep existing 22 assertions PASSing (no regression), add ~5 new `BuildRangeDataTests` for cross-day windows
+- [x] 3.1 Added `build_range_data(start_iso, end_iso, *, events_by_day, cfg, auto_alias_fn)` to `viz_data.py` as the multi-day coordinator. (Note: the plan's "single core" framing was off — the truthful seam is per-day worker + multi-day coordinator; `build_day_data` remains the per-day worker because `_ts_to_minutes` / burst pairing is naturally day-anchored.)
+- [x] 3.2 `build_week_data` re-implemented as a thin wrapper over `build_range_data` (output shape unchanged from pre-WP3). `build_day_data` kept as per-day worker (called per-day by `build_range_data`); same day shape preserved byte-for-byte.
+- [x] 3.3 `hour_range_by_day: {iso: [start, end]}` per-day adaptive map + `day_window: [global_start, global_end]` union of all per-day ranges. For `day_count == 1`, flat `hour_range` mirrors `hour_range_by_day[only_iso]` for back-compat.
+- [x] 3.4 `meta: {start, end, day_count}` emitted on the range payload only — intentionally NOT propagated into day/week wrapper returns to avoid collision with `_cmd_visualize`'s flat-level `window.CT_DATA.meta.snapshot` key.
+- [x] 3.5 22 pre-existing tests PASS unchanged; 7 new added (6 `BuildRangeDataTests` covering empty-range default per-day, single-day back-compat, `day_window` union of adaptive ranges, cross-day project aggregation, `meta` exact-keys, defensive `ValueError` on inverted ranges; 1 `WrapperPreservationTests.test_day_shape_equivalence`).
 
 ### WP4: Comparison data layer — `build_comparison_data(window_a, window_b)`
 **Description:** Emit a side-by-side data payload for two windows (e.g., this-week vs last-week, today vs trailing-7-day median, this-month vs last-month). Per-project totals + per-segment-kind totals for both windows, ready to render as a delta lens.
