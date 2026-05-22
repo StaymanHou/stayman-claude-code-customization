@@ -325,6 +325,53 @@ tools/claude-time/test/stress_concurrent.sh
 tools/claude-time/test/multi_instance.sh  # 2-session cross-session reattribution
 ```
 
+## Running tests
+
+The test suite runs **inside a Docker container** that bundles Python 3.12, Perl 5, sqlite3, jq, Node 22, Playwright, and Chromium — none of these need to be installed on your host. The container is persistent + on-demand: start it, run as many test invocations as you want, stop it when done.
+
+**Prerequisite:** Docker engine on the host. The first `start` builds the image (~5 minutes, ~3.5GB on disk); subsequent starts are cached.
+
+```bash
+# Start the test container (builds image if missing)
+tools/claude-time/test/run-in-container.sh start
+
+# Run any test inside the container
+tools/claude-time/test/run-in-container.sh exec bash test/test_cli.sh
+tools/claude-time/test/run-in-container.sh exec bash test/test_hook.sh
+tools/claude-time/test/run-in-container.sh exec bash test/test_visualize_cli.sh
+tools/claude-time/test/run-in-container.sh exec bash test/test_container_image.sh
+tools/claude-time/test/run-in-container.sh exec python3 test/test_reclassify.py
+tools/claude-time/test/run-in-container.sh exec python3 test/test_viz_data.py
+
+# Playwright smoke (confirms Chromium + Playwright are functional)
+tools/claude-time/test/run-in-container.sh exec node test/playwright_smoke.js
+
+# Check container state
+tools/claude-time/test/run-in-container.sh status
+
+# Stop + remove the container when done (idempotent)
+tools/claude-time/test/run-in-container.sh stop
+
+# See all subcommands
+tools/claude-time/test/run-in-container.sh help
+```
+
+**Source edits are visible inside the container immediately** — the project root is bind-mounted read-write at `/work`. No rebuild needed after editing dashboard JSX, Python modules, or any other source file.
+
+**Exit codes** for `run-in-container.sh` (useful in scripts):
+
+| Code | Meaning |
+|---|---|
+| `0` | success |
+| `1` | container stopped (only from `status`) |
+| `2` | image not built (only from `status`) |
+| `3` | `exec` attempted while container not running |
+| `64` | unknown subcommand |
+
+The container does NOT survive a host reboot (no `restart: always` policy) — re-`start` after a reboot. This is deliberate: containers should not be always-on.
+
+**Host-side tests are not supported.** Python unit tests technically work against host stdlib, but the container is the canonical path; the bash tests assume tools (jq, sqlite3 on a specific version, etc.) that the container provides reliably.
+
 ## Files
 
 ```
@@ -342,11 +389,16 @@ tools/claude-time/
     design-canvas.jsx        # DesignCanvas chrome — used by index.html only, stripped at emit
     template.html            # HTML scaffold for `claude-time visualize` output
   test/
+    Dockerfile               # claude-time test environment (Playwright + Python + Perl + sqlite3 + jq)
+    .dockerignore            # Keeps Docker build context tiny
+    run-in-container.sh      # Lifecycle wrapper: start | stop | status | exec | restart | logs | help
+    playwright_smoke.js      # Playwright + Chromium readiness smoke (Node)
+    test_container_image.sh  # Structural assertions on Dockerfile + run-in-container.sh
     test_hook.sh             # Behavioral test for hook.pl
     test_reclassify.py       # Unit tests for reclassify.py (29 assertions)
-    test_viz_data.py         # Unit tests for viz_data.py (22 assertions)
+    test_viz_data.py         # Unit tests for viz_data.py (40 assertions)
     test_cli.sh              # End-to-end test for `claude-time report`
-    test_visualize_cli.sh    # End-to-end test for `claude-time visualize` (13 assertions)
+    test_visualize_cli.sh    # End-to-end test for `claude-time visualize` (41 assertions)
     privacy_check.sh         # Single-purpose privacy regression check
     bench.sh                 # Performance benchmark + budget assertion
     multi_instance.sh        # Two-session cross-session reattribution scenario

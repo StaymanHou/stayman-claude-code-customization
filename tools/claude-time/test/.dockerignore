@@ -1,0 +1,9 @@
+# Keep the build context tiny. The Dockerfile doesn't COPY any test files
+# into the image (the project is bind-mounted at runtime by run-in-container.sh),
+# but we still exclude noise to keep `docker build` context-send fast.
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.DS_Store
+results/
