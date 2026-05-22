@@ -79,15 +79,15 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [x] 3.4 `meta: {start, end, day_count}` emitted on the range payload only — intentionally NOT propagated into day/week wrapper returns to avoid collision with `_cmd_visualize`'s flat-level `window.CT_DATA.meta.snapshot` key.
 - [x] 3.5 22 pre-existing tests PASS unchanged; 7 new added (6 `BuildRangeDataTests` covering empty-range default per-day, single-day back-compat, `day_window` union of adaptive ranges, cross-day project aggregation, `meta` exact-keys, defensive `ValueError` on inverted ranges; 1 `WrapperPreservationTests.test_day_shape_equivalence`).
 
-### WP4: Comparison data layer — `build_comparison_data(window_a, window_b)`
+### WP4: Comparison data layer — `build_comparison_data(window_a, window_b)` — [x] SHIPPED 2026-05-21 (commit 4f61904)
 **Description:** Emit a side-by-side data payload for two windows (e.g., this-week vs last-week, today vs trailing-7-day median, this-month vs last-month). Per-project totals + per-segment-kind totals for both windows, ready to render as a delta lens.
 **Phase:** 0
 **Dependencies:** WP3
 **Size:** S
 **Tasks:**
-- [ ] 4.1 `build_comparison_data(a_start, a_end, b_start, b_end, *, kind={absolute|relative})` returning `{a: {...}, b: {...}, deltas: {project: {kind: {abs_min, rel_pct}}}}`
-- [ ] 4.2 Helper builders for common comparisons: `compare_week_over_week()`, `compare_day_vs_median(window_days=7)`
-- [ ] 4.3 Unit tests for comparison math (empty-A, empty-B, identical, regression cases) in `test_viz_data.py`
+- [x] 4.1 `build_comparison_data(start_a_iso, end_a_iso, start_b_iso, end_b_iso, *, events_by_day_a, events_by_day_b, cfg, auto_alias_fn)` in `viz_data.py` — coordinator pattern (two `build_range_data` calls + `_compute_deltas` join). Returns `{a, b, deltas: {alias: {kind: {abs_min, rel_pct}}}, meta: {a_start, a_end, b_start, b_end, a_day_count, b_day_count}}`. Plan-time decision: dropped the WBS-pseudocode `kind={absolute|relative}` parameter — `kind` in the result is the segment-kind axis (active/reading/thinking/away/subagent), not a comparison mode; emitting both `abs_min` and `rel_pct` keeps the data layer policy-free.
+- [x] 4.2 Helpers `compare_week_over_week(this_monday_iso)` and `compare_day_vs_trailing_window(target_day_iso, window_days=7)` (build-time rename from `compare_day_vs_median` — the data layer emits raw per-day payloads, so the median-vs-mean-vs-sum aggregate is a UI rendering choice deferred to WP10). Both helpers partition a single `events_by_day` into A/B sub-dicts internally.
+- [x] 4.3 `BuildComparisonDataTests` in `test_viz_data.py` with 11 methods (empty-both, empty-A, empty-B, identical, regression, meta shape, synthesised `total_active_subagent`, both helpers' window math, `ValueError` guard, cross-window partition correctness). Full claude-time suite 134/134 PASS (69 unittest + 29 cli + 19 viz_cli + 17 hook), net +11 vs WP3 baseline 123. Zero regressions; no integration boundary.
 
 **Phase 0 → Phase 1 rationale:** Once the data layer can emit any window + comparisons, the UI work in Phases 1–3 doesn't have to re-touch Python. This is the standard "backend before frontend wraps" ordering applied at the v2 boundary.
 
