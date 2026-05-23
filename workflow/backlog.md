@@ -43,7 +43,7 @@
   - (b) Use the full `session_id` as the React key, but track a separate `display_id` field for any UI surface that wants the short form. Cleaner separation of concerns; one extra field in the data layer.
   - Lean: (a) — minimum-viable fix; matches the existing display-policy intent.
 - **Priority:** low — real session_ids don't collide; only synthetic test data triggers it; seeder fix already in place; production users unaffected.
-- **Status:** open
+- **Status:** open. **Update 2026-05-23 (WP5b):** Render-side symptom mitigated via `SessionRow key={s.day_iso ? \`${s.day_iso}:${s.id}\` : s.id}` for the multi-day Day view (resolves the cross-day union case where the same session_id appears in N≥2 days). Root cause — 8-char `session_id[:8]` truncation in `viz_data.py:288` — is untouched and can still bite (a) Week view aggregation if it ever cross-day-unions, (b) Month view (WP7) similarly, (c) any tests using prefix-colliding synthetic IDs. Don't close this item until viz_data.py is also fixed.
 
 ## SURFACE-2026-05-22-PLAYWRIGHT-SYNTHETIC-WHEEL-DOESNT-REACH-REACT
 - **Source:** feature:build (claude-time-visualize-v2 WP5 Phase 4 P4.2, 2026-05-22)
@@ -99,7 +99,7 @@
     5. Initial viewport stays centered on the requested day (no behavior change on default-hash path — WP5 verify-human regression-pinned).
     6. Test: extend `test_visualize_cli.sh` to seed multi-day events and assert emitted CT_DATA + ruler tick density across day boundaries.
 - **Priority:** medium-high — directly user-prioritized ("this feature really matters to me!"). Bumped from medium. Picks up after WP5 (current) ships and finalizes.
-- **Status:** open — will become `RESOLVED` when WP5b ships and is logged to CHANGELOG.
+- **Status:** RESOLVED 2026-05-23 by WP5b ship (commit 02d6237). Day view now loads ±21 days of context (defaults `prior=14, after=7`); CLI flags + config keys + ISO-day-aware labels + extended `pickTickInterval` scale set + day-offset segment math all in place. CHANGELOG entry at finalize.
 
 ## SURFACE-2026-05-18-SETTINGS-FIXTURE-DRIFT-CLAUDE-TIME
 - **Source:** feature:verify-codify (claude-time-report-by-project Phase 1, 2026-05-18)

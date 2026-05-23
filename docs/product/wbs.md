@@ -1,12 +1,9 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-22
+updated: 2026-05-23
 cycle: claude-time-visualize-v2
 ---
-
-## Session Pause — 2026-05-22 21:15
-Paused. See `workflow/.session.md` to resume.
 
 # WBS — `claude-time visualize` v2
 
@@ -119,19 +116,20 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [x] 5.10 `test_visualize_interactive.{js,sh}` Playwright behavioral test inside the test-environment container: 10 PASS + 1 documented SKIP (synthetic `WheelEvent` doesn't propagate to React handler). Picks up the deferred WP5-P1 codify "17 HH:00 ruler labels" runtime assertion + Phase 2 gesture-math + Phase 3 hash-round-trip behavioral coverage. (Phase 4 P4.2)
 - [x] **Plus** opportunistic P2.7 fold-in: `flipNowLeft` branch in HourRuler resolves `SURFACE-2026-05-19-CLAUDE-TIME-VIZ-NOW-LABEL-OVERLAPS-RULER-TICK`. **Plus** Phase 3 verify-human caught + fixed a BLOCKING runtime regression: `InterruptHairlines` orphan-referenced the deleted `DAY_START_MIN` (3-line fix in `viz_render.py` + regression-pin in `test_visualize_cli.sh`).
 
-### WP5b: Multi-day data window for Day view
+### WP5b: Multi-day data window for Day view — [x] SHIPPED 2026-05-23 (commit 02d6237)
 **Description:** Day view loads trailing+leading context days into the data window. Current day is default-viewport center; pan reveals neighbors. Resolves `SURFACE-2026-05-22-CLAUDE-TIME-VIZ-DAY-VIEW-MULTI-DAY-DATA-WINDOW`.
 **Phase:** 2 (sits with view-modes phase as a Day-view extension)
 **Dependencies:** WP3 (range-aware data layer — shipped), WP5 (viewport mechanic + URL hash — shipped 2026-05-22)
-**Size:** S–M (data plumbing + label formatter; risk surface = extending `pickTickInterval`'s scale set to support day-level ticks for zoom-out across 21 days)
+**Size:** Actual M (planned S–M). Plan-time scope hidden two double-path bugs (viz_render.py wrapper had its own viewport-init; Minimap density bars also needed day-offset) — both caught at verify-self and verify-human, both fixed in-flight.
 **Tasks:**
-- [ ] 5b.1 Wire `_cmd_visualize` to call `build_range_data(start, end)` instead of `build_day_data(date)` when context days > 0. Compute `[date − N_prior, date + N_after]`. Defaults: `prior=14, after=7` (locked at backlog-grooming).
-- [ ] 5b.2 New CLI flags: `--context-days-prior N` + `--context-days-after M` (or compact `--context PRIOR:AFTER`). Per-invocation override of defaults.
-- [ ] 5b.3 New config keys in `~/.claude-time/config.json`: `viz_context_days_prior` (default 14), `viz_context_days_after` (default 7). CLI flags override config; config overrides built-in defaults.
-- [ ] 5b.4 ISO-day-aware label formatter: when viewport crosses midnight, `ticksInViewport` emits labels like `MMM DD HH:MM`; within a single day, keep `HH:MM` (no regression on current default-hash demo).
-- [ ] 5b.5 Extend `pickTickInterval` scale set to include `[1440 (day), 360 (6h)]` for zoom-out across multi-day data windows. Adaptive ruler picks day-level ticks when viewport spans ≥ ~2 days.
-- [ ] 5b.6 Initial viewport stays centered on the requested day (no behavior change on default-hash path — WP5 verify-human regression-pinned).
-- [ ] 5b.7 Test: extend `test_visualize_cli.sh` to seed multi-day events and assert emitted CT_DATA + ruler tick density across day boundaries.
+- [x] 5b.1 `_cmd_visualize` calls `build_range_data(start, end)` when ctx_prior + ctx_after > 0; computes `[date − N_prior, date + N_after]`; defaults `prior=14, after=7` (locked at backlog-grooming).
+- [x] 5b.2 New CLI flags `--context-days-prior N` + `--context-days-after M` added to the `viz` subparser (compact `--context PRIOR:AFTER` form not implemented — separate flags were sufficient and easier to document).
+- [x] 5b.3 New config keys `viz_context_days_prior` (14) + `viz_context_days_after` (7) added to `DEFAULT_CONFIG` with non-negative-int validator + silent fallback. Precedence: CLI flag > config > built-in default.
+- [x] 5b.4 ISO-day-aware label formatter via `_formatDayLabel(dayIx, windowStartIso)` helper. `ticksInViewport(viewport, intervalMin, windowStartIso)` emits `MMM DD` for day-level ticks and on midnight-crossing tick boundaries; `HH:00` / `HH:MM` within a single day.
+- [x] 5b.5 `pickTickInterval` scale set extended to `[1440, 360, 60, 30, 15, 10, 5, 1]`. At 21-day default-window zoom-out → 21 ticks (in 8–30 band).
+- [x] 5b.6 Initial viewport centered on requested day via `_initialViewport` reading `data.target_iso + meta.start + hour_range_by_day[target_iso]` with day-offset applied. Default-hash regression-pinned (single-day path: `--context-days 0/0` produces byte-identical pre-WP5b shape).
+- [x] 5b.7 9 new Phase 2 codify assertions in `test_visualize_cli.sh` (incl. 3 explicit regression-pins for the in-flight double-path bug fixes); 6 new Phase 1 codify assertions. Full claude-time suite: 174/174 (was 165 pre-WP5b).
+- [x] **Plus** opportunistic plumbing not in plan: `DataWindowContext` (cleaner than prop-drill), `SegmentBar` `dayOffset` prop, `InterruptHairlines` `dayOffset`, `Minimap.allSegs` pre-shift, `SessionRow` `key={s.day_iso}:${s.id}` to prevent React duplicate-key warnings, `viz_render.py` wrapper consolidated to call `_initialViewport()` (eliminates double-path drift).
 
 **Why XL:** This is genuinely large — viewport state, pixel-from-viewport math touching every segment renderer, gesture handling across mouse + trackpad + keyboard, ruler adaptive ticks, minimap, performance work, plus testing infrastructure for interactive behavior. Splitting into smaller WPs would be possible (pan, zoom, minimap, keyboard as 4 separate WPs) but the integration risk is in the *interaction* between them — single WP keeps that owned.
 
