@@ -1,19 +1,5 @@
 # Backlog
 
-## SURFACE-2026-05-23-CLAUDE-TIME-VIZ-DESIGN-CANVAS-INTERACTIVE-TOOLBAR-DUALITY
-- **Source:** feature:finalize (claude-time-viz-day-rename / WP6, 2026-05-23)
-- **Target level:** product:arch or task:plan (depends on resolution shape — see below)
-- **Type:** tech-debt / structural
-- **Summary:** The `claude-time visualize` codebase has two parallel Toolbar components: `viz/dashboard.jsx::Toolbar` (the design-canvas static prototype, originally byte-pinned) and `viz_render.py::InteractiveToolbar` (the emit-time-appended actually-shipped toolbar). Any UI-visible toolbar change needs to land in `viz_render.py::InteractiveToolbar` — edits to `viz/dashboard.jsx::Toolbar` are dead from shipped-UI perspective because `viz_render.py` strips that section at emit. This duality bit WP6 (caught at F9 verify-auto back-loop — initial 5 leaves edited the wrong file). Will likely bite WP9 (filter chips), WP12 (headline-stats card), and any other toolbar-adjacent WP unless rationalized.
-- **Context:** The duality is pre-existing tech debt from the original emit-time-transform design (introduced 2026-05-19 with WP1's `Design-as-data: byte-pin + emit-time transforms` convention, partially relaxed in v2 cycle when byte-pin loosened for editable files but the structural duality remained). The CLAUDE.md "Design-as-data" convention (under Conventions section) documents this for *authors* but doesn't prevent the trap — the WBS task wording for WP6 explicitly named the correct file ("the emit-time-appended interactive Dashboard wrapper, not the byte-pinned source") and the agent still mis-mapped at plan time. Mechanical safety net was the codify regression-pin (negative `grep` against legacy `tabBtn('Today',...)` form) — but that's per-WP defensive work, not a structural fix.
-- **Suggested action:** Three options to weigh at next architectural review:
-  - (a) **Collapse the duality.** Move `InteractiveToolbar` into `viz/dashboard.jsx`, delete the static `Toolbar` design-canvas prototype, accept the loss of the design-canvas reference shape. Smallest fix; loses a useful artifact but the artifact has been semi-redundant since v2 cycle relaxed the byte-pin.
-  - (b) **Keep duality, add a structural check.** `tests/check-structure.sh` Phase 5d (new): assert that any user-visible toolbar text in `viz/dashboard.jsx::Toolbar` is *also* present in `viz_render.py::InteractiveToolbar`. Forces every toolbar-prose change to touch both. Catches the F9-back-loop class statically.
-  - (c) **Document and accept.** Per-WP codify regression-pins (the WP6 approach) handle each instance; the tech debt is real but the blast radius is bounded.
-  - Lean: (a) is the cleanest structural fix, but (b) is the minimum-friction path that preserves the design-canvas reference. Recommend discussing at the start of WP9 (filter chips, next WP that touches the toolbar) since WP9 has a natural decision point.
-- **Priority:** medium — does not block any current WP, but will bite at WP9 (next toolbar-touching WP, planned in Phase 2 of the active cycle). Worth resolving before WP9 build.
-- **Status:** open
-
 ## SURFACE-2026-05-23-CLAUDE-TIME-DB-FLAG-OVERRIDES-CLAUDE-TIME-DIR-FOR-CONFIG
 - **Source:** feature:verify-human (claude-time-viz-day-multi-day-window WP5b Phase 1, 2026-05-23)
 - **Target level:** task:plan (small/simple — one-line resolver split or doc-clarify)

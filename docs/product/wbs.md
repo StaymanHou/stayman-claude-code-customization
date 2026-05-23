@@ -179,17 +179,17 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [ ] 8.5 CLI parity: `claude-time visualize --range 2026-05-01:2026-05-07` flag matching the UI's custom-range
 - [ ] 8.6 `test_visualize_cli.sh` assertions: emitted HTML contains range-picker, --range CLI flag works end-to-end
 
-### WP9: Interactive filter chips
-**Description:** Toolbar filter chips ("active", "reading", "thinking", "away", "subagent") become functional toggles. Off-state hides that segment kind across all rows. Bonus: per-project filter chip popover (toggle individual projects on/off).
+### WP9: Interactive filter chips — [x] SHIPPED 2026-05-23 (commit f5a1123)
+**Description:** Toolbar filter chips ("active", "reading", "thinking", "away", "subagent") become functional toggles. Off-state hides that segment kind across all rows. Bonus: per-project filter chip popover (toggle individual projects on/off). Bundled bonus: Phase 1 collapsed the design-canvas/InteractiveToolbar duality (resolves `SURFACE-2026-05-23-CLAUDE-TIME-VIZ-DESIGN-CANVAS-INTERACTIVE-TOOLBAR-DUALITY`) — viz_render.py::InteractiveToolbar deleted; the canonical Toolbar now lives in viz/dashboard.jsx. Future toolbar-touching WPs (WP10, WP12) edit a single file.
 **Phase:** 2
 **Dependencies:** WP3, WP5 (viewport-aware render path)
-**Size:** S
+**Size:** S (5 phases shipped: duality collapse + functional chips + URL-hash persistence + per-project popover + codify-cleanup-superseded)
 **Tasks:**
-- [ ] 9.1 Wire chip click handlers in the appended interactive Dashboard wrapper; state lives in `useState`
-- [ ] 9.2 Segments + per-row totals + headline stats (WP11) all consume the filter state when rendering
-- [ ] 9.3 URL hash carries `filters=active,subagent` for sharable filtered views
-- [ ] 9.4 Per-project filter popover: collapsible chip listing all projects with on/off toggles
-- [ ] 9.5 `test_visualize_cli.sh` assertion: emitted HTML contains the filter state machine
+- [x] 9.1 Wire chip click handlers in the appended interactive Dashboard wrapper; state lives in `useState`. **Surface:** the static `<Legend />` was upgraded into clickable kind-chips (`data-filter-kind=<kind>` + `data-filter-on=true|false`) — not Toolbar, per documented plan deviation (Toolbar stays clean for view + date controls; filter affordances cluster near the Legend).
+- [x] 9.2 Segments + per-row totals consume filter state when rendering. `SegmentBar` returns null when its kind is OFF (per-segment hide preserves layout stability). `SessionRow.totalActive` is filter-aware via `session.segs.filter(s => filterKinds[s.kind] !== false)`. **Note:** headline stats (WP10/WP11) will consume `useFilter()` when they ship — wiring is in place.
+- [x] 9.3 URL hash carries `filters=active,subagent` (canonical-order serialization: `active,reading,thinking,subagent,away`) per CLAUDE.md "Claude-time visualize URL-hash state" schema. Default-elision drops the key when all kinds are ON. Hash-restore on init + debounced 100ms write on change + replaceState (no history pollution) + malformed-hash fallback to all-ON.
+- [x] 9.4 Per-project filter popover: new `ProjectFilterPopover` component next to Legend chips, IconFilter + "Projects" trigger button with hidden-count badge, floating panel with checkbox list, outside-click dismiss via document mousedown listener. Scope: Day view only (WeekTimeline's rollup aggregation deferred to a future WP).
+- [x] 9.5 `test_visualize_cli.sh` assertion: emitted HTML contains the filter state machine. Landed as **14 WP9-prefixed assertions** (62 → 76 PASS) distributed across per-phase verify-codify: P1 (2 — Toolbar duality), P2 (3 — data-kind + Legend kinds + FilterContext+filterKinds), P3 (4 — hash.filters + updateHash + default-elision + canonical-order), P4 (5 — ProjectFilterPopover + trigger + item + mousedown listener). Plus **12 behavioral Playwright assertions** in `test_visualize_interactive.js` (10 → 22 PASS) covering hash round-trip + popover open/uncheck/restore/outside-click. Plus **6 NEW unit tests** in `test_viz_render.py` for the in-phase `_strip_design_wrapper` regex fix (dash-count drift + prose-mention false-match guard).
 
 **Phase 2 → Phase 3 rationale:** Once Day/Week/Month/Custom + filters all share the same viewport and data layer, the value-add features (headline stats, comparison view, multi-instance overlap, away totals, project pills, collapsible rows) layer cleanly on top without depending on view-specific code.
 
