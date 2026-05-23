@@ -506,6 +506,18 @@ const PROJECT_HEADER_HEIGHT = 40;
 // NOW marker is computed client-side via useNowMin() (see DayTimeline below).
 // v1 used a hardcoded module-level NOW_MIN that froze on every emit; removed in WP2.
 
+// WP5b: derive the timeline's data-window bounds [start_min, end_min] from
+// the data payload. Multi-day mode (meta.day_count present): [0, day_count*1440].
+// Single-day mode (flat hour_range): [hour_range[0]*60, hour_range[1]*60].
+// Defensive fallback: [0, 1440]. Used by DayTimeline (gesture clamp + Home/End)
+// and Minimap (rectangle math) — both consume identical bounds so the minimap's
+// visible-window rectangle stays in sync with the main timeline's pannable range.
+function deriveDataWindow(data) {
+  if (data && data.meta && data.meta.day_count) return [0, data.meta.day_count * 1440];
+  if (data && data.hour_range) return [data.hour_range[0] * 60, data.hour_range[1] * 60];
+  return [0, 1440];
+}
+
 function viewportPct(start, end, viewport) {
   const range = viewport.visible_end_min - viewport.visible_start_min;
   const left = ((start - viewport.visible_start_min) / range) * 100;
@@ -918,14 +930,9 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
     return { windowStartIso: null, dayCount: 1 };
   }, [data]);
 
-  // Data-window for clamping zoom-out + Home/End. WP5b: when multi-day data
-  // is present, use [0, day_count * 1440] for the full window in minutes.
-  // Single-day path: use hour_range like pre-WP5b. Defensive fallback: [0,1440].
-  const dataWindow = React.useMemo(() => {
-    if (dwCtx.windowStartIso) return [0, dwCtx.dayCount * 1440];
-    if (data && data.hour_range) return [data.hour_range[0] * 60, data.hour_range[1] * 60];
-    return [0, 1440];
-  }, [data, dwCtx]);
+  // Data-window for clamping zoom-out + Home/End. Shared with Minimap via
+  // deriveDataWindow so both surfaces span the same bounds.
+  const dataWindow = React.useMemo(() => deriveDataWindow(data), [data]);
 
   const gestures = useTimelineGestures(viewport, setViewport, dataWindow);
 
@@ -1218,19 +1225,9 @@ function Minimap({ data }) {
   const dragRef = React.useRef(null);
   const rafIdRef = React.useRef(0);
 
-  // Data window: union of all sessions' segment ranges, falling back to
-  // hour_range or [0, 1440]. The minimap maps this range to its full width.
-  // WP5b: when multi-day data is present, use [0, day_count * 1440] so the
-  // minimap spans the full window (matches DayTimeline's gesture clamp).
-  const dataWindow = React.useMemo(() => {
-    if (data && data.meta && data.meta.day_count) {
-      return [0, data.meta.day_count * 1440];
-    }
-    if (data && data.hour_range) {
-      return [data.hour_range[0] * 60, data.hour_range[1] * 60];
-    }
-    return [0, 1440];
-  }, [data]);
+  // Data window: shared with DayTimeline via deriveDataWindow so the
+  // minimap's bounds match the main timeline's gesture clamp.
+  const dataWindow = React.useMemo(() => deriveDataWindow(data), [data]);
 
   const scheduleSet = React.useCallback((nextViewport) => {
     if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
