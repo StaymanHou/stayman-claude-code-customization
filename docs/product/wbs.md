@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-21
+updated: 2026-05-22
 cycle: claude-time-visualize-v2
 ---
 
@@ -15,9 +15,10 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 
 ## Scope
 
-**Included (11 work packages):**
+**Included (12 work packages):**
 - Adaptive hour-ruler (consume existing `hour_range` field)
 - Zoomable + draggable multi-track timeline ⭐ **critical / foundational**
+- Multi-day data window for Day view (extends WP5 to render trailing+leading context days — user-prioritized, added at WP5 finalize 2026-05-22)
 - "Today" → "Day" rename
 - Month view
 - Custom-range view
@@ -97,22 +98,37 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 
 **Phase rationale:** This is the user-designated **critical feature** for v2 ("the UX that matters most"). It is also load-bearing for custom-range, month view, and the renamed Day tab. Land it before adding more views so each view inherits the same interaction model rather than each phase reinventing pan/zoom.
 
-### WP5: Zoomable + draggable multi-track timeline ⭐
+### WP5: Zoomable + draggable multi-track timeline ⭐ — [x] SHIPPED 2026-05-22 (commit 140de22)
 **Description:** Reshape the timeline component into a horizontally-scrollable, zoomable canvas — audio/video-editor metaphor. Drag the ruler to pan; mouse-wheel / pinch / keyboard `+/-` to zoom in/out on the time axis (project rows stay vertically stationary). Visible window is independent of the underlying data window — load the broadest reasonable range, then pan/zoom within it. Replaces the current "fit the day to the available width" approach.
 **Phase:** 1
 **Dependencies:** WP1 (adaptive ruler math), WP3 (data layer can emit broader-than-day windows)
 **Size:** XL
 **Tasks:**
-- [ ] 5.1 Introduce `ViewportState` ({visible_start_min, visible_end_min, zoom_level}) in the Dashboard wrapper; bind to URL hash so a zoom-in survives reload
-- [ ] 5.2 Replace `pct()` math: segments compute pixel positions from the *viewport*, not the *day window*. Off-viewport segments are clipped or absent.
-- [ ] 5.3 Pan: drag-on-ruler / drag-on-empty-row updates `visible_start_min` while preserving `visible_end_min - visible_start_min` (the zoom level). Cursor-affordance: `grab` / `grabbing`.
-- [ ] 5.4 Zoom: mouse-wheel + ctrl/cmd, pinch gesture, keyboard `+`/`-`/`0` (reset). Zoom-anchored at cursor x-position (audio-editor convention).
-- [ ] 5.5 Ruler tick density adapts to zoom: 1h ticks at full-day view, 30m → 10m → 5m → 1m as user zooms in.
-- [ ] 5.6 Performance budget: 60fps pan/zoom with a 1-month range loaded and all segments visible. Throttle to `requestAnimationFrame`; consider canvas-render fallback if DOM-per-segment hits a ceiling.
-- [ ] 5.7 Minimap / overview-bar at the bottom showing the full data window + a draggable "what's visible" rectangle. Standard audio-editor affordance for re-orienting after deep zoom.
-- [ ] 5.8 Keyboard shortcuts: arrow-left/right to pan by 10% of visible width, `Home`/`End` to jump to data start/end, `0` to reset zoom.
-- [ ] 5.9 `test_visualize_cli.sh` smoke assertions: emitted HTML contains viewport-state code paths (`ViewportState`, `visible_start_min`, wheel-event handlers)
-- [ ] 5.10 Playwright behavioral test (new `test_visualize_interactive.sh` or extension): click ruler, drag, assert visible window changed; mouse-wheel, assert zoom changed.
+- [x] 5.1 `useViewport()` Context-plumbed state (`{visible_start_min, visible_end_min}`); URL-hash read on mount + debounced write via shared `parseHash`/`updateHash`/`serializeHash` helpers; default-elision rule. (Phases 1 + 3)
+- [x] 5.2 `viewportPct(start, end, viewport)` replaces module-level `pct()`; module-level `DAY_START_MIN/DAY_END_MIN/DAY_RANGE_MIN` removed from segment-positioning path; `overflow: hidden` row containers clip off-viewport segments. (Phase 1)
+- [x] 5.3 Drag-on-ruler / drag-on-empty-row pan via `useTimelineGestures`; cursor-anchor invariant (data minute under cursor stays under cursor); `grab`/`grabbing` cursor; gutter-excluded. (Phase 2)
+- [x] 5.4 Wheel-zoom with `ctrlKey || metaKey` (covers Safari/Chrome trackpad pinch); keyboard `+`/`-` at viewport center; `0` reset; cursor-anchored zoom. Clamped to `[1, dataWindowRange]` minutes. (Phase 2)
+- [x] 5.5 Adaptive ruler density via `pickTickInterval(viewport)` (picks densest interval from `[60, 30, 15, 10, 5, 1]` producing 8–30 ticks); `ticksInViewport(viewport, intervalMin)` generator; labels `HH:00` for hour intervals, `HH:MM` for finer. (Phase 2)
+- [x] 5.6 Performance budget: rAF-throttled `scheduleSet` for all viewport mutations; measured **60.2 fps avg / 59.5 fps min** at 1-month / 1800-segment dataset across three independent runs. **DOM-per-segment stays; canvas fallback NOT needed.** (Phase 4 P4.4)
+- [x] 5.7 Minimap (single combined ~80px track) with draggable visible-window rectangle: `data-minimap-mode="rect"` pans, `edge-left`/`edge-right` zoom via endpoint drag, click-elsewhere re-centers viewport. (Phase 3)
+- [x] 5.8 Keyboard shortcuts: ArrowLeft/Right pan ±10% range; `+`/`=` and `-`/`_` zoom 1.5x at center; `0` reset; `Home`/`End` jump to data start/end (zoom preserved). Filtered against INPUT/TEXTAREA/contentEditable targets. (Phase 2)
+- [x] 5.9 `test_visualize_cli.sh` 22 source-shape assertions added across Phase 1/2/3 + 1 hardening regression-pin (catches future orphaned `DAY_*_MIN` consumers after the InterruptHairlines fix). Test count 19 → 41. (Phases 1–3 + verify-human fix)
+- [x] 5.10 `test_visualize_interactive.{js,sh}` Playwright behavioral test inside the test-environment container: 10 PASS + 1 documented SKIP (synthetic `WheelEvent` doesn't propagate to React handler). Picks up the deferred WP5-P1 codify "17 HH:00 ruler labels" runtime assertion + Phase 2 gesture-math + Phase 3 hash-round-trip behavioral coverage. (Phase 4 P4.2)
+- [x] **Plus** opportunistic P2.7 fold-in: `flipNowLeft` branch in HourRuler resolves `SURFACE-2026-05-19-CLAUDE-TIME-VIZ-NOW-LABEL-OVERLAPS-RULER-TICK`. **Plus** Phase 3 verify-human caught + fixed a BLOCKING runtime regression: `InterruptHairlines` orphan-referenced the deleted `DAY_START_MIN` (3-line fix in `viz_render.py` + regression-pin in `test_visualize_cli.sh`).
+
+### WP5b: Multi-day data window for Day view
+**Description:** Day view loads trailing+leading context days into the data window. Current day is default-viewport center; pan reveals neighbors. Resolves `SURFACE-2026-05-22-CLAUDE-TIME-VIZ-DAY-VIEW-MULTI-DAY-DATA-WINDOW`.
+**Phase:** 2 (sits with view-modes phase as a Day-view extension)
+**Dependencies:** WP3 (range-aware data layer — shipped), WP5 (viewport mechanic + URL hash — shipped 2026-05-22)
+**Size:** S–M (data plumbing + label formatter; risk surface = extending `pickTickInterval`'s scale set to support day-level ticks for zoom-out across 21 days)
+**Tasks:**
+- [ ] 5b.1 Wire `_cmd_visualize` to call `build_range_data(start, end)` instead of `build_day_data(date)` when context days > 0. Compute `[date − N_prior, date + N_after]`. Defaults: `prior=14, after=7` (locked at backlog-grooming).
+- [ ] 5b.2 New CLI flags: `--context-days-prior N` + `--context-days-after M` (or compact `--context PRIOR:AFTER`). Per-invocation override of defaults.
+- [ ] 5b.3 New config keys in `~/.claude-time/config.json`: `viz_context_days_prior` (default 14), `viz_context_days_after` (default 7). CLI flags override config; config overrides built-in defaults.
+- [ ] 5b.4 ISO-day-aware label formatter: when viewport crosses midnight, `ticksInViewport` emits labels like `MMM DD HH:MM`; within a single day, keep `HH:MM` (no regression on current default-hash demo).
+- [ ] 5b.5 Extend `pickTickInterval` scale set to include `[1440 (day), 360 (6h)]` for zoom-out across multi-day data windows. Adaptive ruler picks day-level ticks when viewport spans ≥ ~2 days.
+- [ ] 5b.6 Initial viewport stays centered on the requested day (no behavior change on default-hash path — WP5 verify-human regression-pinned).
+- [ ] 5b.7 Test: extend `test_visualize_cli.sh` to seed multi-day events and assert emitted CT_DATA + ruler tick density across day boundaries.
 
 **Why XL:** This is genuinely large — viewport state, pixel-from-viewport math touching every segment renderer, gesture handling across mouse + trackpad + keyboard, ruler adaptive ticks, minimap, performance work, plus testing infrastructure for interactive behavior. Splitting into smaller WPs would be possible (pan, zoom, minimap, keyboard as 4 separate WPs) but the integration risk is in the *interaction* between them — single WP keeps that owned.
 
@@ -265,11 +281,11 @@ WP12 (multi-instance overlap) ←──────── WP13 (collapsible rows
 | Phase | WPs | Size mix | Rough magnitude |
 |-------|-----|---------------|-----------------|
 | 0     | WP1–4 | XS, S, M, S | small-to-medium foundation |
-| 1     | WP5 | XL | one large WP (gated milestone) |
-| 2     | WP6–9 | XS, L, M, S | medium phase, 4 WPs |
+| 1     | WP5 | XL | one large WP (gated milestone) — SHIPPED 2026-05-22 |
+| 2     | WP5b, WP6–9 | S–M, XS, L, M, S | medium phase, 5 WPs (WP5b added 2026-05-22 — user-prioritized Day-view extension) |
 | 3     | WP10–13 | M, L, M, M | medium phase, 4 WPs |
 
-13 work packages total. No probe WPs needed — no new 3rd-party integrations; React/Babel/SQLite/Python are all already in use.
+14 work packages total (was 13; +1 for WP5b — multi-day data window for Day view, added at WP5 finalize). No probe WPs needed — no new 3rd-party integrations; React/Babel/SQLite/Python are all already in use.
 
 ---
 

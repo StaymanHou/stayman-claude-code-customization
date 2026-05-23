@@ -1,7 +1,8 @@
 ---
 workflow: feature
-state: verify-codify (all phases complete)
+state: ship (complete)
 created: 2026-05-22
+shipped: 2026-05-22 (commit 140de22 on origin/main)
 cycle: claude-time-visualize-v2
 wbs_wp: WP5
 drive_mode: autopilot
@@ -169,8 +170,8 @@ The feature is done when:
   - **Test count delta for Phase 4:** +10 P4.2 behavioral assertions; full claude-time suite **186 → 196 PASS** inside the container.
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** WP5 all 4 phases complete (1: viewport math; 2: gestures + adaptive ruler; 3: minimap + URL hash + CLAUDE.md convention; 4: perf + Playwright + DOM-stays decision). Ready for `/feature-ship`.
+- **Path:** Feature > finalize
+- **Active scope:** Shipped at commit `140de22` on `origin/main` (2026-05-22). Ready for `/feature-finalize`. WP5b (multi-day data window for Day view) opens after finalize per the user-prioritized backlog item.
 - **Blocked:** none — containerization shipped, perf measurement passed, no canvas back-loop needed.
 - **Unvisited:** Phase 4 verify-auto → verify-self → verify-human → verify-codify; then WP5 ship + finalize. Stale "Unvisited" line cleaned up (Phase 3 was already complete).
 - **Open discoveries:** Phase 2 resolved `SURFACE-2026-05-19-CLAUDE-TIME-VIZ-NOW-LABEL-OVERLAPS-RULER-TICK` opportunistically (P2.7) — CHANGELOG entry to be emitted at finalize; Phase 2 surfaced `SURFACE-2026-05-22-CLAUDE-TIME-VIZ-DAY-VIEW-MULTI-DAY-DATA-WINDOW` (medium) — deferred to follow-up; backlog item logged.
@@ -227,6 +228,31 @@ Action: delete the failing assertion. It was attempting to codify a behavior tha
 - Minimum fps 59.5 — no dropped frames during continuous gesture activity.
 - Run-to-run stability: identical avg/min across two runs.
 - Headroom for downstream WPs: WP5b's `--context-days N` (default prior=14 + after=7 = ~21 days × ~10 sess × ~20 seg = ~4200 segments) is ~2.3× the dataset measured here; canvas fallback only becomes a concern if measured otherwise at WP5b verify-self time.
+
+## Retrospect (2026-05-22, finalize)
+
+- **What changed in our understanding:**
+  - **Test-environment containerization became its own feature mid-WP5.** The plan didn't anticipate that Phase 4's Playwright test would require Docker. Hit the global CLAUDE.md Docker-Hard-Blocker rule, paused WP5 mid-Phase-4 to ship `claude-time-test-containerization` as a sibling feature (3 phases, +30 PASS to host suite), then resumed. The pause/feature/resume dance worked cleanly because the workflow system tolerates cross-feature dirty-tree states (verified at WP5 ship — the selective `git add` pattern from the containerization ship reused here).
+  - **Spec's "single linux-x86_64" turned out to be wrong-but-not-bad** — Docker pulled aarch64 to match the Apple Silicon host. Native speed > QEMU emulation; spec wording adjusted in containerization's discoveries.
+  - **Verify-self subagents can produce false-FAILs on complex pages.** Phase 3 verify-self subagent reported BLOCKING on the hash-restore outcome; direct orchestrator re-verification showed it actually passed (subagent's snapshot regex ran before Babel-JIT finished). Pattern surfaced: when a single subagent FAIL conflicts with a coherent set of subagent PASSes that imply the FAIL outcome must work, **re-verify directly with Playwright before back-looping**.
+  - **The DOM-vs-canvas perf-decision was a non-decision.** 60.2 fps avg at 1800 segments / 1-month range — comfortably above the 58 fps threshold, with 59.5 fps minimum (no dropped frames). Plan's "may need canvas fallback at 1-month" risk did not materialize. Headroom analysis: WP5b's projected ~4200 segments is ~2.3× this, well within DOM's runway.
+
+- **Assumptions that held:**
+  - Phase 1's source-edit-on-`dashboard.jsx` pattern (relaxed byte-pin from WP1) worked cleanly through 4 phases with no rebuilds against the design extract.
+  - WP3's `build_range_data` data layer was ready for Phase 4's 1-month perf dataset without modification.
+  - `useViewport()` Context plumbing kept prop-drilling at zero through the SegmentBar/HourRuler/HourGridBackground/Minimap fanout.
+  - `requestAnimationFrame`-throttling via `scheduleSet` was sufficient to absorb keyboard/wheel event rates without React over-rendering.
+
+- **Assumptions that were wrong:**
+  - **`viz_render.py`'s emit-time-transform fragility is sharper than expected.** Phase 1 build hit a substring-collision bug (a JSX comment containing "Dashboard wrapper" tripped `_strip_design_wrapper`'s fallback substring match). The brittleness lesson from the broader v2 cycle's "byte-pin relaxed, behavioral tests guard integrity" framing held, but the specific marker-collision failure mode is a real ongoing risk for every future phase touching `dashboard.jsx`.
+  - **`viz_data.py:288` `session_id[:8]` truncation is a latent bug.** Phase 4 verify-self surfaced it when the synthetic seeder produced collision-prone IDs. Real session_ids (32-char UUIDs) statistically never collide at 8 chars — so production users are safe — but the truncation is a sharp edge that's easy to step on with test data. Surfaced to backlog, fixed at the test-fixture side.
+  - **Phase 1's source-shape test was insufficient.** P1.7 asserted the deleted `DAY_*_MIN` constants were removed (cause), but not that no remaining *consumer* references them (effect). InterruptHairlines slipped through and fired a runtime error against real `~/.claude-time` data at Phase 3 verify-human. Fix: regression-pin assertion added that catches any future orphaned consumer. Lesson encoded — "test for removed *usage*, not just removed *definition*."
+
+- **Approach delta:**
+  - Plan budgeted "at minimum one verify-self back-loop on the gesture/perf surface." Actual back-loop count: zero on perf (60.2 fps first try), one mini-back-loop on Phase 3 verify-human (InterruptHairlines bug — resolved inline as a 3-line fix + regression-pin, not a full F12).
+  - Plan said WP5 would be 4 phases of ~equal weight. Actual: Phase 4 was the heaviest because containerization happened mid-Phase 4, then resumed. Phase 1 had the most caught-and-fixed bugs (marker collision, missing source-shape check for orphaned consumers). Phase 2/3 were closer to plan.
+  - Plan said the URL-hash convention would be a "sub-deliverable" inside WP5. Actual: it landed as a substantial CLAUDE.md section (~60 lines, per-consumer key reservations table for 6 future WPs). Worth the weight — it's the contract every downstream WP6–13 will follow.
+  - WP5b emerged mid-cycle as a sibling of the original WBS, not an extension of WP8 (the original plan would have folded the multi-day-data-window concern into WP8's Custom-range view; user clarified at verify-human that "Custom-range" and "multi-day Day view" are different concerns). WBS updated at this finalize.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
