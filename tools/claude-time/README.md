@@ -154,7 +154,7 @@ The output is a **single self-contained `.html` file** (default: `~/.claude-time
 
 The day view shows one row per project, expanded into one row per Claude Code session within that project. Each session row tiles its window with colored segments: deep-indigo `active coding`, lavender `reading`, amber `thinking`, hairline-stripe `away`, teal `subagent`. Mid-turn user prompts (where you submitted again while the agent was still working) appear as vertical hairlines inside the active bar. Clicking any bar opens a side panel with the session's wall-vs-active time, activity breakdown, tool-call histogram, and prompt count. The week view collapses the same data into a 7-day per-project rollup.
 
-The `Today` and `Week` toolbar tabs are interactive; `Month` and `Custom` are placeholders for future phases.
+The `Day` and `Week` toolbar tabs are interactive; `Month` and `Custom` are placeholders for future phases.
 
 **Live NOW marker, snapshot data.** The vertical NOW line (and its `NOW · HH:MM` label) is computed client-side from your system clock and advances every 60 seconds, so reopening a stale tab still shows the correct current-time cursor. The underlying session/segment data is a snapshot taken at the moment you ran `claude-time visualize` — re-run the command to refresh. The toolbar carries a small `snapshot: HH:MM` caption so you can tell at a glance how stale the bars are relative to the moving cursor. When viewing a non-today date via `--date`, the NOW marker is hidden (it's only meaningful for the current day).
 

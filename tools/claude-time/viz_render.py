@@ -405,13 +405,14 @@ function InteractiveToolbar({ view, onViewChange, dateLabel, snapshot }) {
 
       <div style={{ width: 1, height: 22, background: CT_TOKENS.border, margin: '0 4px' }} />
 
-      {/* View tabs (Today/Week functional; Month/Custom disabled) */}
+      {/* Toolbar label is 'Day' (WP6); data-layer key remains window.CT_DATA.today (stable contract for WP5b consumers). */}
+      {/* View tabs (Day/Week functional; Month/Custom disabled) */}
       <div style={{
         display: 'flex', gap: 2, padding: 3,
         background: CT_TOKENS.surfaceDim, borderRadius: 8,
         border: `1px solid ${CT_TOKENS.border}`,
       }}>
-        {tabBtn('Today', 'day', view === 'day', true)}
+        {tabBtn('Day', 'day', view === 'day', true)}
         {tabBtn('Week', 'week', view === 'week', true)}
         {tabBtn('Month', 'month', false, false)}
         {tabBtn('Custom', 'custom', false, false)}

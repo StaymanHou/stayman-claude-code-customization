@@ -104,7 +104,7 @@ const IconRefresh    = (p) => <Icon {...p} d={<><polyline points="13,3 13,6 10,6
 const IconTerminal   = (p) => <Icon {...p} d={<><rect x="2" y="3" width="12" height="10" rx="1"/><polyline points="5,7 7,9 5,11"/><line x1="8.5" y1="11" x2="11" y2="11"/></>} />;
 
 /* ── Toolbar ────────────────────────────────────────────────── */
-function Toolbar({ activeRange = 'today', activeZoom = 'day', dateLabel, dark = false }) {
+function Toolbar({ activeRange = 'day', activeZoom = 'day', dateLabel, dark = false }) {
   const tabBtn = (label, value, current) => (
     <button key={value} style={{
       background: current ? CT_TOKENS.surface : 'transparent',
@@ -162,7 +162,8 @@ function Toolbar({ activeRange = 'today', activeZoom = 'day', dateLabel, dark = 
       <div style={{ width: 1, height: 22, background: CT_TOKENS.border, margin: '0 4px' }} />
 
       {/* Range tabs */}
-      {segGroup([['Today','today'],['Week','week'],['Month','month'],['Custom','custom']], activeRange)}
+      {/* Toolbar label is 'Day' (WP6); data-layer key remains window.CT_DATA.today (stable contract for WP5b consumers). */}
+      {segGroup([['Day','day'],['Week','week'],['Month','month'],['Custom','custom']], activeRange)}
 
       {/* Date stepper */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 3, background: CT_TOKENS.surfaceDim, borderRadius: 8, border: `1px solid ${CT_TOKENS.border}` }}>
@@ -1632,7 +1633,7 @@ function Dashboard({ variant }) {
       overflow: 'hidden',
     }}>
       <Toolbar
-        activeRange={isDay ? 'today' : 'week'}
+        activeRange={isDay ? 'day' : 'week'}
         activeZoom={isDay ? 'day' : 'week'}
         dateLabel={isDay ? 'Wed · May 13, 2026' : 'May 11 — 17, 2026'}
       />

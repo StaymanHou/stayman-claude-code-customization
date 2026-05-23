@@ -718,6 +718,45 @@ else
     check "WP5b-P2 codify: per-day hour ranges" fail "hour_range_by_day or day_window missing"
 fi
 
+# ── WP6 codify: "Today" → "Day" toolbar rename ───────────────────────
+# WP6 renamed the user-visible toolbar tab from "Today" to "Day". The
+# load-bearing edit lives in viz_render.py::InteractiveToolbar (the
+# emit-time-appended shipped toolbar) — NOT in viz/dashboard.jsx::Toolbar
+# (the design-canvas static prototype that viz_render.py strips at emit).
+# The F9 back-loop during WP6 build caught this: editing the design-canvas
+# Toolbar alone produces zero shipped-UI change. This assertion pins the
+# correct file by grepping the emitted HTML for the shipped tabBtn form.
+#
+# Reuses $WP5B_OUT5 (multi-day emit from WP5b assertions) — InteractiveToolbar
+# emit is invariant of the data window, so any existing emitted HTML works.
+if grep -q "tabBtn('Day', 'day', view === 'day', true)" "$WP5B_OUT5"; then
+    check "WP6 codify: InteractiveToolbar emits Day tab (shipped consuming surface)" pass
+else
+    check "WP6 codify: shipped Day tab" fail "Day tabBtn missing in emitted HTML"
+fi
+
+# Negative regression-pin: the OLD form must be absent. Catches the exact
+# regression class the F9 back-loop revealed — accidentally editing only
+# viz/dashboard.jsx (design-canvas, byte-pinned-historically) without
+# propagating to viz_render.py::InteractiveToolbar (the actual shipped UI).
+if grep -q "tabBtn('Today', 'day'," "$WP5B_OUT5"; then
+    check "WP6 codify: no legacy Today tabBtn" fail "old tabBtn('Today',...) form still present"
+else
+    check "WP6 codify: no legacy Today tabBtn in shipped toolbar (regression-pin)" pass
+fi
+
+# Rename-scope decision pin: data-layer key window.CT_DATA.today preserved.
+# WP6 chose to rename only UI-visible surfaces; the data-layer key stays
+# as the stable contract WP5b's six consumers depend on. This is partially
+# redundant with WP5b's existing "today"/"target_iso" assertions but pins
+# the WP6 decision itself — if a future WP renames the data-layer key,
+# this test fails as a deliberate forcing function to update WP6's WBS row.
+if grep -q '"today"' "$WP5B_OUT5" && grep -q 'window.CT_DATA.today' "$WP5B_OUT5"; then
+    check "WP6 codify: data-layer .today key preserved (rename-scope decision pin)" pass
+else
+    check "WP6 codify: data-layer .today key" fail "window.CT_DATA.today or \"today\": missing"
+fi
+
 rm -rf "$WP5B_DIR"
 
 # ── Summary ────────────────────────────────────────────────────────────
