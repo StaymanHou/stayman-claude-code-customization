@@ -287,6 +287,200 @@ async function runTests() {
       await page.close();
     }
 
+    // ── Outcome 9 (WP9 Phase 3): URL hash filters= contract ──
+    // Verified by verify-self subagent at WP9-P3-verify-self (7/7 PASS).
+    // Codified here as behavioral regression coverage.
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-filter-kind]').length === 5);
+      await page.waitForTimeout(300);
+
+      // 9a. Default state: hash has no filters key (default-elision).
+      const hash0 = await page.evaluate(() => window.location.hash);
+      check('WP9-P3: default state — hash has no filters key',
+        !/filters=/.test(hash0),
+        `hash=${JSON.stringify(hash0)}`);
+
+      // 9b. Click reading chip OFF → hash gets filters=active,thinking,subagent,away
+      // in canonical order.
+      await page.click('[data-filter-kind="reading"]');
+      await page.waitForTimeout(200); // 100ms debounce + headroom
+      const hash1 = await page.evaluate(() => window.location.hash);
+      check('WP9-P3: reading OFF → hash=#filters=active,thinking,subagent,away (canonical)',
+        decodeURIComponent(hash1) === '#filters=active,thinking,subagent,away',
+        `hash=${JSON.stringify(decodeURIComponent(hash1))}`);
+
+      // 9c. Click reading chip back ON → all-on default → filters key dropped.
+      await page.click('[data-filter-kind="reading"]');
+      await page.waitForTimeout(200);
+      const hash2 = await page.evaluate(() => window.location.hash);
+      check('WP9-P3: reading ON (all-on default) → filters key elided',
+        !/filters=/.test(hash2),
+        `hash=${JSON.stringify(hash2)}`);
+
+      await page.close();
+    }
+
+    // ── Outcome 10 (WP9 Phase 3): hash-restore on reload ──
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/dash.html#filters=active,subagent');
+      await page.waitForFunction(() => document.querySelectorAll('[data-filter-kind]').length === 5);
+      await page.waitForTimeout(300);
+
+      // 10a. Chip states match hash.
+      const chipStates = await page.evaluate(() => {
+        const out = {};
+        document.querySelectorAll('[data-filter-kind]').forEach(b => {
+          out[b.getAttribute('data-filter-kind')] = b.getAttribute('data-filter-on');
+        });
+        return out;
+      });
+      check('WP9-P3: reload with #filters=active,subagent restores chip state',
+        chipStates.active === 'true' && chipStates.reading === 'false'
+          && chipStates.thinking === 'false' && chipStates.subagent === 'true'
+          && chipStates.away === 'false',
+        `chips=${JSON.stringify(chipStates)}`);
+
+      // 10b. Hidden-kind segments are absent from DOM.
+      const segCounts = await page.evaluate(() => {
+        const out = {};
+        document.querySelectorAll('[data-kind]').forEach(e => {
+          const k = e.getAttribute('data-kind');
+          out[k] = (out[k] || 0) + 1;
+        });
+        return out;
+      });
+      const hiddenKindsAbsent = !segCounts.reading && !segCounts.thinking && !segCounts.away;
+      check('WP9-P3: hash-restored filter state filters timeline (reading/thinking/away absent)',
+        hiddenKindsAbsent,
+        `segCounts=${JSON.stringify(segCounts)}`);
+
+      await page.close();
+    }
+
+    // ── Outcome 11 (WP9 Phase 3): malformed hash falls back to all-ON ──
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/dash.html#filters=garbage,nonsense');
+      await page.waitForFunction(() => document.querySelectorAll('[data-filter-kind]').length === 5);
+      await page.waitForTimeout(300);
+      const allOn = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('[data-filter-kind]'))
+          .every(b => b.getAttribute('data-filter-on') === 'true');
+      });
+      check('WP9-P3: malformed hash falls back to all-ON (sanity guard)',
+        allOn,
+        `allOn=${allOn}`);
+      await page.close();
+    }
+
+    // ── Outcome 12 (WP9 Phase 4): per-project popover open + uncheck hides project ──
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-project-filter-trigger]').length === 1);
+      await page.waitForTimeout(300);
+
+      // 12a. Trigger present, popover starts closed.
+      const trigOpen0 = await page.evaluate(() => {
+        const t = document.querySelector('[data-project-filter-trigger]');
+        return t ? t.getAttribute('data-project-filter-open') : null;
+      });
+      check('WP9-P4: project popover trigger starts closed',
+        trigOpen0 === 'false',
+        `trigOpen0=${trigOpen0}`);
+
+      // 12b. Click trigger → panel opens.
+      await page.click('[data-project-filter-trigger]');
+      await page.waitForTimeout(100);
+      const trigOpen1 = await page.evaluate(() => {
+        const t = document.querySelector('[data-project-filter-trigger]');
+        return t ? t.getAttribute('data-project-filter-open') : null;
+      });
+      const panelCount = await page.evaluate(() => document.querySelectorAll('[data-project-filter-panel]').length);
+      check('WP9-P4: click trigger opens panel',
+        trigOpen1 === 'true' && panelCount === 1,
+        `trigOpen1=${trigOpen1} panelCount=${panelCount}`);
+
+      // 12c. N project items rendered.
+      const itemCount = await page.evaluate(() => document.querySelectorAll('[data-project-filter-item]').length);
+      const dataProjectCount = await page.evaluate(() => window.CT_DATA.today.projects.length);
+      check('WP9-P4: panel renders one checkbox per project',
+        itemCount === dataProjectCount,
+        `itemCount=${itemCount} dataProjectCount=${dataProjectCount}`);
+
+      // 12d. Uncheck first project → hidden-count badge appears with '1'.
+      const segsBefore = await page.evaluate(() =>
+        document.querySelectorAll('[data-kind]').length);
+      const firstProjectId = await page.evaluate(() => {
+        const items = document.querySelectorAll('[data-project-filter-item]');
+        return items.length > 0 ? items[0].getAttribute('data-project-filter-item') : null;
+      });
+      // Click the label (which contains the checkbox).
+      await page.click(`[data-project-filter-item="${firstProjectId}"]`);
+      await page.waitForTimeout(100);
+      const itemOnAfter = await page.evaluate((id) => {
+        const item = document.querySelector(`[data-project-filter-item="${id}"]`);
+        return item ? item.getAttribute('data-project-filter-on') : null;
+      }, firstProjectId);
+      const badgeText = await page.evaluate(() => {
+        const b = document.querySelector('[data-project-filter-hidden-count]');
+        return b ? b.textContent.trim() : null;
+      });
+      const segsAfter = await page.evaluate(() =>
+        document.querySelectorAll('[data-kind]').length);
+      check('WP9-P4: uncheck first project → data-project-filter-on=false, badge=1, segments decrease',
+        itemOnAfter === 'false' && badgeText === '1' && segsAfter < segsBefore,
+        `itemOnAfter=${itemOnAfter} badgeText=${badgeText} segsBefore=${segsBefore} segsAfter=${segsAfter}`);
+
+      // 12e. Re-check restores.
+      await page.click(`[data-project-filter-item="${firstProjectId}"]`);
+      await page.waitForTimeout(100);
+      const restoredSegs = await page.evaluate(() =>
+        document.querySelectorAll('[data-kind]').length);
+      const badgeAfter = await page.evaluate(() => {
+        const b = document.querySelector('[data-project-filter-hidden-count]');
+        return b ? b.textContent.trim() : null;
+      });
+      check('WP9-P4: re-check restores segments and clears hidden-count badge',
+        restoredSegs === segsBefore && badgeAfter === null,
+        `restoredSegs=${restoredSegs} segsBefore=${segsBefore} badgeAfter=${badgeAfter}`);
+
+      await page.close();
+    }
+
+    // ── Outcome 13 (WP9 Phase 4): outside-click dismisses popover ──
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-project-filter-trigger]').length === 1);
+      await page.waitForTimeout(300);
+
+      await page.click('[data-project-filter-trigger]');
+      await page.waitForTimeout(100);
+      const openBefore = await page.evaluate(() => {
+        const t = document.querySelector('[data-project-filter-trigger]');
+        return t ? t.getAttribute('data-project-filter-open') : null;
+      });
+
+      // Click on an element clearly outside the popover root — first segment bar.
+      await page.click('[data-seg-id]');
+      await page.waitForTimeout(100);
+      const openAfter = await page.evaluate(() => {
+        const t = document.querySelector('[data-project-filter-trigger]');
+        return t ? t.getAttribute('data-project-filter-open') : null;
+      });
+      const panelGone = await page.evaluate(() =>
+        document.querySelectorAll('[data-project-filter-panel]').length === 0);
+      check('WP9-P4: outside-click dismisses popover',
+        openBefore === 'true' && openAfter === 'false' && panelGone,
+        `openBefore=${openBefore} openAfter=${openAfter} panelGone=${panelGone}`);
+
+      await page.close();
+    }
+
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) {

@@ -103,33 +103,34 @@ const IconMoon       = (p) => <Icon {...p} d={<path d="M12.5 9.5A5 5 0 016.5 3.5
 const IconRefresh    = (p) => <Icon {...p} d={<><polyline points="13,3 13,6 10,6"/><path d="M13 6A5 5 0 003 8a5 5 0 005 5 5 5 0 004.5-2.8"/></>} />;
 const IconTerminal   = (p) => <Icon {...p} d={<><rect x="2" y="3" width="12" height="10" rx="1"/><polyline points="5,7 7,9 5,11"/><line x1="8.5" y1="11" x2="11" y2="11"/></>} />;
 
-/* ── Toolbar ────────────────────────────────────────────────── */
-function Toolbar({ activeRange = 'day', activeZoom = 'day', dateLabel, dark = false }) {
-  const tabBtn = (label, value, current) => (
-    <button key={value} style={{
-      background: current ? CT_TOKENS.surface : 'transparent',
-      color: current ? CT_TOKENS.textPrimary : CT_TOKENS.textSecondary,
-      border: 'none',
-      borderRadius: 6,
-      padding: '6px 12px',
-      fontSize: 13,
-      fontWeight: current ? 550 : 450,
-      fontFamily: CT_TOKENS.sans,
-      cursor: 'pointer',
-      boxShadow: current ? '0 1px 2px rgba(20,18,12,0.06), inset 0 0 0 1px ' + CT_TOKENS.border : 'none',
-    }}>{label}</button>
-  );
-  const segGroup = (items, current) => (
-    <div style={{
-      display: 'flex',
-      gap: 2,
-      padding: 3,
-      background: CT_TOKENS.surfaceDim,
-      borderRadius: 8,
-      border: `1px solid ${CT_TOKENS.border}`,
-    }}>
-      {items.map(([l, v]) => tabBtn(l, v, v === current))}
-    </div>
+/* ── Toolbar — interactive (shipped variant; WP9 duality collapse 2026-05-23) ── */
+// History: prior to WP9, this file hosted a static design-canvas Toolbar
+// (props: activeRange/activeZoom/dateLabel/dark) and viz_render.py appended a
+// parallel InteractiveToolbar at emit time. WP9 collapsed the duality into the
+// single interactive Toolbar below; viz_render.py no longer emits a Toolbar
+// component. See CLAUDE.md → "Design-as-data" convention for the full history.
+function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot }) {
+  const tabBtn = (label, value, current, enabled = true) => (
+    <button
+      key={value}
+      onClick={enabled ? () => onViewChange(value) : undefined}
+      disabled={!enabled}
+      style={{
+        background: current ? CT_TOKENS.surface : 'transparent',
+        color: !enabled ? CT_TOKENS.textMuted
+             : current ? CT_TOKENS.textPrimary : CT_TOKENS.textSecondary,
+        border: 'none',
+        borderRadius: 6,
+        padding: '6px 12px',
+        fontSize: 13,
+        fontWeight: current ? 550 : 450,
+        fontFamily: CT_TOKENS.sans,
+        cursor: enabled ? 'pointer' : 'not-allowed',
+        opacity: enabled ? 1 : 0.5,
+        boxShadow: current ? '0 1px 2px rgba(20,18,12,0.06), inset 0 0 0 1px ' + CT_TOKENS.border : 'none',
+      }}
+      title={!enabled ? 'Not available in MVP' : undefined}
+    >{label}</button>
   );
 
   return (
@@ -155,45 +156,62 @@ function Toolbar({ activeRange = 'day', activeZoom = 'day', dateLabel, dark = fa
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ fontFamily: CT_TOKENS.mono, fontSize: 13, color: CT_TOKENS.textPrimary, fontWeight: 500, letterSpacing: '-0.01em' }}>claude-time</span>
-          <span style={{ fontSize: 11, color: CT_TOKENS.textTertiary, fontFamily: CT_TOKENS.mono }}>v0.4.2</span>
         </div>
       </div>
 
       <div style={{ width: 1, height: 22, background: CT_TOKENS.border, margin: '0 4px' }} />
 
-      {/* Range tabs */}
       {/* Toolbar label is 'Day' (WP6); data-layer key remains window.CT_DATA.today (stable contract for WP5b consumers). */}
-      {segGroup([['Day','day'],['Week','week'],['Month','month'],['Custom','custom']], activeRange)}
-
-      {/* Date stepper */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: 3, background: CT_TOKENS.surfaceDim, borderRadius: 8, border: `1px solid ${CT_TOKENS.border}` }}>
-        <button style={iconBtn()}><IconChevLeft size={12} /></button>
-        <button style={{ ...iconBtn(), width: 'auto', padding: '0 10px', gap: 6, fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textPrimary }}>
-          <IconCalendar size={12} />
-          {dateLabel}
-        </button>
-        <button style={iconBtn()}><IconChevRight size={12} /></button>
+      {/* View tabs (Day/Week functional; Month/Custom disabled) */}
+      <div style={{
+        display: 'flex', gap: 2, padding: 3,
+        background: CT_TOKENS.surfaceDim, borderRadius: 8,
+        border: `1px solid ${CT_TOKENS.border}`,
+      }}>
+        {tabBtn('Day', 'day', view === 'day', true)}
+        {tabBtn('Week', 'week', view === 'week', true)}
+        {tabBtn('Month', 'month', false, false)}
+        {tabBtn('Custom', 'custom', false, false)}
       </div>
+
+      {/* Date label (read-only) */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '6px 10px',
+        background: CT_TOKENS.surfaceDim, borderRadius: 8,
+        border: `1px solid ${CT_TOKENS.border}`,
+        fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textPrimary,
+      }}>
+        <IconCalendar size={12} />
+        {dateLabel}
+      </div>
+
+      {/* Snapshot caption — communicates that the data is point-in-time at emit
+          (the live NOW cursor moves; the bars do not until next visualize run). */}
+      {snapshot && (
+        <span
+          title="Data is a snapshot at emit time. The live NOW cursor moves; bars do not. Re-run `claude-time visualize` for fresh data."
+          style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11,
+            color: CT_TOKENS.textTertiary, cursor: 'help',
+          }}
+        >snapshot: {snapshot}</span>
+      )}
 
       <div style={{ flex: 1 }} />
 
-      {/* Filters */}
-      <button style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        height: 30, padding: '0 10px',
-        background: 'transparent', border: `1px solid ${CT_TOKENS.border}`,
-        borderRadius: 7, fontFamily: CT_TOKENS.sans, fontSize: 12, color: CT_TOKENS.textSecondary, cursor: 'pointer',
-      }}>
-        <IconFilter size={12} />
-        Filters
-        <span style={{
-          fontFamily: CT_TOKENS.mono, fontSize: 10,
-          padding: '1px 5px', borderRadius: 3,
-          background: CT_TOKENS.surfaceDim, color: CT_TOKENS.textSecondary,
-        }}>2</span>
-      </button>
-      <button style={iconChromeBtn()}><IconRefresh size={13} /></button>
-      <button style={iconChromeBtn()}><IconMoon size={13} /></button>
+      {/* Refresh icon — tooltip-only, no action */}
+      <button
+        title="Re-run: claude-time visualize"
+        style={{
+          height: 30, width: 30,
+          border: `1px solid ${CT_TOKENS.border}`,
+          background: 'transparent',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 7, cursor: 'help',
+          color: CT_TOKENS.textSecondary,
+        }}
+      ><IconRefresh size={13} /></button>
     </div>
   );
 }
@@ -272,27 +290,179 @@ function SummaryStrip({ filterChips, stats }) {
   );
 }
 
-/* ── Legend ─────────────────────────────────────────────────── */
+/* ── Legend — functional kind-filter chips (WP9 Phase 2, 2026-05-23) ── */
+// Pre-WP9 this was a static color-key. WP9 made each item a clickable
+// toggle: clicking dims the chip (text strikethrough + reduced opacity)
+// AND hides all segments of that kind across the dashboard. State lives
+// in FilterContext (provided by the shipped interactive wrapper). The
+// design-canvas page also uses Legend; its FilterContext default has all
+// kinds ON + a no-op setter, so the design-canvas reference renders
+// identically to pre-WP9.
 function Legend() {
+  const { kinds, setKinds } = useFilter();
   const items = [
-    { label: 'Active coding', color: CT_TOKENS.active },
-    { label: 'Reading', color: CT_TOKENS.reading },
-    { label: 'Thinking', color: CT_TOKENS.thinking },
-    { label: 'Subagent', color: CT_TOKENS.subagent },
-    { label: 'Away', stripe: true },
+    { kind: 'active',   label: 'Active coding', color: CT_TOKENS.active },
+    { kind: 'reading',  label: 'Reading',       color: CT_TOKENS.reading },
+    { kind: 'thinking', label: 'Thinking',      color: CT_TOKENS.thinking },
+    { kind: 'subagent', label: 'Subagent',      color: CT_TOKENS.subagent },
+    { kind: 'away',     label: 'Away',          stripe: true },
   ];
+  const toggle = (k) => setKinds({ ...kinds, [k]: !kinds[k] });
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      {items.map((it, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{
-            width: 14, height: 8, borderRadius: 2,
-            ...(it.stripe ? segStyle('away') : { background: it.color }),
-            border: it.stripe ? `1px solid ${CT_TOKENS.border}` : 'none',
-          }} />
-          <span style={{ fontSize: 11, color: CT_TOKENS.textSecondary, fontFamily: CT_TOKENS.sans }}>{it.label}</span>
+      {items.map((it) => {
+        const on = kinds[it.kind] !== false;
+        return (
+          <button
+            key={it.kind}
+            data-filter-kind={it.kind}
+            data-filter-on={on ? 'true' : 'false'}
+            onClick={() => toggle(it.kind)}
+            title={on ? `Hide ${it.label.toLowerCase()}` : `Show ${it.label.toLowerCase()}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '2px 4px', margin: 0,
+              background: 'transparent', border: 'none',
+              cursor: 'pointer',
+              opacity: on ? 1 : 0.45,
+              borderRadius: 4,
+            }}
+          >
+            <span style={{
+              width: 14, height: 8, borderRadius: 2,
+              ...(it.stripe ? segStyle('away') : { background: it.color }),
+              border: it.stripe ? `1px solid ${CT_TOKENS.border}` : 'none',
+            }} />
+            <span style={{
+              fontSize: 11,
+              color: CT_TOKENS.textSecondary,
+              fontFamily: CT_TOKENS.sans,
+              textDecoration: on ? 'none' : 'line-through',
+            }}>{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Project filter popover (WP9 Phase 4, 2026-05-23) ───────── */
+// Trigger button next to Legend opens a small popover with a checkbox per
+// project. State lives in FilterContext.projects ({projectId: false} for
+// hidden; absent → visible). Default visible = all projects ON.
+// Outside-click dismisses via document mousedown listener (cleaned up on
+// unmount or when the popover closes).
+function ProjectFilterPopover({ projects }) {
+  const { projects: projectFilter, setProjects } = useFilter();
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef(null);
+
+  // Outside-click dismiss.
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const hiddenCount = projects.filter(p => projectFilter[p.id] === false).length;
+  const toggleProject = (id) => {
+    // Symmetric with kind chips: explicit false hides, absent (or true) shows.
+    const cur = projectFilter[id] !== false;
+    setProjects({ ...projectFilter, [id]: !cur });
+  };
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }} data-project-filter-root>
+      <button
+        data-project-filter-trigger
+        data-project-filter-open={open ? 'true' : 'false'}
+        onClick={() => setOpen(o => !o)}
+        title={hiddenCount > 0
+          ? `Projects (${hiddenCount} hidden — click to manage)`
+          : 'Projects (click to filter)'}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '3px 8px',
+          background: hiddenCount > 0 ? CT_TOKENS.surfaceDim : 'transparent',
+          border: `1px solid ${CT_TOKENS.border}`,
+          borderRadius: 6,
+          fontSize: 11, fontFamily: CT_TOKENS.sans,
+          color: CT_TOKENS.textSecondary,
+          cursor: 'pointer',
+        }}
+      >
+        <IconFilter size={11} />
+        <span>Projects</span>
+        {hiddenCount > 0 && (
+          <span data-project-filter-hidden-count style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 10,
+            padding: '1px 5px', borderRadius: 3,
+            background: CT_TOKENS.active, color: '#fff',
+            fontWeight: 500,
+          }}>{hiddenCount}</span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          data-project-filter-panel
+          style={{
+            position: 'absolute',
+            right: 0, top: 'calc(100% + 4px)',
+            zIndex: 50,
+            minWidth: 200, maxWidth: 320,
+            maxHeight: 280, overflowY: 'auto',
+            background: CT_TOKENS.surface,
+            border: `1px solid ${CT_TOKENS.border}`,
+            borderRadius: 6,
+            boxShadow: '0 4px 12px rgba(20,18,12,0.10)',
+            padding: '6px 0',
+          }}
+        >
+          {projects.length === 0 && (
+            <div style={{
+              padding: '6px 12px', fontSize: 11,
+              color: CT_TOKENS.textTertiary,
+              fontFamily: CT_TOKENS.sans,
+            }}>No projects in this view.</div>
+          )}
+          {projects.map(p => {
+            const visible = projectFilter[p.id] !== false;
+            return (
+              <label
+                key={p.id}
+                data-project-filter-item={p.id}
+                data-project-filter-on={visible ? 'true' : 'false'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                  fontSize: 11.5,
+                  fontFamily: CT_TOKENS.mono,
+                  color: visible ? CT_TOKENS.textPrimary : CT_TOKENS.textTertiary,
+                  textDecoration: visible ? 'none' : 'line-through',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={visible}
+                  onChange={() => toggleProject(p.id)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <span style={{
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  flex: 1,
+                }}>{p.alias}</span>
+              </label>
+            );
+          })}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -368,6 +538,25 @@ const DataWindowContext = React.createContext({
   windowStartIso: null,
   dayCount: 1,
 });
+
+// WP9 Phase 2: filter context plumbs kind-filter state (which segment
+// kinds are visible) and project-filter state (Phase 4) to leaf consumers
+// (SegmentBar's render-or-null check, Legend's clickable chip state,
+// per-project popover). Default: all kinds enabled, no projects hidden
+// — design-canvas prototype renders all segments as before.
+const FILTER_KINDS = ['active', 'reading', 'thinking', 'subagent', 'away'];
+const FILTER_ALL_ON = Object.freeze(
+  FILTER_KINDS.reduce((acc, k) => { acc[k] = true; return acc; }, {})
+);
+const FilterContext = React.createContext({
+  kinds: FILTER_ALL_ON,
+  setKinds: () => {},
+  projects: {},      // {projectId: false} means hidden; absent => visible
+  setProjects: () => {},
+});
+function useFilter() {
+  return React.useContext(FilterContext);
+}
 
 // WP5 Phase 3: URL-hash state utilities. The shared convention is
 // `#key=value;key=value;...` — semicolon-separated pairs, URL-encoded
@@ -628,6 +817,11 @@ function HourGridBackground() {
 
 function SegmentBar({ seg, selected = false, dayOffset = 0 }) {
   const viewport = useViewport();
+  const { kinds: filterKinds } = useFilter();
+  // WP9 Phase 2: if this segment's kind is filtered out, render nothing.
+  // Per-segment hide is preferred over per-row hide so the timeline layout
+  // remains stable (positions of other kinds unchanged when one is toggled).
+  if (filterKinds[seg.kind] === false) return null;
   // WP5b: when the session this segment belongs to is on a non-target day
   // in a multi-day window, `dayOffset` shifts the segment's [start, end]
   // from minute-of-day into minute-of-window before computing viewport %.
@@ -640,6 +834,7 @@ function SegmentBar({ seg, selected = false, dayOffset = 0 }) {
     <div
       title={`${seg.kind} · ${fmtClock(seg.start)}–${fmtClock(seg.end)}`}
       data-seg-id={`${seg.kind}-${seg.start}-${seg.end}`}
+      data-kind={seg.kind}
       style={{
         position: 'absolute',
         left, width,
@@ -707,7 +902,11 @@ function ProjectHeaderRow({ project, totals, expanded = true, alt = false }) {
 }
 
 function SessionRow({ session, alt = false, selectedSegId = null, onSelect, lastInGroup = false }) {
-  const totalActive = sumActive(session.segs);
+  // WP9 Phase 2: filter-aware per-row total. `sumActive` sums only
+  // active+subagent regardless; here we additionally drop kinds the user
+  // has toggled off so the visible label reflects what's actually rendered.
+  const { kinds: filterKinds } = useFilter();
+  const totalActive = sumActive(session.segs.filter(s => filterKinds[s.kind] !== false));
   // WP5b: in multi-day mode, sessions carry a `day_iso` tag from
   // build_range_data so the renderer can offset their segments from
   // minute-of-day into minute-of-window. Single-day mode: no tag → offset 0.
@@ -935,6 +1134,15 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
   // deriveDataWindow so both surfaces span the same bounds.
   const dataWindow = React.useMemo(() => deriveDataWindow(data), [data]);
 
+  // WP9 Phase 4: per-project filter. `projectFilter[id] === false` hides
+  // that project entirely (no row, no segments). Other projects unchanged.
+  // Derive a filtered projects list once; downstream `.map` consumers use it.
+  const { projects: projectFilter } = useFilter();
+  const visibleProjects = React.useMemo(
+    () => data.projects.filter(p => projectFilter[p.id] !== false),
+    [data.projects, projectFilter]
+  );
+
   const gestures = useTimelineGestures(viewport, setViewport, dataWindow);
 
   // NOW marker visibility:
@@ -1022,7 +1230,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
             pointerEvents: 'none', zIndex: 1,
           }} />
         )}
-        {data.projects.map((p, pi) => {
+        {visibleProjects.map((p, pi) => {
           const expanded = expandedProjects.includes(p.id);
           return (
             <React.Fragment key={p.id}>
@@ -1632,10 +1840,13 @@ function Dashboard({ variant }) {
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
     }}>
+      {/* Design-canvas reference: passes static props through the new
+          interactive-Toolbar prop shape. WP9 collapsed the duality
+          (2026-05-23) — see Toolbar definition above for history. */}
       <Toolbar
-        activeRange={isDay ? 'day' : 'week'}
-        activeZoom={isDay ? 'day' : 'week'}
-        dateLabel={isDay ? 'Wed · May 13, 2026' : 'May 11 — 17, 2026'}
+        view={isDay ? 'day' : 'week'}
+        onViewChange={() => {}}
+        dateLabel={isDay ? 'Wed \u00b7 May 13, 2026' : 'May 11 \u2014 17, 2026'}
       />
       <SummaryStrip
         filterChips={filterChips}
@@ -1663,6 +1874,11 @@ function Dashboard({ variant }) {
         }}>{isDay ? `${today.projects.length} projects · ${today.projects.reduce((a,p)=>a+p.sessions.length,0)} sessions` : `${week.projects.length} projects · 7 days`}</span>
         <span style={{ flex: 1 }} />
         <Legend />
+        {/* WP9 Phase 4: project filter popover. Design-canvas page uses
+            FilterContext default (no-op setter); the popover renders but
+            toggling is a no-op there. Shipped Dashboard wraps with a real
+            FilterContext.Provider. */}
+        <ProjectFilterPopover projects={isDay ? today.projects : week.projects} />
       </div>
 
       {/* Body — timeline (+ optional side panel) */}

@@ -4,13 +4,10 @@ Reads `viz/template.html` + `viz/dashboard.jsx`, applies transforms that:
   1. Strip the Phase 1 design-canvas-style `Dashboard({variant})` wrapper
      and replace it with an interactive `Dashboard()` (no props) that uses
      `useState` for current view (day|week) and selected session segment.
-  2. Wire toolbar tabs (Today/Week) to switch view state.
-  3. Wire bar clicks to set the selected segment + show side panel.
-  4. Disable Month/Custom tabs visually.
-  5. Add the refresh-icon tooltip ("run: claude-time visualize").
-  6. Render `interrupts: [<minutes>]` as vertical hairlines inside the
+  2. Wire bar clicks to set the selected segment + show side panel.
+  3. Render `interrupts: [<minutes>]` as vertical hairlines inside the
      active bar (Phase 2 added the data; Phase 3 renders it).
-  7. Render a `snapshot: HH:MM` caption in the toolbar (WP2). The caption
+  4. Render a `snapshot: HH:MM` caption in the toolbar (WP2). The caption
      reads `window.CT_DATA.meta.snapshot`, populated by `_cmd_visualize`
      in `claude-time` at emit time. Coexists with the live NOW marker
      (computed client-side via `useNowMin()` in `dashboard.jsx`): the
@@ -21,8 +18,13 @@ byte-pinned it. Starting with the v2 cycle (claude-time-visualize-v2,
 2026-05-19), direct source edits to `dashboard.jsx` and `data.js` are
 permitted — the byte-pin is relaxed for those two files. The emit-time
 transforms below remain as the *additive* layer that wires interactivity
-on top of the (now-editable) design source. See `CLAUDE.md` →
-"Design-as-data" convention for the full history.
+on top of the (now-editable) design source.
+
+WP9 (2026-05-23) further collapsed the design-canvas/InteractiveToolbar
+duality: the Toolbar component is now defined directly in `dashboard.jsx`
+and consumed by the shipped Dashboard wrapper here as `<Toolbar ...>`.
+The emit-time-appended InteractiveToolbar variant is gone. See `CLAUDE.md`
+→ "Design-as-data" convention for the full history.
 
 Public API:
   render_html(template_path, dashboard_jsx_path, data, initial_view) -> str
@@ -39,19 +41,20 @@ def _strip_design_wrapper(jsx: str) -> str:
     """Remove the design-canvas-era Dashboard wrapper at the bottom of
     dashboard.jsx. We replace it with an interactive version in
     `_interactive_dashboard()` below.
+
+    Matches the literal section-header comment `/* ── Dashboard wrapper ──...── */`
+    with any number of trailing ─ characters (the source line's dash-count has
+    drifted historically). The naive `find("Dashboard wrapper")` fallback was
+    removed because new code can legitimately mention "Dashboard wrapper" in
+    prose comments without intending to be the strip marker (WP9 Phase 2,
+    2026-05-23: hit this on a `FilterContext` comment that mentioned "shipped
+    Dashboard wrapper" — false-first match stripped the whole file body).
     """
-    # Locate the `/* ── Dashboard wrapper ── */` comment block and everything after.
-    marker = "/* \u2500\u2500 Dashboard wrapper \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */"
-    idx = jsx.find(marker)
-    if idx == -1:
-        # Fall back to less-strict marker matching (in case unicode dashes drift).
-        idx = jsx.find("Dashboard wrapper")
-        if idx == -1:
-            raise ValueError("dashboard.jsx: cannot locate the Dashboard wrapper comment marker")
-        # Back up to start of the line containing the marker.
-        line_start = jsx.rfind("\n", 0, idx)
-        idx = line_start + 1 if line_start >= 0 else 0
-    return jsx[:idx]
+    import re as _re
+    m = _re.search(r'/\*\s*\u2500{2,}\s*Dashboard wrapper\s*\u2500{2,}\s*\*/', jsx)
+    if not m:
+        raise ValueError("dashboard.jsx: cannot locate the /* ── Dashboard wrapper ── */ section-header marker")
+    return jsx[:m.start()]
 
 
 def _interactive_dashboard() -> str:
@@ -73,6 +76,50 @@ function Dashboard() {
   const [expandedProjects, setExpandedProjects] = React.useState(
     (today.projects || []).map(p => p.id)
   );
+  // WP9 Phase 2: filter state. `filterKinds` is {active, reading, thinking,
+  // subagent, away}; entries set to false hide the corresponding segment
+  // kind across all consumers (SegmentBar render-or-null, Legend chip
+  // visual). `filterProjects` (Phase 4) maps projectId -> false for hidden.
+  //
+  // WP9 Phase 3 (2026-05-23): URL-hash restore on init + write on change,
+  // following the convention in CLAUDE.md → "Claude-time visualize URL-hash
+  // state". Hash key is `filters` and its value is the comma-joined list
+  // of kinds that are currently ON, in canonical order
+  // active,reading,thinking,subagent,away. Default-elision: when all kinds
+  // are ON, the key is dropped from the hash (keeps URLs short for the
+  // common "haven't customized" case).
+  const [filterKinds, setFilterKinds] = React.useState(() => {
+    const hash = parseHash();
+    if (!hash.filters) return { ...FILTER_ALL_ON };
+    const onKinds = new Set(hash.filters.split(',').filter(Boolean));
+    // Sanity check: if no recognized kind matched, fall back to all-ON
+    // rather than rendering an empty dashboard.
+    const recognized = FILTER_KINDS.filter(k => onKinds.has(k));
+    if (recognized.length === 0) return { ...FILTER_ALL_ON };
+    return FILTER_KINDS.reduce((acc, k) => {
+      acc[k] = onKinds.has(k);
+      return acc;
+    }, {});
+  });
+  const [filterProjects, setFilterProjects] = React.useState({});
+
+  // WP9 Phase 3: debounced URL-hash write on filterKinds change. Mirrors
+  // the viewport pattern below — replaceState (no history pollution),
+  // default-elision (drop the key when state equals all-ON default),
+  // canonical-order serialization (so the hash is deterministic regardless
+  // of toggle sequence).
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      const allOn = FILTER_KINDS.every(k => filterKinds[k] !== false);
+      if (allOn) {
+        updateHash({ filters: null });
+      } else {
+        const onList = FILTER_KINDS.filter(k => filterKinds[k] !== false).join(',');
+        updateHash({ filters: onList });
+      }
+    }, 100);
+    return () => clearTimeout(t);
+  }, [filterKinds]);
   // WP5 Phase 1: viewport state owned by the interactive Dashboard wrapper.
   // Phase 3 extension: on initial mount, parse #viewport=<start>:<end> from
   // the URL hash and apply it; on viewport change, write back to hash
@@ -247,7 +294,16 @@ function Dashboard() {
     [viewport]
   );
 
+  // WP9 Phase 2: memoize FilterContext value so SegmentBar leaf consumers
+  // re-render only when filterKinds or filterProjects actually change.
+  const filterCtxValue = React.useMemo(
+    () => ({ kinds: filterKinds, setKinds: setFilterKinds,
+             projects: filterProjects, setProjects: setFilterProjects }),
+    [filterKinds, filterProjects]
+  );
+
   return (
+    <FilterContext.Provider value={filterCtxValue}>
     <ViewportContext.Provider value={viewportCtxValue}>
     <div style={{
       width: '100%', height: '100%',
@@ -257,7 +313,9 @@ function Dashboard() {
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      <InteractiveToolbar
+      {/* WP9 (2026-05-23): Toolbar is now defined in dashboard.jsx
+          (duality collapsed — see CLAUDE.md "Design-as-data" convention). */}
+      <Toolbar
         view={view}
         onViewChange={setView}
         dateLabel={isDay ? today.label : week.label}
@@ -291,6 +349,9 @@ function Dashboard() {
           : `${week.projects.length} projects \u00b7 7 days`}</span>
         <span style={{ flex: 1 }} />
         <Legend />
+        {/* WP9 Phase 4: per-project filter popover. Day view: today.projects;
+            Week view: week.projects (the data shapes share .id + .alias). */}
+        <ProjectFilterPopover projects={isDay ? today.projects : week.projects} />
       </div>
 
       {/* Body — timeline (+ optional side panel) */}
@@ -324,6 +385,7 @@ function Dashboard() {
       )}
     </div>
     </ViewportContext.Provider>
+    </FilterContext.Provider>
   );
 }
 
@@ -348,114 +410,6 @@ function EmptyState({ date }) {
           background: CT_TOKENS.surfaceAlt, borderRadius: 3,
         }}>claude-time visualize</code> to refresh.</div>
       </div>
-    </div>
-  );
-}
-
-/* ── Toolbar — interactive variant with view switching ────────── */
-function InteractiveToolbar({ view, onViewChange, dateLabel, snapshot }) {
-  const tabBtn = (label, value, current, enabled = true) => (
-    <button
-      key={value}
-      onClick={enabled ? () => onViewChange(value) : undefined}
-      disabled={!enabled}
-      style={{
-        background: current ? CT_TOKENS.surface : 'transparent',
-        color: !enabled ? CT_TOKENS.textMuted
-             : current ? CT_TOKENS.textPrimary : CT_TOKENS.textSecondary,
-        border: 'none',
-        borderRadius: 6,
-        padding: '6px 12px',
-        fontSize: 13,
-        fontWeight: current ? 550 : 450,
-        fontFamily: CT_TOKENS.sans,
-        cursor: enabled ? 'pointer' : 'not-allowed',
-        opacity: enabled ? 1 : 0.5,
-        boxShadow: current ? '0 1px 2px rgba(20,18,12,0.06), inset 0 0 0 1px ' + CT_TOKENS.border : 'none',
-      }}
-      title={!enabled ? 'Not available in MVP' : undefined}
-    >{label}</button>
-  );
-
-  return (
-    <div style={{
-      height: 56,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 16,
-      padding: '0 20px',
-      borderBottom: `1px solid ${CT_TOKENS.border}`,
-      background: CT_TOKENS.surface,
-      flexShrink: 0,
-    }}>
-      {/* Wordmark */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 22, height: 22, borderRadius: 5,
-          background: CT_TOKENS.textPrimary,
-          color: CT_TOKENS.surface,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <IconTerminal size={13} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontFamily: CT_TOKENS.mono, fontSize: 13, color: CT_TOKENS.textPrimary, fontWeight: 500, letterSpacing: '-0.01em' }}>claude-time</span>
-        </div>
-      </div>
-
-      <div style={{ width: 1, height: 22, background: CT_TOKENS.border, margin: '0 4px' }} />
-
-      {/* Toolbar label is 'Day' (WP6); data-layer key remains window.CT_DATA.today (stable contract for WP5b consumers). */}
-      {/* View tabs (Day/Week functional; Month/Custom disabled) */}
-      <div style={{
-        display: 'flex', gap: 2, padding: 3,
-        background: CT_TOKENS.surfaceDim, borderRadius: 8,
-        border: `1px solid ${CT_TOKENS.border}`,
-      }}>
-        {tabBtn('Day', 'day', view === 'day', true)}
-        {tabBtn('Week', 'week', view === 'week', true)}
-        {tabBtn('Month', 'month', false, false)}
-        {tabBtn('Custom', 'custom', false, false)}
-      </div>
-
-      {/* Date label (read-only) */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '6px 10px',
-        background: CT_TOKENS.surfaceDim, borderRadius: 8,
-        border: `1px solid ${CT_TOKENS.border}`,
-        fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textPrimary,
-      }}>
-        <IconCalendar size={12} />
-        {dateLabel}
-      </div>
-
-      {/* Snapshot caption — communicates that the data is point-in-time at emit
-          (the live NOW cursor moves; the bars do not until next visualize run). */}
-      {snapshot && (
-        <span
-          title="Data is a snapshot at emit time. The live NOW cursor moves; bars do not. Re-run `claude-time visualize` for fresh data."
-          style={{
-            fontFamily: CT_TOKENS.mono, fontSize: 11,
-            color: CT_TOKENS.textTertiary, cursor: 'help',
-          }}
-        >snapshot: {snapshot}</span>
-      )}
-
-      <div style={{ flex: 1 }} />
-
-      {/* Refresh icon — tooltip-only, no action */}
-      <button
-        title="Re-run: claude-time visualize"
-        style={{
-          height: 30, width: 30,
-          border: `1px solid ${CT_TOKENS.border}`,
-          background: 'transparent',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderRadius: 7, cursor: 'help',
-          color: CT_TOKENS.textSecondary,
-        }}
-      ><IconRefresh size={13} /></button>
     </div>
   );
 }

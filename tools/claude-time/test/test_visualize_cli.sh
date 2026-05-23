@@ -757,6 +757,153 @@ else
     check "WP6 codify: data-layer .today key" fail "window.CT_DATA.today or \"today\": missing"
 fi
 
+# ── WP9 Phase 1 codify: Toolbar duality collapsed ────────────────────
+# WP9 Phase 1 (2026-05-23) collapsed the design-canvas/InteractiveToolbar
+# duality: viz_render.py::InteractiveToolbar was deleted; its body moved into
+# viz/dashboard.jsx::Toolbar. The shipped Dashboard wrapper now renders
+# <Toolbar ...> directly. Regression-pin: the emitted HTML must contain
+# exactly ONE Toolbar function definition AND ZERO InteractiveToolbar
+# references. If a future WP accidentally re-introduces a second Toolbar
+# (e.g. by appending one in viz_render.py), this assertion fails. This is
+# the structural successor to the WP6 string-pin above — WP6 caught
+# wrong-file edits via positive+negative tabBtn greps; WP9 catches the
+# class of mistake entirely by pinning that there is only one Toolbar.
+#
+# Reuses $WP5B_OUT5 (any emit works — invariant is structural). Must run
+# BEFORE rm -rf "$WP5B_DIR" below.
+TOOLBAR_FN_COUNT=$(grep -c '^function Toolbar\b\|^function InteractiveToolbar\b' "$WP5B_OUT5")
+if [ "$TOOLBAR_FN_COUNT" = "1" ]; then
+    check "WP9-P1 codify: exactly one Toolbar function (duality collapsed)" pass
+else
+    check "WP9-P1 codify: Toolbar function count" fail "expected 1, got $TOOLBAR_FN_COUNT"
+fi
+
+if ! grep -q '<InteractiveToolbar\b' "$WP5B_OUT5"; then
+    check "WP9-P1 codify: no <InteractiveToolbar> JSX usage (regression-pin)" pass
+else
+    check "WP9-P1 codify: no <InteractiveToolbar> usage" fail "InteractiveToolbar JSX still present"
+fi
+
+# ── WP9 Phase 2 codify: filter chip state machine + consuming-surface contract ──
+# WP9 Phase 2 (2026-05-23) wired functional filter chips. Verify-self
+# confirmed on a live Playwright session: 5 chips with data-filter-kind
+# attrs, clicking toggles data-filter-on, segments with the toggled kind
+# disappear from the DOM (read-out via [data-kind] querySelectorAll counts).
+# Codify pins the *structural contract* that makes those behaviors testable:
+#   - data-kind={seg.kind} on SegmentBar (Playwright selector)
+#   - 5 data-filter-kind buttons emitted (one per kind)
+#   - FilterContext + filterKinds state present (state machine wired)
+# This is the consuming-surface assertion for the integration boundary:
+# any regression in the emit path that breaks the filter UI would fail here
+# rather than only surfacing at the next manual verify-human.
+if grep -q 'data-kind={seg\.kind}' "$WP5B_OUT5"; then
+    check "WP9-P2 codify: SegmentBar emits data-kind attribute (selector contract)" pass
+else
+    check "WP9-P2 codify: SegmentBar data-kind attribute" fail "data-kind={seg.kind} missing in emitted HTML"
+fi
+
+# The 5 filter chip kinds are listed in Legend's `items` array (inline in
+# the JSX source). React's .map() expands this to 5 DOM buttons at runtime.
+# Static emit assertion: each of the 5 kinds appears as a `kind: '<name>'`
+# entry in the Legend items list. If a future edit drops one (e.g. removes
+# "away" thinking it's redundant) the assertion fails. The corresponding
+# runtime contract — that 5 [data-filter-kind] buttons render — is asserted
+# by the verify-self Playwright subagent and would also be caught by any
+# interactive-test add-on later.
+LEGEND_KINDS_PASS=1
+for kind in active reading thinking subagent away; do
+    if ! grep -q "kind: '$kind'" "$WP5B_OUT5"; then
+        LEGEND_KINDS_PASS=0
+        break
+    fi
+done
+if [ "$LEGEND_KINDS_PASS" = "1" ]; then
+    check "WP9-P2 codify: Legend items list all 5 kinds (active/reading/thinking/subagent/away)" pass
+else
+    check "WP9-P2 codify: Legend kinds completeness" fail "one or more of [active, reading, thinking, subagent, away] missing from Legend items"
+fi
+
+if grep -q 'FilterContext' "$WP5B_OUT5" && grep -q 'filterKinds' "$WP5B_OUT5"; then
+    check "WP9-P2 codify: FilterContext + filterKinds state machine present" pass
+else
+    check "WP9-P2 codify: filter state machine" fail "FilterContext or filterKinds missing in emitted HTML"
+fi
+
+# ── WP9 Phase 3 codify: URL-hash filters= contract (static-emit pins) ──
+# Phase 3 wired hash-restore-on-init + hash-write-on-change for filter
+# state, per the schema in CLAUDE.md → "Claude-time visualize URL-hash state".
+# Behavioral coverage lives in test_visualize_interactive.js Outcome 9-11
+# (container-only Playwright). These static pins catch emit-time wiring
+# regression cheaply: if a future refactor accidentally drops the hash
+# read/write plumbing from _interactive_dashboard, these fail without
+# needing the container.
+if grep -q 'hash\.filters' "$WP5B_OUT5"; then
+    check "WP9-P3 codify: hash.filters read at init (restore)" pass
+else
+    check "WP9-P3 codify: hash.filters read" fail "no hash.filters reference in emitted HTML"
+fi
+
+if grep -q 'updateHash({ filters:' "$WP5B_OUT5"; then
+    check "WP9-P3 codify: updateHash({ filters: ... }) writer present" pass
+else
+    check "WP9-P3 codify: updateHash filter write" fail "no updateHash({ filters: ...}) call in emitted HTML"
+fi
+
+# Default-elision pin: the write path must include the all-on → null branch.
+if grep -q 'filters: null' "$WP5B_OUT5"; then
+    check "WP9-P3 codify: default-elision branch (filters: null when all-on)" pass
+else
+    check "WP9-P3 codify: default-elision" fail "no 'filters: null' branch found"
+fi
+
+# Canonical-order const pin: the kinds array must be in active,reading,
+# thinking,subagent,away order (matches Legend rendering, ensures hash
+# determinism). If a future edit shuffles FILTER_KINDS, the hash format
+# in shared links changes — this pin makes that intentional.
+if grep -q "'active', 'reading', 'thinking', 'subagent', 'away'" "$WP5B_OUT5"; then
+    check "WP9-P3 codify: FILTER_KINDS canonical order (active,reading,thinking,subagent,away)" pass
+else
+    check "WP9-P3 codify: canonical order" fail "FILTER_KINDS canonical order list not found"
+fi
+
+# ── WP9 Phase 4 codify: per-project filter popover (static-emit pins) ──
+# Phase 4 added a ProjectFilterPopover next to Legend with a trigger button
+# + floating panel + outside-click dismiss. Behavioral coverage lives in
+# test_visualize_interactive.js Outcomes 12-13. These static pins catch
+# emit-time wiring regression cheaply.
+if grep -q 'function ProjectFilterPopover' "$WP5B_OUT5"; then
+    check "WP9-P4 codify: ProjectFilterPopover component defined" pass
+else
+    check "WP9-P4 codify: ProjectFilterPopover defined" fail "function ProjectFilterPopover not in emit"
+fi
+
+if grep -q '<ProjectFilterPopover' "$WP5B_OUT5"; then
+    check "WP9-P4 codify: ProjectFilterPopover rendered by Dashboard" pass
+else
+    check "WP9-P4 codify: ProjectFilterPopover usage" fail "no <ProjectFilterPopover ...> JSX usage in emit"
+fi
+
+if grep -q 'data-project-filter-trigger' "$WP5B_OUT5"; then
+    check "WP9-P4 codify: data-project-filter-trigger attribute (popover trigger contract)" pass
+else
+    check "WP9-P4 codify: trigger attribute" fail "data-project-filter-trigger missing"
+fi
+
+if grep -q 'data-project-filter-item' "$WP5B_OUT5"; then
+    check "WP9-P4 codify: data-project-filter-item attribute (per-project checkbox contract)" pass
+else
+    check "WP9-P4 codify: item attribute" fail "data-project-filter-item missing"
+fi
+
+# Outside-click dismiss pin: a document mousedown listener must be wired
+# inside the popover's useEffect. If a future refactor drops the listener,
+# popover would no longer dismiss on outside-click.
+if grep -q "addEventListener('mousedown'" "$WP5B_OUT5"; then
+    check "WP9-P4 codify: outside-click mousedown listener wired (dismiss contract)" pass
+else
+    check "WP9-P4 codify: outside-click listener" fail "no addEventListener('mousedown', ...) in emit"
+fi
+
 rm -rf "$WP5B_DIR"
 
 # ── Summary ────────────────────────────────────────────────────────────
