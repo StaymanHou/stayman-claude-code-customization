@@ -141,16 +141,17 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 
 **Phase rationale:** Build out the four view modes on the now-shared viewport infrastructure. "Today" is renamed to "Day" here too. Filter chips become functional in the same phase because they share the per-view re-render path.
 
-### WP6: "Today" → "Day" rename
+### WP6: "Today" → "Day" rename — [x] SHIPPED 2026-05-23 (commit 217cfe3)
 **Description:** Toolbar tab label rename + any internal references (the data layer's `today` key in `window.CT_DATA` is fine to keep as a stable contract or rename to `day` — decide in WP3 and propagate). Touch the README usage section too.
 **Phase:** 2
 **Dependencies:** —
 **Size:** XS
 **Tasks:**
-- [ ] 6.1 Update toolbar tab label in `viz_render.py`'s `InteractiveToolbar` block (the emit-time-appended interactive Dashboard wrapper, not the byte-pinned source)
-- [ ] 6.2 Decide: rename `window.CT_DATA.today` → `window.CT_DATA.day` or keep for stability. Update WP3's `meta.start/end` so the view layer can read window-bounds without depending on the key name.
-- [ ] 6.3 Update `README.md` usage examples
-- [ ] 6.4 `test_visualize_cli.sh` assertion: emitted HTML contains the "Day" toolbar label and not "Today"
+- [x] 6.1 Updated toolbar tab label in `viz_render.py::InteractiveToolbar` (line 414): `tabBtn('Today', 'day', ...)` → `tabBtn('Day', 'day', ...)`, plus the section comment.
+- [x] 6.2 **Decision: keep `window.CT_DATA.today`** as the data-layer key (UI-only rename). Rationale: WP5b stabilized six consumers (`_initialViewport`, `SessionRow`, `DayTimeline.dwCtx`, `Minimap.allSegs`, `viz_render.py` wrapper, `claude-time:586`) on the `.today.*` shape. Renaming the key would touch all six with no functional benefit; WP3's `meta.start/end` escape hatch keeps a future data-key rename cheap if needed. Documented as inline comment in `viz_render.py` above the View tabs section.
+- [x] 6.3 Updated `README.md` line 157 ("The `Day` and `Week` toolbar tabs are interactive"). Lines 81/134 (CLI-side `report`/default `visualize` prose) intentionally left untouched.
+- [x] 6.4 Added 3 WP6 codify assertions to `test_visualize_cli.sh` (59 → 62 PASS): positive consuming-surface pin on the shipped `tabBtn('Day', 'day', view === 'day', true)`, negative regression-pin against the legacy `tabBtn('Today',...)` form, and a data-layer `.today` preservation pin.
+- **Plan-defect caught at F9 back-loop:** initial 5 leaves edited only `viz/dashboard.jsx::Toolbar` (design-canvas static prototype, dead from shipped-UI perspective — `viz_render.py` strips it at emit). Verify-auto caught it via grep miss on `activeRange={isDay ? 'day' : 'week'}`. F9 added P1.6 + P1.7 to edit the actual shipped `InteractiveToolbar`. Lesson: the WBS task 6.1 text "the emit-time-appended interactive Dashboard wrapper, not the byte-pinned source" was correct but the plan mis-mapped it.
 
 ### WP7: Month view
 **Description:** Renders a calendar-month rollup — likely a 5-week or 6-week grid where each cell is a day-mini-bar showing per-project segment proportions (color blocks summing to that day's active time). Click a day → zoom-in to that day in Day view. Reuses WP3's range-aware data layer (one call for the whole month).
