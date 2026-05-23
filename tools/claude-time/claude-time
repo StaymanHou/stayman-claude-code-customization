@@ -38,7 +38,22 @@ DEFAULT_CONFIG = {
     "reading_threshold_sec": 120,
     "thinking_threshold_sec": 300,
     "project_names": {},
+    # WP5b: multi-day data window for `visualize` Day view. Defaults pad the
+    # window by ±21 days (14 prior + 7 after) around the target day so panning
+    # past the day boundary reveals real events. Per-invocation override via
+    # --context-days-prior / --context-days-after CLI flags.
+    "viz_context_days_prior": 14,
+    "viz_context_days_after": 7,
 }
+
+
+def _validate_nonneg_int(raw) -> int | None:
+    """Accept a non-negative int. Return None to signal "use default" on bad input."""
+    if isinstance(raw, bool):  # bool is an int subclass — exclude it explicitly
+        return None
+    if isinstance(raw, int) and raw >= 0:
+        return raw
+    return None
 
 
 def _validate_project_names(raw) -> dict[str, list[str]]:
@@ -67,6 +82,10 @@ def load_config(claude_time_dir: Path) -> dict:
                 for k, v in user_cfg.items():
                     if k == "project_names":
                         cfg[k] = _validate_project_names(v)
+                    elif k in ("viz_context_days_prior", "viz_context_days_after"):
+                        validated = _validate_nonneg_int(v)
+                        if validated is not None:
+                            cfg[k] = validated
                     elif k in cfg:
                         cfg[k] = v
         except (json.JSONDecodeError, OSError):
@@ -421,10 +440,17 @@ def main(argv: list[str] | None = None) -> int:
     viz.add_argument("--week", action="store_true",
                      help="initial view is the week rollup (default: day)")
     viz.add_argument("--demo", action="store_true",
-                     help="use the design's bundled mock data instead of real SQLite (no DB access)")
+                     help="use the design's bundled mock data instead of real SQLite (no DB access; "
+                          "forces context-days-prior/after to 0 since demo data is single-day)")
     viz.add_argument("--no-open", action="store_true",
                      help="don't auto-open the emitted HTML in the default browser")
     viz.add_argument("--out", help="output path (default: ~/.claude-time/visualize.html)")
+    viz.add_argument("--context-days-prior", type=int, default=None, metavar="N",
+                     help="days of trailing context to load for the Day view data window "
+                          "(default: viz_context_days_prior from config, or 14)")
+    viz.add_argument("--context-days-after", type=int, default=None, metavar="M",
+                     help="days of leading context to load for the Day view data window "
+                          "(default: viz_context_days_after from config, or 7)")
     viz.add_argument(
         "--db",
         help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
@@ -485,6 +511,23 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
     # ISO week's Monday for the week-view data.
     monday = target_day - timedelta(days=target_day.weekday())
 
+    # WP5b: resolve effective multi-day-window sizing for Day view.
+    # Precedence: CLI flag > config > built-in default. --demo forces both to 0
+    # since the demo fixture (viz/data.js) is single-day.
+    if args.demo:
+        ctx_prior = 0
+        ctx_after = 0
+    else:
+        ctx_prior = (args.context_days_prior
+                     if args.context_days_prior is not None
+                     else cfg["viz_context_days_prior"])
+        ctx_after = (args.context_days_after
+                     if args.context_days_after is not None
+                     else cfg["viz_context_days_after"])
+        # Defensive — CLI may pass negative; clamp to 0.
+        ctx_prior = max(0, int(ctx_prior))
+        ctx_after = max(0, int(ctx_after))
+
     # Snapshot timestamp — the wall-clock at emit time. Surfaced in the dashboard
     # as a "snapshot: HH:MM" caption next to the live NOW marker, so users can tell
     # the data is point-in-time even though the NOW cursor moves.
@@ -503,15 +546,43 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
             print(f"error: {db_path} does not exist. Run Claude Code with CLAUDE_TIME_TRACKING=1 to populate it, "
                   f"or use --demo to render with mock data.", file=sys.stderr)
             return 2
-        day_events = _load_window_events(db_path, target_day)
-        events_by_day = {}
+        # Day-view data window: target_day ± (ctx_prior, ctx_after). When both
+        # are 0, this collapses to a single-day window — build_range_data emits
+        # back-compat single-day shape (iso + hour_range) for that case.
+        day_window_start = target_day - timedelta(days=ctx_prior)
+        day_window_end = target_day + timedelta(days=ctx_after)
+        day_events_by_day = {}
+        for i in range((day_window_end - day_window_start).days + 1):
+            d = day_window_start + timedelta(days=i)
+            day_events_by_day[d.isoformat()] = _load_window_events(db_path, d)
+        if ctx_prior == 0 and ctx_after == 0:
+            # Pure single-day: keep build_day_data for byte-identical legacy output.
+            today_payload = viz_data.build_day_data(
+                target_day.isoformat(),
+                day_events_by_day[target_day.isoformat()],
+                cfg,
+                _auto_alias_for_cwd,
+            )
+        else:
+            today_payload = viz_data.build_range_data(
+                day_window_start.isoformat(),
+                day_window_end.isoformat(),
+                events_by_day=day_events_by_day,
+                cfg=cfg,
+                auto_alias_fn=_auto_alias_for_cwd,
+            )
+            # WP5b: surface the user-requested day so the renderer can center
+            # the initial viewport on it (otherwise it would center on the
+            # window mid-point). Phase 2 (renderer) consumes this field.
+            today_payload["target_iso"] = target_day.isoformat()
+
+        # Week payload is independent of Day's context-days window.
+        week_events_by_day = {}
         for i in range(7):
             d = monday + timedelta(days=i)
-            events_by_day[d.isoformat()] = _load_window_events(db_path, d)
-        today_payload = viz_data.build_day_data(target_day.isoformat(),
-                                                day_events, cfg, _auto_alias_for_cwd)
+            week_events_by_day[d.isoformat()] = _load_window_events(db_path, d)
         week_payload = viz_data.build_week_data(monday.isoformat(),
-                                                events_by_day, cfg, _auto_alias_for_cwd)
+                                                week_events_by_day, cfg, _auto_alias_for_cwd)
         data = {"today": today_payload, "week": week_payload, "meta": meta}
 
     initial_view = "week" if args.week else "day"

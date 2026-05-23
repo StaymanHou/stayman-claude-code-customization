@@ -78,10 +78,15 @@ function Dashboard() {
   // the URL hash and apply it; on viewport change, write back to hash
   // (debounced, replaceState). Hash convention: see CLAUDE.md →
   // "Claude-time visualize URL-hash state".
-  const _defaultViewport = React.useMemo(() => {
-    const hr = (today && today.hour_range) ? today.hour_range : [6, 23];
-    return { visible_start_min: hr[0] * 60, visible_end_min: hr[1] * 60 };
-  }, [today]);
+  // WP5b (2026-05-23, F9b re-entry): consolidated to call
+  // `_initialViewport()` from dashboard.jsx — single source of truth for
+  // viewport defaulting (multi-day target-day centering OR single-day
+  // back-compat flat hour_range OR [6, 23] fallback). Previously this
+  // wrapper had its own single-day-only implementation that drifted from
+  // the JSX source and produced [360, 1380] for multi-day payloads.
+  // _initialViewport reads from window.CT_DATA.today directly, so no
+  // arguments needed.
+  const _defaultViewport = React.useMemo(() => _initialViewport(), [today]);
 
   const [viewport, setViewport] = React.useState(() => {
     // Phase 3: read initial viewport from URL hash if present, else default.
@@ -92,8 +97,9 @@ function Dashboard() {
         return { visible_start_min: parts[0], visible_end_min: parts[1] };
       }
     }
-    const hr = (today && today.hour_range) ? today.hour_range : [6, 23];
-    return { visible_start_min: hr[0] * 60, visible_end_min: hr[1] * 60 };
+    // WP5b: defer to _initialViewport — same multi-day-aware default used by
+    // ViewportContext.createContext and _defaultViewport above.
+    return _initialViewport();
   });
 
   // Phase 3: debounced URL-hash write on viewport change. Default-elision:
@@ -466,8 +472,10 @@ def _wire_bar_click(jsx: str) -> str:
     DayTimeline accepts onSelectSeg and forwards it.
     """
     # 1. SegmentBar — add onSelect prop + onClick handler.
-    old_segmentbar = "function SegmentBar({ seg, selected = false }) {"
-    new_segmentbar = "function SegmentBar({ seg, selected = false, onClick }) {"
+    # WP5b: source now carries `dayOffset = 0` in the SegmentBar signature;
+    # the transform appends onClick after it.
+    old_segmentbar = "function SegmentBar({ seg, selected = false, dayOffset = 0 }) {"
+    new_segmentbar = "function SegmentBar({ seg, selected = false, dayOffset = 0, onClick }) {"
     if old_segmentbar not in jsx:
         raise ValueError("SegmentBar signature not found — has dashboard.jsx changed?")
     jsx = jsx.replace(old_segmentbar, new_segmentbar)
@@ -498,19 +506,23 @@ def _wire_bar_click(jsx: str) -> str:
     jsx = jsx.replace(old_sessionrow_sig, new_sessionrow_sig)
 
     # Wire SegmentBar's onClick. Replace the existing render line.
+    # WP5b: source now passes `dayOffset={dayOffset}` to SegmentBar; the
+    # transform must match that form (otherwise the replacement fails silently
+    # and onClick selection breaks). InterruptHairlines also takes dayOffset
+    # so per-session interrupt minutes shift into minute-of-window.
     old_segbar_render = ("        {session.segs.map((seg, i) => (\n"
-                        "          <SegmentBar key={i} seg={seg} "
+                        "          <SegmentBar key={i} seg={seg} dayOffset={dayOffset} "
                         "selected={`${session.id}:${i}` === selectedSegId} />\n"
                         "        ))}")
     new_segbar_render = ("        {session.segs.map((seg, i) => (\n"
                         "          <SegmentBar\n"
-                        "            key={i} seg={seg}\n"
+                        "            key={i} seg={seg} dayOffset={dayOffset}\n"
                         "            selected={`${session.id}:${i}` === selectedSegId}\n"
                         "            onClick={onSelectSeg ? () => onSelectSeg(`${session.id}:${i}`) : undefined}\n"
                         "          />\n"
                         "        ))}\n"
                         "        {/* Interrupt hairlines (Phase 3 / P3.7) */}\n"
-                        "        <InterruptHairlines interrupts={session.interrupts || []} />")
+                        "        <InterruptHairlines interrupts={session.interrupts || []} dayOffset={dayOffset} />")
     if old_segbar_render not in jsx:
         raise ValueError("SessionRow's SegmentBar map not found — has dashboard.jsx changed?")
     jsx = jsx.replace(old_segbar_render, new_segbar_render)
@@ -525,15 +537,17 @@ def _wire_bar_click(jsx: str) -> str:
     jsx = jsx.replace(old_daytimeline_sig, new_daytimeline_sig)
 
     # Forward onSelectSeg to each SessionRow.
+    # WP5b: source uses `key={s.day_iso ? \`${s.day_iso}:${s.id}\` : s.id}`
+    # so cross-day session aggregation doesn't produce duplicate React keys.
     old_sessionrow_render = ("                <SessionRow\n"
-                            "                  key={s.id}\n"
+                            "                  key={s.day_iso ? `${s.day_iso}:${s.id}` : s.id}\n"
                             "                  session={s}\n"
                             "                  alt={si % 2 === 1}\n"
                             "                  selectedSegId={selectedSegId}\n"
                             "                  lastInGroup={si === p.sessions.length - 1}\n"
                             "                />")
     new_sessionrow_render = ("                <SessionRow\n"
-                            "                  key={s.id}\n"
+                            "                  key={s.day_iso ? `${s.day_iso}:${s.id}` : s.id}\n"
                             "                  session={s}\n"
                             "                  alt={si % 2 === 1}\n"
                             "                  selectedSegId={selectedSegId}\n"
@@ -558,19 +572,21 @@ def _add_interrupt_hairlines(jsx: str) -> str:
     """
     component = r"""
 /* ── Interrupt hairlines (Phase 3 / P3.7) ───────────────────── */
-function InterruptHairlines({ interrupts }) {
+function InterruptHairlines({ interrupts, dayOffset = 0 }) {
   // Hook must run unconditionally — call before the early return.
   // WP5 Phase 1 fix-up (caught at WP5 Phase 3 verify-human, 2026-05-22):
   // this component originally read module-level day-bound constants that
   // Phase 1 deleted as part of the viewport refactor. It now reads the
   // same ViewportContext as SegmentBar.
+  // WP5b: dayOffset added so multi-day sessions place interrupts at
+  // minute-of-window, matching their segment positioning.
   const viewport = useViewport();
   if (!interrupts || interrupts.length === 0) return null;
   const range = viewport.visible_end_min - viewport.visible_start_min;
   return (
     <>
       {interrupts.map((minute, i) => {
-        const leftPct = ((minute - viewport.visible_start_min) / range) * 100;
+        const leftPct = (((minute + dayOffset) - viewport.visible_start_min) / range) * 100;
         // Don't render hairlines outside the visible viewport.
         if (leftPct < 0 || leftPct > 100) return null;
         return (

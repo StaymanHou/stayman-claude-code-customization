@@ -1,5 +1,15 @@
 # Backlog
 
+## SURFACE-2026-05-23-CLAUDE-TIME-DB-FLAG-OVERRIDES-CLAUDE-TIME-DIR-FOR-CONFIG
+- **Source:** feature:verify-human (claude-time-viz-day-multi-day-window WP5b Phase 1, 2026-05-23)
+- **Target level:** task:plan (small/simple — one-line resolver split or doc-clarify)
+- **Type:** latent CLI-precedence quirk (pre-existing, not WP5b-introduced)
+- **Summary:** In `claude-time` main(), `--db <path>` sets `claude_time_dir = db_path.parent`, which means `load_config(claude_time_dir)` reads `config.json` from the DB's parent directory — silently overriding `$CLAUDE_TIME_DIR` for the config lookup too. Result: `CLAUDE_TIME_DIR=/tmp/x --db ~/.claude-time/events.sqlite` reads config from `~/.claude-time/config.json`, NOT from `/tmp/x/config.json`. Most users won't combine these flags so impact is near-zero, but the precedence is non-obvious and silently wrong if a contributor tries to test config behavior with a borrowed DB.
+- **Context:** Surfaced during Phase 1 verify-human P1.verify-human.4 — initial attempt to test custom config used `CLAUDE_TIME_DIR=$tmp_dir --db ~/.claude-time/events.sqlite` (because borrowing the user's real DB into a sandbox tmpdir hit a macOS sqlite3 RO open failure). The custom config was silently ignored. Retest by editing `~/.claude-time/config.json` in place confirmed the wiring is correct; the resolver was just looking in the wrong place.
+- **Suggested action:** Either (a) split the resolver: `--db` overrides only `db_path`, `CLAUDE_TIME_DIR` env still resolves `claude_time_dir` independently. Or (b) document the current behavior in `--db`'s help-string ("also overrides config-dir lookup to db's parent directory"). Lean: (a) — silent overrides on independent flags violate least-surprise.
+- **Priority:** low — pre-existing behavior, no active impact on shipped functionality; hits only when a contributor combines `--db` with a custom `CLAUDE_TIME_DIR`.
+- **Status:** open
+
 ## SURFACE-2026-05-22-LEARNING-VERIFY-SELF-SUBAGENT-JIT-FALSE-FAIL
 - **Source:** session:reflect → session:store-learning (claude-time-visualize-v2 WP5 Phase 3 verify-self, 2026-05-22)
 - **Target level:** workflow-system source repo (`my-claude-code-customization`) — port to `skills/feature-verify-self/SKILL.md` severity-taxonomy section, OR add as a global CLAUDE.md "Verify-self discipline" rule

@@ -303,20 +303,47 @@ function Legend() {
 // the ViewportContext rather than module-level constants, so pan + zoom in
 // later WP5 phases can update the viewport without touching renderers.
 //
-// Initial viewport derives from `window.CT_DATA.today.hour_range` (emitted
-// adaptively by viz_data.build_day_data as [start, end_exclusive] —
-// e.g. [6, 23] means 17 hour ticks: 06:00..22:00). Falls back to [6, 23]
-// when CT_DATA is absent (defensive — keeps the design-canvas prototype
-// happy if loaded standalone) or `hour_range` is missing.
+// WP5b: convert a YYYY-MM-DD ISO day to absolute minutes-since-window-start,
+// using UTC-anchored parsing to avoid DST drift across days. window_start_iso
+// is the multi-day data window's first day. dayOffsetMin("2026-05-23",
+// "2026-05-09") = 14 * 1440 = 20160. dayOffsetMin(x, x) = 0.
+function dayOffsetMin(day_iso, window_start_iso) {
+  if (!day_iso || !window_start_iso) return 0;
+  const d = new Date(day_iso + "T00:00:00Z");
+  const start = new Date(window_start_iso + "T00:00:00Z");
+  if (isNaN(d) || isNaN(start)) return 0;
+  return Math.round((d - start) / 60_000);
+}
+
+// Initial viewport derives from `window.CT_DATA.today`. Three modes:
+//   1. Multi-day (WP5b): `target_iso` + `meta.start` + `hour_range_by_day`
+//      all present → center on the target day's adaptive hour-range, with
+//      day-offset applied so segments from other days are visible on either
+//      side via pan.
+//   2. Single-day (back-compat, --context-days 0/0): flat `hour_range`
+//      present → use it directly (the pre-WP5b path).
+//   3. Defensive fallback (standalone design-canvas, no CT_DATA): [6, 23].
 function _initialViewport() {
-  const hr = (
-    (typeof window !== 'undefined' && window.CT_DATA && window.CT_DATA.today && window.CT_DATA.today.hour_range)
-      ? window.CT_DATA.today.hour_range
-      : [6, 23]
-  );
-  const visible_start_min = hr[0] * 60;
-  const visible_end_min   = hr[1] * 60;
-  return { visible_start_min, visible_end_min };
+  if (typeof window === 'undefined' || !window.CT_DATA || !window.CT_DATA.today) {
+    return { visible_start_min: 6 * 60, visible_end_min: 23 * 60 };
+  }
+  const today = window.CT_DATA.today;
+  // Multi-day path: center on target_iso's per-day hour_range.
+  if (today.target_iso && today.meta && today.meta.start) {
+    const target_iso = today.target_iso;
+    const hr_by_day = today.hour_range_by_day || {};
+    const hr = hr_by_day[target_iso] || today.day_window || [6, 23];
+    const offset = dayOffsetMin(target_iso, today.meta.start);
+    return {
+      visible_start_min: offset + hr[0] * 60,
+      visible_end_min:   offset + hr[1] * 60,
+    };
+  }
+  // Single-day back-compat path.
+  if (today.hour_range) {
+    return { visible_start_min: today.hour_range[0] * 60, visible_end_min: today.hour_range[1] * 60 };
+  }
+  return { visible_start_min: 6 * 60, visible_end_min: 23 * 60 };
 }
 
 // React.Context plumbs viewport from the interactive Dashboard down to the
@@ -327,6 +354,18 @@ function _initialViewport() {
 const ViewportContext = React.createContext({
   viewport: _initialViewport(),
   setViewport: () => {},
+});
+
+// WP5b: data-window context plumbs the multi-day window metadata
+// (`windowStartIso`, `dayCount`) to leaf renderers (HourRuler,
+// HourGridBackground, ticksInViewport label formatter) without a deep
+// prop drill. Default: single-day mode (`windowStartIso: null, dayCount: 1`)
+// so the design-canvas prototype and the single-day back-compat path
+// behave identically to pre-WP5b. Provided by `DayTimeline` from the
+// data payload.
+const DataWindowContext = React.createContext({
+  windowStartIso: null,
+  dayCount: 1,
 });
 
 // WP5 Phase 3: URL-hash state utilities. The shared convention is
@@ -390,42 +429,75 @@ function useViewportSetter() {
   return React.useContext(ViewportContext).setViewport;
 }
 
-// WP5 Phase 2: ruler tick density adapts to zoom. Returns the densest
-// interval (minutes) from [60, 30, 15, 10, 5, 1] that produces between
-// 8 and 30 visible ticks in the current viewport. Phase 1 used a hardcoded
-// 60-minute interval via hoursInViewport(); pickTickInterval generalizes
-// that for arbitrary viewport ranges (1-minute extreme zoom-in up to
-// multi-day zoom-out).
+// WP5 Phase 2 + WP5b: ruler tick density adapts to zoom. Returns the densest
+// interval (minutes) from [1440, 360, 60, 30, 15, 10, 5, 1] that produces
+// between 8 and 30 visible ticks. WP5b extends the scale set with day-level
+// (1440) and 6h (360) intervals for multi-day zoom-out across the new Day
+// view context window. The 8–30 band still holds: 21-day window → 21 ticks
+// at 1440; 2-day window → 8 ticks at 360; 6h window → 12 ticks at 30
+// (360→6 falls out of band so 30 catches it).
 function pickTickInterval(viewport) {
   const range = viewport.visible_end_min - viewport.visible_start_min;
-  const scales = [60, 30, 15, 10, 5, 1];
+  const scales = [1440, 360, 60, 30, 15, 10, 5, 1];
   for (const m of scales) {
     const ticks = Math.ceil(range / m);
     if (ticks >= 8 && ticks <= 30) return m;
   }
   // Edge cases: very small range (< 8 minutes) → 1m ticks; very large
-  // range (> 30h) → 60m ticks (visually sparse but at least readable).
+  // range (> ~720h ≈ 30 days) → 1440m ticks (visually sparse but readable).
   if (range < 8) return 1;
-  return 60;
+  return 1440;
 }
 
-// WP5 Phase 2: tick generator. Emits an array of minute-aligned tick
-// positions covering the viewport at the given interval. Each tick has a
-// minute-of-day value and a label. The first tick at-or-after
-// visible_start_min that aligns to the interval is the start.
-function ticksInViewport(viewport, intervalMin) {
+// WP5 Phase 2 + WP5b: tick generator. Emits an array of minute-aligned tick
+// positions covering the viewport at the given interval. Each tick has an
+// absolute-minute value (minute-of-window in multi-day, minute-of-day in
+// single-day) and a label.
+//
+// WP5b label formats:
+//   - intervalMin >= 1440 (day-level): "MMM DD"
+//   - viewport crosses any midnight: ticks within the same day stay "HH:MM",
+//     but ticks ON a midnight (t % 1440 == 0) get "MMM DD" prefix.
+//   - single-day intra-viewport (no crossing): "HH:00" or "HH:MM" as before
+// windowStartIso is the data window's first day (passed by HourRuler / consumers).
+// When absent, falls back to the single-day formatter (HH:00 / HH:MM).
+function ticksInViewport(viewport, intervalMin, windowStartIso = null) {
   const startTick = Math.ceil(viewport.visible_start_min / intervalMin) * intervalMin;
   const out = [];
+  const crossesMidnight = (
+    Math.floor(viewport.visible_start_min / 1440) !==
+    Math.floor((viewport.visible_end_min - 1) / 1440)
+  );
   for (let t = startTick; t < viewport.visible_end_min; t += intervalMin) {
-    const h = Math.floor(t / 60);
-    const m = t % 60;
-    // Label format: HH:00 for hour ticks, HH:MM otherwise.
-    const label = intervalMin === 60
-      ? `${String(h).padStart(2,'0')}:00`
-      : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const dayIx = Math.floor(t / 1440);
+    const minOfDay = ((t % 1440) + 1440) % 1440;
+    const h = Math.floor(minOfDay / 60);
+    const m = minOfDay % 60;
+    let label;
+    if (intervalMin >= 1440) {
+      label = _formatDayLabel(dayIx, windowStartIso);
+    } else if (crossesMidnight && windowStartIso && minOfDay === 0) {
+      // First tick of a new day inside the viewport: prefix MMM DD.
+      label = _formatDayLabel(dayIx, windowStartIso);
+    } else if (intervalMin === 60) {
+      label = `${String(h).padStart(2,'0')}:00`;
+    } else {
+      label = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    }
     out.push({ min: t, label });
   }
   return out;
+}
+
+// WP5b helper: format a day-index (relative to windowStartIso) as "MMM DD".
+// Used by ticksInViewport for day-level + midnight-boundary tick labels.
+function _formatDayLabel(dayIx, windowStartIso) {
+  if (!windowStartIso) return ""; // safe default — no label rather than wrong label
+  const start = new Date(windowStartIso + "T00:00:00Z");
+  if (isNaN(start)) return "";
+  const d = new Date(start.getTime() + dayIx * 86_400_000);
+  const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  return `${months[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2,'0')}`;
 }
 
 const ROW_LEFT_WIDTH = 232;
@@ -453,8 +525,9 @@ function hoursInViewport(viewport) {
 
 function HourRuler({ nowFrac, nowLabel, nowMin }) {
   const viewport = useViewport();
+  const dw = React.useContext(DataWindowContext);
   const intervalMin = pickTickInterval(viewport);
-  const ticks = ticksInViewport(viewport, intervalMin);
+  const ticks = ticksInViewport(viewport, intervalMin, dw.windowStartIso);
   const range = viewport.visible_end_min - viewport.visible_start_min;
   // WP5 P2.7 (NOW-label-overlap cosmetic fix, SURFACE-2026-05-19): when the
   // NOW marker falls within ~10 minutes of a top-of-hour tick (or any tick
@@ -513,8 +586,9 @@ function HourRuler({ nowFrac, nowLabel, nowMin }) {
 
 function HourGridBackground() {
   const viewport = useViewport();
+  const dw = React.useContext(DataWindowContext);
   const intervalMin = pickTickInterval(viewport);
-  const ticks = ticksInViewport(viewport, intervalMin);
+  const ticks = ticksInViewport(viewport, intervalMin, dw.windowStartIso);
   const range = viewport.visible_end_min - viewport.visible_start_min;
   return (
     <div style={{
@@ -539,9 +613,13 @@ function HourGridBackground() {
   );
 }
 
-function SegmentBar({ seg, selected = false }) {
+function SegmentBar({ seg, selected = false, dayOffset = 0 }) {
   const viewport = useViewport();
-  const { left, width } = viewportPct(seg.start, seg.end, viewport);
+  // WP5b: when the session this segment belongs to is on a non-target day
+  // in a multi-day window, `dayOffset` shifts the segment's [start, end]
+  // from minute-of-day into minute-of-window before computing viewport %.
+  // Single-day case: dayOffset === 0, math is unchanged.
+  const { left, width } = viewportPct(seg.start + dayOffset, seg.end + dayOffset, viewport);
   const isSubagent = seg.kind === 'subagent';
   const height = isSubagent ? 14 : ROW_HEIGHT - 12;
   const top = isSubagent ? (ROW_HEIGHT - 14) / 2 + 4 : 6;
@@ -617,6 +695,13 @@ function ProjectHeaderRow({ project, totals, expanded = true, alt = false }) {
 
 function SessionRow({ session, alt = false, selectedSegId = null, onSelect, lastInGroup = false }) {
   const totalActive = sumActive(session.segs);
+  // WP5b: in multi-day mode, sessions carry a `day_iso` tag from
+  // build_range_data so the renderer can offset their segments from
+  // minute-of-day into minute-of-window. Single-day mode: no tag → offset 0.
+  const dw = React.useContext(DataWindowContext);
+  const dayOffset = (session.day_iso && dw.windowStartIso)
+    ? dayOffsetMin(session.day_iso, dw.windowStartIso)
+    : 0;
   return (
     <div style={{
       display: 'flex',
@@ -643,7 +728,7 @@ function SessionRow({ session, alt = false, selectedSegId = null, onSelect, last
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <HourGridBackground />
         {session.segs.map((seg, i) => (
-          <SegmentBar key={i} seg={seg} selected={`${session.id}:${i}` === selectedSegId} />
+          <SegmentBar key={i} seg={seg} dayOffset={dayOffset} selected={`${session.id}:${i}` === selectedSegId} />
         ))}
       </div>
     </div>
@@ -821,20 +906,45 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
   const { nowMin, todayISO } = useNowMin();
   const viewport = useViewport();
   const setViewport = useViewportSetter();
-  // Data-window for clamping zoom-out + Home/End. For the day view, fall
-  // back to [0, 1440] (full day in minutes) if no explicit window present.
-  const dataWindow = (data && data.hour_range)
-    ? [data.hour_range[0] * 60, data.hour_range[1] * 60]
-    : [0, 1440];
+
+  // WP5b: derive multi-day window metadata (or single-day fallback) from the
+  // data payload. `windowStartIso` + `dayCount` are provided via context to
+  // leaf renderers (SessionRow's dayOffset math, HourRuler/HourGridBackground
+  // label formatting). Single-day data: windowStartIso=null, dayCount=1.
+  const dwCtx = React.useMemo(() => {
+    if (data && data.meta && data.meta.start && data.meta.day_count) {
+      return { windowStartIso: data.meta.start, dayCount: data.meta.day_count };
+    }
+    return { windowStartIso: null, dayCount: 1 };
+  }, [data]);
+
+  // Data-window for clamping zoom-out + Home/End. WP5b: when multi-day data
+  // is present, use [0, day_count * 1440] for the full window in minutes.
+  // Single-day path: use hour_range like pre-WP5b. Defensive fallback: [0,1440].
+  const dataWindow = React.useMemo(() => {
+    if (dwCtx.windowStartIso) return [0, dwCtx.dayCount * 1440];
+    if (data && data.hour_range) return [data.hour_range[0] * 60, data.hour_range[1] * 60];
+    return [0, 1440];
+  }, [data, dwCtx]);
+
   const gestures = useTimelineGestures(viewport, setViewport, dataWindow);
-  // Only show the marker when (a) caller opts in, (b) the day being rendered IS today
-  // (compare ISO date, since "now" is undefined for past days), and (c) nowMin lies
-  // within the current viewport (replaces WP1's DAY_*-bound check; pan/zoom now move
-  // the viewport rather than the day-window). The frac/label only render when all three hold.
-  const isToday = data && data.iso === todayISO;
-  const inWindow = nowMin >= viewport.visible_start_min && nowMin < viewport.visible_end_min;
+
+  // NOW marker visibility:
+  //   - Single-day mode (back-compat): isToday = data.iso === todayISO.
+  //     nowMin is minute-of-day from useNowMin (matches the data's day frame).
+  //   - Multi-day mode (WP5b): isToday = todayISO falls inside [meta.start, meta.end].
+  //     For placement, shift nowMin by dayOffsetMin(todayISO, meta.start) so it
+  //     lands at the absolute minute-of-window the rest of the renderer uses.
+  const isMultiDay = !!dwCtx.windowStartIso;
+  const isToday = isMultiDay
+    ? (todayISO >= data.meta.start && todayISO <= data.meta.end)
+    : (data && data.iso === todayISO);
+  const effectiveNowMin = isMultiDay && isToday
+    ? nowMin + dayOffsetMin(todayISO, dwCtx.windowStartIso)
+    : nowMin;
+  const inWindow = effectiveNowMin >= viewport.visible_start_min && effectiveNowMin < viewport.visible_end_min;
   const nowFrac = (showNow && isToday && inWindow)
-    ? (nowMin - viewport.visible_start_min) / (viewport.visible_end_min - viewport.visible_start_min)
+    ? (effectiveNowMin - viewport.visible_start_min) / (viewport.visible_end_min - viewport.visible_start_min)
     : null;
   const nowLabel = `${String(Math.floor(nowMin / 60)).padStart(2, '0')}:${String(nowMin % 60).padStart(2, '0')}`;
 
@@ -850,6 +960,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
   }
 
   return (
+   <DataWindowContext.Provider value={dwCtx}>
     <div
       ref={gestures.ref}
       onMouseDown={gestures.onMouseDown}
@@ -886,7 +997,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
           }}>Active</span>
         </div>
         <div style={{ flex: 1 }}>
-          <HourRuler nowFrac={nowFrac} nowLabel={nowLabel} nowMin={isToday && inWindow ? nowMin : null} />
+          <HourRuler nowFrac={nowFrac} nowLabel={nowLabel} nowMin={isToday && inWindow ? effectiveNowMin : null} />
         </div>
       </div>
 
@@ -910,7 +1021,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
               <ProjectHeaderRow project={p} totals={totalsByProject[p.id]} expanded={expanded} alt={pi % 2 === 1} />
               {expanded && p.sessions.map((s, si) => (
                 <SessionRow
-                  key={s.id}
+                  key={s.day_iso ? `${s.day_iso}:${s.id}` : s.id}
                   session={s}
                   alt={si % 2 === 1}
                   selectedSegId={selectedSegId}
@@ -922,6 +1033,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
         })}
       </div>
     </div>
+   </DataWindowContext.Provider>
   );
 }
 
@@ -1108,7 +1220,12 @@ function Minimap({ data }) {
 
   // Data window: union of all sessions' segment ranges, falling back to
   // hour_range or [0, 1440]. The minimap maps this range to its full width.
+  // WP5b: when multi-day data is present, use [0, day_count * 1440] so the
+  // minimap spans the full window (matches DayTimeline's gesture clamp).
   const dataWindow = React.useMemo(() => {
+    if (data && data.meta && data.meta.day_count) {
+      return [0, data.meta.day_count * 1440];
+    }
     if (data && data.hour_range) {
       return [data.hour_range[0] * 60, data.hour_range[1] * 60];
     }
@@ -1205,8 +1322,19 @@ function Minimap({ data }) {
   // Compressed segment tracks: collapse all segments from all projects into
   // a single density line. For each segment, render a small bar at
   // (segStart - dataWindow[0]) / dw, segment color encodes kind.
+  // WP5b (2026-05-23, P2.verify-human.5 fix): in multi-day mode, segments
+  // carry minute-of-day [0, 1440) values; per-session `day_iso` tells us
+  // which day they belong to. Pre-shift each seg's start/end by the day's
+  // offset before rendering, so cross-day distribution shows up spread
+  // across the full minimap width instead of bunched at left.
+  const windowStart = (data && data.meta && data.meta.start) || null;
   const allSegs = (data && data.projects)
-    ? data.projects.flatMap(p => p.sessions.flatMap(s => s.segs))
+    ? data.projects.flatMap(p => p.sessions.flatMap(s => {
+        const off = (s.day_iso && windowStart) ? dayOffsetMin(s.day_iso, windowStart) : 0;
+        return off === 0
+          ? s.segs
+          : s.segs.map(seg => ({ ...seg, start: seg.start + off, end: seg.end + off }));
+      }))
     : [];
 
   return (
