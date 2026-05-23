@@ -73,6 +73,89 @@ function Dashboard() {
   const [expandedProjects, setExpandedProjects] = React.useState(
     (today.projects || []).map(p => p.id)
   );
+  // WP5 Phase 1: viewport state owned by the interactive Dashboard wrapper.
+  // Phase 3 extension: on initial mount, parse #viewport=<start>:<end> from
+  // the URL hash and apply it; on viewport change, write back to hash
+  // (debounced, replaceState). Hash convention: see CLAUDE.md →
+  // "Claude-time visualize URL-hash state".
+  const _defaultViewport = React.useMemo(() => {
+    const hr = (today && today.hour_range) ? today.hour_range : [6, 23];
+    return { visible_start_min: hr[0] * 60, visible_end_min: hr[1] * 60 };
+  }, [today]);
+
+  const [viewport, setViewport] = React.useState(() => {
+    // Phase 3: read initial viewport from URL hash if present, else default.
+    const hash = parseHash();
+    if (hash.viewport) {
+      const parts = hash.viewport.split(':').map(Number);
+      if (parts.length === 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1]) && parts[0] < parts[1]) {
+        return { visible_start_min: parts[0], visible_end_min: parts[1] };
+      }
+    }
+    const hr = (today && today.hour_range) ? today.hour_range : [6, 23];
+    return { visible_start_min: hr[0] * 60, visible_end_min: hr[1] * 60 };
+  });
+
+  // Phase 3: debounced URL-hash write on viewport change. Default-elision:
+  // when viewport equals the data-derived default, drop the key entirely
+  // (keeps URLs short for the common "haven't zoomed" case).
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      const isDefault = viewport.visible_start_min === _defaultViewport.visible_start_min
+        && viewport.visible_end_min === _defaultViewport.visible_end_min;
+      updateHash({
+        viewport: isDefault
+          ? null
+          : `${Math.round(viewport.visible_start_min)}:${Math.round(viewport.visible_end_min)}`,
+      });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [viewport, _defaultViewport]);
+
+  // Phase 4: expose viewport state on window for Playwright introspection.
+  // The behavioral test (test_visualize_interactive.sh) reads this to assert
+  // gestures actually mutate the viewport. Production users never touch it.
+  React.useEffect(() => {
+    window.__dashboardViewport = viewport;
+  }, [viewport]);
+
+  // Phase 4: __perfRecord — opt-in rAF fps sampler gated by `?perf=1` query.
+  // When enabled, attaches a 5-second rAF-loop measuring frame intervals and
+  // logs {avg_fps, min_fps, frame_count} to console. No-op when query absent.
+  // Used by verify-self's perf-measurement step to record DOM-vs-canvas
+  // decision against the synthetic 1-month dataset.
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !window.location || !window.location.search) return;
+    if (!window.location.search.includes('perf=1')) return;
+    let frameCount = 0;
+    let lastTs = performance.now();
+    let minDeltaMs = Infinity;
+    let maxDeltaMs = 0;
+    let running = true;
+    const startTs = lastTs;
+    function tick(ts) {
+      if (!running) return;
+      const dt = ts - lastTs;
+      if (dt < minDeltaMs) minDeltaMs = dt;
+      if (dt > maxDeltaMs) maxDeltaMs = dt;
+      frameCount++;
+      lastTs = ts;
+      if (ts - startTs > 5000) {
+        running = false;
+        const elapsed = ts - startTs;
+        const avgFps = Math.round((frameCount / elapsed) * 1000 * 10) / 10;
+        const minFps = Math.round((1000 / maxDeltaMs) * 10) / 10;
+        const maxFps = Math.round((1000 / minDeltaMs) * 10) / 10;
+        const result = { avg_fps: avgFps, min_fps: minFps, max_fps: maxFps, frame_count: frameCount, elapsed_ms: Math.round(elapsed) };
+        window.__perfResult = result;
+        console.log('[perfRecord]', JSON.stringify(result));
+        return;
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    return () => { running = false; };
+  }, []);
 
   const isDay = view === 'day';
 
@@ -149,7 +232,17 @@ function Dashboard() {
     ? [{ field: 'date', value: 'Today' }]
     : [{ field: 'date', value: 'This week' }];
 
+  // WP5 Phase 2: provide both viewport (read) and setViewport (write) via
+  // the same Context. Memoize the value object so leaf consumers that only
+  // read viewport don't re-render on every Dashboard render — the object
+  // identity stays stable as long as viewport hasn't changed.
+  const viewportCtxValue = React.useMemo(
+    () => ({ viewport, setViewport }),
+    [viewport]
+  );
+
   return (
+    <ViewportContext.Provider value={viewportCtxValue}>
     <div style={{
       width: '100%', height: '100%',
       background: CT_TOKENS.bg,
@@ -219,7 +312,12 @@ function Dashboard() {
           />
         )}
       </div>
+      {/* WP5 Phase 3: minimap (Day view only — re-orientation aid after deep zoom) */}
+      {isDay && !today.empty && (
+        <Minimap data={today} />
+      )}
     </div>
+    </ViewportContext.Provider>
   );
 }
 
@@ -461,12 +559,19 @@ def _add_interrupt_hairlines(jsx: str) -> str:
     component = r"""
 /* ── Interrupt hairlines (Phase 3 / P3.7) ───────────────────── */
 function InterruptHairlines({ interrupts }) {
+  // Hook must run unconditionally — call before the early return.
+  // WP5 Phase 1 fix-up (caught at WP5 Phase 3 verify-human, 2026-05-22):
+  // this component originally read module-level day-bound constants that
+  // Phase 1 deleted as part of the viewport refactor. It now reads the
+  // same ViewportContext as SegmentBar.
+  const viewport = useViewport();
   if (!interrupts || interrupts.length === 0) return null;
+  const range = viewport.visible_end_min - viewport.visible_start_min;
   return (
     <>
       {interrupts.map((minute, i) => {
-        const leftPct = ((minute - DAY_START_MIN) / DAY_RANGE_MIN) * 100;
-        // Don't render hairlines outside the visible day window.
+        const leftPct = ((minute - viewport.visible_start_min) / range) * 100;
+        // Don't render hairlines outside the visible viewport.
         if (leftPct < 0 || leftPct > 100) return null;
         return (
           <div key={i} title={`mid-turn interrupt at ${fmtClock(minute)}`} style={{

@@ -168,6 +168,77 @@ else
     check "playwright_smoke.js canonical marker" fail "no 'smoke ok' string in smoke script"
 fi
 
+# ── WP5 Phase 4 deliverables (behavioral test + perf seeder + hooks) ──
+# Structural pins on the Phase 4 infrastructure. Behavioral correctness is
+# functionally covered by test_visualize_interactive.sh itself (10 PASS at
+# the WP5 Phase 4 build); these assertions guard against silent deletion
+# or shape-drift of the infrastructure files.
+
+INTERACTIVE_TEST_JS="$REPO_ROOT/tools/claude-time/test/test_visualize_interactive.js"
+INTERACTIVE_TEST_SH="$REPO_ROOT/tools/claude-time/test/test_visualize_interactive.sh"
+PERF_SEEDER="$REPO_ROOT/tools/claude-time/test/seed_perf_dataset.py"
+
+if [ -f "$INTERACTIVE_TEST_JS" ]; then
+    check "test_visualize_interactive.js exists" pass
+else
+    check "test_visualize_interactive.js exists" fail "not found"
+fi
+
+if grep -qE "require\(['\"]playwright['\"]\)" "$INTERACTIVE_TEST_JS"; then
+    check "test_visualize_interactive.js requires playwright" pass
+else
+    check "test_visualize_interactive.js requires playwright" fail "no require('playwright')"
+fi
+
+if grep -qE 'chromium\.launch\(' "$INTERACTIVE_TEST_JS"; then
+    check "test_visualize_interactive.js launches chromium" pass
+else
+    check "test_visualize_interactive.js launches chromium" fail "no chromium.launch()"
+fi
+
+if [ -f "$INTERACTIVE_TEST_SH" ] && [ -x "$INTERACTIVE_TEST_SH" ]; then
+    check "test_visualize_interactive.sh exists + executable" pass
+else
+    check "test_visualize_interactive.sh exists + executable" fail "missing or not executable"
+fi
+
+# Wrapper guards against host invocation — looks for /ms-playwright marker.
+if grep -qF '/ms-playwright' "$INTERACTIVE_TEST_SH"; then
+    check "test_visualize_interactive.sh enforces container-only invocation" pass
+else
+    check "test_visualize_interactive.sh container-only guard" fail "no /ms-playwright check in wrapper"
+fi
+
+if [ -f "$PERF_SEEDER" ]; then
+    check "seed_perf_dataset.py exists" pass
+else
+    check "seed_perf_dataset.py exists" fail "not found"
+fi
+
+# Seeder must use a session-id format that doesn't collide at viz_data.py's
+# [:8] truncation. Anti-pattern guard: reject `f"perf-{d.isoformat()}-"`
+# format (the original colliding shape). Accept the post-fix counter-prefix
+# format which encodes `f"p{counter_hex}-"`.
+if grep -qE 'f"p\{counter_hex' "$PERF_SEEDER"; then
+    check "seed_perf_dataset.py uses 8-char-unique session-id format (no [:8] truncation collision)" pass
+else
+    check "seed_perf_dataset.py session-id collision guard" fail "expected 'p{counter_hex}-' format in seeder"
+fi
+
+# Perf hooks must be plumbed in viz_render.py.
+VIZ_RENDER="$REPO_ROOT/tools/claude-time/viz_render.py"
+if grep -qF '__dashboardViewport' "$VIZ_RENDER"; then
+    check "viz_render.py exposes window.__dashboardViewport for Playwright introspection" pass
+else
+    check "viz_render.py exposes window.__dashboardViewport" fail "not found"
+fi
+
+if grep -qF '__perfRecord' "$VIZ_RENDER" || grep -qF '__perfResult' "$VIZ_RENDER"; then
+    check "viz_render.py wires __perfRecord rAF sampler (gated by ?perf=1)" pass
+else
+    check "viz_render.py wires __perfRecord" fail "no __perfRecord/__perfResult ref"
+fi
+
 # ── README has the canonical "Running tests" section (Phase 3 codify) ──
 # README is human documentation, not a programmatic surface. The structural
 # pin catches accidental removal of the new section (e.g., a future README

@@ -1,5 +1,31 @@
 # Backlog
 
+## SURFACE-2026-05-22-VIZ-DATA-SESSION-ID-TRUNCATION-CAN-COLLIDE
+- **Source:** feature:verify-self (claude-time-visualize-v2 WP5 Phase 4 P4.2, 2026-05-22)
+- **Target level:** task:plan (small/simple — single line in viz_data.py + decision on display-truncation policy)
+- **Type:** latent bug / cosmetic
+- **Summary:** `tools/claude-time/viz_data.py` line 288 truncates `session_id[:8]` for the emitted `id` field. When two or more sessions share their first 8 characters of session_id (e.g. test fixtures that prefix with a date, or real-world hash collisions), React fires a duplicate-key warning in DayTimeline and the dashboard may render incorrectly (sessions duplicated or omitted, per React's "behavior is unsupported and could change" warning). Real production session_ids are 32-char hex UUIDs that statistically never collide at 8 chars — practical impact for users is near-zero — but the latent issue is real.
+- **Context:** Surfaced at WP5 Phase 4 verify-self when the `seed_perf_dataset.py`-generated dataset used session_ids like `perf-2026-05-23-{0,1,2}` (all colliding at the 8-char prefix `perf-202`). React emitted: `Warning: Encountered two children with the same key, 'perf-202'. ... at DayTimeline`. Worked around by changing the seeder to use a globally-unique counter prefix; the fix lives in the *test fixture*, not in viz_data.py. The underlying truncation remains.
+- **Suggested action:** Two options to consider when next touching `viz_data.py`:
+  - (a) Increase the truncation to `[:12]` or `[:16]` — practical collision probability becomes negligible (1 in trillions for 8 → 1 in quintillions for 12). Cheap; doesn't change display surface much since the truncated form was only used for `id`, not for any visible label.
+  - (b) Use the full `session_id` as the React key, but track a separate `display_id` field for any UI surface that wants the short form. Cleaner separation of concerns; one extra field in the data layer.
+  - Lean: (a) — minimum-viable fix; matches the existing display-policy intent.
+- **Priority:** low — real session_ids don't collide; only synthetic test data triggers it; seeder fix already in place; production users unaffected.
+- **Status:** open
+
+## SURFACE-2026-05-22-PLAYWRIGHT-SYNTHETIC-WHEEL-DOESNT-REACH-REACT
+- **Source:** feature:build (claude-time-visualize-v2 WP5 Phase 4 P4.2, 2026-05-22)
+- **Target level:** task:plan (small/simple — test-infra workaround)
+- **Type:** test-infra / gap
+- **Summary:** `test_visualize_interactive.js` cannot reliably exercise wheel-zoom behavior because synthetic `WheelEvent` dispatched via `page.evaluate(... el.dispatchEvent(new WheelEvent(...)))` does NOT reach React's `onWheel` handler. React's synthetic event system intercepts native browser events but the JS-dispatched ones don't always cross that boundary. The P4.2 test SKIPs the wheel assertion with a documented comment; keyboard `+` covers the same `scheduleSet` cursor-anchor math path so behavioral coverage is preserved overall, but wheel-specific behavior (ctrlKey detection, trackpad pinch convention via wheel+ctrlKey) is not directly asserted.
+- **Context:** Surfaced during Phase 4 build (2026-05-22). Plan didn't anticipate this — assumed Playwright's `page.mouse.wheel()` API would route through React. It does not, on the dispatched-WheelEvent path used in the test.
+- **Suggested action:** Two options to evaluate when next touching `test_visualize_interactive.js`:
+  - (a) Use Playwright's `page.mouse.wheel(deltaX, deltaY)` API instead of synthesized DOM-event dispatch. Modifier keys (ctrlKey for zoom) can be set via `page.keyboard.down('Control'); page.mouse.wheel(...); page.keyboard.up('Control')`. This routes through the browser's native event path which React's synthetic event system DOES observe.
+  - (b) Add a small test-only debug hook in `useTimelineGestures` that exposes `__simulateWheel({deltaY, ctrlKey, clientX, clientY})` on `window`. The test calls it directly; production path no-ops. Avoids the synthetic-event uncertainty entirely.
+  - Lean: (a) — uses the existing Playwright API surface, no production-code debug hook needed.
+- **Priority:** low — keyboard-zoom path covers the same math; this is hardening for completeness.
+- **Status:** open
+
 ## SURFACE-2026-05-22-CLAUDE-MD-MISSING-CLAUDE-TIME-CONTAINER-NOTE
 - **Source:** feature:finalize (claude-time-test-containerization, 2026-05-22)
 - **Target level:** task:plan (small/simple — single paragraph append)

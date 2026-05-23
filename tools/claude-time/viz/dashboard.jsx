@@ -297,53 +297,201 @@ function Legend() {
 }
 
 /* ── Day-view timeline ──────────────────────────────────────── */
-// Hour-ruler bounds derive from `window.CT_DATA.today.hour_range` (emitted
+// WP5: viewport state machine. Module-level DAY_* constants are reduced to
+// the *initial-viewport derivation* helpers. The segment-positioning path
+// (SegmentBar, HourRuler, HourGridBackground, NOW marker) now reads from
+// the ViewportContext rather than module-level constants, so pan + zoom in
+// later WP5 phases can update the viewport without touching renderers.
+//
+// Initial viewport derives from `window.CT_DATA.today.hour_range` (emitted
 // adaptively by viz_data.build_day_data as [start, end_exclusive] —
 // e.g. [6, 23] means 17 hour ticks: 06:00..22:00). Falls back to [6, 23]
 // when CT_DATA is absent (defensive — keeps the design-canvas prototype
 // happy if loaded standalone) or `hour_range` is missing.
-const _CT_HR = (
-  (typeof window !== 'undefined' && window.CT_DATA && window.CT_DATA.today && window.CT_DATA.today.hour_range)
-    ? window.CT_DATA.today.hour_range
-    : [6, 23]
-);
-const DAY_HOURS = Array.from({ length: Math.max(1, _CT_HR[1] - _CT_HR[0]) }, (_, i) => _CT_HR[0] + i);
-const DAY_START_MIN = DAY_HOURS[0] * 60;
-const DAY_END_MIN   = (DAY_HOURS[DAY_HOURS.length - 1] + 1) * 60;
-const DAY_RANGE_MIN = DAY_END_MIN - DAY_START_MIN;
+function _initialViewport() {
+  const hr = (
+    (typeof window !== 'undefined' && window.CT_DATA && window.CT_DATA.today && window.CT_DATA.today.hour_range)
+      ? window.CT_DATA.today.hour_range
+      : [6, 23]
+  );
+  const visible_start_min = hr[0] * 60;
+  const visible_end_min   = hr[1] * 60;
+  return { visible_start_min, visible_end_min };
+}
+
+// React.Context plumbs viewport from the interactive Dashboard down to the
+// leaf renderers (SegmentBar, HourRuler, HourGridBackground) without a
+// 4-level prop drill. The default value carries an initial viewport and a
+// no-op setter so the design-canvas prototype still works standalone
+// (gesture handlers attach but setViewport is harmless).
+const ViewportContext = React.createContext({
+  viewport: _initialViewport(),
+  setViewport: () => {},
+});
+
+// WP5 Phase 3: URL-hash state utilities. The shared convention is
+// `#key=value;key=value;...` — semicolon-separated pairs, URL-encoded
+// values. Each downstream consumer (WP5 viewport, WP9 filters, WP13
+// expanded-projects, WP6/7/8 view + view params) owns one or more keys
+// and reads/writes via this helper, preserving other consumers' keys.
+//
+// See CLAUDE.md → "Claude-time visualize URL-hash state" for the full
+// convention spec (key shape, default-elision rule, reload behavior).
+function parseHash() {
+  const raw = (typeof window !== 'undefined' && window.location)
+    ? window.location.hash.replace(/^#/, '')
+    : '';
+  const out = {};
+  if (!raw) return out;
+  for (const pair of raw.split(';')) {
+    const ix = pair.indexOf('=');
+    if (ix < 0) continue;
+    const k = decodeURIComponent(pair.slice(0, ix));
+    const v = decodeURIComponent(pair.slice(ix + 1));
+    if (k) out[k] = v;
+  }
+  return out;
+}
+
+function serializeHash(obj) {
+  const parts = [];
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (v == null || v === '') continue; // skip empty values
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  }
+  return parts.join(';');
+}
+
+// updateHash applies a patch to the current hash, preserving other keys.
+// Values that are `null` or `undefined` are *removed* from the hash —
+// callers use this to implement default-elision (when a value equals the
+// component's default, pass `null` so the key drops out, keeping URLs short
+// for the common case).
+function updateHash(patch) {
+  if (typeof window === 'undefined' || !window.location) return;
+  const current = parseHash();
+  for (const k of Object.keys(patch)) {
+    if (patch[k] == null) delete current[k];
+    else current[k] = patch[k];
+  }
+  const serialized = serializeHash(current);
+  const newUrl = window.location.pathname + window.location.search + (serialized ? `#${serialized}` : '');
+  window.history.replaceState(null, '', newUrl);
+}
+
+function useViewport() {
+  return React.useContext(ViewportContext).viewport;
+}
+
+// WP5 Phase 2: separate hook for the setter so leaf renderers that only
+// read (SegmentBar, HourGridBackground) don't subscribe to setter changes.
+function useViewportSetter() {
+  return React.useContext(ViewportContext).setViewport;
+}
+
+// WP5 Phase 2: ruler tick density adapts to zoom. Returns the densest
+// interval (minutes) from [60, 30, 15, 10, 5, 1] that produces between
+// 8 and 30 visible ticks in the current viewport. Phase 1 used a hardcoded
+// 60-minute interval via hoursInViewport(); pickTickInterval generalizes
+// that for arbitrary viewport ranges (1-minute extreme zoom-in up to
+// multi-day zoom-out).
+function pickTickInterval(viewport) {
+  const range = viewport.visible_end_min - viewport.visible_start_min;
+  const scales = [60, 30, 15, 10, 5, 1];
+  for (const m of scales) {
+    const ticks = Math.ceil(range / m);
+    if (ticks >= 8 && ticks <= 30) return m;
+  }
+  // Edge cases: very small range (< 8 minutes) → 1m ticks; very large
+  // range (> 30h) → 60m ticks (visually sparse but at least readable).
+  if (range < 8) return 1;
+  return 60;
+}
+
+// WP5 Phase 2: tick generator. Emits an array of minute-aligned tick
+// positions covering the viewport at the given interval. Each tick has a
+// minute-of-day value and a label. The first tick at-or-after
+// visible_start_min that aligns to the interval is the start.
+function ticksInViewport(viewport, intervalMin) {
+  const startTick = Math.ceil(viewport.visible_start_min / intervalMin) * intervalMin;
+  const out = [];
+  for (let t = startTick; t < viewport.visible_end_min; t += intervalMin) {
+    const h = Math.floor(t / 60);
+    const m = t % 60;
+    // Label format: HH:00 for hour ticks, HH:MM otherwise.
+    const label = intervalMin === 60
+      ? `${String(h).padStart(2,'0')}:00`
+      : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    out.push({ min: t, label });
+  }
+  return out;
+}
+
 const ROW_LEFT_WIDTH = 232;
 const ROW_HEIGHT = 36;
 const PROJECT_HEADER_HEIGHT = 40;
 // NOW marker is computed client-side via useNowMin() (see DayTimeline below).
 // v1 used a hardcoded module-level NOW_MIN that froze on every emit; removed in WP2.
 
-function pct(start, end) {
-  const left = ((start - DAY_START_MIN) / DAY_RANGE_MIN) * 100;
-  const width = ((end - start) / DAY_RANGE_MIN) * 100;
+function viewportPct(start, end, viewport) {
+  const range = viewport.visible_end_min - viewport.visible_start_min;
+  const left = ((start - viewport.visible_start_min) / range) * 100;
+  const width = ((end - start) / range) * 100;
   return { left: `${left}%`, width: `${width}%` };
 }
 
-function HourRuler({ nowFrac, nowLabel }) {
+// WP5: enumerate the whole hours covered by the current viewport. Phase 1
+// keeps 1h tick granularity; Phase 2 generalizes this to adaptive density.
+function hoursInViewport(viewport) {
+  const startHour = Math.floor(viewport.visible_start_min / 60);
+  const endHour   = Math.ceil(viewport.visible_end_min / 60);
+  const out = [];
+  for (let h = startHour; h < endHour; h++) out.push(h);
+  return out;
+}
+
+function HourRuler({ nowFrac, nowLabel, nowMin }) {
+  const viewport = useViewport();
+  const intervalMin = pickTickInterval(viewport);
+  const ticks = ticksInViewport(viewport, intervalMin);
+  const range = viewport.visible_end_min - viewport.visible_start_min;
+  // WP5 P2.7 (NOW-label-overlap cosmetic fix, SURFACE-2026-05-19): when the
+  // NOW marker falls within ~10 minutes of a top-of-hour tick (or any tick
+  // boundary on adaptive density), flip the label to the LEFT of the line
+  // so it doesn't overlay the next tick's label. Mechanical 3-line fix; the
+  // refactor of HourRuler for adaptive density was already touching this
+  // file, so folding the cosmetic in costs nothing.
+  const flipNowLeft = nowMin != null
+    && (nowMin % intervalMin) >= (intervalMin - 10);
   return (
     <div style={{
       height: 30,
       position: 'relative',
       borderBottom: `1px solid ${CT_TOKENS.border}`,
       background: CT_TOKENS.surfaceAlt,
-      display: 'flex',
+      overflow: 'hidden',
     }}>
-      {DAY_HOURS.map((h) => (
-        <div key={h} style={{
-          flex: 1, position: 'relative',
-          borderRight: `1px solid ${CT_TOKENS.gridHour}`,
-          display: 'flex', alignItems: 'center', paddingLeft: 6,
-        }}>
-          <span style={{
-            fontFamily: CT_TOKENS.mono, fontSize: 10.5,
-            color: CT_TOKENS.textTertiary, letterSpacing: '0.02em',
-          }}>{String(h).padStart(2,'0')}:00</span>
-        </div>
-      ))}
+      {ticks.map((t) => {
+        const leftPct = ((t.min - viewport.visible_start_min) / range) * 100;
+        const widthPct = (intervalMin / range) * 100;
+        return (
+          <div key={t.min} style={{
+            position: 'absolute',
+            left: `${leftPct}%`,
+            width: `${widthPct}%`,
+            top: 0, bottom: 0,
+            borderRight: `1px solid ${CT_TOKENS.gridHour}`,
+            display: 'flex', alignItems: 'center', paddingLeft: 6,
+            boxSizing: 'border-box',
+          }}>
+            <span style={{
+              fontFamily: CT_TOKENS.mono, fontSize: 10.5,
+              color: CT_TOKENS.textTertiary, letterSpacing: '0.02em',
+            }}>{t.label}</span>
+          </div>
+        );
+      })}
       {nowFrac != null && (
         <div style={{
           position: 'absolute', top: 0, bottom: -1,
@@ -352,7 +500,8 @@ function HourRuler({ nowFrac, nowLabel }) {
           background: 'oklch(0.55 0.18 25)',
         }}>
           <span style={{
-            position: 'absolute', top: 4, left: 4,
+            position: 'absolute', top: 4,
+            ...(flipNowLeft ? { right: 4 } : { left: 4 }),
             fontFamily: CT_TOKENS.mono, fontSize: 10,
             color: 'oklch(0.45 0.20 25)', fontWeight: 500,
           }}>NOW · {nowLabel}</span>
@@ -363,28 +512,43 @@ function HourRuler({ nowFrac, nowLabel }) {
 }
 
 function HourGridBackground() {
+  const viewport = useViewport();
+  const intervalMin = pickTickInterval(viewport);
+  const ticks = ticksInViewport(viewport, intervalMin);
+  const range = viewport.visible_end_min - viewport.visible_start_min;
   return (
     <div style={{
       position: 'absolute', inset: 0, pointerEvents: 'none',
-      display: 'flex',
+      overflow: 'hidden',
     }}>
-      {DAY_HOURS.map((h) => (
-        <div key={h} style={{
-          flex: 1, borderRight: `1px solid ${CT_TOKENS.gridHour}`,
-        }} />
-      ))}
+      {ticks.map((t) => {
+        const leftPct = ((t.min - viewport.visible_start_min) / range) * 100;
+        const widthPct = (intervalMin / range) * 100;
+        return (
+          <div key={t.min} style={{
+            position: 'absolute',
+            left: `${leftPct}%`,
+            width: `${widthPct}%`,
+            top: 0, bottom: 0,
+            borderRight: `1px solid ${CT_TOKENS.gridHour}`,
+            boxSizing: 'border-box',
+          }} />
+        );
+      })}
     </div>
   );
 }
 
 function SegmentBar({ seg, selected = false }) {
-  const { left, width } = pct(seg.start, seg.end);
+  const viewport = useViewport();
+  const { left, width } = viewportPct(seg.start, seg.end, viewport);
   const isSubagent = seg.kind === 'subagent';
   const height = isSubagent ? 14 : ROW_HEIGHT - 12;
   const top = isSubagent ? (ROW_HEIGHT - 14) / 2 + 4 : 6;
   return (
     <div
       title={`${seg.kind} · ${fmtClock(seg.start)}–${fmtClock(seg.end)}`}
+      data-seg-id={`${seg.kind}-${seg.start}-${seg.end}`}
       style={{
         position: 'absolute',
         left, width,
@@ -439,7 +603,7 @@ function ProjectHeaderRow({ project, totals, expanded = true, alt = false }) {
           fontWeight: 500,
         }}>{fmtDur(totals.active)}</span>
       </div>
-      <div style={{ flex: 1, position: 'relative' }}>
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <HourGridBackground />
         {/* Aggregate density bar at bottom */}
         <div style={{
@@ -476,7 +640,7 @@ function SessionRow({ session, alt = false, selectedSegId = null, onSelect, last
           color: CT_TOKENS.textTertiary,
         }}>{fmtDur(totalActive)}</span>
       </div>
-      <div style={{ flex: 1, position: 'relative' }}>
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <HourGridBackground />
         {session.segs.map((seg, i) => (
           <SegmentBar key={i} seg={seg} selected={`${session.id}:${i}` === selectedSegId} />
@@ -486,15 +650,192 @@ function SessionRow({ session, alt = false, selectedSegId = null, onSelect, last
   );
 }
 
+// WP5 Phase 2: timeline gesture handlers (pan + zoom). Attaches mousedown
+// for drag-to-pan and wheel for ctrl/cmd/pinch-zoom on the timeline surface.
+// All viewport mutations are rAF-throttled — wheel events fire faster than
+// browser repaint, so coalescing prevents redundant React renders.
+//
+// Cursor-anchor rule for zoom: the data-coordinate at the cursor x-position
+// stays under the cursor after zoom. Equivalent to keeping the cursor-anchor
+// invariant: cursor_data_min = cursor_data_min_after_zoom.
+//
+// Gutter exclusion: events whose clientX falls inside [0, ROW_LEFT_WIDTH)
+// from the container's left edge are ignored (the gutter is the row-label
+// area; users clicking project names shouldn't initiate pan).
+function useTimelineGestures(viewport, setViewport, dataWindow) {
+  const ref = React.useRef(null);
+  const rafIdRef = React.useRef(0);
+  const dragRef = React.useRef(null); // {start_x, start_viewport}
+
+  const scheduleSet = React.useCallback((nextViewport) => {
+    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = 0;
+      setViewport(nextViewport);
+    });
+  }, [setViewport]);
+
+  // Convert clientX → (data-minute) using viewport + container bounds.
+  // Returns null when cursor is in the gutter or outside the container.
+  const clientXToDataMin = React.useCallback((clientX, currentViewport) => {
+    const el = ref.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const offsetX = clientX - rect.left;
+    if (offsetX < ROW_LEFT_WIDTH) return null; // gutter
+    const timelineWidth = rect.width - ROW_LEFT_WIDTH;
+    if (timelineWidth <= 0) return null;
+    const frac = (offsetX - ROW_LEFT_WIDTH) / timelineWidth;
+    const range = currentViewport.visible_end_min - currentViewport.visible_start_min;
+    return currentViewport.visible_start_min + frac * range;
+  }, []);
+
+  const onMouseDown = React.useCallback((e) => {
+    const dataMin = clientXToDataMin(e.clientX, viewport);
+    if (dataMin == null) return; // in gutter
+    // Don't initiate pan when clicking a SegmentBar (preserves click-to-select).
+    if (e.target && e.target.closest && e.target.closest('[data-seg-id]')) return;
+    dragRef.current = {
+      start_x: e.clientX,
+      start_viewport: viewport,
+      container_timeline_width: ref.current.getBoundingClientRect().width - ROW_LEFT_WIDTH,
+    };
+    // Capture pointer so mouseup outside the container still releases.
+    if (e.currentTarget.setPointerCapture && e.pointerId !== undefined) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    document.body.style.cursor = 'grabbing';
+  }, [viewport, clientXToDataMin]);
+
+  const onMouseMove = React.useCallback((e) => {
+    if (!dragRef.current) return;
+    const d = dragRef.current;
+    const dx = e.clientX - d.start_x;
+    const range = d.start_viewport.visible_end_min - d.start_viewport.visible_start_min;
+    const deltaMin = -(dx / d.container_timeline_width) * range; // drag right → pan left
+    scheduleSet({
+      visible_start_min: d.start_viewport.visible_start_min + deltaMin,
+      visible_end_min: d.start_viewport.visible_end_min + deltaMin,
+    });
+  }, [scheduleSet]);
+
+  const onMouseUp = React.useCallback(() => {
+    if (dragRef.current) {
+      dragRef.current = null;
+      document.body.style.cursor = '';
+    }
+  }, []);
+
+  // Wheel zoom: ctrl/cmd-modified wheel events (also matches Safari/Chrome
+  // trackpad pinch convention — browsers synthesize `e.ctrlKey === true`
+  // on pinch even when the user isn't holding ctrl). Plain wheel (no
+  // modifier) is ignored so browser scroll keeps working.
+  const onWheel = React.useCallback((e) => {
+    if (!(e.ctrlKey || e.metaKey)) return; // pass through to browser scroll
+    e.preventDefault();
+    const dataMin = clientXToDataMin(e.clientX, viewport);
+    if (dataMin == null) return;
+    const f = e.deltaY > 0 ? 1.1 : 1 / 1.1; // wheel down = zoom out
+    const oldRange = viewport.visible_end_min - viewport.visible_start_min;
+    let newRange = oldRange * f;
+    // Clamp: min 1 minute (extreme zoom-in), max full data window.
+    const maxRange = (dataWindow && dataWindow.length === 2)
+      ? dataWindow[1] - dataWindow[0]
+      : oldRange * 100; // generous fallback if no dataWindow plumbed
+    newRange = Math.max(1, Math.min(maxRange, newRange));
+    // Cursor-anchor: keep dataMin under cursor.
+    const cursorFrac = (dataMin - viewport.visible_start_min) / oldRange;
+    const newStart = dataMin - cursorFrac * newRange;
+    const newEnd = newStart + newRange;
+    scheduleSet({ visible_start_min: newStart, visible_end_min: newEnd });
+  }, [viewport, scheduleSet, clientXToDataMin, dataWindow]);
+
+  // Keyboard shortcuts: pan with arrows, zoom with +/-/0, jump with Home/End.
+  // Attached at window level; ignored when typing in inputs.
+  React.useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+      const range = viewport.visible_end_min - viewport.visible_start_min;
+      const maxRange = (dataWindow && dataWindow.length === 2)
+        ? dataWindow[1] - dataWindow[0]
+        : range * 100;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const dx = range * 0.1;
+        scheduleSet({
+          visible_start_min: viewport.visible_start_min - dx,
+          visible_end_min: viewport.visible_end_min - dx,
+        });
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const dx = range * 0.1;
+        scheduleSet({
+          visible_start_min: viewport.visible_start_min + dx,
+          visible_end_min: viewport.visible_end_min + dx,
+        });
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        const newRange = Math.max(1, range / 1.5);
+        const center = (viewport.visible_start_min + viewport.visible_end_min) / 2;
+        scheduleSet({
+          visible_start_min: center - newRange / 2,
+          visible_end_min: center + newRange / 2,
+        });
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        const newRange = Math.min(maxRange, range * 1.5);
+        const center = (viewport.visible_start_min + viewport.visible_end_min) / 2;
+        scheduleSet({
+          visible_start_min: center - newRange / 2,
+          visible_end_min: center + newRange / 2,
+        });
+      } else if (e.key === '0') {
+        e.preventDefault();
+        // Reset to initial viewport (fit data window).
+        scheduleSet(_initialViewport());
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        if (dataWindow && dataWindow.length === 2) {
+          scheduleSet({ visible_start_min: dataWindow[0], visible_end_min: dataWindow[0] + range });
+        }
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        if (dataWindow && dataWindow.length === 2) {
+          scheduleSet({ visible_start_min: dataWindow[1] - range, visible_end_min: dataWindow[1] });
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [viewport, scheduleSet, dataWindow]);
+
+  // TODO(v3): touch-drag + touch-pinch wiring. Add ontouchstart/ontouchmove
+  // handlers here mirroring the mouse path; pinch needs a 2-finger
+  // distance-tracking helper.
+
+  return { ref, onMouseDown, onMouseMove, onMouseUp, onWheel };
+}
+
 /* ── Day view (project list + sessions) ─────────────────────── */
 function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) {
   const { nowMin, todayISO } = useNowMin();
+  const viewport = useViewport();
+  const setViewport = useViewportSetter();
+  // Data-window for clamping zoom-out + Home/End. For the day view, fall
+  // back to [0, 1440] (full day in minutes) if no explicit window present.
+  const dataWindow = (data && data.hour_range)
+    ? [data.hour_range[0] * 60, data.hour_range[1] * 60]
+    : [0, 1440];
+  const gestures = useTimelineGestures(viewport, setViewport, dataWindow);
   // Only show the marker when (a) caller opts in, (b) the day being rendered IS today
   // (compare ISO date, since "now" is undefined for past days), and (c) nowMin lies
-  // within the adaptive ruler window. The frac/label only render when all three hold.
+  // within the current viewport (replaces WP1's DAY_*-bound check; pan/zoom now move
+  // the viewport rather than the day-window). The frac/label only render when all three hold.
   const isToday = data && data.iso === todayISO;
-  const inWindow = nowMin >= DAY_START_MIN && nowMin < DAY_END_MIN;
-  const nowFrac = (showNow && isToday && inWindow) ? (nowMin - DAY_START_MIN) / DAY_RANGE_MIN : null;
+  const inWindow = nowMin >= viewport.visible_start_min && nowMin < viewport.visible_end_min;
+  const nowFrac = (showNow && isToday && inWindow)
+    ? (nowMin - viewport.visible_start_min) / (viewport.visible_end_min - viewport.visible_start_min)
+    : null;
   const nowLabel = `${String(Math.floor(nowMin / 60)).padStart(2, '0')}:${String(nowMin % 60).padStart(2, '0')}`;
 
   // Compute project totals
@@ -509,7 +850,20 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: CT_TOKENS.surface }}>
+    <div
+      ref={gestures.ref}
+      onMouseDown={gestures.onMouseDown}
+      onMouseMove={gestures.onMouseMove}
+      onMouseUp={gestures.onMouseUp}
+      onMouseLeave={gestures.onMouseUp}
+      onWheel={gestures.onWheel}
+      style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        overflow: 'hidden', background: CT_TOKENS.surface,
+        cursor: 'grab',
+        userSelect: 'none',
+      }}
+    >
       {/* Header row: project label area + hour ruler */}
       <div style={{ display: 'flex', flexShrink: 0 }}>
         <div style={{
@@ -532,7 +886,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
           }}>Active</span>
         </div>
         <div style={{ flex: 1 }}>
-          <HourRuler nowFrac={nowFrac} nowLabel={nowLabel} />
+          <HourRuler nowFrac={nowFrac} nowLabel={nowLabel} nowMin={isToday && inWindow ? nowMin : null} />
         </div>
       </div>
 
@@ -733,6 +1087,193 @@ function WeekTimeline({ data }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Minimap (WP5 Phase 3) ──────────────────────────────────── */
+// Single combined low-density track showing the full data window with a
+// draggable "visible window" rectangle overlay. ~80px tall total. Click
+// elsewhere in the minimap re-centers viewport at that point (preserves
+// zoom); dragging the rectangle pans; dragging an edge resizes (zooms).
+// Per Phase 3 plan: density-light, re-orientation only — not a second
+// per-project surface.
+function Minimap({ data }) {
+  const viewport = useViewport();
+  const setViewport = useViewportSetter();
+  const ref = React.useRef(null);
+  const dragRef = React.useRef(null);
+  const rafIdRef = React.useRef(0);
+
+  // Data window: union of all sessions' segment ranges, falling back to
+  // hour_range or [0, 1440]. The minimap maps this range to its full width.
+  const dataWindow = React.useMemo(() => {
+    if (data && data.hour_range) {
+      return [data.hour_range[0] * 60, data.hour_range[1] * 60];
+    }
+    return [0, 1440];
+  }, [data]);
+
+  const scheduleSet = React.useCallback((nextViewport) => {
+    if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = 0;
+      setViewport(nextViewport);
+    });
+  }, [setViewport]);
+
+  // Map clientX → data-minute within the minimap container.
+  const clientXToDataMin = React.useCallback((clientX) => {
+    const el = ref.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return dataWindow[0] + frac * (dataWindow[1] - dataWindow[0]);
+  }, [dataWindow]);
+
+  // Visible-window rectangle position on the minimap, in percent.
+  const dw = dataWindow[1] - dataWindow[0];
+  const rectLeftPct = ((viewport.visible_start_min - dataWindow[0]) / dw) * 100;
+  const rectWidthPct = ((viewport.visible_end_min - viewport.visible_start_min) / dw) * 100;
+
+  const onMouseDown = React.useCallback((e) => {
+    const dataMin = clientXToDataMin(e.clientX);
+    if (dataMin == null) return;
+    const mode = e.target && e.target.dataset && e.target.dataset.minimapMode;
+    if (mode === 'rect') {
+      // Drag the rectangle: pan, preserving range.
+      dragRef.current = {
+        kind: 'pan',
+        start_x: e.clientX,
+        start_viewport: viewport,
+        container_width: ref.current.getBoundingClientRect().width,
+      };
+    } else if (mode === 'edge-left' || mode === 'edge-right') {
+      // Resize an edge: zoom by moving one endpoint.
+      dragRef.current = {
+        kind: mode,
+        start_x: e.clientX,
+        start_viewport: viewport,
+        container_width: ref.current.getBoundingClientRect().width,
+      };
+    } else {
+      // Click on background: re-center viewport at clicked data point,
+      // preserving zoom range.
+      const range = viewport.visible_end_min - viewport.visible_start_min;
+      scheduleSet({
+        visible_start_min: dataMin - range / 2,
+        visible_end_min: dataMin + range / 2,
+      });
+    }
+    e.stopPropagation();
+  }, [viewport, scheduleSet, clientXToDataMin]);
+
+  const onMouseMove = React.useCallback((e) => {
+    if (!dragRef.current) return;
+    const d = dragRef.current;
+    const dx = e.clientX - d.start_x;
+    const dxMin = (dx / d.container_width) * dw;
+    if (d.kind === 'pan') {
+      scheduleSet({
+        visible_start_min: d.start_viewport.visible_start_min + dxMin,
+        visible_end_min: d.start_viewport.visible_end_min + dxMin,
+      });
+    } else if (d.kind === 'edge-left') {
+      const newStart = d.start_viewport.visible_start_min + dxMin;
+      if (newStart < d.start_viewport.visible_end_min - 1) {
+        scheduleSet({
+          visible_start_min: newStart,
+          visible_end_min: d.start_viewport.visible_end_min,
+        });
+      }
+    } else if (d.kind === 'edge-right') {
+      const newEnd = d.start_viewport.visible_end_min + dxMin;
+      if (newEnd > d.start_viewport.visible_start_min + 1) {
+        scheduleSet({
+          visible_start_min: d.start_viewport.visible_start_min,
+          visible_end_min: newEnd,
+        });
+      }
+    }
+  }, [scheduleSet, dw]);
+
+  const onMouseUp = React.useCallback(() => {
+    dragRef.current = null;
+  }, []);
+
+  // Compressed segment tracks: collapse all segments from all projects into
+  // a single density line. For each segment, render a small bar at
+  // (segStart - dataWindow[0]) / dw, segment color encodes kind.
+  const allSegs = (data && data.projects)
+    ? data.projects.flatMap(p => p.sessions.flatMap(s => s.segs))
+    : [];
+
+  return (
+    <div
+      ref={ref}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
+      data-minimap=""
+      style={{
+        height: 80,
+        flexShrink: 0,
+        position: 'relative',
+        borderTop: `1px solid ${CT_TOKENS.border}`,
+        background: CT_TOKENS.surfaceAlt,
+        cursor: 'pointer',
+        userSelect: 'none',
+      }}
+    >
+      {/* Background label */}
+      <div style={{
+        position: 'absolute', top: 4, left: 8,
+        fontFamily: CT_TOKENS.sans, fontSize: 9.5,
+        color: CT_TOKENS.textTertiary, letterSpacing: '0.08em',
+        textTransform: 'uppercase', fontWeight: 500,
+        pointerEvents: 'none',
+      }}>Overview</div>
+      {/* Compressed segment tracks */}
+      {allSegs.map((seg, i) => {
+        const leftPct = ((seg.start - dataWindow[0]) / dw) * 100;
+        const widthPct = ((seg.end - seg.start) / dw) * 100;
+        return (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${leftPct}%`,
+            width: `${Math.max(0.1, widthPct)}%`,
+            top: 24, height: 36,
+            ...segStyle(seg.kind),
+            opacity: 0.6,
+            pointerEvents: 'none',
+          }} />
+        );
+      })}
+      {/* Visible-window rectangle */}
+      <div
+        data-minimap-mode="rect"
+        style={{
+          position: 'absolute',
+          left: `${rectLeftPct}%`,
+          width: `${rectWidthPct}%`,
+          top: 18, bottom: 8,
+          border: `1.5px solid ${CT_TOKENS.active}`,
+          background: 'oklch(0.7 0.15 250 / 0.15)',
+          cursor: 'grab',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Edge resize handles */}
+        <div data-minimap-mode="edge-left" style={{
+          position: 'absolute', left: -3, top: 0, bottom: 0, width: 6,
+          cursor: 'ew-resize',
+        }} />
+        <div data-minimap-mode="edge-right" style={{
+          position: 'absolute', right: -3, top: 0, bottom: 0, width: 6,
+          cursor: 'ew-resize',
+        }} />
       </div>
     </div>
   );

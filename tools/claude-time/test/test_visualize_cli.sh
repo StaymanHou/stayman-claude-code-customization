@@ -253,7 +253,207 @@ else
     check "WP2: emitted HTML contains clearInterval cleanup" fail "no clearInterval in $OUT_HTML"
 fi
 
-# ── 14. Re-running visualize overwrites in place (no archive) ─────────
+# ── 15. WP5 Phase 1: viewport state machine + pixel math source shapes ────
+# Codifies the WP5 Phase 1 contract: the dashboard exposes a useViewport
+# custom hook (consumed by every segment renderer), a viewportPct(start,end,
+# viewport) helper that replaces the legacy module-level DAY_*-bound pct(),
+# a hoursInViewport(viewport) helper for the (still-1h) ruler tick generator,
+# and ViewportContext.Provider plumbing in the interactive Dashboard wrapper.
+# Phase 2 (gestures) and Phase 3 (URL hash) will assert against more.
+if grep -q 'function useViewport(' "$OUT_HTML"; then
+    check "WP5-P1: emitted HTML defines useViewport hook" pass
+else
+    check "WP5-P1: emitted HTML defines useViewport hook" fail "no 'function useViewport(' in $OUT_HTML"
+fi
+
+if grep -q 'function viewportPct(' "$OUT_HTML"; then
+    check "WP5-P1: emitted HTML defines viewportPct helper" pass
+else
+    check "WP5-P1: emitted HTML defines viewportPct helper" fail "no 'function viewportPct(' in $OUT_HTML"
+fi
+
+if grep -q 'visible_start_min' "$OUT_HTML" && grep -q 'visible_end_min' "$OUT_HTML"; then
+    check "WP5-P1: viewport state shape (visible_start_min + visible_end_min) present" pass
+else
+    check "WP5-P1: viewport state shape present" fail "visible_start_min/visible_end_min missing in $OUT_HTML"
+fi
+
+if grep -q 'function hoursInViewport(' "$OUT_HTML"; then
+    check "WP5-P1: emitted HTML defines hoursInViewport helper" pass
+else
+    check "WP5-P1: emitted HTML defines hoursInViewport helper" fail "no 'function hoursInViewport(' in $OUT_HTML"
+fi
+
+if grep -q 'ViewportContext' "$OUT_HTML"; then
+    check "WP5-P1: emitted HTML defines ViewportContext (provider plumbing)" pass
+else
+    check "WP5-P1: emitted HTML defines ViewportContext" fail "no 'ViewportContext' in $OUT_HTML"
+fi
+
+# Legacy module-level DAY_RANGE_MIN/DAY_START_MIN/DAY_END_MIN are removed
+# from the segment-positioning path. They MAY still appear in comments or
+# the _initialViewport() helper, but no `const DAY_RANGE_MIN =` statement
+# should remain at module level. (Strict grep on the exact assignment form.)
+if grep -qE '^const DAY_RANGE_MIN\s*=' "$OUT_HTML"; then
+    check "WP5-P1: legacy module-level 'const DAY_RANGE_MIN =' removed from segment-positioning path" fail "still found in $OUT_HTML"
+else
+    check "WP5-P1: legacy module-level 'const DAY_RANGE_MIN =' removed" pass
+fi
+
+# WP5-P1 codify hardening (added 2026-05-22 after a Phase 3 verify-human
+# regression where InterruptHairlines still referenced the deleted
+# DAY_START_MIN/DAY_END_MIN/DAY_RANGE_MIN identifiers and threw at runtime).
+# Assert no remaining JS-reference shape exists for these identifiers
+# (matches identifier usage; tolerates one-off occurrences in comments).
+# Specifically: grep for the identifiers followed by NOT-comment-context.
+# Heuristic: any line that contains the identifier AND is not a pure comment
+# line (doesn't start with `//` or `*` after leading whitespace).
+day_const_refs=$(grep -nE '\b(DAY_START_MIN|DAY_END_MIN|DAY_RANGE_MIN)\b' "$OUT_HTML" \
+    | grep -vE '^\s*[0-9]+:\s*(//|\*|--)' \
+    | wc -l | tr -d ' ')
+if [ "$day_const_refs" = "0" ]; then
+    check "WP5-P1 codify-hardening: no live JS refs to deleted DAY_*_MIN constants (comment-only refs tolerated)" pass
+else
+    check "WP5-P1 codify-hardening: no live JS refs to deleted DAY_*_MIN constants" fail "$day_const_refs ref(s) found in $OUT_HTML"
+fi
+
+# ── 15b. WP5 Phase 1 verify-codify gaps (3 additional assertions) ─────
+# These assertions codify behaviors approved at verify-human that the P1.7
+# assertions only confirmed structurally (definition-of-symbol) rather than
+# consumption-of-symbol. Each gap was identified at verify-codify time.
+
+# Gap 1 was attempted as a "17 HH:00 labels present in emitted HTML"
+# assertion but found, at verify-codify triage time, to be unverifiable at
+# the CLI level — labels are produced by a JSX template literal that only
+# runs after Babel-standalone executes in the browser. Moved to Phase 4
+# Playwright behavioral test (`test_visualize_interactive.sh`) where the
+# rendered DOM is observable. Triage record in the WIP file under
+# `## Test Triage — WP5-P1 codify "all 17 expected HH:00 ruler labels"`.
+
+# Gap 2: --week view still mounts cleanly after Phase 1's wrapper-level
+# ViewportContext.Provider wrap. The week path doesn't use viewport math,
+# but it lives inside the same Dashboard tree that's now wrapped in the
+# Provider. Assert both the Dashboard mount marker AND the ViewportContext
+# presence in the --week-emitted HTML — i.e., wrapper integrity survives
+# regardless of which view is initially selected.
+WEEK_HTML="$TMPDIR/v-week.html"
+if [ -f "$WEEK_HTML" ] && \
+   grep -q 'function Dashboard(' "$WEEK_HTML" && \
+   grep -q 'ViewportContext' "$WEEK_HTML"; then
+    check "WP5-P1 codify: --week view emits Dashboard + ViewportContext (wrapper integrity)" pass
+else
+    check "WP5-P1 codify: --week view wrapper integrity" fail "Dashboard or ViewportContext missing in $WEEK_HTML"
+fi
+
+# ── 15c. WP5 Phase 2: pan + zoom gestures + adaptive ruler density ──
+# Codifies the Phase 2 contract: pan via onMouseDown/onMouseMove (gutter-
+# excluded), zoom via onWheel with cmd/ctrl + cursor-anchor math, keyboard
+# shortcuts (arrows, +/-/0, Home/End), all rAF-throttled. Adaptive ruler
+# tick density via pickTickInterval. Plus the SURFACE-2026-05-19 NOW-label
+# cosmetic fold-in (P2.7 opportunistic).
+if grep -q 'function useTimelineGestures(' "$OUT_HTML"; then
+    check "WP5-P2: emitted HTML defines useTimelineGestures hook" pass
+else
+    check "WP5-P2: emitted HTML defines useTimelineGestures hook" fail "no 'function useTimelineGestures(' in $OUT_HTML"
+fi
+
+if grep -q 'requestAnimationFrame' "$OUT_HTML"; then
+    check "WP5-P2: emitted HTML contains requestAnimationFrame (rAF throttling)" pass
+else
+    check "WP5-P2: emitted HTML contains requestAnimationFrame" fail "no 'requestAnimationFrame' in $OUT_HTML"
+fi
+
+if grep -q 'onMouseDown=' "$OUT_HTML" && grep -q 'onWheel=' "$OUT_HTML"; then
+    check "WP5-P2: emitted HTML wires onMouseDown + onWheel handlers on the timeline surface" pass
+else
+    check "WP5-P2: pan + wheel handlers wired" fail "onMouseDown or onWheel missing in $OUT_HTML"
+fi
+
+if grep -q "'ArrowLeft'" "$OUT_HTML" && grep -q "'ArrowRight'" "$OUT_HTML" && grep -q "'Home'" "$OUT_HTML" && grep -q "'End'" "$OUT_HTML"; then
+    check "WP5-P2: keyboard shortcuts wired (ArrowLeft, ArrowRight, Home, End)" pass
+else
+    check "WP5-P2: keyboard shortcuts wired" fail "one of ArrowLeft/ArrowRight/Home/End missing in $OUT_HTML"
+fi
+
+if grep -q 'function pickTickInterval(' "$OUT_HTML" && grep -q 'function ticksInViewport(' "$OUT_HTML"; then
+    check "WP5-P2: adaptive ruler density helpers (pickTickInterval + ticksInViewport) defined" pass
+else
+    check "WP5-P2: adaptive ruler density helpers defined" fail "pickTickInterval or ticksInViewport missing in $OUT_HTML"
+fi
+
+# P2.7 opportunistic: NOW-label flips left when within (intervalMin - 10)..
+# intervalMin of a tick boundary. Confirms the SURFACE-2026-05-19 cosmetic
+# was folded in during the HourRuler refactor.
+if grep -q 'flipNowLeft' "$OUT_HTML"; then
+    check "WP5-P2.7: NOW-label overlap fix folded into HourRuler (flipNowLeft branch)" pass
+else
+    check "WP5-P2.7: NOW-label overlap fix" fail "no 'flipNowLeft' branch in $OUT_HTML"
+fi
+
+# ── 15d. WP5 Phase 3: Minimap + URL-hash state + convention codification ──
+# Codifies the Phase 3 contract: Minimap component (single combined low-
+# density track, ~80px tall, draggable visible-window rectangle); URL-hash
+# read/write via parseHash/updateHash/serializeHash helpers; default-elision
+# (viewport key omitted when equal to default); CLAUDE.md carries the
+# URL-hash state convention with one-line examples per downstream WP slot.
+
+if grep -q 'function Minimap(' "$OUT_HTML"; then
+    check "WP5-P3: emitted HTML defines Minimap component" pass
+else
+    check "WP5-P3: emitted HTML defines Minimap component" fail "no 'function Minimap(' in $OUT_HTML"
+fi
+
+if grep -q 'data-minimap-mode' "$OUT_HTML"; then
+    check "WP5-P3: Minimap visible-window rectangle has drag/resize affordances (data-minimap-mode)" pass
+else
+    check "WP5-P3: Minimap drag/resize affordances" fail "no 'data-minimap-mode' attribute in $OUT_HTML"
+fi
+
+if grep -q 'function parseHash(' "$OUT_HTML" && grep -q 'function updateHash(' "$OUT_HTML" && grep -q 'function serializeHash(' "$OUT_HTML"; then
+    check "WP5-P3: URL-hash helpers (parseHash + updateHash + serializeHash) defined" pass
+else
+    check "WP5-P3: URL-hash helpers defined" fail "one of parseHash/updateHash/serializeHash missing in $OUT_HTML"
+fi
+
+if grep -q 'history.replaceState' "$OUT_HTML"; then
+    check "WP5-P3: URL-hash write uses history.replaceState (not pushState)" pass
+else
+    check "WP5-P3: URL-hash uses replaceState" fail "no 'history.replaceState' in $OUT_HTML"
+fi
+
+if grep -q 'window\.location\.hash' "$OUT_HTML"; then
+    check "WP5-P3: URL-hash read references window.location.hash" pass
+else
+    check "WP5-P3: URL-hash read" fail "no 'window.location.hash' in $OUT_HTML"
+fi
+
+# CLAUDE.md convention codification: the new section must be present at
+# project root with the canonical heading + table of key reservations.
+REPO_CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
+if [ -f "$REPO_CLAUDE_MD" ] && grep -q '^## Claude-time visualize URL-hash state' "$REPO_CLAUDE_MD"; then
+    check "WP5-P3: CLAUDE.md contains 'Claude-time visualize URL-hash state' convention section" pass
+else
+    check "WP5-P3: CLAUDE.md convention section" fail "missing heading in $REPO_CLAUDE_MD"
+fi
+
+if [ -f "$REPO_CLAUDE_MD" ] && grep -q 'Per-consumer key reservations' "$REPO_CLAUDE_MD"; then
+    check "WP5-P3: CLAUDE.md convention has per-consumer key reservations table" pass
+else
+    check "WP5-P3: CLAUDE.md per-consumer key reservations" fail "missing key reservations subsection in $REPO_CLAUDE_MD"
+fi
+
+# Gap 3: SegmentBar (or any consumer) actually *calls* viewportPct — the
+# P1.7 assertions confirmed the function is defined but not that anyone
+# consumes it. A dead-but-defined helper would pass P1.7 but break the
+# day view. Assert the emitted JS contains at least one call like
+# `viewportPct(seg.start, seg.end` (the SegmentBar invocation pattern).
+if grep -q 'viewportPct(seg\.start, seg\.end' "$OUT_HTML"; then
+    check "WP5-P1 codify: viewportPct is consumed by a segment renderer (not dead code)" pass
+else
+    check "WP5-P1 codify: viewportPct is consumed" fail "no 'viewportPct(seg.start, seg.end' call site found in $OUT_HTML"
+fi
+
+# ── 16. Re-running visualize overwrites in place (no archive) ─────────
 "$CLI" visualize --no-open > /dev/null 2>&1
 mtime1=$(stat -f '%m' "$OUT_HTML" 2>/dev/null || stat -c '%Y' "$OUT_HTML")
 sleep 1
