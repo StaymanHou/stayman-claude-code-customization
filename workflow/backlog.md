@@ -1,5 +1,27 @@
 # Backlog
 
+## SURFACE-2026-05-22-LEARNING-VERIFY-SELF-SUBAGENT-JIT-FALSE-FAIL
+- **Source:** session:reflect → session:store-learning (claude-time-visualize-v2 WP5 Phase 3 verify-self, 2026-05-22)
+- **Target level:** workflow-system source repo (`my-claude-code-customization`) — port to `skills/feature-verify-self/SKILL.md` severity-taxonomy section, OR add as a global CLAUDE.md "Verify-self discipline" rule
+- **Type:** new-work / workflow-system rule (global)
+- **Summary:** When a verify-self subagent reports a single BLOCKING FAIL that conflicts with a coherent set of subagent PASSes that mechanically imply the failing outcome must hold, the orchestrator should re-verify directly with the same MCP tools before back-looping. Subagent regex/snapshot timing on JIT-compiled / async-rendered pages (Babel-standalone in-browser, lazy-mount React, async data fetches before initial render) produces noise that looks like real failures.
+- **Context:** Surfaced at WP5 Phase 3 verify-self — Playwright subagent reported 7 PASS + 1 BLOCKING FAIL on `#viewport=720:780` hash-restore; orchestrator re-verified directly with same Playwright MCP and confirmed the outcome actually PASSed (tick_count=12, first_tick="12:00", last_tick="12:55", minimap visible-rect at correct percentages). Subagent's regex `/^\d\d:\d\d$/` apparently ran before Babel JIT-compiled the JSX.
+- **Suggested action:** Port the draft to a permanent home in the workflow-system source repo. Specifically: add a "Subagent re-verification heuristic" note to `skills/feature-verify-self/SKILL.md` under the Severity Taxonomy section. Practical text-rule: "If N-1 of N outcomes PASS and the Nth FAIL is mechanically implied by the PASSes, suspect snapshot timing before back-looping; re-run the same Playwright assertions directly from the orchestrator before invoking `/feature-build` with scoped leaves."
+- **Reference:** Full learning draft at `.claude/learnings/2026-05-22-verify-self-subagent-jit-false-fail.md` (gitignored — local-only until promoted to source repo by hand).
+- **Priority:** medium — pattern recurs whenever verify-self runs against any page with JIT/async rendering. Worth permanent codification.
+- **Status:** open
+
+## SURFACE-2026-05-22-LEARNING-COMMIT-OFTEN-AT-CROSS-FEATURE-BRANCH
+- **Source:** session:reflect → session:store-learning (post-WP5 / post-claude-time-test-containerization, 2026-05-22)
+- **Target level:** workflow-system source repo (`my-claude-code-customization`) — port to global CLAUDE.md's "Executing actions with care" section, OR as a new "Workflow branch-off discipline" subsection
+- **Type:** new-work / workflow-system rule (global)
+- **Summary:** When a workflow branches off mid-execution (pausing one feature to ship a sibling, opening a parallel incident, any cross-feature pause/resume), make a WIP commit on the paused feature's state BEFORE starting the branch-off work. Commits are cheap. A `[wip] pausing for <reason>` commit on `main` is reversible later (`git reset --soft HEAD~1`, amend, `git rebase -i`) and prevents cross-feature dirty-tree contamination. Every additional dirty file is a destructive-operation hazard surface: `git checkout HEAD -- <file>` reverts whole files (not hunks), `git stash` saves all dirty state at once across features, and selective `git add` requires per-commit discipline that's easy to slip on.
+- **Context:** Today's session paused WP5 mid-Phase-4 to ship a sibling containerization feature; both features had uncommitted edits to shared files (CLAUDE.md, dashboard.jsx, viz_render.py, test_visualize_cli.sh). At a finalize-time CLAUDE.md edit, `git checkout HEAD -- CLAUDE.md` was used to revert just the new edit but whole-file-reverted both features' changes, destroying ~60 lines of WP5's URL-hash convention section (recovered manually from conversation transcript — but git reflog/fsck couldn't help since the work was never committed).
+- **Suggested action:** Port the draft to a permanent home. Add a new bullet under global CLAUDE.md's "Executing actions with care" section: "Commit before branching workflows. When pausing one feature to start another (or any cross-feature pause/resume), make a WIP commit on the paused feature's in-flight state first. Commits are cheap and reversible (`git reset --soft HEAD~1`, amend, or `git rebase -i` to clean up before the next ship)." Rule-of-thumb threshold: if a pause is expected to span more than ~10 minutes or another feature's full lifecycle, commit the in-flight state.
+- **Reference:** Full learning draft at `.claude/learnings/2026-05-22-commit-often-at-cross-feature-branch.md` (gitignored — local-only until promoted to source repo by hand).
+- **Priority:** medium — the failure mode hit this session (lost work recovered only via transcript); the rule applies to every cross-feature pause/resume going forward.
+- **Status:** open
+
 ## SURFACE-2026-05-22-VIZ-DATA-SESSION-ID-TRUNCATION-CAN-COLLIDE
 - **Source:** feature:verify-self (claude-time-visualize-v2 WP5 Phase 4 P4.2, 2026-05-22)
 - **Target level:** task:plan (small/simple — single line in viz_data.py + decision on display-truncation policy)
