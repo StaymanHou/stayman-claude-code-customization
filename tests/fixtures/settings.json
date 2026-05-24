@@ -9,7 +9,8 @@
   "env": {
     "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "0",
-    "CLAUDE_CODE_ATTRIBUTION_HEADER": "1"
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "1",
+    "CLAUDE_TIME_TRACKING": "1"
   },
   "permissions": {
     "allow": [
@@ -33,7 +34,63 @@
   },
   "hooks": {
     "Notification": [],
-    "Stop": []
+    "Stop": [],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/claude-time-hook.pl" }
+        ]
+      }
+    ]
   },
   "statusLine": {
     "type": "command",
@@ -43,6 +100,7 @@
   "sandbox": {
     "enabled": false
   },
+  "fileCheckpointingEnabled": false,
   "alwaysThinkingEnabled": false,
   "effortLevel": "xhigh",
   "promptSuggestionEnabled": true,

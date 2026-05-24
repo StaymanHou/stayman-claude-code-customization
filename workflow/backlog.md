@@ -1,5 +1,42 @@
 # Backlog
 
+## SURFACE-2026-05-24-CLAUDE-TIME-VIZ-AGGREGATE-METRICS-PANEL
+- **Source:** ad-hoc user analysis (2026-05-24) — user asked for weekly usage metrics; computed via `/tmp/usage_analysis_v3.py` against `~/.claude-time/events.sqlite`, generated insights that revealed the dashboard is missing aggregate quantitative summaries.
+- **Target level:** feature:plan or feature:spec — multi-metric panel touching `viz_data.py` (new aggregator), `viz/dashboard.jsx` (new panel component), and likely a new view-mode or sidebar slot.
+- **Type:** new-work / dashboard feature for `claude-time-visualize` v2+
+- **Summary:** The current dashboard renders the segment-model (timeline view) but exposes no aggregate quantitative summaries. Users (incl. the project owner) ask the same shape of question repeatedly: "how much time did I spend / how much agent activity / how much parallelism / where is time going". Add a metrics panel that computes and displays these in wall-clock vs effort-time columns over the current view-mode's window (Day, Week, Month, custom range).
+- **Terminology to adopt (canonical, must be consistent across panel + tooltips + docs):**
+  - **Wall-clock** = real elapsed time. Overlapping activities collapse via interval merge.
+  - **Effort-time** = plain sum of all durations. 2 parallel activities for 1h = 2h.
+  - **Parallelism multiplier** = effort-time ÷ wall-clock.
+- **Metrics to surface (verified useful via 2026-05-24 analysis):**
+  1. **Engaged session duration** (wall-clock + effort-time + multiplier). Engaged = burst-spanning windows with `away`-classified gaps EXCLUDED. Critical: the existing `_build_viz_sessions` treats away gaps as inside-session (sensible for rendering, NOT for time accounting) — the metrics layer must subtract them.
+  2. **AI agent activity** (wall-clock + effort-time + multiplier). Sum/merge of UPS→Stop bursts across sessions.
+     - Sub-row: **subagent time** (same pair of columns).
+  3. **Tool call duration** (wall-clock + effort-time + multiplier). Sum/merge of PreToolUse→PostToolUse pairs.
+     - Optional drill: top 5 tools by effort-time with per-tool wall-clock + effort-time + multiplier (revealed WebSearch at 1.80× while Bash at 1.04× — parallelism varies by tool kind).
+  4. **Human active duration** (wall-clock only — single human, no parallelism; effort-time column shows = wall-clock for symmetry but is 1.00× by construction).
+     - Sub-rows: typing (from `gap_buckets`'s typing_debit_ms), reading (effective_ms where bucket=reading), thinking (effective_ms where bucket=thinking).
+  5. **Concurrency stratification** of engaged sessions: wall-clock × {1, 2, 3, 4+} engaged-sessions-open, with effort-time column = wall-clock × concurrency-count. Sum across rows reconciles to engaged-session wall-clock (left col) and engaged-session effort-time (right col).
+  6. **Blocking metrics** (wall-clock): human-blocking-agent (sum of reading+thinking effective gaps), agent-blocking-human (burst wall-clock). Reveals waiting asymmetry.
+- **Why this matters (insights surfaced in the 2026-05-24 run):**
+  - The `session_id`-spanning window in `_build_viz_sessions` INCLUDES away gaps, inflating "session duration" to implausible totals (116h in a 168h week for this user). The metrics panel MUST use the engaged definition or be misleading. This is the load-bearing definitional point.
+  - Tool parallelism is the strongest weak signal: 1.12× multiplier vs agent 1.40× tells the user that parallel sessions tend to be in different phases (one thinking, one tooling), not both tooling. This insight is only visible when wall-clock and effort-time are shown side-by-side.
+  - Thinking gaps (5h/wk for this user) dominate human active time over typing+reading combined. Surfacing this in the panel makes the "compress the loop" optimization concrete.
+  - 4+ session concurrency is essentially zero (46 seconds/week for this user). Surfacing the stratification kills the "I need to optimize for high parallelism" intuition before it becomes a wasted feature.
+- **Suggested implementation outline (not a spec — feature:plan should refine):**
+  - **New aggregator in `viz_data.py`:** `build_metrics(events, day_start_dt, day_end_dt) -> dict` returning the metric tree. Exposes both wall-clock (merged-interval sum) and effort-time (plain sum) for each metric. Reuses `reclassify.active_bursts`, `reclassify.gap_buckets`, `reclassify.tool_durations_ms` (the latter currently returns effort-time only — extend it or add a sibling that returns intervals so wall-clock can be computed).
+  - **Wire into Day/Week/Month/range payloads:** add `metrics` key alongside existing `projects` / `hour_range` / etc. Range-mode aggregation: same shape, computed over the range's events.
+  - **New React component:** `MetricsPanel` in `viz/dashboard.jsx`. Two-column table per metric (Wall-clock | Effort-time | ×Multiplier). Top-5-tools subsection. Concurrency stratification as a 4-row sub-table.
+  - **Reference helper script:** `/tmp/usage_analysis_v3.py` (one-off, not in repo) computed all these correctly. The metric definitions and interval-merge logic there should be the implementation reference — particularly the away-gap exclusion in the engaged-session interval construction (lines 64-86 of that script).
+- **Open design questions for feature:spec:**
+  - Where does the panel live? Persistent sidebar? Toggle? New view-mode tab? (User has WP6 "Day" tab, WP7 "Month" tab, WP8 "custom range" — a "Stats" view-mode peer might be natural.)
+  - Default window? "Current view's date range" is the obvious default but Day view's single-day window may be too narrow to show meaningful parallelism multipliers — week is the natural unit for these metrics.
+  - Tooltips for each metric explaining wall-clock vs effort-time inline? Or a one-time legend at panel header?
+  - Per-project breakdown (a "same metrics sliced by cwd alias" view)? User explicitly declined this in the 2026-05-24 ad-hoc but may want it as a drill-down later.
+- **Priority:** medium — useful, well-scoped, no existing user blocked. Slot after current WBS cycle's open WPs.
+- **Status:** open
+
 ## SURFACE-2026-05-23-CLAUDE-TIME-DB-FLAG-OVERRIDES-CLAUDE-TIME-DIR-FOR-CONFIG
 - **Source:** feature:verify-human (claude-time-viz-day-multi-day-window WP5b Phase 1, 2026-05-23)
 - **Target level:** task:plan (small/simple — one-line resolver split or doc-clarify)
@@ -109,7 +146,7 @@
 - **Context:** Surfaced during Phase 1 verify-codify of the `--by` grouping feature. The drift is pre-existing relative to that feature — none of the `--by` feature's changes touched fixtures, install.sh, or settings. It's the previous claude-time feature's install state being correctly applied to the user's machine.
 - **Suggested action:** Choose one of (a) extend `tests/fixtures/settings.json` to include the claude-time hooks block + env (treating them as documented standard install state for this repo), or (b) add the relevant keys to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` (treating them as per-machine opt-in state that varies legitimately). (a) is preferable if the repo wants the structure check to assert "claude-time is wired up correctly for any contributor"; (b) is preferable if opting in is intentionally per-machine. Probably (b) since the README explicitly frames the install as opt-in.
 - **Priority:** medium — structural check currently fails on a clean run, which obscures real regressions.
-- **Status:** open
+- **Status:** RESOLVED 2026-05-24 via option (a): added the 8 claude-time hook entries (UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, SessionStart, SessionEnd, SubagentStart, SubagentStop, each invoking `~/.claude/hooks/claude-time-hook.pl`) + `env.CLAUDE_TIME_TRACKING: "1"` + root `fileCheckpointingEnabled: false` to `tests/fixtures/settings.json`. `tests/check-structure.sh` now reports 122/0 on a clean working tree.
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
