@@ -109,7 +109,48 @@ const IconTerminal   = (p) => <Icon {...p} d={<><rect x="2" y="3" width="12" hei
 // parallel InteractiveToolbar at emit time. WP9 collapsed the duality into the
 // single interactive Toolbar below; viz_render.py no longer emits a Toolbar
 // component. See CLAUDE.md → "Design-as-data" convention for the full history.
-function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot }) {
+/* WP8: client-side range validator. Mirrors _parse_range_flag (Python).
+   Returns null on valid input; on invalid input, returns a short string
+   naming the rule that failed (used as the tooltip + visual cue).
+   maxDays defaults to 90 (matches Python's viz_custom_range_max_days
+   default); the caller passes `window.CT_MAX_RANGE_DAYS` so the cap is
+   single-sourced from Python config. */
+function validateRange(startIso, endIso, maxDays) {
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (!startIso || !endIso) return 'Pick both start and end dates.';
+  if (!ISO_RE.test(startIso) || !ISO_RE.test(endIso)) {
+    return 'Dates must be in YYYY-MM-DD form.';
+  }
+  // Date.parse('YYYY-MM-DD') is UTC-anchored, which is fine for day-level math.
+  const startMs = Date.parse(startIso);
+  const endMs = Date.parse(endIso);
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+    return 'One of the dates is not a real date.';
+  }
+  if (endMs < startMs) return 'End date must be on or after start date.';
+  // Today is local-midnight in UTC for the purposes of this comparison.
+  // We avoid timezone-of-day complexity: the CLI uses date.today() which is
+  // local; the browser's `new Date()` is also local. Compare ISO strings of
+  // both — sortable, no tz drift.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (endIso > todayIso) return 'End date must not be in the future.';
+  const dayCount = Math.round((endMs - startMs) / 86400000) + 1;
+  if (dayCount > maxDays) {
+    return `Range too long (${dayCount} days > ${maxDays}). Narrow the range.`;
+  }
+  return null;
+}
+
+function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
+                   rangeStart = null, rangeEnd = null, onRangeChange = () => {},
+                   maxRangeDays = 90 }) {
+  // WP8: when view === 'custom', the read-only dateLabel slot is replaced by
+  // a RangePicker — two <input type=date> controls with client-side validation
+  // matching the CLI's _parse_range_flag rules. Local state buffers in-progress
+  // edits; only valid (shape + end>=start + end<=today + days<=maxRangeDays)
+  // tuples propagate via onRangeChange on blur. Invalid intermediate states
+  // (e.g. typing "2026-05-0" mid-keystroke) get a red border + a tooltip
+  // naming the rule that failed; the parent's range stays unchanged.
   const tabBtn = (label, value, current, enabled = true) => (
     <button
       key={value}
@@ -162,7 +203,9 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot })
       <div style={{ width: 1, height: 22, background: CT_TOKENS.border, margin: '0 4px' }} />
 
       {/* Toolbar label is 'Day' (WP6); data-layer key remains window.CT_DATA.today (stable contract for WP5b consumers). */}
-      {/* View tabs (Day/Week functional; Month/Custom disabled) */}
+      {/* View tabs (Day/Week/Custom functional; Month disabled).
+          WP8 enabled Custom — its body is the date-range picker that replaces
+          the read-only dateLabel slot below when view === 'custom'. */}
       <div style={{
         display: 'flex', gap: 2, padding: 3,
         background: CT_TOKENS.surfaceDim, borderRadius: 8,
@@ -171,20 +214,33 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot })
         {tabBtn('Day', 'day', view === 'day', true)}
         {tabBtn('Week', 'week', view === 'week', true)}
         {tabBtn('Month', 'month', false, false)}
-        {tabBtn('Custom', 'custom', false, false)}
+        {tabBtn('Custom', 'custom', view === 'custom', true)}
       </div>
 
-      {/* Date label (read-only) */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '6px 10px',
-        background: CT_TOKENS.surfaceDim, borderRadius: 8,
-        border: `1px solid ${CT_TOKENS.border}`,
-        fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textPrimary,
-      }}>
-        <IconCalendar size={12} />
-        {dateLabel}
-      </div>
+      {/* WP8: in custom view, the read-only dateLabel slot becomes a
+          date-range picker. In all other views it stays read-only. The
+          picker buffers in-progress edits in local state and only
+          propagates onRangeChange on blur of a valid (validateRange == null)
+          tuple. */}
+      {view === 'custom' ? (
+        <RangePicker
+          startIso={rangeStart}
+          endIso={rangeEnd}
+          maxRangeDays={maxRangeDays}
+          onChange={onRangeChange}
+        />
+      ) : (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 10px',
+          background: CT_TOKENS.surfaceDim, borderRadius: 8,
+          border: `1px solid ${CT_TOKENS.border}`,
+          fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textPrimary,
+        }}>
+          <IconCalendar size={12} />
+          {dateLabel}
+        </div>
+      )}
 
       {/* Snapshot caption — communicates that the data is point-in-time at emit
           (the live NOW cursor moves; the bars do not until next visualize run). */}
@@ -225,6 +281,78 @@ const iconChromeBtn = () => ({
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   borderRadius: 7, cursor: 'pointer', color: CT_TOKENS.textSecondary,
 });
+
+/* ── WP8: Date-range picker (Custom view's dateLabel-slot replacement) ─
+
+   Two <input type=date> controls + a separator arrow. Local state buffers
+   the in-progress edit; onChange only updates the buffer. On blur (or Enter
+   key), we re-validate the (buffered start, buffered end) tuple — if valid,
+   call onChange-prop with {start, end}; if invalid, keep the buffer + show
+   a red-border + tooltip naming the rule that failed. data-range-picker=
+   {start,end} attributes are stable selectors for Playwright behavioral
+   tests in Phase 2 verify-self + WP8-P2 codify pins.
+
+   The buffer re-syncs from props when props change (e.g. URL-hash restore
+   on reload, or future "set range from CLI" plumbing). */
+function RangePicker({ startIso, endIso, maxRangeDays = 90, onChange }) {
+  const [bufStart, setBufStart] = React.useState(startIso || '');
+  const [bufEnd, setBufEnd] = React.useState(endIso || '');
+  // Re-sync buffer when prop changes (parent-driven update — e.g. hash restore).
+  React.useEffect(() => { setBufStart(startIso || ''); }, [startIso]);
+  React.useEffect(() => { setBufEnd(endIso || ''); }, [endIso]);
+
+  const err = validateRange(bufStart, bufEnd, maxRangeDays);
+  const commit = () => {
+    if (err == null && (bufStart !== startIso || bufEnd !== endIso)) {
+      onChange({ start: bufStart, end: bufEnd });
+    }
+  };
+  const onKeyDown = (e) => { if (e.key === 'Enter') e.currentTarget.blur(); };
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const inputStyle = (isInvalid) => ({
+    padding: '4px 6px',
+    border: `1px solid ${isInvalid ? '#c84a4a' : CT_TOKENS.border}`,
+    borderRadius: 5,
+    background: CT_TOKENS.surface,
+    fontFamily: CT_TOKENS.mono,
+    fontSize: 12,
+    color: CT_TOKENS.textPrimary,
+    width: 130,
+  });
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: '4px 8px',
+      background: CT_TOKENS.surfaceDim, borderRadius: 8,
+      border: `1px solid ${err ? '#c84a4a' : CT_TOKENS.border}`,
+    }} title={err || undefined}>
+      <IconCalendar size={12} />
+      <input
+        type="date"
+        data-range-picker="start"
+        value={bufStart}
+        max={todayIso}
+        onChange={(e) => setBufStart(e.target.value)}
+        onBlur={commit}
+        onKeyDown={onKeyDown}
+        style={inputStyle(err != null)}
+      />
+      <span style={{ color: CT_TOKENS.textTertiary, fontSize: 11 }}>→</span>
+      <input
+        type="date"
+        data-range-picker="end"
+        value={bufEnd}
+        max={todayIso}
+        onChange={(e) => setBufEnd(e.target.value)}
+        onBlur={commit}
+        onKeyDown={onKeyDown}
+        style={inputStyle(err != null)}
+      />
+    </div>
+  );
+}
 
 /* ── Summary strip ──────────────────────────────────────────── */
 function SummaryStrip({ filterChips, stats }) {

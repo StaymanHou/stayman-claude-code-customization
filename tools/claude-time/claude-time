@@ -44,6 +44,10 @@ DEFAULT_CONFIG = {
     # --context-days-prior / --context-days-after CLI flags.
     "viz_context_days_prior": 14,
     "viz_context_days_after": 7,
+    # WP8: cap for `visualize --range START:END` window length. Beyond this,
+    # tick density + DOM segment count make the timeline unwieldy. Overridable
+    # via `viz_custom_range_max_days` in ~/.claude-time/config.json.
+    "viz_custom_range_max_days": 90,
 }
 
 
@@ -82,7 +86,8 @@ def load_config(claude_time_dir: Path) -> dict:
                 for k, v in user_cfg.items():
                     if k == "project_names":
                         cfg[k] = _validate_project_names(v)
-                    elif k in ("viz_context_days_prior", "viz_context_days_after"):
+                    elif k in ("viz_context_days_prior", "viz_context_days_after",
+                               "viz_custom_range_max_days"):
                         validated = _validate_nonneg_int(v)
                         if validated is not None:
                             cfg[k] = validated
@@ -451,6 +456,13 @@ def main(argv: list[str] | None = None) -> int:
     viz.add_argument("--context-days-after", type=int, default=None, metavar="M",
                      help="days of leading context to load for the Day view data window "
                           "(default: viz_context_days_after from config, or 7)")
+    viz.add_argument("--range", dest="range", default=None, metavar="START:END",
+                     help="render a custom date range [YYYY-MM-DD:YYYY-MM-DD] as the "
+                          "shipped Custom view; mutually exclusive with --demo; --week "
+                          "is ignored when present; --date is ignored when present "
+                          "(the range carries its own start/end); --context-days-* are "
+                          "ignored (range mode owns its own window). Cap "
+                          "viz_custom_range_max_days (default 90).")
     viz.add_argument(
         "--db",
         help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
@@ -492,6 +504,48 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _parse_range_flag(raw: str, max_days: int) -> tuple[date, date] | None:
+    """Parse and validate `--range START:END`.
+
+    On success returns (start_date, end_date) inclusive.
+    On any failure, prints a stderr message naming the rule that failed and
+    returns None — caller exits with code 2.
+
+    Validation rules (mirrored on the client side in Phase 2 via
+    `window.CT_MAX_RANGE_DAYS`):
+      - shape: exactly one ':' separator, two YYYY-MM-DD halves
+      - end >= start (no inverted range)
+      - end <= today (no future range — events haven't happened yet)
+      - (end - start) + 1 <= max_days (cap from viz_custom_range_max_days)
+    """
+    parts = raw.split(":")
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        print(f"error: --range expects START:END in YYYY-MM-DD:YYYY-MM-DD form, got {raw!r}",
+              file=sys.stderr)
+        return None
+    try:
+        start = date.fromisoformat(parts[0])
+        end = date.fromisoformat(parts[1])
+    except ValueError as e:
+        print(f"error: --range date parse failed: {e}", file=sys.stderr)
+        return None
+    if end < start:
+        print(f"error: --range requires end >= start; got start={start.isoformat()} "
+              f"end={end.isoformat()}", file=sys.stderr)
+        return None
+    if end > date.today():
+        print(f"error: --range end must not be in the future; got end={end.isoformat()} "
+              f"(today={date.today().isoformat()})", file=sys.stderr)
+        return None
+    days = (end - start).days + 1
+    if days > max_days:
+        print(f"error: --range exceeds viz_custom_range_max_days cap "
+              f"({days} days > {max_days}); narrow the range or raise the cap in "
+              f"~/.claude-time/config.json", file=sys.stderr)
+        return None
+    return start, end
+
+
 def _cmd_visualize(args, cfg, db_path, claude_time_dir):
     """Emit the dashboard HTML to disk. See `--help visualize`."""
     import webbrowser
@@ -505,6 +559,25 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
     if not template_path.exists() or not dashboard_jsx_path.exists():
         print(f"error: viz template assets not found under {viz_dir}", file=sys.stderr)
         return 2
+
+    # WP8: parse + validate --range early so error paths abort before any DB
+    # work. Mutual-exclusion guards: --range conflicts with --demo (demo data
+    # is single-day); --range silently overrides --date and --context-days-*
+    # (range owns its own window).
+    range_dates: tuple[date, date] | None = None
+    if args.range is not None:
+        if args.demo:
+            print("error: --range is incompatible with --demo (demo data is single-day)",
+                  file=sys.stderr)
+            return 2
+        max_days = int(cfg.get("viz_custom_range_max_days", 90))
+        parsed = _parse_range_flag(args.range, max_days)
+        if parsed is None:
+            return 2
+        range_dates = parsed
+        if args.context_days_prior is not None or args.context_days_after is not None:
+            print("warning: --context-days-prior/--context-days-after are ignored in "
+                  "range mode (the range carries its own window).", file=sys.stderr)
 
     # Pick today (or --date) for the day-view data.
     target_day = date.fromisoformat(args.date) if args.date else date.today()
@@ -546,17 +619,31 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
             print(f"error: {db_path} does not exist. Run Claude Code with CLAUDE_TIME_TRACKING=1 to populate it, "
                   f"or use --demo to render with mock data.", file=sys.stderr)
             return 2
-        # Day-view data window: target_day ± (ctx_prior, ctx_after). When both
-        # are 0, this collapses to a single-day window — build_range_data emits
-        # back-compat single-day shape (iso + hour_range) for that case.
-        day_window_start = target_day - timedelta(days=ctx_prior)
-        day_window_end = target_day + timedelta(days=ctx_after)
+
+        # WP8: when --range is active, override the Day-view window with the
+        # user-picked range. build_range_data is the same data path WP5b uses
+        # for multi-day Day view, so the emitted payload's `meta.start` +
+        # `meta.end` + `meta.day_count` already cover what Phase 2's renderer
+        # needs to seed the date-range picker.
+        if range_dates is not None:
+            day_window_start, day_window_end = range_dates
+        else:
+            # Day-view data window: target_day ± (ctx_prior, ctx_after). When
+            # both are 0, this collapses to a single-day window —
+            # build_range_data emits back-compat single-day shape (iso +
+            # hour_range) for that case.
+            day_window_start = target_day - timedelta(days=ctx_prior)
+            day_window_end = target_day + timedelta(days=ctx_after)
+
         day_events_by_day = {}
         for i in range((day_window_end - day_window_start).days + 1):
             d = day_window_start + timedelta(days=i)
             day_events_by_day[d.isoformat()] = _load_window_events(db_path, d)
-        if ctx_prior == 0 and ctx_after == 0:
-            # Pure single-day: keep build_day_data for byte-identical legacy output.
+        if range_dates is None and ctx_prior == 0 and ctx_after == 0:
+            # Pure single-day Day view: keep build_day_data for byte-identical
+            # legacy output. The --range path always uses build_range_data even
+            # when it spans a single day, because the Custom view's identity
+            # is defined by the user-picked range, not the single-day shape.
             today_payload = viz_data.build_day_data(
                 target_day.isoformat(),
                 day_events_by_day[target_day.isoformat()],
@@ -571,12 +658,18 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
                 cfg=cfg,
                 auto_alias_fn=_auto_alias_for_cwd,
             )
-            # WP5b: surface the user-requested day so the renderer can center
-            # the initial viewport on it (otherwise it would center on the
-            # window mid-point). Phase 2 (renderer) consumes this field.
-            today_payload["target_iso"] = target_day.isoformat()
+            if range_dates is None:
+                # WP5b: surface the user-requested day so the renderer can
+                # center the initial viewport on it (otherwise it would center
+                # on the window mid-point). Phase 2 (renderer) consumes this
+                # field. NOT set in --range mode — Custom view centers on the
+                # range start by default; meta.start/.end are sufficient.
+                today_payload["target_iso"] = target_day.isoformat()
 
-        # Week payload is independent of Day's context-days window.
+        # Week payload is independent of Day's context-days window AND of
+        # --range. Custom-view users can still click the Week tab and get a
+        # sensible week-of-today rollup (WP8 explicitly scopes Week as
+        # independent — see WIP plan's "Open questions").
         week_events_by_day = {}
         for i in range(7):
             d = monday + timedelta(days=i)
@@ -585,8 +678,22 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
                                                 week_events_by_day, cfg, _auto_alias_for_cwd)
         data = {"today": today_payload, "week": week_payload, "meta": meta}
 
-    initial_view = "week" if args.week else "day"
-    html = viz_render.render_html(template_path, dashboard_jsx_path, data, initial_view)
+    # WP8: initial view precedence — --range > --week > default. --range wins
+    # because it carries a load-bearing payload (the picked range) that only
+    # the Custom view knows how to display; --week is unset/ignored in range
+    # mode (a warning is already printed at parse time if both are given —
+    # actually no: --range silently overrides --week per the plan; the parser
+    # comment names this). The "week" emission stays under `data["week"]` so
+    # the Week tab still functions when the user clicks it.
+    if range_dates is not None:
+        initial_view = "custom"
+    elif args.week:
+        initial_view = "week"
+    else:
+        initial_view = "day"
+    max_range_days = int(cfg.get("viz_custom_range_max_days", 90))
+    html = viz_render.render_html(template_path, dashboard_jsx_path, data,
+                                  initial_view, max_range_days=max_range_days)
 
     out_path = Path(args.out).expanduser() if args.out else (claude_time_dir / "visualize.html")
     out_path.parent.mkdir(parents=True, exist_ok=True)

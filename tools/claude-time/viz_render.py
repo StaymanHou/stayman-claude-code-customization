@@ -67,9 +67,84 @@ def _interactive_dashboard() -> str:
 /* ── Dashboard wrapper (interactive, shipped variant) ───────── */
 function Dashboard() {
   const { today, week } = window.CT_DATA;
-  const initialView = (window.CT_INITIAL_VIEW === 'week') ? 'week' : 'day';
+  // WP8: hash.view (if present) wins over CT_INITIAL_VIEW so a shareable
+  // URL like #view=custom;range=2026-05-20:2026-05-22 restores correctly.
+  // Recognized values: 'day', 'week', 'custom'. Malformed → fall through
+  // to CT_INITIAL_VIEW (which itself defaults to 'day' for unknown values).
+  // The 'custom' view requires a valid hash.range OR a CT_INITIAL_VIEW
+  // emit-time 'custom' (which only happens when the CLI was invoked with
+  // --range); otherwise the dashboard falls back to 'day' to avoid
+  // rendering an empty Custom view.
+  const _initView = (() => {
+    const hash = parseHash();
+    if (hash.view === 'custom' && /^\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(hash.range || '')) {
+      return 'custom';
+    }
+    if (hash.view === 'week' || hash.view === 'day') return hash.view;
+    // Fallthrough: emit-time default. CT_INITIAL_VIEW is 'day'|'week'|'custom'
+    // (WP8 added 'custom'). For 'custom' emit-time, we require today.meta.start
+    // to be present (otherwise we have no range to render).
+    if (window.CT_INITIAL_VIEW === 'custom' && today.meta && today.meta.start && today.meta.end) {
+      return 'custom';
+    }
+    if (window.CT_INITIAL_VIEW === 'week') return 'week';
+    return 'day';
+  })();
+  const [view, setView] = React.useState(_initView);
 
-  const [view, setView] = React.useState(initialView);
+  // WP8: range state (start/end ISO date strings). Identity of the Custom
+  // view — without a range the view is empty. Hash-restore on init if
+  // present + valid; otherwise seed from data.today.meta (the CLI's
+  // --range invocation persists its picked range here).
+  const [range, setRange] = React.useState(() => {
+    const hash = parseHash();
+    if (hash.range && /^\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(hash.range)) {
+      const [s, e] = hash.range.split(':');
+      // Validate against the maxRangeDays cap; if invalid, fall back to emit data.
+      if (validateRange(s, e, window.CT_MAX_RANGE_DAYS || 90) == null) {
+        return { start: s, end: e };
+      }
+    }
+    if (today.meta && today.meta.start && today.meta.end) {
+      return { start: today.meta.start, end: today.meta.end };
+    }
+    // No range available — Custom view will fall back to 'day' via _initView.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return { start: todayIso, end: todayIso };
+  });
+
+  // WP8: debounced URL-hash write on view + range change. Default-elision:
+  // when view === 'day' (the emit-time + project-wide default), drop view
+  // key. When view === 'custom', the range key is load-bearing — DO NOT
+  // elide it even if it matches data.today.meta (the data's emitted range
+  // would be ambiguous on a non-custom-emit URL). When view === 'week',
+  // write view=week (not the default, so don't elide).
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      if (view === 'custom') {
+        updateHash({ view: 'custom', range: `${range.start}:${range.end}` });
+      } else if (view === 'week') {
+        updateHash({ view: 'week', range: null });
+      } else {
+        // 'day' is the default — drop both keys.
+        updateHash({ view: null, range: null });
+      }
+    }, 100);
+    return () => clearTimeout(t);
+  }, [view, range]);
+
+  // WP8: when the user picks a different range via the date-range picker,
+  // we don't re-fetch data (would require a CLI round-trip). Instead, the
+  // hash updates, and the next claude-time visualize invocation can read
+  // the hash via shareable URL to bring up the right window. The picker
+  // gives immediate visual feedback (hash updates, picker values reflect),
+  // but the timeline body keeps showing the emit-time data. This is the
+  // honest MVP behavior the WBS calls out — "mostly UI" — and avoids the
+  // complexity of dynamic data-fetch from the browser. A future WP can
+  // add a "rerun" button that calls back to the CLI.
+  const onRangeChange = React.useCallback((nextRange) => {
+    setRange(nextRange);
+  }, []);
   // selectedSegId is "<sessionId>:<segIndex>" or null.
   const [selectedSegId, setSelectedSegId] = React.useState(null);
   // expandedProjects: array of project ids; default expanded all on first load.
@@ -210,7 +285,14 @@ function Dashboard() {
     return () => { running = false; };
   }, []);
 
+  // WP8: 'custom' is rendered using the same DayTimeline as Day (the data
+  // shape is identical — build_range_data emits a multi-day union under
+  // today). isDayLike is the union — both Day and Custom share the
+  // DayTimeline-based timeline body. The dateLabel-vs-picker switch happens
+  // in the Toolbar based on raw `view`, not isDayLike.
   const isDay = view === 'day';
+  const isCustom = view === 'custom';
+  const isDayLike = isDay || isCustom;
 
   // Resolve the selected session + project for the side panel.
   let selSession = null;
@@ -281,9 +363,9 @@ function Dashboard() {
     { label: 'Most-used tool', value: '\u2014', sub: '' },
   ];
 
-  const filterChips = isDay
-    ? [{ field: 'date', value: 'Today' }]
-    : [{ field: 'date', value: 'This week' }];
+  const filterChips = isCustom
+    ? [{ field: 'date', value: `${range.start} \u2192 ${range.end}` }]
+    : (isDay ? [{ field: 'date', value: 'Today' }] : [{ field: 'date', value: 'This week' }]);
 
   // WP5 Phase 2: provide both viewport (read) and setViewport (write) via
   // the same Context. Memoize the value object so leaf consumers that only
@@ -314,16 +396,23 @@ function Dashboard() {
       overflow: 'hidden',
     }}>
       {/* WP9 (2026-05-23): Toolbar is now defined in dashboard.jsx
-          (duality collapsed — see CLAUDE.md "Design-as-data" convention). */}
+          (duality collapsed — see CLAUDE.md "Design-as-data" convention).
+          WP8 (2026-05-24): Toolbar now receives range props for the Custom
+          view's date-range picker. When view !== 'custom' the range props
+          are ignored by Toolbar (the read-only dateLabel slot renders). */}
       <Toolbar
         view={view}
         onViewChange={setView}
-        dateLabel={isDay ? today.label : week.label}
+        dateLabel={isCustom ? `${range.start} → ${range.end}` : (isDay ? today.label : week.label)}
         snapshot={(window.CT_DATA.meta && window.CT_DATA.meta.snapshot) || null}
+        rangeStart={range.start}
+        rangeEnd={range.end}
+        onRangeChange={onRangeChange}
+        maxRangeDays={window.CT_MAX_RANGE_DAYS || 90}
       />
       <SummaryStrip
         filterChips={filterChips}
-        stats={isDay ? dayStats : weekStats}
+        stats={isDayLike ? dayStats : weekStats}
       />
 
       {/* Date header strip */}
@@ -339,26 +428,33 @@ function Dashboard() {
           fontFamily: CT_TOKENS.mono, fontSize: 11,
           color: CT_TOKENS.textSecondary, letterSpacing: '0.08em',
           textTransform: 'uppercase', fontWeight: 500,
-        }}>{isDay ? today.label : week.label}</span>
+        }}>{isDayLike ? today.label : week.label}</span>
         <span style={{ width: 1, height: 14, background: CT_TOKENS.border }} />
         <span style={{
           fontFamily: CT_TOKENS.sans, fontSize: 11,
           color: CT_TOKENS.textTertiary,
-        }}>{isDay
+        }}>{isDayLike
           ? `${today.projects.length} projects \u00b7 ${today.projects.reduce((a,p)=>a+p.sessions.length,0)} sessions`
           : `${week.projects.length} projects \u00b7 7 days`}</span>
         <span style={{ flex: 1 }} />
         <Legend />
-        {/* WP9 Phase 4: per-project filter popover. Day view: today.projects;
-            Week view: week.projects (the data shapes share .id + .alias). */}
-        <ProjectFilterPopover projects={isDay ? today.projects : week.projects} />
+        {/* WP9 Phase 4 + WP8: per-project filter popover. Day/Custom views:
+            today.projects (Custom is multi-day Day-like); Week view:
+            week.projects (shares .id + .alias). */}
+        <ProjectFilterPopover projects={isDayLike ? today.projects : week.projects} />
       </div>
 
-      {/* Body — timeline (+ optional side panel) */}
+      {/* Body — timeline (+ optional side panel).
+          WP8: isCustom shares isDay's DayTimeline rendering path (data shape
+          is identical — build_range_data is the same multi-day union used
+          by WP5b's Day view). The only Custom-specific bit is the
+          empty-state label (names the range instead of a single date). */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {isDay ? (
+        {isDayLike ? (
           today.empty ? (
-            <EmptyState date={today.iso} />
+            <EmptyState date={isCustom
+              ? `${range.start} to ${range.end}`
+              : (today.iso || today.meta?.start || '\u2014')} />
           ) : (
             <DayTimeline
               data={today}
@@ -379,8 +475,10 @@ function Dashboard() {
           />
         )}
       </div>
-      {/* WP5 Phase 3: minimap (Day view only — re-orientation aid after deep zoom) */}
-      {isDay && !today.empty && (
+      {/* WP5 Phase 3 + WP8: minimap (Day/Custom views — re-orientation aid
+          after deep zoom). Custom shares the Day-like multi-day data shape
+          so Minimap works identically. */}
+      {isDayLike && !today.empty && (
         <Minimap data={today} />
       )}
     </div>
@@ -565,8 +663,15 @@ function InterruptHairlines({ interrupts, dayOffset = 0 }) {
 
 
 def render_html(template_path: Path, dashboard_jsx_path: Path,
-                data: dict, initial_view: str = "day") -> str:
-    """Read template + dashboard.jsx, apply transforms, return the rendered HTML."""
+                data: dict, initial_view: str = "day",
+                max_range_days: int = 90) -> str:
+    """Read template + dashboard.jsx, apply transforms, return the rendered HTML.
+
+    WP8: `max_range_days` is the server-side cap for the Custom-view date-range
+    picker, threaded through `window.CT_MAX_RANGE_DAYS` so client-side
+    validation matches the CLI's `viz_custom_range_max_days` config (default
+    90). Phase 1 emits the value; Phase 2 reads it from the picker.
+    """
     template = template_path.read_text()
     jsx = dashboard_jsx_path.read_text()
 
@@ -583,4 +688,5 @@ def render_html(template_path: Path, dashboard_jsx_path: Path,
     html = template.replace("{{CT_DATA_JSON}}", data_literal)
     html = html.replace("{{DASHBOARD_JSX}}", jsx)
     html = html.replace("{{CT_INITIAL_VIEW}}", initial_view)
+    html = html.replace("{{CT_MAX_RANGE_DAYS}}", str(int(max_range_days)))
     return html

@@ -71,9 +71,13 @@ echo "  CLAUDE_TIME_DIR: $TMPDIR"
 echo
 
 # ── 1. --help exits 0 and lists the original 5 visualize flags ─────────
+# The regex anchors at "  --foo " (column 3 indent, flag name, then a space
+# or end-of-help-arg). This avoids matching wrapped help-text continuation
+# lines that mention sibling flag names mid-paragraph (WP8 hardening — the
+# new --range flag's help text references --demo/--week/--date by name).
 OUT=$("$CLI" visualize --help 2>&1)
 rc=$?
-flag_count=$(echo "$OUT" | grep -cE '^\s+--(date|week|demo|no-open|out)\b')
+flag_count=$(echo "$OUT" | grep -cE '^  --(date|week|demo|no-open|out)( |$)')
 if [ $rc -eq 0 ] && [ "$flag_count" = "5" ]; then
     check "visualize --help exits 0, lists 5 original flags" pass
 else
@@ -905,6 +909,310 @@ else
 fi
 
 rm -rf "$WP5B_DIR"
+
+# ── WP8 Phase 1 codify: --range flag + range-aware visualize emit ──────
+# Codifies the 10 Phase 1 deliverables for Custom-range view (WP8). Builds
+# its own isolated fixture (5-day multi-day seed + per-test config overrides)
+# so it doesn't depend on $WP5B_DIR which was already cleaned up.
+
+WP8_DIR="$(mktemp -d -t claude-time-wp8-codify-XXXXXX)"
+WP8_DB="$WP8_DIR/events.sqlite"
+sqlite3 "$WP8_DB" <<SQL
+CREATE TABLE events (
+  ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL,
+  event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT
+);
+CREATE INDEX idx_session_ts ON events(session_id, ts);
+CREATE INDEX idx_ts ON events(ts);
+SQL
+# Seed 3 days (2026-05-20 .. 2026-05-22), one UPS+Stop per day at noon.
+# Picked safely in the past so end<=today rule never blocks the happy path.
+for OFF in 0 1 2; do
+    DAY_MS=$(python3 -c "
+from datetime import date, datetime, time, timedelta
+d = date(2026, 5, 20) + timedelta(days=$OFF)
+print(int(datetime.combine(d, time(12, 0)).timestamp() * 1000))
+")
+    DAY_ISO=$(python3 -c "
+from datetime import date, timedelta
+print((date(2026, 5, 20) + timedelta(days=$OFF)).isoformat())
+")
+    STOP_MS=$((DAY_MS + 1800000))
+    sqlite3 "$WP8_DB" "INSERT INTO events VALUES ($DAY_MS, 'sid-$DAY_ISO', '/repo/p', 'UserPromptSubmit', NULL, NULL, '{\"prompt_length_chars\":5}'), ($STOP_MS, 'sid-$DAY_ISO', '/repo/p', 'Stop', NULL, NULL, NULL);"
+done
+
+# WP8-1: --range flag appears in `visualize --help`.
+HELP_OUT=$("$CLI" visualize --help 2>&1)
+if echo "$HELP_OUT" | grep -qE '^  --range START:END'; then
+    check "WP8-P1 codify: --help lists --range START:END flag" pass
+else
+    check "WP8-P1 codify: --range in --help" fail "flag not listed at column-3"
+fi
+
+# WP8-2a: happy path emits CT_INITIAL_VIEW="custom".
+WP8_HAPPY="$WP8_DIR/happy.html"
+CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
+    --range 2026-05-20:2026-05-22 --out "$WP8_HAPPY" > /dev/null 2>&1
+happy_rc=$?
+if [ $happy_rc -eq 0 ] && [ -f "$WP8_HAPPY" ] && \
+   grep -q 'CT_INITIAL_VIEW = "custom"' "$WP8_HAPPY"; then
+    check "WP8-P1 codify: --range emits CT_INITIAL_VIEW=\"custom\"" pass
+else
+    check "WP8-P1 codify: --range emits CT_INITIAL_VIEW=\"custom\"" fail "rc=$happy_rc, value missing"
+fi
+
+# WP8-2b: emitted multi-day shape — meta.start + meta.end + meta.day_count = 3.
+if grep -q '"start": "2026-05-20"' "$WP8_HAPPY" && \
+   grep -q '"end": "2026-05-22"' "$WP8_HAPPY" && \
+   grep -q '"day_count": 3' "$WP8_HAPPY"; then
+    check "WP8-P1 codify: --range payload has meta.start/end/day_count" pass
+else
+    check "WP8-P1 codify: --range meta.start/end/day_count" fail "field(s) missing"
+fi
+
+# WP8-2c: range-shape vs single-day-shape distinction — --range payload uses
+# hour_range_by_day (dict), NOT the single-day flat `hour_range` shape that
+# build_day_data emits for the 0/0 back-compat case.
+if grep -q '"hour_range_by_day"' "$WP8_HAPPY" && \
+   ! grep -qE '"target_iso"' "$WP8_HAPPY"; then
+    check "WP8-P1 codify: --range emits multi-day shape (hour_range_by_day; no target_iso)" pass
+else
+    check "WP8-P1 codify: --range multi-day shape" fail "shape contamination — target_iso must NOT appear in range mode"
+fi
+
+# WP8-3: default invocation (no --range, no --week) still emits CT_INITIAL_VIEW="day".
+# Regression-pin: the --range path is opt-in, not a silent default change.
+WP8_DEFAULT="$WP8_DIR/default.html"
+TODAY_ISO=$(python3 -c "from datetime import date; print(date.today().isoformat())")
+CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
+    --date "$TODAY_ISO" --context-days-prior 0 --context-days-after 0 \
+    --out "$WP8_DEFAULT" > /dev/null 2>&1
+def_rc=$?
+if [ $def_rc -eq 0 ] && [ -f "$WP8_DEFAULT" ] && \
+   grep -q 'CT_INITIAL_VIEW = "day"' "$WP8_DEFAULT" && \
+   ! grep -q 'CT_INITIAL_VIEW = "custom"' "$WP8_DEFAULT"; then
+    check "WP8-P1 codify: --range is opt-in (no --range → CT_INITIAL_VIEW=\"day\")" pass
+else
+    check "WP8-P1 codify: --range opt-in regression-pin" fail "rc=$def_rc, default emit got 'custom'"
+fi
+
+# WP8-4: CT_MAX_RANGE_DAYS template injection — defaults to 90.
+if grep -qE 'CT_MAX_RANGE_DAYS = 90\b' "$WP8_HAPPY"; then
+    check "WP8-P1 codify: CT_MAX_RANGE_DAYS = 90 default injected" pass
+else
+    check "WP8-P1 codify: CT_MAX_RANGE_DAYS injection" fail "placeholder not replaced or wrong default"
+fi
+
+# WP8-5: validation — end<start fails with rc=2 + rule-named message.
+err1=$("$CLI" visualize --no-open --range 2026-05-22:2026-05-20 --out "$WP8_DIR/v1.html" 2>&1)
+rc1=$?
+if [ $rc1 -eq 2 ] && echo "$err1" | grep -qE 'end >= start'; then
+    check "WP8-P1 codify: validation — end<start exits 2, names rule" pass
+else
+    check "WP8-P1 codify: validation end<start" fail "rc=$rc1, msg=$err1"
+fi
+
+# WP8-6: validation — days>cap fails with rc=2 + names cap.
+# Use a date safely in the past with 100+ days inside the WP8_DB-irrelevant range.
+err2=$("$CLI" visualize --no-open --range 2026-01-01:2026-05-20 --out "$WP8_DIR/v2.html" 2>&1)
+rc2=$?
+if [ $rc2 -eq 2 ] && echo "$err2" | grep -qE 'viz_custom_range_max_days|cap'; then
+    check "WP8-P1 codify: validation — days>cap exits 2, names cap" pass
+else
+    check "WP8-P1 codify: validation days>cap" fail "rc=$rc2, msg=$err2"
+fi
+
+# WP8-7: validation — end>today fails with rc=2 + names "future".
+err3=$("$CLI" visualize --no-open --range 2026-05-20:2030-01-01 --out "$WP8_DIR/v3.html" 2>&1)
+rc3=$?
+if [ $rc3 -eq 2 ] && echo "$err3" | grep -qE 'future'; then
+    check "WP8-P1 codify: validation — end>today exits 2, names 'future'" pass
+else
+    check "WP8-P1 codify: validation end>today" fail "rc=$rc3, msg=$err3"
+fi
+
+# WP8-8: validation — bad shape (no colon) fails with rc=2 + names grammar.
+err4=$("$CLI" visualize --no-open --range 'not-a-range' --out "$WP8_DIR/v4.html" 2>&1)
+rc4=$?
+if [ $rc4 -eq 2 ] && echo "$err4" | grep -qE 'YYYY-MM-DD'; then
+    check "WP8-P1 codify: validation — bad shape exits 2, names grammar" pass
+else
+    check "WP8-P1 codify: validation bad shape" fail "rc=$rc4, msg=$err4"
+fi
+
+# WP8-9: mutual exclusion — --range + --demo fails with rc=2 + names "demo".
+err5=$("$CLI" visualize --no-open --range 2026-05-20:2026-05-22 --demo --out "$WP8_DIR/v5.html" 2>&1)
+rc5=$?
+if [ $rc5 -eq 2 ] && echo "$err5" | grep -qE 'demo'; then
+    check "WP8-P1 codify: --range + --demo mutual exclusion (rc=2)" pass
+else
+    check "WP8-P1 codify: --range+--demo exclusion" fail "rc=$rc5, msg=$err5"
+fi
+
+# WP8-10: warning — --range + --context-days-prior emits stderr warning + exits 0.
+# Subtler than the error cases — the warning is easy to lose silently in a refactor.
+warn_out="$WP8_DIR/warn.html"
+err6=$(CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
+        --range 2026-05-20:2026-05-22 --context-days-prior 3 --out "$warn_out" 2>&1 >/dev/null)
+rc6=$?
+if [ $rc6 -eq 0 ] && [ -f "$warn_out" ] && \
+   echo "$err6" | grep -qE 'warning.*ignored.*range mode'; then
+    check "WP8-P1 codify: --range + --context-days-prior emits warning + exits 0" pass
+else
+    check "WP8-P1 codify: warning on combined flags" fail "rc=$rc6, msg=$err6"
+fi
+
+# WP8-11: config — viz_custom_range_max_days override validated through load_config.
+# Set cap to 2 days; a 3-day range should now fail.
+printf '{"viz_custom_range_max_days": 2}' > "$WP8_DIR/config.json"
+err7=$(CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
+        --range 2026-05-20:2026-05-22 --out "$WP8_DIR/v7.html" 2>&1)
+rc7=$?
+if [ $rc7 -eq 2 ] && echo "$err7" | grep -qE '3 days > 2'; then
+    check "WP8-P1 codify: viz_custom_range_max_days config override applied" pass
+else
+    check "WP8-P1 codify: config cap override" fail "rc=$rc7, msg=$err7"
+fi
+
+# WP8-12: config — invalid value silently falls back to default 90.
+printf '{"viz_custom_range_max_days": "not a number"}' > "$WP8_DIR/config.json"
+WP8_BADCFG="$WP8_DIR/badcfg.html"
+CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
+    --range 2026-05-20:2026-05-22 --out "$WP8_BADCFG" > /dev/null 2>&1
+badcfg_rc=$?
+if [ $badcfg_rc -eq 0 ] && [ -f "$WP8_BADCFG" ] && \
+   grep -qE 'CT_MAX_RANGE_DAYS = 90\b' "$WP8_BADCFG"; then
+    check "WP8-P1 codify: invalid config value falls back to default 90" pass
+else
+    check "WP8-P1 codify: invalid-config fallback" fail "rc=$badcfg_rc, default not preserved"
+fi
+rm -f "$WP8_DIR/config.json"
+
+# WP8-13: P1.disc.1 hardening lock-in — test #1's flag-count regex is
+# anchored at column-3 (2 leading spaces) + space-or-EOL after flag name.
+# This pin asserts the test file itself uses the hardened regex shape; a
+# regression to the permissive `^\s+--(...)\b` form would re-introduce the
+# false-match against wrapped help-text continuation lines. We grep for a
+# byte-stable substring of the hardened pattern (column-3 anchor + non-greedy
+# tail) — fixed-string match (-F) avoids regex-quoting hell on $.
+TEST_FILE="$(dirname "$0")/test_visualize_cli.sh"
+if grep -Fq '^  --(date|week|demo|no-open|out)( |$)' "$TEST_FILE"; then
+    check "WP8-P1 codify: P1.disc.1 — flag-count regex hardened (column-3 + EOL)" pass
+else
+    check "WP8-P1 codify: P1.disc.1 regex hardening" fail "test file does not contain the hardened regex form"
+fi
+
+# ── WP8 Phase 2 codify: UI — Custom tab + date-range picker + URL-hash ──
+# Static-emit pins against $WP8_HAPPY (same range-emitted HTML used by
+# Phase 1 codify). Phase 2 adds 10 UI deliverables that ride on the data
+# contract Phase 1 already pinned.
+
+# WP8-P2-1: Custom toolbar tab enabled (was disabled pre-WP8).
+if grep -qF "tabBtn('Custom', 'custom', view === 'custom', true)" "$WP8_HAPPY"; then
+    check "WP8-P2 codify: Custom toolbar tab enabled (cursor=pointer)" pass
+else
+    check "WP8-P2 codify: Custom tab enabled" fail "tabBtn('Custom', 'custom', view === 'custom', true) not in emit"
+fi
+# Plus regression-pin against the pre-WP8 disabled form returning.
+if ! grep -qF "tabBtn('Custom', 'custom', false, false)" "$WP8_HAPPY"; then
+    check "WP8-P2 codify: no pre-WP8 disabled Custom tab form (regression-pin)" pass
+else
+    check "WP8-P2 codify: regression — disabled Custom tab" fail "pre-WP8 disabled form still in emit"
+fi
+
+# WP8-P2-2: RangePicker component defined + data-range-picker selectors.
+if grep -qF 'function RangePicker(' "$WP8_HAPPY" && \
+   grep -qF 'data-range-picker="start"' "$WP8_HAPPY" && \
+   grep -qF 'data-range-picker="end"' "$WP8_HAPPY"; then
+    check "WP8-P2 codify: RangePicker component + data-range-picker=start/end selectors" pass
+else
+    check "WP8-P2 codify: RangePicker component" fail "function or selector attrs missing"
+fi
+
+# WP8-P2-3: validateRange helper defined with the 4 rules.
+# Each rule's stderr-style message is a substring we can grep for.
+if grep -qF 'function validateRange(' "$WP8_HAPPY" && \
+   grep -qF 'End date must be on or after start date' "$WP8_HAPPY" && \
+   grep -qF 'End date must not be in the future' "$WP8_HAPPY" && \
+   grep -qF 'Range too long' "$WP8_HAPPY" && \
+   grep -qF 'Dates must be in YYYY-MM-DD form' "$WP8_HAPPY"; then
+    check "WP8-P2 codify: validateRange helper with 4 client-side rule messages" pass
+else
+    check "WP8-P2 codify: validateRange helper" fail "function or rule strings missing"
+fi
+
+# WP8-P2-4: isCustom + isDayLike constants in the interactive Dashboard wrapper.
+if grep -qF "const isCustom = view === 'custom'" "$WP8_HAPPY" && \
+   grep -qF "const isDayLike = isDay || isCustom" "$WP8_HAPPY"; then
+    check "WP8-P2 codify: isCustom + isDayLike constants in Dashboard wrapper" pass
+else
+    check "WP8-P2 codify: isCustom/isDayLike constants" fail "constants missing"
+fi
+
+# WP8-P2-5: Toolbar invocation passes range props + maxRangeDays from window.
+if grep -qF 'rangeStart={range.start}' "$WP8_HAPPY" && \
+   grep -qF 'rangeEnd={range.end}' "$WP8_HAPPY" && \
+   grep -qF 'onRangeChange={onRangeChange}' "$WP8_HAPPY" && \
+   grep -qF 'maxRangeDays={window.CT_MAX_RANGE_DAYS || 90}' "$WP8_HAPPY"; then
+    check "WP8-P2 codify: Toolbar receives range props + maxRangeDays from window" pass
+else
+    check "WP8-P2 codify: Toolbar range props" fail "one or more props missing in wrapper"
+fi
+
+# WP8-P2-6: _initView IIFE with hash.view priority over CT_INITIAL_VIEW.
+# The IIFE form `(() => { ... })()` + the substring 'CT_INITIAL_VIEW' inside it
+# uniquely identifies the new precedence logic.
+if grep -qF 'const _initView = (() => {' "$WP8_HAPPY" && \
+   grep -qF "if (hash.view === 'custom'" "$WP8_HAPPY" && \
+   grep -qF "window.CT_INITIAL_VIEW === 'custom'" "$WP8_HAPPY"; then
+    check "WP8-P2 codify: _initView IIFE prefers hash.view over CT_INITIAL_VIEW" pass
+else
+    check "WP8-P2 codify: _initView IIFE" fail "init-view precedence logic not in emit"
+fi
+
+# WP8-P2-7: range state with hash-restore + validation fallback.
+# Substring search for the useState initializer body's distinctive lines.
+if grep -qF 'const [range, setRange] = React.useState(() => {' "$WP8_HAPPY" && \
+   grep -qF 'if (hash.range &&' "$WP8_HAPPY" && \
+   grep -qF 'validateRange(s, e, window.CT_MAX_RANGE_DAYS || 90) == null' "$WP8_HAPPY"; then
+    check "WP8-P2 codify: range state hash-restore + validation fallback" pass
+else
+    check "WP8-P2 codify: range state hash-restore" fail "useState initializer not in emit"
+fi
+
+# WP8-P2-8: Debounced view+range hash-write useEffect with three-branch dispatch.
+# The effect body contains the three view-conditional updateHash calls.
+if grep -qF "if (view === 'custom') {" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: 'custom', range:" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: 'week', range: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: null, range: null })" "$WP8_HAPPY"; then
+    check "WP8-P2 codify: view+range hash-write three-branch dispatch (custom/week/day)" pass
+else
+    check "WP8-P2 codify: hash-write three-branch dispatch" fail "one or more dispatch branches missing"
+fi
+
+# WP8-P2-9: isDayLike used at all 6 consumer surfaces. Count must be >= 6.
+# Surfaces: Body timeline ternary, Minimap render gate, Date-header label,
+# Date-header projects/sessions count, ProjectFilterPopover projects prop,
+# SummaryStrip stats selection.
+isdaylike_count=$(grep -cF 'isDayLike' "$WP8_HAPPY" || true)
+if [ "$isdaylike_count" -ge 6 ]; then
+    check "WP8-P2 codify: isDayLike used at >=6 consumer surfaces (got $isdaylike_count)" pass
+else
+    check "WP8-P2 codify: isDayLike surfaces" fail "expected >=6, got $isdaylike_count"
+fi
+
+# WP8-P2-10: EmptyState date string format for Custom view.
+# The conditional `isCustom ? \`${range.start} to ${range.end}\` : ...` lives
+# in the body's <EmptyState date={...} /> ternary.
+if grep -qF '<EmptyState date={isCustom' "$WP8_HAPPY" && \
+   grep -qF '`${range.start} to ${range.end}`' "$WP8_HAPPY"; then
+    check "WP8-P2 codify: EmptyState date string format for Custom view" pass
+else
+    check "WP8-P2 codify: EmptyState date string" fail "isCustom date-string conditional missing"
+fi
+
+rm -rf "$WP8_DIR"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

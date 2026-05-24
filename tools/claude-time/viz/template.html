@@ -31,7 +31,13 @@
   // Data inlined at emit time by the `claude-time visualize` Python subcommand.
   window.CT_DATA = {{CT_DATA_JSON}};
   // Initial view selection (set by --week flag at emit time; default 'day').
+  // WP8 (2026-05-24): 'custom' is now a valid value, emitted when the user
+  // invokes `claude-time visualize --range START:END`.
   window.CT_INITIAL_VIEW = "{{CT_INITIAL_VIEW}}";
+  // WP8: max-days cap for the Custom-view date-range picker. Mirrors the
+  // server-side cap (cfg["viz_custom_range_max_days"], default 90). Single
+  // source of truth: Python config → here → Phase 2 client-side validation.
+  window.CT_MAX_RANGE_DAYS = {{CT_MAX_RANGE_DAYS}};
 </script>
 
 <script type="text/babel">
