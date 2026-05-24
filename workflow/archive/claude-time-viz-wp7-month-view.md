@@ -1,7 +1,9 @@
 ---
 workflow: feature
-state: verify-codify (all phases complete; ready for ship)
+state: ship (complete)
 created: 2026-05-24
+shipped: 2026-05-24
+ship_commit: ce1c7ec
 cycle: claude-time-visualize-v2
 wbs_wp: WP7
 drive_mode: autopilot
@@ -132,10 +134,10 @@ drive_mode: autopilot
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** all phases complete (Phase 1 + Phase 2 both fully [x]); ready for `/feature-ship`
+- **Path:** Feature > finalize
+- **Active scope:** finalize (ship complete @ commit ce1c7ec pushed to origin/main; ready for `/feature-finalize`)
 - **Blocked:** none
-- **Unvisited (sequence-of-execution):** ship → finalize
+- **Unvisited (sequence-of-execution):** finalize
 
 ## Phase 2 final tuning summary (2026-05-24, aspect 1.7 → 2.0)
 
@@ -216,6 +218,29 @@ User feedback at second verify-human round: "change the ratio to 2:1. Basically 
 **Confidence:** high
 **Evidence:** Phase 2 plan explicitly extends the hash-write `useEffect` from 3 branches (day/week/custom) to 4 (day/week/custom/month), each emitting the appropriate `month` key (set or null) per the URL-hash schema in CLAUDE.md. The WP8-P2-8 assertion pinned exact substrings like `updateHash({ view: 'week', range: null })` — those substrings now have a `month: null` field appended and so no longer match. The new code is correct per plan; the old assertion is checking the pre-WP7 contract shape.
 **Action:** auto-update the assertion to the new 4-branch shape — add the matching `month: <value-or-null>` field to each grep expectation. Rename the assertion to "four-branch dispatch (day/week/custom/month)" so future readers understand the contract.
+
+## Retrospect
+
+- **What changed in our understanding:** **Month view's primary axis is 1D, not 2D.** At spec/plan time, D5 (vertical-strip per-project density tiles encoding active minutes proportionally) treated Month view as a 2D composition question ("what was the project mix per day"). Verify-human surfaced the root realization: that's what **Day view** is for via drill-down. Month view answers the 1D "how busy was this day" question via GitHub-contribution-graph monochrome saturation. The encoded signal axis was wrong, not just the visual treatment. Single biggest learning of the WP.
+
+- **Assumptions that held:**
+  - Data layer reuse: WP3's `build_range_data` worked unchanged for the month-window path, just called twice (active + prev) per the D1 hybrid pre-load strategy. No new Python builder needed.
+  - WP8's `--range` precedent ported cleanly to `--month`: `_parse_month_flag` mirrored `_parse_range_flag`'s shape, mutex guard pattern, initial-view precedence chain.
+  - D6 fallback (active-month payload mirrored to top-level `data.today`) worked first try: Day/Week tabs in Month-emit mode render correctly without code changes.
+  - URL hash four-branch extension from three-branch was mechanical.
+  - SURFACE-2026-05-22-PLAYWRIGHT-SYNTHETIC-WHEEL heuristic: React-fiber `reactProps[fiberKey].onClick()` direct invocation worked for ALL click handlers in verify-self. 100% reliable; saved at least one false back-loop cycle.
+  - `viz_render.render_html` signature unchanged: the new `months` key flowed through `json.dumps(data)` verbatim. P1.7 plan-time prediction held — no `viz_render.py` change needed for the data plumbing.
+
+- **Assumptions that were wrong:**
+  - **D5 vertical-strip density** was the spec's chosen approach (with OQ1 alternatives: vertical strips / 2×2 grids / squarified treemap). All three were 2D encodings answering the wrong question. **Lesson:** when picking between visualization candidates, name the **signal axis** explicitly ("1D intensity" vs "2D composition") before picking between candidates that all live in the same axis class.
+  - **Cell aspect ratio: 1:1 was wrong, 1.7:1 was still wrong, 2:1 was right.** The contract wasn't "GitHub-graph-shaped" — it was "the whole month fits in one screen height without scrolling." Two-step UX tuning at verify-human. **Lesson:** when a user gives feedback about size/proportion, the underlying contract is usually about *fit-in-the-medium* (viewport, page, panel) more than *shape-by-itself*. Asking "what aspect ratio?" collects one number; asking "should the whole month fit above the fold?" collects the binding constraint.
+  - **`MonthNavToast` reload-redirect mechanism landed cleanly from a documented plan-time ambiguity.** P2.5 plan flagged three candidates with a lean toward (b) toast+clipboard; build picked (b), the lean survived. **Lesson:** documenting plan-time ambiguities with candidates + lean is a good pattern; the lean almost always survives to ship.
+  - **The pre-verify-self `dayAggs: Map<iso, Map<alias, minutes>>` data structure was over-built for D5.** D5' only needed `Map<iso, total_minutes>` — half the structure, simpler `React.useMemo`. **Lesson:** pre-compute only what the **render** needs, not what the **conceptual model** suggests.
+
+- **Approach delta:**
+  - **Phase 1: no plan deviations.** All 7 impl tasks landed as written. verify-auto 3/3, verify-self 18/18, verify-human 4/4, verify-codify 13/13 PASS first run.
+  - **Phase 2: substantial design pivot at verify-human.** Initial impl matched plan (D5 vertical strips); verify-human FAILED on .1 (cell size 1:1) + .2 (color encoding per-project strips). Back-loop landed redesign (D5 → D5', cell 1:1 → 1.7:1, drop `_projectTint`, add `_intensityColor` + 6-bucket palette). Second verify-human FAILED on .1 again (1.7:1 still too tall); second scoped re-entry landed final tuning (1.7:1 → 2:1, single-line edit). Then 8/8 PASS. Verify-codify added 23 assertions (17 source-shape + 6 behavioral) first-run pass; one obsolete-test triaged + auto-updated (WP8-P2-8 three-branch → four-branch hash dispatch).
+  - **Test seed gotcha caught at re-verify gate:** 780-min session starting at noon spans past midnight → orphan UPS + orphan Stop → per-day worker can't pair → missing day cell. Caught in 8/8 → 4/8 re-verify gate; fixed by capping seed durations to fit within the day boundary (start 09:00, mins ≤ 720). **Lesson worth surfacing:** test fixtures for per-day-anchored data need same-day-bounded sessions; overnight-spanning sessions exercise a different code path (day-spanning aggregation) and shouldn't be used as "simple" intensity fixtures.
 
 ## Discoveries
 

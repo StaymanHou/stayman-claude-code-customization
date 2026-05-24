@@ -153,18 +153,19 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [x] 6.4 Added 3 WP6 codify assertions to `test_visualize_cli.sh` (59 → 62 PASS): positive consuming-surface pin on the shipped `tabBtn('Day', 'day', view === 'day', true)`, negative regression-pin against the legacy `tabBtn('Today',...)` form, and a data-layer `.today` preservation pin.
 - **Plan-defect caught at F9 back-loop:** initial 5 leaves edited only `viz/dashboard.jsx::Toolbar` (design-canvas static prototype, dead from shipped-UI perspective — `viz_render.py` strips it at emit). Verify-auto caught it via grep miss on `activeRange={isDay ? 'day' : 'week'}`. F9 added P1.6 + P1.7 to edit the actual shipped `InteractiveToolbar`. Lesson: the WBS task 6.1 text "the emit-time-appended interactive Dashboard wrapper, not the byte-pinned source" was correct but the plan mis-mapped it.
 
-### WP7: Month view
-**Description:** Renders a calendar-month rollup — likely a 5-week or 6-week grid where each cell is a day-mini-bar showing per-project segment proportions (color blocks summing to that day's active time). Click a day → zoom-in to that day in Day view. Reuses WP3's range-aware data layer (one call for the whole month).
+### WP7: Month view — [x] SHIPPED 2026-05-24 (commit ce1c7ec)
+**Description:** Calendar-month rollup — 7-column Mon-first grid where each day-cell is a GitHub-contribution-graph-style single-tile encoding daily intensity via monochrome saturation (active-blue 268° hue, 5 buckets + empty). Click-day → reload-redirect toast with `claude-time visualize --date YYYY-MM-DD` (file:// dashboard has no server to navigate to). Reuses WP3's `build_range_data` for the data layer; emit-time pre-loads two months (active + prev) so prev-arrow nav is a pure client-side state swap.
 **Phase:** 2
-**Dependencies:** WP3, WP5 (so click-to-zoom uses the viewport mechanic)
-**Size:** L
+**Dependencies:** WP3, WP5 (both shipped)
+**Size:** L (2 phases shipped: CLI `--month` flag + two-month payload emit; MonthView UI + nav + URL hash + toast reload-redirect)
 **Tasks:**
-- [ ] 7.1 New `MonthView` component: 7-column calendar grid, weeks as rows, day-cell renders mini-stacked-bar of active-time-by-project
-- [ ] 7.2 Click-day handler: switches to Day view + sets viewport to that day's range
-- [ ] 7.3 Toolbar: "Month" tab becomes active button (was `disabled` in v1); URL hash carries `view=month&month=YYYY-MM`
-- [ ] 7.4 Empty-day rendering: dim cell, "no tracked time" tooltip on hover
-- [ ] 7.5 Cross-month nav: previous-month / next-month arrows in toolbar
-- [ ] 7.6 `test_visualize_cli.sh` assertion: emitted HTML contains MonthView code + "Month" toolbar label is no longer `disabled`
+- [x] 7.1 `MonthView` component in `viz/dashboard.jsx`: 7-column Monday-first calendar grid, leading/trailing padding cells inert, day-of-week header row (MON–SUN), today highlighted with `CT_TOKENS.active` border. Cell rendering = single-tile monochrome `_intensityColor(intensity)` via 6-entry `_MONTH_INTENSITY_PALETTE` (empty + 5 oklch buckets in 268° hue), `aspectRatio: '2 / 1'` (fits-in-viewport-height contract — user-tuned at verify-human from initial 1.7:1). **Design-decision pivot:** initial spec D5 was per-project vertical-strip density; rejected at verify-human in favor of D5' single-tile monochrome — Month view's primary axis is 1D "how busy was this day", not 2D project composition (Day view answers that via drill-down).
+- [x] 7.2 Click-day handler: `onDayClick(iso)` → `MonthNavToast` with `claude-time visualize --date YYYY-MM-DD` command + auto-clipboard-copy (P2.5 resolution — file:// dashboard can't navigate-redirect, so non-modal toast + clipboard is the honest UX). Same reload-redirect mechanism for next-month and prev-of-prev nav.
+- [x] 7.3 Month toolbar tab enabled (`tabBtn('Month', 'month', view === 'month', true)`; was `false, false`). URL hash carries `view=month;month=YYYY-MM` per CLAUDE.md hash schema. Four-branch hash dispatcher (day/week/custom/month) with default-elision — `month` key dropped when `view !== 'month'`.
+- [x] 7.4 Empty-day rendering: `data-month-day-active="false"` + bucket-0 background (`oklch(0.965 0.005 268)` — barely-tinted) + `title="no tracked time"` tooltip. Visually distinct from even the lowest non-zero bucket.
+- [x] 7.5 Cross-month nav: prev-month arrow does client-side state swap (D1, instant — reads from pre-loaded `window.CT_DATA.months[prev_iso]`); next-month + prev-of-prev trigger `MonthNavToast` reload-redirect with `--month YYYY-MM` command. `‹` `›` arrows in the month-name pill inside the dateLabel slot when `view === 'month'`.
+- [x] 7.6 Test coverage: 17 source-shape pins in `test_visualize_cli.sh` (WP7-P2-1 through -17) + 6 behavioral pins in `test_visualize_interactive.js` via new `renderMonthDashboard()` helper. Plus Phase 1: 13 source-shape pins (WP7-P1-1 through -13). Net +36 assertions across the WP7 cycle; 264/0 full claude-time suite at ship.
+- **Plus** opportunistic in-flight: one obsolete-test triaged + updated mid-codify (WP8-P2-8 three-branch hash dispatch → four-branch); one stale session-pause marker removed from `wbs.md`; D6 fallback (when `--month` is set, `data.today` is the active-month payload so Day/Week tabs in Month-emit mode have a coherent payload to render).
 
 ### WP8: Custom-range view — [x] SHIPPED 2026-05-24 (commit 14a1cfc)
 **Description:** "Pick a start date and end date" tab. With WP5's viewport already supporting pan/zoom over arbitrary ranges, this is mostly UI: a date-range picker and toolbar tab.
