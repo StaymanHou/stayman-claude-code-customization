@@ -114,3 +114,31 @@ The remaining work is two genuinely new things: (1) the CLI flag + emit-time wir
 - **Exact field name for the renderer-consumed range metadata** (`meta_range` vs `target_iso`+`day_count` vs reusing WP5b's `meta.start`+`meta.end`). P1.3 picks based on whichever is cleanest with `build_range_data`'s existing output.
 - **Whether `week_payload` should also be range-aware in custom mode** (i.e., when the user picks 2026-05-20:2026-05-26, should the Week tab show that week instead of the Monday-this-week default?). Decision: NO for this WP — keep `week_payload` independent (Monday-of-target-day), matching WP5b's precedent. A future WP can add range-aware Week if user pressure surfaces.
 - **Picker UX polish** (popover vs inline inputs, calendar widget vs native date inputs). WBS says "MVP: two `<input type=date>` for MVP, no fancy popover". Honor that. Polish is a follow-up if needed.
+
+## Retrospect
+
+- **What changed in our understanding:**
+  - The four plan-deviation lessons baked in from WP9 (per-phase codify, surface-naming, downstream contract impacts at the changing phase, single-source-of-truth) **paid off cleanly**. Per-phase codify spawned 14 + 11 pins exactly where they belonged. The `MAX_RANGE_DAYS` single-source-of-truth threading (Python `viz_custom_range_max_days` → `{{CT_MAX_RANGE_DAYS}}` template placeholder → `window.CT_MAX_RANGE_DAYS` → client-side `validateRange`) was a 4-touch chain that worked first time because the plan named all four consumers up front.
+  - P1.3 was correctly **obsoleted at execution time**: the plan proposed adding a new `meta_range` field, but `build_range_data` already emitted `meta.start/end/day_count` natively — no new field needed. Worth noting that plan-time speculation about data-layer additions is cheap to write but often turns out unnecessary; inspecting the existing data-shape FIRST would have saved a bullet in the plan.
+  - The subagent-JIT-false-fail learning (memory: SURFACE-2026-05-22-LEARNING-VERIFY-SELF-SUBAGENT-JIT-FALSE-FAIL) was directly load-bearing this session. Without it, the orchestrator would have back-looped to build on the false-fail O2/O4 reports and wasted ~10 minutes. The check: "N-1 of N outcomes PASS and the Nth FAIL is mechanically implied by the PASSes → re-verify directly" caught the Playwright synthetic-event boundary issue immediately. Re-verifying via React-fiber `reactProps.onBlur()` proved the hash-write path works.
+
+- **Assumptions that held:**
+  - `build_range_data` is the right data path for both Day-multi-day (WP5b) and Custom-range (WP8). The plan correctly identified this; no surprises.
+  - The Custom view shares `DayTimeline` rendering — `isDayLike = isDay || isCustom` was the clean abstraction.
+  - The Toolbar's `dateLabel` slot is the natural surface for the picker swap.
+  - `useFilter()` (WP9) and `ViewportContext` (WP5) plumb through Custom view unchanged.
+
+- **Assumptions that were wrong:**
+  - Plan assumed Playwright's `dispatchEvent(new Event('blur'))` would route through React's synthetic event system. It does NOT for inputs in JIT-compiled Babel-standalone pages (same class as SURFACE-2026-05-22-PLAYWRIGHT-SYNTHETIC-WHEEL-DOESNT-REACH-REACT). The fix wasn't code — it was orchestrator-side: re-verify via React fiber inspection. Worth re-confirming: when a verify-self subagent uses synthetic DOM events on a React app, expect false-fails on `onChange`/`onBlur`-shaped behaviors; mitigation is direct `reactProps[fiberKey]` invocation from the orchestrator. **Promote candidate:** worth adding a "Playwright synthetic-event boundary" rule to the verify-self SKILL.md if a third instance surfaces (we now have 2: wheel + blur).
+
+- **Approach delta:**
+  - Plan had 8 Phase 2 tasks (P2.1–P2.8). P2.8 (CLAUDE.md hash schema update) was a no-op at execution time because the schema entries (WP6 for `view`; WP8 for `range`) already matched what shipped — no drift to fix.
+  - Picker initial state design: the plan said "Each input fires onChange → local state → onBlur writes updateHash". Execution refined this: the picker's `commit()` does NOT directly call `updateHash`; it calls the parent's `onRangeChange` prop, which calls `setRange`, which triggers the shared `useEffect` that handles default-elision. This is cleaner — one source of truth for hash writes — and matches the WP9 filter-chip pattern.
+  - Empty-range message: plan said "Custom-flavored EmptyState"; execution simply reused the existing `EmptyState` with a Custom-flavored date string (`${range.start} to ${range.end}`). No new component.
+  - One small surprise: the existing `EmptyState`'s copy says "No tracked time on {date}". For Custom view, "No tracked time on 2026-05-20 to 2026-05-22" reads slightly awkwardly ("on" instead of "in"). Human approved this in verify-human — explicitly accepted as a cosmetic — but a future polish pass could change `on` → `in` when the date string contains "to ".
+
+## Communicate
+
+> **Feature complete:** WP8 (Custom-range view) of the `claude-time-visualize-v2` cycle has shipped. The `claude-time visualize` dashboard now has a functional Custom toolbar tab with a date-range picker that lets users pick `[start, end]` dates and load the timeline over that arbitrary window. The CLI gained a peer `--range YYYY-MM-DD:YYYY-MM-DD` flag for shareable invocations. Verify via: `python3 tools/claude-time/claude-time visualize --range 2026-05-20:2026-05-22` opens the dashboard with the Custom tab active and the picker pre-filled.
+
+Requester = operator — closure notice for self-record.

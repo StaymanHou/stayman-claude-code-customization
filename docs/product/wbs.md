@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-23
+updated: 2026-05-24
 cycle: claude-time-visualize-v2
 ---
 
@@ -166,18 +166,18 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [ ] 7.5 Cross-month nav: previous-month / next-month arrows in toolbar
 - [ ] 7.6 `test_visualize_cli.sh` assertion: emitted HTML contains MonthView code + "Month" toolbar label is no longer `disabled`
 
-### WP8: Custom-range view
+### WP8: Custom-range view — [x] SHIPPED 2026-05-24 (commit 14a1cfc)
 **Description:** "Pick a start date and end date" tab. With WP5's viewport already supporting pan/zoom over arbitrary ranges, this is mostly UI: a date-range picker and toolbar tab.
 **Phase:** 2
-**Dependencies:** WP3, WP5
-**Size:** M
+**Dependencies:** WP3, WP5 (both shipped)
+**Size:** M (2 phases shipped: CLI `--range` flag + range-aware emit; UI Custom tab + date-range picker + URL-hash round-trip)
 **Tasks:**
-- [ ] 8.1 Date-range picker UI component (two `<input type=date>` for MVP, no fancy popover; fancy can come later)
-- [ ] 8.2 Toolbar: "Custom" tab becomes active button; URL hash carries `view=custom&start=YYYY-MM-DD&end=YYYY-MM-DD`
-- [ ] 8.3 Range validation: end >= start, end <= today (no future), reasonable max (90 days?) to avoid renderer brownouts at low zoom
-- [ ] 8.4 Empty-range message: "No tracked time in 2026-05-01 to 2026-05-07."
-- [ ] 8.5 CLI parity: `claude-time visualize --range 2026-05-01:2026-05-07` flag matching the UI's custom-range
-- [ ] 8.6 `test_visualize_cli.sh` assertions: emitted HTML contains range-picker, --range CLI flag works end-to-end
+- [x] 8.1 Date-range picker UI component — `RangePicker` in `viz/dashboard.jsx` (two `<input type=date>` controls + "→" separator, `data-range-picker="start"|"end"` Playwright-stable selectors, buffer-then-commit on blur/Enter, native browser date-picker behavior).
+- [x] 8.2 Toolbar: Custom tab enabled (`tabBtn('Custom', 'custom', view === 'custom', true)`), URL hash carries `view=custom;range=YYYY-MM-DD:YYYY-MM-DD` per the CLAUDE.md hash schema (semicolon separator, `range` key value is colon-joined start:end, default-elision drops both keys when view==='day').
+- [x] 8.3 Range validation: client-side `validateRange` helper mirrors Python's `_parse_range_flag` rules (shape, end>=start, end<=today, days<=`window.CT_MAX_RANGE_DAYS`). Invalid input gets red border (`#c84a4a`) + tooltip naming the rule. `viz_custom_range_max_days` config key (default 90) is single-sourced from Python via `{{CT_MAX_RANGE_DAYS}}` template placeholder.
+- [x] 8.4 Empty-range message: `EmptyState` component reused with custom date string (`${range.start} to ${range.end}`). Produces "No tracked time on 2026-05-20 to 2026-05-22" for empty Custom view.
+- [x] 8.5 CLI parity: `claude-time visualize --range 2026-05-01:2026-05-07` flag wired through `_cmd_visualize` to `build_range_data`. Sets `initial_view = "custom"` in the emitted HTML. Mutual-exclusion with `--demo`; warning when combined with `--context-days-*`. New `_parse_range_flag` helper with rule-naming stderr messages on rc=2 failures.
+- [x] 8.6 `test_visualize_cli.sh` assertions: 25 new WP8 pins (14 Phase 1 + 11 Phase 2; suite went 76 → 102) covering --help flag listing, validation paths, mutual-exclusion + warning, config cap override, CT_INITIAL_VIEW="custom" emit + opt-in regression, range-shape vs single-day distinction, RangePicker presence + data-range-picker selectors, validateRange + 4 rule messages, isCustom/isDayLike constants, Toolbar range-props handshake, _initView IIFE hash priority, range state hash-restore, view+range three-branch hash-write, isDayLike consumer surfaces (9), EmptyState range-string format. Plus P1.disc.1: hardened the flag-count regex in test #1 against wrapped help-text false-matches (column-3 + EOL/space anchor).
 
 ### WP9: Interactive filter chips — [x] SHIPPED 2026-05-23 (commit f5a1123)
 **Description:** Toolbar filter chips ("active", "reading", "thinking", "away", "subagent") become functional toggles. Off-state hides that segment kind across all rows. Bonus: per-project filter chip popover (toggle individual projects on/off). Bundled bonus: Phase 1 collapsed the design-canvas/InteractiveToolbar duality (resolves `SURFACE-2026-05-23-CLAUDE-TIME-VIZ-DESIGN-CANVAS-INTERACTIVE-TOOLBAR-DUALITY`) — viz_render.py::InteractiveToolbar deleted; the canonical Toolbar now lives in viz/dashboard.jsx. Future toolbar-touching WPs (WP10, WP12) edit a single file.
