@@ -25,6 +25,11 @@ const os = require('os');
 const PORT = 8769;
 const SERVE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-viz-interactive-'));
 const DASH_HTML = path.join(SERVE_DIR, 'dash.html');
+// WP7 Phase 2 behavioral coverage: --month-emitted HTML at a separate path
+// in the same serve dir. Uses a seeded sqlite DB (multi-day, multi-project)
+// rather than --demo (which is single-day-only).
+const MONTH_DB = path.join(SERVE_DIR, 'month_events.sqlite');
+const MONTH_DASH_HTML = path.join(SERVE_DIR, 'month.html');
 const URL_BASE = `http://localhost:${PORT}`;
 
 let pass = 0;
@@ -55,6 +60,66 @@ function renderDemoDashboard() {
   if (!fs.existsSync(DASH_HTML)) {
     throw new Error(`expected ${DASH_HTML} after CLI render`);
   }
+}
+
+// 1b. Render the --month dashboard for WP7 Phase 2 behavioral coverage.
+// Seeds a multi-project, multi-day fixture into MONTH_DB then invokes
+// `claude-time visualize --month 2026-04 --out MONTH_DASH_HTML`. All seeded
+// sessions stay within calendar-day boundaries (start at 09:00) to dodge
+// the orphan-UPS-or-Stop pairing miss surfaced during WP7 verify-self.
+// Globally-unique session IDs dodge SURFACE-2026-05-22-VIZ-DATA-SESSION-
+// ID-TRUNCATION-CAN-COLLIDE (8-char truncation collision in viz_data.py:288).
+function renderMonthDashboard() {
+  // Create the events table.
+  let r = spawnSync('sqlite3', [MONTH_DB,
+    'CREATE TABLE events (ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT); CREATE INDEX idx_session_ts ON events(session_id, ts); CREATE INDEX idx_ts ON events(ts);'
+  ]);
+  if (r.status !== 0) throw new Error(`sqlite3 init: ${r.stderr || r.stdout}`);
+
+  // Write config.json with the {name: [paths]} schema so auto-alias-for-cwd
+  // produces distinct project aliases (without this, all /repo/* collapse to
+  // a single "misc" alias and we can't exercise multi-day variety).
+  fs.writeFileSync(path.join(SERVE_DIR, 'config.json'), JSON.stringify({
+    project_names: {
+      alpha: ['/repo/alpha'],
+      beta: ['/repo/beta'],
+      gamma: ['/repo/gamma'],
+    },
+  }));
+
+  // Variable-intensity days across 2026-04 (+ a couple in 2026-03 for the
+  // prev-month payload). Ascending minutes so the intensity ramp is testable.
+  const seed = [
+    { iso: '2026-04-05', cwd: '/repo/alpha', mins: 30 },
+    { iso: '2026-04-12', cwd: '/repo/alpha', mins: 120 },
+    { iso: '2026-04-15', cwd: '/repo/beta',  mins: 180 },
+    { iso: '2026-04-22', cwd: '/repo/alpha', mins: 540 },  // max → intensity=1.0
+    { iso: '2026-03-08', cwd: '/repo/alpha', mins: 60 },
+    { iso: '2026-03-20', cwd: '/repo/beta',  mins: 120 },
+  ];
+  let counter = 0;
+  for (const { iso, cwd, mins } of seed) {
+    const ms = new Date(`${iso}T09:00:00`).getTime();
+    const stop = ms + mins * 60000;
+    counter++;
+    // 12-char unique session id (>8 to dodge truncation collision).
+    const sid = `m${String(counter).padStart(2, '0')}-${Math.random().toString(36).slice(2, 9)}`;
+    const sql = `INSERT INTO events VALUES (${ms}, '${sid}', '${cwd}', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars":5}'), (${stop}, '${sid}', '${cwd}', 'Stop', NULL, NULL, NULL);`;
+    r = spawnSync('sqlite3', [MONTH_DB, sql]);
+    if (r.status !== 0) throw new Error(`sqlite3 seed: ${r.stderr || r.stdout}`);
+  }
+
+  const cli = path.resolve(__dirname, '..', 'claude-time');
+  // Pass --db pointing at MONTH_DB so the config.json above is also loaded
+  // from the same dir (claude-time treats db_path.parent as the config dir
+  // when --db is set).
+  r = spawnSync(cli, ['visualize', '--no-open', '--month', '2026-04',
+                       '--db', MONTH_DB, '--out', MONTH_DASH_HTML], {
+    encoding: 'utf-8',
+    env: { ...process.env, CLAUDE_TIME_DIR: SERVE_DIR },
+  });
+  if (r.status !== 0) throw new Error(`CLI --month render failed: ${r.stderr || r.stdout}`);
+  if (!fs.existsSync(MONTH_DASH_HTML)) throw new Error(`expected ${MONTH_DASH_HTML} after CLI render`);
 }
 
 // 2. Start a transient python3 -m http.server in the background.
@@ -94,6 +159,10 @@ async function runTests() {
   let browser;
   try {
     renderDemoDashboard();
+    // WP7 Phase 2: render a --month dashboard alongside the demo. Both are
+    // served from the same SERVE_DIR; the Month behavioral block below
+    // navigates to /month.html instead of /dash.html.
+    renderMonthDashboard();
     server = startServer();
     await waitForServer();
 
@@ -478,6 +547,154 @@ async function runTests() {
         openBefore === 'true' && openAfter === 'false' && panelGone,
         `openBefore=${openBefore} openAfter=${openAfter} panelGone=${panelGone}`);
 
+      await page.close();
+    }
+
+    // ── WP7 Phase 2: MonthView behavioral coverage ───────────────────
+    // All assertions in this block run against /month.html (--month 2026-04
+    // emitted HTML with a 6-event seed). Uses React-fiber direct onClick
+    // invocation per SURFACE-2026-05-22-PLAYWRIGHT-SYNTHETIC-WHEEL-DOESNT-
+    // REACH-REACT — synthetic Playwright clicks don't always cross React's
+    // synthetic event system on JIT-compiled Babel-standalone pages.
+    const MONTH_URL = URL_BASE + '/month.html';
+
+    // ── WP7-P2 behavioral 1: page loads at #view=month;month=2026-04 ──
+    {
+      const page = await browser.newPage();
+      const errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+      page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+      await page.goto(MONTH_URL + '#view=month;month=2026-04', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-month-grid]', { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      const grid = await page.evaluate(() => {
+        const g = document.querySelector('[data-month-grid]');
+        return g ? g.getAttribute('data-month-grid') : null;
+      });
+      const jsErrors = errors.filter(e => !/favicon|Babel/i.test(e));
+      check('WP7-P2 behavioral: --month page loads with view=month;month=2026-04 hash, no JS errors',
+        grid === '2026-04' && jsErrors.length === 0,
+        `grid=${grid} errors=${jsErrors.slice(0, 2).join(' | ')}`);
+      await page.close();
+    }
+
+    // ── WP7-P2 behavioral 2: 30 day cells + 4 populated + monotonic intensity ──
+    {
+      const page = await browser.newPage();
+      await page.goto(MONTH_URL + '#view=month;month=2026-04', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-month-grid]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      const summary = await page.evaluate(() => {
+        const cells = Array.from(document.querySelectorAll('[data-month-day]'));
+        const populated = cells.filter(c => c.getAttribute('data-month-day-active') === 'true');
+        return {
+          cellCount: cells.length,
+          populatedCount: populated.length,
+          maxIntensity: Math.max(0, ...populated.map(c => parseFloat(c.getAttribute('data-month-day-intensity') || '0'))),
+        };
+      });
+      check('WP7-P2 behavioral: 30 day cells + 4 populated + max-day intensity=1.0',
+        summary.cellCount === 30 && summary.populatedCount === 4 && summary.maxIntensity === 1.0,
+        JSON.stringify(summary));
+      await page.close();
+    }
+
+    // ── WP7-P2 behavioral 3: click-day on populated cell triggers MonthNavToast ──
+    {
+      const page = await browser.newPage();
+      await page.goto(MONTH_URL + '#view=month;month=2026-04', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-month-grid]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      // React-fiber direct invocation (SURFACE-2026-05-22 workaround).
+      await page.evaluate(() => {
+        const cell = document.querySelector('[data-month-day="2026-04-15"]');
+        const key = Object.keys(cell).find(k => k.startsWith('__reactProps'));
+        if (key && cell[key].onClick) cell[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(300);
+      const toast = await page.evaluate(() => {
+        const t = document.querySelector('[data-month-nav-toast]');
+        if (!t) return null;
+        const code = t.querySelector('code');
+        return { present: true, command: code ? code.textContent : null };
+      });
+      check('WP7-P2 behavioral: click-day on 2026-04-15 → toast w/ `claude-time visualize --date 2026-04-15`',
+        toast && toast.present && toast.command === 'claude-time visualize --date 2026-04-15',
+        JSON.stringify(toast));
+      await page.close();
+    }
+
+    // ── WP7-P2 behavioral 4: prev-month arrow does client-side swap ──
+    {
+      const page = await browser.newPage();
+      await page.goto(MONTH_URL + '#view=month;month=2026-04', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-month-grid]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      await page.evaluate(() => {
+        const btn = document.querySelector('button[data-month-nav="prev"]');
+        const key = Object.keys(btn).find(k => k.startsWith('__reactProps'));
+        btn[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(400);
+      const after = await page.evaluate(() => {
+        const grid = document.querySelector('[data-month-grid]');
+        return {
+          monthIso: grid && grid.getAttribute('data-month-grid'),
+          toastPresent: !!document.querySelector('[data-month-nav-toast]'),
+          hashHasPrev: window.location.hash.includes('month=2026-03'),
+        };
+      });
+      check('WP7-P2 behavioral: prev-month arrow swaps grid to 2026-03 (client-side, no toast)',
+        after.monthIso === '2026-03' && !after.toastPresent && after.hashHasPrev,
+        JSON.stringify(after));
+      await page.close();
+    }
+
+    // ── WP7-P2 behavioral 5: next-month arrow triggers reload-redirect toast ──
+    {
+      const page = await browser.newPage();
+      await page.goto(MONTH_URL + '#view=month;month=2026-04', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-month-grid]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      await page.evaluate(() => {
+        const btn = document.querySelector('button[data-month-nav="next"]');
+        const key = Object.keys(btn).find(k => k.startsWith('__reactProps'));
+        btn[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(300);
+      const toast = await page.evaluate(() => {
+        const t = document.querySelector('[data-month-nav-toast]');
+        if (!t) return null;
+        const code = t.querySelector('code');
+        return { present: true, command: code ? code.textContent : null };
+      });
+      check('WP7-P2 behavioral: next-month arrow → toast w/ `claude-time visualize --month 2026-05`',
+        toast && toast.present && toast.command === 'claude-time visualize --month 2026-05',
+        JSON.stringify(toast));
+      await page.close();
+    }
+
+    // ── WP7-P2 behavioral 6: switching Month → Day default-elides month hash ──
+    {
+      const page = await browser.newPage();
+      await page.goto(MONTH_URL + '#view=month;month=2026-04', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-month-grid]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      // Click the Day tab via React-fiber.
+      await page.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const dayBtn = buttons.find(b => b.textContent.trim() === 'Day');
+        const key = Object.keys(dayBtn).find(k => k.startsWith('__reactProps'));
+        dayBtn[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(300);  // debounced hash write
+      const state = await page.evaluate(() => ({
+        hash: window.location.hash,
+        gridGone: !document.querySelector('[data-month-grid]'),
+      }));
+      check('WP7-P2 behavioral: Month → Day clears month + view hash keys (default-elision)',
+        state.gridGone && !state.hash.includes('month=') && !state.hash.includes('view=month'),
+        JSON.stringify(state));
       await page.close();
     }
 

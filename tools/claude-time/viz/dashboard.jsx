@@ -63,6 +63,74 @@ const _todayISO = (d) => {
   return `${y}-${m}-${dd}`;
 };
 
+// WP7: month helpers. ISO month (YYYY-MM) <-> (year, month) tuple,
+// month-name labels, prev/next-month arithmetic, days-in-month.
+const _MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+const _monthIsoToParts = (iso) => {
+  // "2026-04" -> {year: 2026, month: 4}. Returns null on invalid input.
+  if (typeof iso !== 'string' || !/^\d{4}-\d{2}$/.test(iso)) return null;
+  const y = parseInt(iso.slice(0, 4), 10);
+  const m = parseInt(iso.slice(5, 7), 10);
+  if (m < 1 || m > 12) return null;
+  return { year: y, month: m };
+};
+const _monthIsoToLabel = (iso) => {
+  const p = _monthIsoToParts(iso);
+  if (!p) return '\u2014';
+  return `${_MONTH_NAMES[p.month - 1]} ${p.year}`;
+};
+const _prevMonthIso = (iso) => {
+  const p = _monthIsoToParts(iso);
+  if (!p) return null;
+  const py = p.month === 1 ? p.year - 1 : p.year;
+  const pm = p.month === 1 ? 12 : p.month - 1;
+  return `${String(py).padStart(4, '0')}-${String(pm).padStart(2, '0')}`;
+};
+const _nextMonthIso = (iso) => {
+  const p = _monthIsoToParts(iso);
+  if (!p) return null;
+  const ny = p.month === 12 ? p.year + 1 : p.year;
+  const nm = p.month === 12 ? 1 : p.month + 1;
+  return `${String(ny).padStart(4, '0')}-${String(nm).padStart(2, '0')}`;
+};
+const _daysInMonth = (year, month) => {
+  // Standard JS trick: day 0 of next month = last day of this month.
+  return new Date(year, month, 0).getDate();
+};
+// Monday-first day-of-week index (0 = Mon ... 6 = Sun). JS Date.getDay is
+// Sunday-first; we shift to match the existing Week-view convention.
+const _mondayIndex = (date) => (date.getDay() + 6) % 7;
+
+// WP7: intensity-to-color mapping for Month view day cells (D5' — GitHub
+// contribution-graph style). Input is a 0..1 normalized intensity (day's
+// total active+subagent minutes / month's max). 6 buckets: empty + 5
+// populated steps. Empty is a faint dim background distinct from even the
+// lowest populated bucket; populated buckets run from light tint to deep
+// saturated active blue (the same hue family as CT_TOKENS.active so Month
+// view coheres with the dashboard's overall palette).
+const _MONTH_INTENSITY_PALETTE = [
+  'oklch(0.965 0.005 268)',  // empty / 0 — barely-tinted background
+  'oklch(0.91 0.035 268)',   // bucket 1 — very light
+  'oklch(0.79 0.075 268)',   // bucket 2
+  'oklch(0.62 0.13 268)',    // bucket 3 — mid
+  'oklch(0.48 0.17 268)',    // bucket 4 — deeper
+  'oklch(0.36 0.16 268)',    // bucket 5 — deepest
+];
+const _intensityColor = (intensity) => {
+  if (!(intensity > 0)) return _MONTH_INTENSITY_PALETTE[0];
+  // Map (0, 1] → buckets 1..5. The 5 non-empty buckets divide the (0, 1] range
+  // into quintiles, but we lower-bias the boundaries slightly so a single
+  // active minute on a 10-hour-max day still gets a visible bucket-1 cell
+  // (otherwise low-intensity days would render almost-empty and lose signal).
+  const idx = intensity >= 0.80 ? 5
+            : intensity >= 0.55 ? 4
+            : intensity >= 0.30 ? 3
+            : intensity >= 0.10 ? 2
+            : 1;
+  return _MONTH_INTENSITY_PALETTE[idx];
+};
+
 // Live "now" hook: returns {nowMin, todayISO}, ticks every 60s.
 function useNowMin() {
   const [tick, setTick] = React.useState(() => new Date());
@@ -143,7 +211,8 @@ function validateRange(startIso, endIso, maxDays) {
 
 function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
                    rangeStart = null, rangeEnd = null, onRangeChange = () => {},
-                   maxRangeDays = 90 }) {
+                   maxRangeDays = 90,
+                   monthIso = null, onPrevMonth = () => {}, onNextMonth = () => {} }) {
   // WP8: when view === 'custom', the read-only dateLabel slot is replaced by
   // a RangePicker — two <input type=date> controls with client-side validation
   // matching the CLI's _parse_range_flag rules. Local state buffers in-progress
@@ -203,9 +272,10 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
       <div style={{ width: 1, height: 22, background: CT_TOKENS.border, margin: '0 4px' }} />
 
       {/* Toolbar label is 'Day' (WP6); data-layer key remains window.CT_DATA.today (stable contract for WP5b consumers). */}
-      {/* View tabs (Day/Week/Custom functional; Month disabled).
-          WP8 enabled Custom — its body is the date-range picker that replaces
-          the read-only dateLabel slot below when view === 'custom'. */}
+      {/* View tabs (Day/Week/Month/Custom — all functional as of WP7).
+          WP7 enabled Month — its body is the calendar-grid MonthView; the
+          dateLabel slot becomes month name + prev/next arrows (D1).
+          WP8 enabled Custom — its body is the date-range picker. */}
       <div style={{
         display: 'flex', gap: 2, padding: 3,
         background: CT_TOKENS.surfaceDim, borderRadius: 8,
@@ -213,16 +283,56 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
       }}>
         {tabBtn('Day', 'day', view === 'day', true)}
         {tabBtn('Week', 'week', view === 'week', true)}
-        {tabBtn('Month', 'month', false, false)}
+        {tabBtn('Month', 'month', view === 'month', true)}
         {tabBtn('Custom', 'custom', view === 'custom', true)}
       </div>
 
-      {/* WP8: in custom view, the read-only dateLabel slot becomes a
-          date-range picker. In all other views it stays read-only. The
-          picker buffers in-progress edits in local state and only
-          propagates onRangeChange on blur of a valid (validateRange == null)
-          tuple. */}
-      {view === 'custom' ? (
+      {/* WP7: when view === 'month', the dateLabel slot becomes a month-nav
+          control: prev arrow, month name (e.g. "April 2026"), next arrow.
+          The prev arrow does a client-side state swap (D1) when prev-month
+          is pre-loaded; otherwise + next arrow trigger the reload-redirect
+          (toast + clipboard, P2.5 resolution).
+          WP8: when view === 'custom', the slot becomes a date-range picker.
+          Otherwise the slot stays read-only. */}
+      {view === 'month' ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: CT_TOKENS.surfaceDim, borderRadius: 8,
+          border: `1px solid ${CT_TOKENS.border}`,
+          padding: 2,
+        }}>
+          <button
+            data-month-nav="prev"
+            onClick={onPrevMonth}
+            title="Previous month"
+            style={{
+              height: 28, width: 28, border: 'none', background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 5, cursor: 'pointer', color: CT_TOKENS.textSecondary,
+              fontSize: 14, fontFamily: CT_TOKENS.mono,
+            }}
+          >{'\u2039'}</button>
+          <span
+            data-month-iso={monthIso || ''}
+            style={{
+              fontFamily: CT_TOKENS.mono, fontSize: 12,
+              color: CT_TOKENS.textPrimary, padding: '0 8px',
+              minWidth: 100, textAlign: 'center',
+            }}
+          >{monthIso ? _monthIsoToLabel(monthIso) : '\u2014'}</span>
+          <button
+            data-month-nav="next"
+            onClick={onNextMonth}
+            title="Next month"
+            style={{
+              height: 28, width: 28, border: 'none', background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 5, cursor: 'pointer', color: CT_TOKENS.textSecondary,
+              fontSize: 14, fontFamily: CT_TOKENS.mono,
+            }}
+          >{'\u203A'}</button>
+        </div>
+      ) : view === 'custom' ? (
         <RangePicker
           startIso={rangeStart}
           endIso={rangeEnd}
@@ -1543,6 +1653,235 @@ function WeekTimeline({ data }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/* ── MonthView (WP7) ─────────────────────────────────────────── */
+// Calendar-grid view: 7 columns (Mon-Sun), N rows (weeks), one cell per day
+// within the active month. Each cell is a single-color tile whose
+// saturation/lightness encodes total active+subagent minutes for that day,
+// normalized against the month's max — GitHub-contribution-graph style
+// (D5', 2026-05-24 verify-human back-loop, supersedes D5 vertical strips).
+// The primary signal Month view communicates is daily intensity (1D);
+// project-breakdown composition (2D) is what Day view exists for, reached
+// via click-day drill-down. Empty days render with the lowest-intensity
+// background + "no tracked time" tooltip. Days outside the active month
+// (leading + trailing padding to fill the 7-col grid) render as inert
+// transparent spacers. Cell aspect ratio is ~1.7:1 wide:tall — shorter than
+// square so the calendar grid fits more naturally above the fold.
+//
+// Click a day-cell → onDayClick(iso). The Dashboard wrapper translates
+// that into the toast+clipboard reload-redirect to
+//   claude-time visualize --date YYYY-MM-DD
+// (P2.5 resolution — the dashboard is a file:// page so a real browser
+// navigation isn't possible; we surface the CLI command via a non-modal
+// toast and auto-copy to clipboard).
+//
+// Layout note: cells are aspect-square via aspectRatio (CSS), which keeps
+// the grid coherent at any container width. Day-number label overlays
+// top-left of the cell with a semi-transparent dark background so it
+// remains legible regardless of underlying density colors.
+function MonthView({ monthIso, payload, onDayClick }) {
+  const parts = _monthIsoToParts(monthIso);
+  if (!parts) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: CT_TOKENS.surface,
+        fontFamily: CT_TOKENS.sans, fontSize: 13, color: CT_TOKENS.textSecondary,
+      }}>Invalid month: {monthIso}</div>
+    );
+  }
+  const { year, month } = parts;
+  const firstDay = new Date(year, month - 1, 1);
+  const daysInMonth = _daysInMonth(year, month);
+  const leadingPad = _mondayIndex(firstDay);  // 0..6 — empty cells before day 1
+  const totalCells = leadingPad + daysInMonth;
+  const trailingPad = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  const gridLen = leadingPad + daysInMonth + trailingPad;  // multiple of 7
+
+  // Build per-day total active+subagent minutes from the month's range_data
+  // payload. The primary signal in Month view is daily intensity (1D: how
+  // busy was this day), encoded via monochrome color saturation à la GitHub
+  // contribution graph. Project breakdown (2D composition) lives in Day
+  // view via drill-down — that's what click-day navigates to.
+  // [D5' supersedes D5: 2026-05-24 verify-human back-loop.]
+  const dayTotals = React.useMemo(() => {
+    // Map<iso, total_minutes>
+    const out = new Map();
+    if (!payload || !payload.projects) return out;
+    for (const p of payload.projects) {
+      for (const s of (p.sessions || [])) {
+        const iso = s.day_iso || s.iso;
+        if (!iso) continue;
+        let dayMin = 0;
+        for (const seg of (s.segs || [])) {
+          if (seg.kind !== 'active' && seg.kind !== 'subagent') continue;
+          const dur = (seg.end || 0) - (seg.start || 0);
+          if (dur <= 0) continue;
+          dayMin += dur;
+        }
+        out.set(iso, (out.get(iso) || 0) + dayMin);
+      }
+    }
+    return out;
+  }, [payload]);
+
+  // Normalize against the month's max for the intensity-color computation.
+  const monthMax = React.useMemo(() => {
+    let max = 0;
+    for (const v of dayTotals.values()) if (v > max) max = v;
+    return max;
+  }, [dayTotals]);
+
+  // Today marker — highlight current day if it falls in the active month.
+  const todayIso = _todayISO(new Date());
+  const todayParts = todayIso.slice(0, 7) === monthIso ? parseInt(todayIso.slice(8, 10), 10) : null;
+
+  return (
+    <div
+      data-month-grid={monthIso}
+      style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        background: CT_TOKENS.surface, padding: '14px 20px', overflow: 'auto',
+      }}
+    >
+      {/* Day-of-week header row */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gap: 6, marginBottom: 8,
+      }}>
+        {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((dow) => (
+          <div key={dow} style={{
+            textAlign: 'center', padding: '4px 0',
+            fontFamily: CT_TOKENS.sans, fontSize: 10.5,
+            color: CT_TOKENS.textTertiary, letterSpacing: '0.08em', fontWeight: 500,
+          }}>{dow}</div>
+        ))}
+      </div>
+
+      {/* Day-cell grid */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gap: 6, alignContent: 'start',
+      }}>
+        {Array.from({ length: gridLen }, (_, i) => {
+          const dayNum = i - leadingPad + 1;
+          const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
+          if (!inMonth) {
+            return (
+              <div key={`pad-${i}`} style={{
+                aspectRatio: '2 / 1',
+                background: 'transparent',
+              }} />
+            );
+          }
+          const iso = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+          const total = dayTotals.get(iso) || 0;
+          const isToday = dayNum === todayParts;
+          const hasData = total > 0;
+          // Intensity: 0..1 normalized against the month's max active minutes.
+          const intensity = (hasData && monthMax > 0) ? total / monthMax : 0;
+          // 5-bucket GitHub-graph-style monochrome scale. Empty = surfaceDim;
+          // populated cells run through 5 oklch steps from light to deep active blue.
+          const bg = _intensityColor(intensity);
+          // Day-number label adapts to background lightness — light text on
+          // high-intensity dark cells, dark text on low-intensity light cells.
+          const labelLight = intensity >= 0.5;
+          return (
+            <button
+              key={iso}
+              data-month-day={iso}
+              data-month-day-active={hasData ? 'true' : 'false'}
+              data-month-day-intensity={hasData ? intensity.toFixed(2) : '0'}
+              onClick={() => onDayClick(iso)}
+              title={hasData ? `${iso} — ${fmtDur(total)}` : `${iso} — no tracked time`}
+              style={{
+                position: 'relative',
+                aspectRatio: '2 / 1',
+                border: isToday ? `2px solid ${CT_TOKENS.active}` : `1px solid ${CT_TOKENS.border}`,
+                borderRadius: 5,
+                background: bg,
+                cursor: 'pointer',
+                padding: 0, overflow: 'hidden',
+              }}
+            >
+              {/* Day-number overlay (top-left). Color adapts to cell intensity
+                  for legibility — light text on dark cells, dark on light. */}
+              <span style={{
+                position: 'absolute', top: 3, left: 5,
+                fontFamily: CT_TOKENS.mono, fontSize: 10,
+                color: labelLight ? CT_TOKENS.surface : CT_TOKENS.textSecondary,
+                fontWeight: isToday ? 600 : 500,
+                letterSpacing: '-0.01em',
+              }}>{dayNum}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── MonthNavToast (WP7) ─────────────────────────────────────── */
+// Non-modal toast surfaced when a Month-view click requires a CLI re-invoke
+// (P2.5 resolution — file:// dashboard has no server to navigate to).
+// Renders a small banner at the bottom-right of the dashboard with the CLI
+// command + an auto-copy-to-clipboard nudge. Dismissible via the × button or
+// auto-fades after 6 seconds. Multiple invocations replace the prior toast
+// (no stacking — the user only cares about the most recent action).
+function MonthNavToast({ message, command, onDismiss }) {
+  const [copied, setCopied] = React.useState(false);
+  React.useEffect(() => {
+    // Auto-copy on mount.
+    if (command && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(command).then(
+        () => setCopied(true),
+        () => setCopied(false)  // clipboard permissions denied — toast still shows
+      );
+    }
+    const t = setTimeout(onDismiss, 6000);
+    return () => clearTimeout(t);
+  }, [command, onDismiss]);
+  return (
+    <div
+      data-month-nav-toast="true"
+      style={{
+        position: 'fixed', bottom: 20, right: 20,
+        background: CT_TOKENS.surface,
+        border: `1px solid ${CT_TOKENS.borderStrong}`,
+        borderRadius: 8,
+        padding: '12px 14px',
+        boxShadow: '0 4px 16px rgba(20,18,12,0.15)',
+        fontFamily: CT_TOKENS.sans, fontSize: 12,
+        color: CT_TOKENS.textPrimary,
+        maxWidth: 420, zIndex: 1000,
+        display: 'flex', flexDirection: 'column', gap: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ flex: 1 }}>{message}</div>
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          style={{
+            border: 'none', background: 'transparent',
+            color: CT_TOKENS.textTertiary, fontSize: 14,
+            cursor: 'pointer', padding: 0, lineHeight: 1,
+          }}
+        >{'\u2715'}</button>
+      </div>
+      <code style={{
+        fontFamily: CT_TOKENS.mono, fontSize: 11,
+        background: CT_TOKENS.surfaceAlt || CT_TOKENS.surfaceDim,
+        padding: '4px 6px', borderRadius: 4,
+        color: CT_TOKENS.textPrimary,
+        userSelect: 'all', wordBreak: 'break-all',
+      }}>{command}</code>
+      <div style={{ fontSize: 10.5, color: CT_TOKENS.textTertiary }}>
+        {copied ? '\u2713 Copied to clipboard — paste in your terminal.' : 'Run this command to refresh the dashboard.'}
       </div>
     </div>
   );

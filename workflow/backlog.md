@@ -1,5 +1,14 @@
 # Backlog
 
+## SURFACE-2026-05-24-WBS-EXCEEDS-300-LINE-SIZE-GUARD
+- **Source:** feature:spec (claude-time-viz-wp7-month-view, 2026-05-24)
+- **Target level:** task:plan (small/simple — doc-only)
+- **Type:** documentation hygiene
+- **Summary:** `docs/product/wbs.md` is 313 lines, exceeding the global ~300-line size guard that entry-skill product-context loading enforces. `feature-spec` truncated the eager-read to first 100 lines + headings on first read and then needed targeted offset/limit re-reads to locate the WP7 section. The WBS is cycle-scoped and will be archived by `/product-finalize` at cycle close, so this is a transient excess — but for the duration of the cycle, subsequent `feature-spec` / `feature-plan` invocations will hit the same truncation.
+- **Suggested action:** Two options: (a) tighten the file at finalize-time of an upcoming WP (e.g., compact already-shipped WP descriptions — keep the SHIPPED line + commit + 1-line outcome, drop the per-task `[x]` lists since those are findable in archive WIPs); (b) raise the size guard to ~500 lines for `wbs.md` specifically (it's an active reference doc, not a one-shot read). Lean: (a) — preserves the size-guard's general signal while addressing the specific cycle.
+- **Priority:** low — workaround (offset/limit re-read) is cheap; impact is +1 tool call per future entry-skill invocation, not a blocker.
+- **Status:** open
+
 ## SURFACE-2026-05-24-CLAUDE-TIME-VIZ-AGGREGATE-METRICS-PANEL
 - **Source:** ad-hoc user analysis (2026-05-24) — user asked for weekly usage metrics; computed via `/tmp/usage_analysis_v3.py` against `~/.claude-time/events.sqlite`, generated insights that revealed the dashboard is missing aggregate quantitative summaries.
 - **Target level:** feature:plan or feature:spec — multi-metric panel touching `viz_data.py` (new aggregator), `viz/dashboard.jsx` (new panel component), and likely a new view-mode or sidebar slot.

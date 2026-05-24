@@ -67,23 +67,36 @@ def _interactive_dashboard() -> str:
 /* ── Dashboard wrapper (interactive, shipped variant) ───────── */
 function Dashboard() {
   const { today, week } = window.CT_DATA;
+  // WP7: months map — present only on --month emits. Maps ISO month strings
+  // ("YYYY-MM") to range_data payloads. Pre-loads exactly two months
+  // (active + previous) so prev-arrow nav is a pure client-side state swap;
+  // any other nav (next-arrow, day-click, going back further than the prev
+  // month) triggers reload-redirect via MonthNavToast (P2.5 resolution).
+  const monthsMap = window.CT_DATA.months || null;
   // WP8: hash.view (if present) wins over CT_INITIAL_VIEW so a shareable
   // URL like #view=custom;range=2026-05-20:2026-05-22 restores correctly.
-  // Recognized values: 'day', 'week', 'custom'. Malformed → fall through
-  // to CT_INITIAL_VIEW (which itself defaults to 'day' for unknown values).
-  // The 'custom' view requires a valid hash.range OR a CT_INITIAL_VIEW
-  // emit-time 'custom' (which only happens when the CLI was invoked with
-  // --range); otherwise the dashboard falls back to 'day' to avoid
-  // rendering an empty Custom view.
+  // Recognized values: 'day', 'week', 'custom', 'month'. Malformed → fall
+  // through to CT_INITIAL_VIEW (which itself defaults to 'day' for unknown
+  // values). The 'custom' view requires a valid hash.range OR a
+  // CT_INITIAL_VIEW emit-time 'custom'. The 'month' view requires a valid
+  // hash.month (or CT_INITIAL_VIEW='month') AND the monthsMap to be present
+  // (otherwise there's no data to render).
   const _initView = (() => {
     const hash = parseHash();
+    if (hash.view === 'month' && /^\d{4}-\d{2}$/.test(hash.month || '') && monthsMap) {
+      return 'month';
+    }
     if (hash.view === 'custom' && /^\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(hash.range || '')) {
       return 'custom';
     }
     if (hash.view === 'week' || hash.view === 'day') return hash.view;
-    // Fallthrough: emit-time default. CT_INITIAL_VIEW is 'day'|'week'|'custom'
-    // (WP8 added 'custom'). For 'custom' emit-time, we require today.meta.start
-    // to be present (otherwise we have no range to render).
+    // Fallthrough: emit-time default. CT_INITIAL_VIEW is 'day'|'week'|'custom'|'month'
+    // (WP7 added 'month'; WP8 added 'custom'). For 'custom' emit-time, we
+    // require today.meta.start to be present; for 'month', we require
+    // monthsMap to be present.
+    if (window.CT_INITIAL_VIEW === 'month' && monthsMap) {
+      return 'month';
+    }
     if (window.CT_INITIAL_VIEW === 'custom' && today.meta && today.meta.start && today.meta.end) {
       return 'custom';
     }
@@ -91,6 +104,35 @@ function Dashboard() {
     return 'day';
   })();
   const [view, setView] = React.useState(_initView);
+
+  // WP7: monthIso state — which month's grid is currently rendered. Hash
+  // takes precedence on init; falls back to active-month emit (today.meta.start
+  // → "YYYY-MM"); falls back to current calendar month if nothing else.
+  const _initMonthIso = (() => {
+    const hash = parseHash();
+    if (hash.month && /^\d{4}-\d{2}$/.test(hash.month) && monthsMap && monthsMap[hash.month]) {
+      return hash.month;
+    }
+    if (monthsMap) {
+      // Pick the active month — the one matching today.meta.start (D6: active
+      // payload is mirrored at top-level today on --month emit). If that
+      // doesn't match a months[] key, fall back to the first key.
+      if (today.meta && today.meta.start) {
+        const iso = today.meta.start.slice(0, 7);
+        if (monthsMap[iso]) return iso;
+      }
+      const keys = Object.keys(monthsMap);
+      if (keys.length > 0) return keys[0];
+    }
+    // No emit-time month data — derive from today's calendar month.
+    const d = new Date();
+    return `${String(d.getFullYear()).padStart(4, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+  const [monthIso, setMonthIso] = React.useState(_initMonthIso);
+
+  // WP7: nav-toast state — the most recent reload-redirect prompt (or null).
+  // Replaces on every new trigger (no stacking).
+  const [navToast, setNavToast] = React.useState(null);
 
   // WP8: range state (start/end ISO date strings). Identity of the Custom
   // view — without a range the view is empty. Hash-restore on init if
@@ -113,25 +155,30 @@ function Dashboard() {
     return { start: todayIso, end: todayIso };
   });
 
-  // WP8: debounced URL-hash write on view + range change. Default-elision:
-  // when view === 'day' (the emit-time + project-wide default), drop view
-  // key. When view === 'custom', the range key is load-bearing — DO NOT
-  // elide it even if it matches data.today.meta (the data's emitted range
-  // would be ambiguous on a non-custom-emit URL). When view === 'week',
-  // write view=week (not the default, so don't elide).
+  // WP7/WP8: debounced URL-hash write on view + range + monthIso change.
+  // Default-elision:
+  //   - view === 'day' (project-wide default) → drop view, range, month keys
+  //   - view === 'week' → write view=week, drop range/month
+  //   - view === 'custom' → write view=custom AND range (load-bearing —
+  //     don't elide even if it matches today.meta; the data's emitted
+  //     range would be ambiguous on a non-custom-emit URL)
+  //   - view === 'month' → write view=month AND month=YYYY-MM (load-bearing
+  //     — month grid identity is the month key)
   React.useEffect(() => {
     const t = setTimeout(() => {
-      if (view === 'custom') {
-        updateHash({ view: 'custom', range: `${range.start}:${range.end}` });
+      if (view === 'month') {
+        updateHash({ view: 'month', month: monthIso, range: null });
+      } else if (view === 'custom') {
+        updateHash({ view: 'custom', range: `${range.start}:${range.end}`, month: null });
       } else if (view === 'week') {
-        updateHash({ view: 'week', range: null });
+        updateHash({ view: 'week', range: null, month: null });
       } else {
-        // 'day' is the default — drop both keys.
-        updateHash({ view: null, range: null });
+        // 'day' is the default — drop all keys.
+        updateHash({ view: null, range: null, month: null });
       }
     }, 100);
     return () => clearTimeout(t);
-  }, [view, range]);
+  }, [view, range, monthIso]);
 
   // WP8: when the user picks a different range via the date-range picker,
   // we don't re-fetch data (would require a CLI round-trip). Instead, the
@@ -290,9 +337,51 @@ function Dashboard() {
   // today). isDayLike is the union — both Day and Custom share the
   // DayTimeline-based timeline body. The dateLabel-vs-picker switch happens
   // in the Toolbar based on raw `view`, not isDayLike.
+  // WP7: 'month' is its own render branch — NOT isDayLike (MonthView is a
+  // calendar grid, not a timeline; bypasses DayTimeline, Minimap, side panel).
   const isDay = view === 'day';
   const isCustom = view === 'custom';
+  const isMonth = view === 'month';
   const isDayLike = isDay || isCustom;
+
+  // WP7: nav handlers for MonthView. Click-day always triggers reload-redirect
+  // toast (D3 + D7 — click-day always means "drill into this day"). Prev-month
+  // is a pure client-side swap when the prev-month payload is in monthsMap;
+  // otherwise reload-redirect. Next-month is always reload-redirect (no future
+  // month is pre-loaded).
+  const _navCmd = React.useCallback((flag, value) => {
+    return `claude-time visualize ${flag} ${value}`;
+  }, []);
+  const onDayClick = React.useCallback((iso) => {
+    setNavToast({
+      message: `Drill into ${iso}? Run this in your terminal to open Day view on that date:`,
+      command: _navCmd('--date', iso),
+    });
+  }, [_navCmd]);
+  const onPrevMonth = React.useCallback(() => {
+    const prevIso = _prevMonthIso(monthIso);
+    if (!prevIso) return;
+    if (monthsMap && monthsMap[prevIso]) {
+      setMonthIso(prevIso);
+    } else {
+      setNavToast({
+        message: `View ${_monthIsoToLabel(prevIso)}? Run this in your terminal to load that month:`,
+        command: _navCmd('--month', prevIso),
+      });
+    }
+  }, [monthIso, monthsMap, _navCmd]);
+  const onNextMonth = React.useCallback(() => {
+    const nextIso = _nextMonthIso(monthIso);
+    if (!nextIso) return;
+    if (monthsMap && monthsMap[nextIso]) {
+      setMonthIso(nextIso);
+    } else {
+      setNavToast({
+        message: `View ${_monthIsoToLabel(nextIso)}? Run this in your terminal to load that month:`,
+        command: _navCmd('--month', nextIso),
+      });
+    }
+  }, [monthIso, monthsMap, _navCmd]);
 
   // Resolve the selected session + project for the side panel.
   let selSession = null;
@@ -409,13 +498,17 @@ function Dashboard() {
         rangeEnd={range.end}
         onRangeChange={onRangeChange}
         maxRangeDays={window.CT_MAX_RANGE_DAYS || 90}
+        monthIso={monthIso}
+        onPrevMonth={onPrevMonth}
+        onNextMonth={onNextMonth}
       />
       <SummaryStrip
         filterChips={filterChips}
         stats={isDayLike ? dayStats : weekStats}
       />
 
-      {/* Date header strip */}
+      {/* Date header strip.
+          WP7: Month view shows the month name + day-count summary. */}
       <div style={{
         height: 34, flexShrink: 0,
         display: 'flex', alignItems: 'center',
@@ -428,29 +521,50 @@ function Dashboard() {
           fontFamily: CT_TOKENS.mono, fontSize: 11,
           color: CT_TOKENS.textSecondary, letterSpacing: '0.08em',
           textTransform: 'uppercase', fontWeight: 500,
-        }}>{isDayLike ? today.label : week.label}</span>
+        }}>{isMonth
+          ? _monthIsoToLabel(monthIso)
+          : (isDayLike ? today.label : week.label)}</span>
         <span style={{ width: 1, height: 14, background: CT_TOKENS.border }} />
         <span style={{
           fontFamily: CT_TOKENS.sans, fontSize: 11,
           color: CT_TOKENS.textTertiary,
-        }}>{isDayLike
-          ? `${today.projects.length} projects \u00b7 ${today.projects.reduce((a,p)=>a+p.sessions.length,0)} sessions`
-          : `${week.projects.length} projects \u00b7 7 days`}</span>
+        }}>{isMonth
+          ? (monthsMap && monthsMap[monthIso] && monthsMap[monthIso].projects
+              ? `${monthsMap[monthIso].projects.length} projects \u00b7 ${monthsMap[monthIso].meta?.day_count || '\u2014'} days`
+              : '\u2014')
+          : (isDayLike
+              ? `${today.projects.length} projects \u00b7 ${today.projects.reduce((a,p)=>a+p.sessions.length,0)} sessions`
+              : `${week.projects.length} projects \u00b7 7 days`)}</span>
         <span style={{ flex: 1 }} />
         <Legend />
         {/* WP9 Phase 4 + WP8: per-project filter popover. Day/Custom views:
             today.projects (Custom is multi-day Day-like); Week view:
-            week.projects (shares .id + .alias). */}
-        <ProjectFilterPopover projects={isDayLike ? today.projects : week.projects} />
+            week.projects (shares .id + .alias). WP7: Month view: filter
+            chips are visible-but-inert per D4 — the popover stays mounted
+            (uses today.projects as the project source for consistency)
+            but Month view ignores filter state. */}
+        <ProjectFilterPopover projects={isMonth ? (monthsMap && monthsMap[monthIso] ? monthsMap[monthIso].projects : today.projects) : (isDayLike ? today.projects : week.projects)} />
       </div>
 
-      {/* Body — timeline (+ optional side panel).
+      {/* Body — timeline OR month grid (+ optional side panel).
+          WP7: Month view is a parallel branch — bypasses the lane-based
+          timeline entirely. No side panel in Month view.
           WP8: isCustom shares isDay's DayTimeline rendering path (data shape
           is identical — build_range_data is the same multi-day union used
           by WP5b's Day view). The only Custom-specific bit is the
-          empty-state label (names the range instead of a single date). */}
+          empty-state label. */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {isDayLike ? (
+        {isMonth ? (
+          (monthsMap && monthsMap[monthIso]) ? (
+            <MonthView
+              monthIso={monthIso}
+              payload={monthsMap[monthIso]}
+              onDayClick={onDayClick}
+            />
+          ) : (
+            <EmptyState date={`${_monthIsoToLabel(monthIso)} — no data loaded`} />
+          )
+        ) : isDayLike ? (
           today.empty ? (
             <EmptyState date={isCustom
               ? `${range.start} to ${range.end}`
@@ -466,7 +580,7 @@ function Dashboard() {
         ) : (
           <WeekTimeline data={week} />
         )}
-        {selSession && (
+        {!isMonth && selSession && (
           <SidePanel
             session={selSession}
             project={selProject}
@@ -477,9 +591,18 @@ function Dashboard() {
       </div>
       {/* WP5 Phase 3 + WP8: minimap (Day/Custom views — re-orientation aid
           after deep zoom). Custom shares the Day-like multi-day data shape
-          so Minimap works identically. */}
+          so Minimap works identically. WP7: Month view skips the minimap —
+          the calendar grid IS the navigation surface. */}
       {isDayLike && !today.empty && (
         <Minimap data={today} />
+      )}
+      {/* WP7: nav toast (renders only when a click/nav requires reload-redirect). */}
+      {navToast && (
+        <MonthNavToast
+          message={navToast.message}
+          command={navToast.command}
+          onDismiss={() => setNavToast(null)}
+        />
       )}
     </div>
     </ViewportContext.Provider>

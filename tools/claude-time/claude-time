@@ -463,6 +463,12 @@ def main(argv: list[str] | None = None) -> int:
                           "(the range carries its own start/end); --context-days-* are "
                           "ignored (range mode owns its own window). Cap "
                           "viz_custom_range_max_days (default 90).")
+    viz.add_argument("--month", dest="month", default=None, metavar="YYYY-MM",
+                     help="render a calendar-month rollup as the Month view; "
+                          "mutually exclusive with --range and --demo; --week and --date "
+                          "are ignored when present (the month carries its own window). "
+                          "Emit-time pre-loads the requested month plus the previous "
+                          "month so the prev-arrow swap is instant client-side.")
     viz.add_argument(
         "--db",
         help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
@@ -502,6 +508,49 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(render_report(events, cfg, label))
     return 0
+
+
+def _parse_month_flag(raw: str, today: date) -> tuple[date, date] | None:
+    """Parse and validate `--month YYYY-MM`.
+
+    On success returns (month_start, month_end) — first and last day of the
+    month, inclusive. On failure prints a stderr message naming the rule that
+    failed and returns None; caller exits with code 2.
+
+    Validation rules:
+      - shape: `^\\d{4}-\\d{2}$` (exactly 7 chars, 4-digit year, '-', 2-digit month)
+      - month bounds: 1 <= month <= 12
+      - not in future: (year, month) <= (today.year, today.month)
+    """
+    import re as _re
+    import calendar as _calendar
+    if not _re.match(r"^\d{4}-\d{2}$", raw):
+        print(f"error: --month expects YYYY-MM shape (e.g. 2026-04), got {raw!r}",
+              file=sys.stderr)
+        return None
+    try:
+        year = int(raw[:4])
+        month = int(raw[5:])
+    except ValueError as e:
+        print(f"error: --month parse failed: {e}", file=sys.stderr)
+        return None
+    if month < 1 or month > 12:
+        print(f"error: --month requires month in 01..12; got month={month:02d}",
+              file=sys.stderr)
+        return None
+    if (year, month) > (today.year, today.month):
+        print(f"error: --month must not be in the future; got {year:04d}-{month:02d} "
+              f"(today={today.isoformat()})", file=sys.stderr)
+        return None
+    last_day = _calendar.monthrange(year, month)[1]
+    return date(year, month, 1), date(year, month, last_day)
+
+
+def _prev_month(year: int, month: int) -> tuple[int, int]:
+    """Return (year, month) of the calendar month preceding (year, month)."""
+    if month == 1:
+        return year - 1, 12
+    return year, month - 1
 
 
 def _parse_range_flag(raw: str, max_days: int) -> tuple[date, date] | None:
@@ -579,6 +628,26 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
             print("warning: --context-days-prior/--context-days-after are ignored in "
                   "range mode (the range carries its own window).", file=sys.stderr)
 
+    # WP7: parse + validate --month after --range so we can guard against
+    # combined use. Mutual exclusion: --month conflicts with --range (both
+    # specify the initial-view window) and with --demo (demo data is
+    # single-day). --month silently overrides --date, --week, and
+    # --context-days-* (the month carries its own window).
+    month_dates: tuple[date, date] | None = None
+    if args.month is not None:
+        if args.demo:
+            print("error: --month is incompatible with --demo (demo data is single-day)",
+                  file=sys.stderr)
+            return 2
+        if args.range is not None:
+            print("error: --month is incompatible with --range (pick one initial-view "
+                  "and window source)", file=sys.stderr)
+            return 2
+        parsed = _parse_month_flag(args.month, date.today())
+        if parsed is None:
+            return 2
+        month_dates = parsed
+
     # Pick today (or --date) for the day-view data.
     target_day = date.fromisoformat(args.date) if args.date else date.today()
     # ISO week's Monday for the week-view data.
@@ -625,7 +694,13 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
         # for multi-day Day view, so the emitted payload's `meta.start` +
         # `meta.end` + `meta.day_count` already cover what Phase 2's renderer
         # needs to seed the date-range picker.
-        if range_dates is not None:
+        # WP7: --month does the same trick — its active-month window becomes
+        # the Day-view-equivalent payload (so Day/Week tabs remain functional
+        # on a Month-emit page per D6 fallback). The previous month is loaded
+        # separately below for the months[] map.
+        if month_dates is not None:
+            day_window_start, day_window_end = month_dates
+        elif range_dates is not None:
             day_window_start, day_window_end = range_dates
         else:
             # Day-view data window: target_day ± (ctx_prior, ctx_after). When
@@ -639,11 +714,11 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
         for i in range((day_window_end - day_window_start).days + 1):
             d = day_window_start + timedelta(days=i)
             day_events_by_day[d.isoformat()] = _load_window_events(db_path, d)
-        if range_dates is None and ctx_prior == 0 and ctx_after == 0:
+        if range_dates is None and month_dates is None and ctx_prior == 0 and ctx_after == 0:
             # Pure single-day Day view: keep build_day_data for byte-identical
-            # legacy output. The --range path always uses build_range_data even
-            # when it spans a single day, because the Custom view's identity
-            # is defined by the user-picked range, not the single-day shape.
+            # legacy output. The --range and --month paths always use
+            # build_range_data because their identity is defined by the
+            # user-picked window, not the single-day shape.
             today_payload = viz_data.build_day_data(
                 target_day.isoformat(),
                 day_events_by_day[target_day.isoformat()],
@@ -658,12 +733,12 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
                 cfg=cfg,
                 auto_alias_fn=_auto_alias_for_cwd,
             )
-            if range_dates is None:
+            if range_dates is None and month_dates is None:
                 # WP5b: surface the user-requested day so the renderer can
                 # center the initial viewport on it (otherwise it would center
                 # on the window mid-point). Phase 2 (renderer) consumes this
-                # field. NOT set in --range mode — Custom view centers on the
-                # range start by default; meta.start/.end are sufficient.
+                # field. NOT set in --range or --month mode — Custom and Month
+                # views center on their own window; meta.start/.end suffice.
                 today_payload["target_iso"] = target_day.isoformat()
 
         # Week payload is independent of Day's context-days window AND of
@@ -678,14 +753,41 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
                                                 week_events_by_day, cfg, _auto_alias_for_cwd)
         data = {"today": today_payload, "week": week_payload, "meta": meta}
 
-    # WP8: initial view precedence — --range > --week > default. --range wins
-    # because it carries a load-bearing payload (the picked range) that only
-    # the Custom view knows how to display; --week is unset/ignored in range
-    # mode (a warning is already printed at parse time if both are given —
-    # actually no: --range silently overrides --week per the plan; the parser
-    # comment names this). The "week" emission stays under `data["week"]` so
-    # the Week tab still functions when the user clicks it.
-    if range_dates is not None:
+        # WP7: --month emits an additional `months` map containing the
+        # active month + the previous month, keyed by ISO month string
+        # (YYYY-MM). The active-month payload is byte-identical to
+        # today_payload above (both are build_range_data over the same
+        # window). The previous-month payload is loaded separately here so
+        # the dashboard's prev-arrow can do a pure client-side state swap
+        # without a CLI round-trip (D1).
+        if month_dates is not None:
+            active_iso = f"{month_dates[0].year:04d}-{month_dates[0].month:02d}"
+            prev_y, prev_m = _prev_month(month_dates[0].year, month_dates[0].month)
+            import calendar as _calendar
+            prev_start = date(prev_y, prev_m, 1)
+            prev_end = date(prev_y, prev_m, _calendar.monthrange(prev_y, prev_m)[1])
+            prev_iso = f"{prev_y:04d}-{prev_m:02d}"
+            prev_events_by_day = {}
+            for i in range((prev_end - prev_start).days + 1):
+                d = prev_start + timedelta(days=i)
+                prev_events_by_day[d.isoformat()] = _load_window_events(db_path, d)
+            prev_payload = viz_data.build_range_data(
+                prev_start.isoformat(),
+                prev_end.isoformat(),
+                events_by_day=prev_events_by_day,
+                cfg=cfg,
+                auto_alias_fn=_auto_alias_for_cwd,
+            )
+            data["months"] = {active_iso: today_payload, prev_iso: prev_payload}
+
+    # WP7/WP8: initial view precedence — --month > --range > --week > default.
+    # --month and --range each carry a load-bearing payload (the picked window)
+    # that only their corresponding view knows how to display. --week is
+    # ignored when either is present. The "week" emission stays under
+    # `data["week"]` so the Week tab still functions when the user clicks it.
+    if month_dates is not None:
+        initial_view = "month"
+    elif range_dates is not None:
         initial_view = "custom"
     elif args.week:
         initial_view = "week"

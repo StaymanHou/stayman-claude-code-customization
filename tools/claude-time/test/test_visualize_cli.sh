@@ -1180,15 +1180,22 @@ else
     check "WP8-P2 codify: range state hash-restore" fail "useState initializer not in emit"
 fi
 
-# WP8-P2-8: Debounced view+range hash-write useEffect with three-branch dispatch.
-# The effect body contains the three view-conditional updateHash calls.
-if grep -qF "if (view === 'custom') {" "$WP8_HAPPY" && \
+# WP8-P2-8 (extended by WP7-P2): Debounced view+range+month hash-write
+# useEffect with FOUR-branch dispatch (day/week/custom/month). WP7 added
+# the 'month' branch + threaded the `month` key through all four branches
+# (set when view==='month', null otherwise per default-elision).
+# Triaged 2026-05-24 as obsolete-test (high-confidence): updated to match
+# the new contract; the previous three-branch pin was checking a pre-WP7
+# shape that no longer exists.
+# The effect body contains the four view-conditional updateHash calls.
+if grep -qF "if (view === 'month') {" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: 'month', month: monthIso, range: null })" "$WP8_HAPPY" && \
    grep -qF "updateHash({ view: 'custom', range:" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: 'week', range: null })" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: null, range: null })" "$WP8_HAPPY"; then
-    check "WP8-P2 codify: view+range hash-write three-branch dispatch (custom/week/day)" pass
+   grep -qF "updateHash({ view: 'week', range: null, month: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: null, range: null, month: null })" "$WP8_HAPPY"; then
+    check "WP8-P2+WP7-P2 codify: view+range+month hash-write four-branch dispatch (month/custom/week/day)" pass
 else
-    check "WP8-P2 codify: hash-write three-branch dispatch" fail "one or more dispatch branches missing"
+    check "WP8-P2+WP7-P2 codify: hash-write four-branch dispatch" fail "one or more dispatch branches missing"
 fi
 
 # WP8-P2-9: isDayLike used at all 6 consumer surfaces. Count must be >= 6.
@@ -1213,6 +1220,340 @@ else
 fi
 
 rm -rf "$WP8_DIR"
+
+# ── WP7 Phase 1 codify: --month flag + two-month payload emit ──────────
+# Codifies the 12 Phase 1 deliverables for Month view (WP7). Builds its own
+# isolated fixture (5-event seed across 2026-03 + 2026-04) so it doesn't
+# depend on $WP8_DIR which was already cleaned up.
+
+WP7_DIR="$(mktemp -d -t claude-time-wp7-codify-XXXXXX)"
+WP7_DB="$WP7_DIR/events.sqlite"
+sqlite3 "$WP7_DB" <<SQL
+CREATE TABLE events (
+  ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL,
+  event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT
+);
+CREATE INDEX idx_session_ts ON events(session_id, ts);
+CREATE INDEX idx_ts ON events(ts);
+SQL
+# Seed: 3 events in 2026-04 (active month), 2 events in 2026-03 (prev).
+# Picked safely in the past so the not-future rule never blocks the happy path.
+for ISO in 2026-04-05 2026-04-12 2026-04-15 2026-03-08 2026-03-20; do
+    DAY_MS=$(python3 -c "
+from datetime import date, datetime, time
+d = date.fromisoformat('$ISO')
+print(int(datetime.combine(d, time(12, 0)).timestamp() * 1000))
+")
+    STOP_MS=$((DAY_MS + 1800000))
+    sqlite3 "$WP7_DB" "INSERT INTO events VALUES ($DAY_MS, 'sid-$ISO', '/repo/p', 'UserPromptSubmit', NULL, NULL, '{\"prompt_length_chars\":5}'), ($STOP_MS, 'sid-$ISO', '/repo/p', 'Stop', NULL, NULL, NULL);"
+done
+
+# WP7-P1-1: --month flag appears in `visualize --help` at column 3 with
+# YYYY-MM metavar. Anchored against wrapped help-text continuation lines
+# (same pattern as WP8-1).
+HELP_OUT=$("$CLI" visualize --help 2>&1)
+if echo "$HELP_OUT" | grep -qE '^  --month YYYY-MM'; then
+    check "WP7-P1 codify: --help lists --month YYYY-MM flag" pass
+else
+    check "WP7-P1 codify: --month in --help" fail "flag not listed at column-3"
+fi
+
+# WP7-P1-2: happy path emits CT_INITIAL_VIEW="month".
+WP7_HAPPY="$WP7_DIR/happy.html"
+CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
+    --month 2026-04 --out "$WP7_HAPPY" > /dev/null 2>&1
+happy_rc=$?
+if [ $happy_rc -eq 0 ] && [ -f "$WP7_HAPPY" ] && \
+   grep -q 'CT_INITIAL_VIEW = "month"' "$WP7_HAPPY"; then
+    check "WP7-P1 codify: --month emits CT_INITIAL_VIEW=\"month\"" pass
+else
+    check "WP7-P1 codify: --month emits CT_INITIAL_VIEW=\"month\"" fail "rc=$happy_rc, value missing"
+fi
+
+# WP7-P1-3: window.CT_DATA.months map present with active + prev keys.
+# The shape is {"2026-04": {...}, "2026-03": {...}} — both keys must appear.
+if grep -qE '"months": \{"2026-04":' "$WP7_HAPPY" && \
+   grep -q '"2026-03":' "$WP7_HAPPY"; then
+    check "WP7-P1 codify: months map has active (2026-04) + prev (2026-03) keys" pass
+else
+    check "WP7-P1 codify: months map keys" fail "active or prev key missing"
+fi
+
+# WP7-P1-4: per-month meta.start/.end correctness — active month boundaries.
+if grep -q '"start": "2026-04-01"' "$WP7_HAPPY" && \
+   grep -q '"end": "2026-04-30"' "$WP7_HAPPY"; then
+    check "WP7-P1 codify: active-month meta.start=2026-04-01, meta.end=2026-04-30" pass
+else
+    check "WP7-P1 codify: active-month meta boundaries" fail "start or end missing"
+fi
+
+# WP7-P1-5: per-month meta.start/.end correctness — prev month boundaries.
+if grep -q '"start": "2026-03-01"' "$WP7_HAPPY" && \
+   grep -q '"end": "2026-03-31"' "$WP7_HAPPY"; then
+    check "WP7-P1 codify: prev-month meta.start=2026-03-01, meta.end=2026-03-31" pass
+else
+    check "WP7-P1 codify: prev-month meta boundaries" fail "start or end missing"
+fi
+
+# WP7-P1-6: regression-pin — without --month, NO months key is emitted.
+# Catches future drift where someone accidentally adds the months key to
+# the default emit path (would bloat HTML for non-Month users).
+WP7_NOMONTH="$WP7_DIR/nomonth.html"
+CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
+    --date 2026-04-10 --out "$WP7_NOMONTH" > /dev/null 2>&1
+if ! grep -q '"months":' "$WP7_NOMONTH"; then
+    check "WP7-P1 codify: default emit has NO months key (opt-in regression-pin)" pass
+else
+    check "WP7-P1 codify: default-emit no-months" fail "months key found in default emit"
+fi
+
+# WP7-P1-7: validation — bad shape exits 2, names shape rule.
+err1=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
+    --month not-a-date --out /tmp/x.html 2>&1)
+err1_rc=$?
+if [ $err1_rc -eq 2 ] && echo "$err1" | grep -q -- '--month' && \
+   echo "$err1" | grep -qi 'shape'; then
+    check "WP7-P1 codify: validation — bad shape exits 2, names rule" pass
+else
+    check "WP7-P1 codify: bad shape exit" fail "rc=$err1_rc msg=$err1"
+fi
+
+# WP7-P1-8: validation — month bounds (e.g. month=99) exits 2, names rule.
+err2=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
+    --month 2026-99 --out /tmp/x.html 2>&1)
+err2_rc=$?
+if [ $err2_rc -eq 2 ] && echo "$err2" | grep -q -- '--month' && \
+   echo "$err2" | grep -qE 'month=99|01\.\.12'; then
+    check "WP7-P1 codify: validation — out-of-bounds month exits 2, names rule" pass
+else
+    check "WP7-P1 codify: month bounds exit" fail "rc=$err2_rc msg=$err2"
+fi
+
+# WP7-P1-9: validation — future month exits 2, names 'future'.
+err3=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
+    --month 2099-01 --out /tmp/x.html 2>&1)
+err3_rc=$?
+if [ $err3_rc -eq 2 ] && echo "$err3" | grep -q -- '--month' && \
+   echo "$err3" | grep -qi 'future'; then
+    check "WP7-P1 codify: validation — future month exits 2, names 'future'" pass
+else
+    check "WP7-P1 codify: future month exit" fail "rc=$err3_rc msg=$err3"
+fi
+
+# WP7-P1-10: mutex with --range (rc=2).
+err4=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
+    --month 2026-04 --range 2026-05-01:2026-05-07 --out /tmp/x.html 2>&1)
+err4_rc=$?
+if [ $err4_rc -eq 2 ] && echo "$err4" | grep -q -- '--month' && \
+   echo "$err4" | grep -q -- '--range' && \
+   echo "$err4" | grep -qE 'incompatible|mutex|exclusive'; then
+    check "WP7-P1 codify: --month + --range mutual exclusion (rc=2)" pass
+else
+    check "WP7-P1 codify: --month + --range mutex" fail "rc=$err4_rc msg=$err4"
+fi
+
+# WP7-P1-11: mutex with --demo (rc=2).
+err5=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
+    --month 2026-04 --demo --out /tmp/x.html 2>&1)
+err5_rc=$?
+if [ $err5_rc -eq 2 ] && echo "$err5" | grep -q -- '--month' && \
+   echo "$err5" | grep -qE 'incompatible|mutex|exclusive'; then
+    check "WP7-P1 codify: --month + --demo mutual exclusion (rc=2)" pass
+else
+    check "WP7-P1 codify: --month + --demo mutex" fail "rc=$err5_rc msg=$err5"
+fi
+
+# WP7-P1-12: D6 fallback identity — when --month is set, data.today is
+# the active-month payload (so Day/Week tabs in Month-emit mode still
+# have something coherent to render). Identity check: data.today.meta.start
+# equals the active month's first day. This guards against a future change
+# that decouples today from months[active] and accidentally leaves today
+# pointing at default-today instead of the active-month window.
+if python3 -c "
+import json, re, sys
+html = open('$WP7_HAPPY').read()
+m = re.search(r'window\.CT_DATA = (.*?);\n', html, re.DOTALL)
+if not m:
+    print('no window.CT_DATA match', file=sys.stderr); sys.exit(1)
+data = json.loads(m.group(1))
+today = data.get('today', {})
+start = today.get('meta', {}).get('start')
+sys.exit(0 if start == '2026-04-01' else 1)
+" 2>/dev/null; then
+    check "WP7-P1 codify: D6 fallback — data.today.meta.start == active-month start" pass
+else
+    check "WP7-P1 codify: D6 fallback identity" fail "data.today.meta.start != 2026-04-01"
+fi
+
+# WP7-P1-13: integration-boundary — viz_render.render_html signature is
+# unchanged from WP8. The two-month payload flows through data dict's new
+# `months` key, NOT via a new positional arg. Catches a future refactor
+# that thinks "the renderer needs to know about month-mode" — it doesn't.
+if grep -qE '^def render_html\(template_path: Path, dashboard_jsx_path: Path,' "$REPO_ROOT/tools/claude-time/viz_render.py"; then
+    check "WP7-P1 codify: integration-boundary — viz_render.render_html signature unchanged" pass
+else
+    check "WP7-P1 codify: render_html signature" fail "signature changed"
+fi
+
+# ── WP7 Phase 2 codify: MonthView UI + nav + intensity encoding ─────
+# Codifies the Phase 2 UI deliverables. Reuses $WP7_HAPPY emit from Phase 1
+# block above (still contains the --month 2026-04 emitted HTML).
+
+# WP7-P2-1: MonthView component function defined in emit.
+if grep -qF 'function MonthView' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: MonthView component function defined" pass
+else
+    check "WP7-P2 codify: MonthView component" fail "function MonthView missing"
+fi
+
+# WP7-P2-2: MonthNavToast component function defined (toast+clipboard for
+# reload-redirect paths — P2.5 resolution).
+if grep -qF 'function MonthNavToast' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: MonthNavToast component function defined" pass
+else
+    check "WP7-P2 codify: MonthNavToast component" fail "function MonthNavToast missing"
+fi
+
+# WP7-P2-3: Month tab enabled form. Was disabled (false, false) before WP7.
+if grep -qF "tabBtn('Month', 'month', view === 'month', true)" "$WP7_HAPPY"; then
+    check "WP7-P2 codify: Month toolbar tab enabled (view === 'month', true)" pass
+else
+    check "WP7-P2 codify: Month tab enabled" fail "enabled form missing"
+fi
+
+# WP7-P2-4: Disabled Month tab form is GONE (regression-pin). The literal
+# `tabBtn('Month', 'month', false, false)` was the v1 placeholder shape;
+# its presence would mean the Month tab is back to "Not available in MVP".
+if ! grep -qF "tabBtn('Month', 'month', false, false)" "$WP7_HAPPY"; then
+    check "WP7-P2 codify: disabled Month tab form removed (regression-pin)" pass
+else
+    check "WP7-P2 codify: disabled Month tab regression" fail "legacy disabled form still present"
+fi
+
+# WP7-P2-5: _intensityColor helper present (D5' monochrome encoding).
+if grep -qF '_intensityColor' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: _intensityColor helper present (D5')" pass
+else
+    check "WP7-P2 codify: _intensityColor helper" fail "missing"
+fi
+
+# WP7-P2-6: _MONTH_INTENSITY_PALETTE constant present — 6 oklch entries
+# (empty + 5 populated buckets). This is the load-bearing color contract;
+# changing the palette is a UX decision that should require a deliberate edit.
+if grep -qF '_MONTH_INTENSITY_PALETTE' "$WP7_HAPPY" && \
+   grep -qF "'oklch(0.965 0.005 268)'" "$WP7_HAPPY" && \
+   grep -qF "'oklch(0.36 0.16 268)'" "$WP7_HAPPY"; then
+    check "WP7-P2 codify: _MONTH_INTENSITY_PALETTE present with min + max bucket colors" pass
+else
+    check "WP7-P2 codify: _MONTH_INTENSITY_PALETTE" fail "constant or palette endpoints missing"
+fi
+
+# WP7-P2-7: D5 → D5' redesign — _projectTint helper REMOVED.
+# Old WP7-P2 (pre-back-loop) had _projectTint(alias) → oklch per-project tint.
+# D5' is a single-tile monochrome encoding; _projectTint should not appear.
+if ! grep -qF '_projectTint' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: _projectTint helper removed (D5 → D5' regression-pin)" pass
+else
+    check "WP7-P2 codify: _projectTint regression" fail "legacy per-project tint helper still present"
+fi
+
+# WP7-P2-8: D5 → D5' redesign — data-project-strip selectors REMOVED.
+# These attributes were on the per-project sub-rectangles inside each day cell
+# in D5. D5' has no sub-rectangles; the attribute should not appear.
+if ! grep -qF 'data-project-strip' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: data-project-strip selectors removed (D5 → D5' regression-pin)" pass
+else
+    check "WP7-P2 codify: data-project-strip regression" fail "legacy strip selector still present"
+fi
+
+# WP7-P2-9: Cell aspect ratio is 2:1 (whole month fits in one screen height
+# per 2026-05-24 user-tuning at verify-human).
+if grep -qF "aspectRatio: '2 / 1'" "$WP7_HAPPY"; then
+    check "WP7-P2 codify: day-cell aspectRatio 2:1 (fits-in-viewport-height contract)" pass
+else
+    check "WP7-P2 codify: 2:1 aspect ratio" fail "aspectRatio: '2 / 1' missing"
+fi
+
+# WP7-P2-10: Old square aspect ratio is GONE (regression-pin against the
+# 1:1 form that we shipped → reverted → re-shipped intermediate. WP9's
+# WP8-P2-9 isDayLike block already counts grep instances of certain
+# patterns, so this is an independent narrow pin on the literal 1:1 form
+# inside MonthView's day-cell block specifically.)
+# Note: this is a coarse string check; if some future code legitimately uses
+# `aspectRatio: '1 / 1'` for a non-MonthView purpose, this assertion would
+# need scoping. Today nothing else in the codebase uses that literal.
+if ! grep -qF "aspectRatio: '1 / 1'" "$WP7_HAPPY"; then
+    check "WP7-P2 codify: square 1:1 aspect ratio absent (back-loop fix regression-pin)" pass
+else
+    check "WP7-P2 codify: 1:1 aspect regression" fail "legacy square aspect still present"
+fi
+
+# WP7-P2-11: data-month-grid container selector. The MonthView root element
+# carries `data-month-grid={monthIso}` for Playwright-stable selection.
+if grep -qF 'data-month-grid={monthIso}' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: data-month-grid={monthIso} container selector" pass
+else
+    check "WP7-P2 codify: data-month-grid selector" fail "missing"
+fi
+
+# WP7-P2-12: data-month-day + data-month-day-active + data-month-day-intensity
+# day-cell selectors. All three are load-bearing for Playwright behavioral
+# coverage and for the empty-vs-populated visual contract.
+if grep -qF 'data-month-day={iso}' "$WP7_HAPPY" && \
+   grep -qF 'data-month-day-active' "$WP7_HAPPY" && \
+   grep -qF 'data-month-day-intensity' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: day-cell selectors (data-month-day, -active, -intensity)" pass
+else
+    check "WP7-P2 codify: day-cell selectors" fail "one or more missing"
+fi
+
+# WP7-P2-13: data-month-nav arrow selectors (prev + next).
+if grep -qF 'data-month-nav="prev"' "$WP7_HAPPY" && \
+   grep -qF 'data-month-nav="next"' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: data-month-nav prev/next arrow selectors" pass
+else
+    check "WP7-P2 codify: data-month-nav selectors" fail "prev or next missing"
+fi
+
+# WP7-P2-14: data-month-nav-toast selector. MonthNavToast root has this
+# attribute so Playwright can find it without title/aria-label coupling.
+if grep -qF 'data-month-nav-toast="true"' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: data-month-nav-toast selector" pass
+else
+    check "WP7-P2 codify: data-month-nav-toast selector" fail "missing"
+fi
+
+# WP7-P2-15: _initMonthIso IIFE in Dashboard wrapper. Reads hash.month →
+# today.meta.start[:7] → first months key → current calendar month fallback.
+if grep -qF '_initMonthIso' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: _initMonthIso IIFE in Dashboard wrapper" pass
+else
+    check "WP7-P2 codify: _initMonthIso IIFE" fail "missing"
+fi
+
+# WP7-P2-16: monthIso state + setMonthIso setter in Dashboard wrapper.
+# This is the load-bearing state for prev-arrow client-side swap (D1).
+if grep -qF '[monthIso, setMonthIso] = React.useState' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: monthIso state + setter in Dashboard wrapper" pass
+else
+    check "WP7-P2 codify: monthIso state" fail "useState not found"
+fi
+
+# WP7-P2-17: Month-helper functions present (used by Toolbar's month-nav
+# pill + MonthView grid math). All six are tiny pure functions — losing any
+# one would cause runtime errors.
+if grep -qF 'const _monthIsoToParts' "$WP7_HAPPY" && \
+   grep -qF 'const _monthIsoToLabel' "$WP7_HAPPY" && \
+   grep -qF 'const _prevMonthIso' "$WP7_HAPPY" && \
+   grep -qF 'const _nextMonthIso' "$WP7_HAPPY" && \
+   grep -qF 'const _daysInMonth' "$WP7_HAPPY" && \
+   grep -qF 'const _mondayIndex' "$WP7_HAPPY"; then
+    check "WP7-P2 codify: 6 month-helper functions defined (parts/label/prev/next/days/mondayIndex)" pass
+else
+    check "WP7-P2 codify: month-helper functions" fail "one or more missing"
+fi
+
+rm -rf "$WP7_DIR"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo
