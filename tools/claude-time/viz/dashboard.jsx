@@ -528,6 +528,394 @@ function SummaryStrip({ filterChips, stats }) {
   );
 }
 
+/* ── WP10 Phase 2: Metrics surface (HeadlineCard + MetricsPanel) ───── */
+// Read window.CT_DATA.metrics (emitted by Phase 1's build_metrics aggregator)
+// and render two surfaces: HeadlineCard (3-tile collapsed default) and
+// MetricsPanel (expanded full table). State lives in the Dashboard wrapper;
+// these components are pure renderers. Filter-aware: kind + project chip
+// state shrinks the headline + panel cells via _computeMetricsView.
+
+// Duration formatter: integer ms → "Xh Ym" / "Xm Ys" / "Xs" / "0s".
+const _fmtDurMs = (ms) => {
+  if (!ms || ms < 0) return '0s';
+  const secs = Math.floor(ms / 1000);
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m) return `${m}m ${String(s).padStart(2, '0')}s`;
+  return `${s}s`;
+};
+
+// Multiplier formatter: float → "×1.49" or "—" when 0/null/undefined.
+// Concurrency/blocking rows pass null to suppress the multiplier column.
+const _fmtMult = (mult) => (typeof mult === 'number' && mult > 0
+  ? `\u00d7${mult.toFixed(2)}`
+  : '\u2014');
+
+// Filter-aware projection of the metrics tree. Returns the same shape with
+// kind/project filtering applied:
+//   - subagent kind off → drop subagent from ai_agent (effort + wall reduce)
+//   - reading kind off  → drop reading from human (typing + thinking only)
+//   - thinking kind off → drop thinking from human (typing + reading only)
+//   - active kind off   → drop ai_agent wholesale (active is the burst kind)
+//   - away kind off     → blocking metric (human-blocking-agent) drops to 0
+//                         (reading + thinking become the only away analogues)
+//   - project filter — handled in Phase 3+ if needed; today the aggregator
+//     doesn't slice by project, so popover projects are a UI-only concept
+//     for headline + panel.
+// `_computeMetricsView` returns a SHALLOW projection: identity for unfiltered
+// cells, modified copies for filter-impacted cells. Multipliers are
+// recomputed from filtered wallclock/effort to stay consistent.
+function _computeMetricsView(metrics, filterKinds) {
+  if (!metrics) return null;
+  const k = filterKinds || {};
+  // Defaults: kind ON when undefined (matches FilterContext default).
+  const activeOn   = k.active   !== false;
+  const readingOn  = k.reading  !== false;
+  const thinkingOn = k.thinking !== false;
+  const subagentOn = k.subagent !== false;
+  const allKindsOn = activeOn && readingOn && thinkingOn && subagentOn;
+  if (allKindsOn) return metrics;
+
+  const m = JSON.parse(JSON.stringify(metrics)); // deep clone for mutation safety
+
+  // active OFF → ai_agent and engaged_session collapse to 0 (active IS the
+  // load-bearing kind for both metrics).
+  if (!activeOn) {
+    m.engaged_session = { ...m.engaged_session, wallclock_ms: 0, effort_ms: 0, multiplier: 0, session_count: 0 };
+    m.ai_agent = { ...m.ai_agent, wallclock_ms: 0, effort_ms: 0, multiplier: 0,
+                    subagent: { wallclock_ms: 0, effort_ms: 0, multiplier: 0 } };
+    m.tool_call = { ...m.tool_call, wallclock_ms: 0, effort_ms: 0, multiplier: 0, top: [] };
+    m.concurrency = m.concurrency.map(c => ({ ...c, wallclock_ms: 0, effort_ms: 0 }));
+    m.blocking = { ...m.blocking, agent_blocking_human_ms: 0 };
+  } else if (!subagentOn) {
+    // active ON, subagent OFF → subtract subagent from ai_agent
+    // (subagent intervals ⊆ ai_agent intervals — verified in reconciliation tests).
+    const sa = m.ai_agent.subagent;
+    const newWc = Math.max(0, m.ai_agent.wallclock_ms - sa.wallclock_ms);
+    const newEff = Math.max(0, m.ai_agent.effort_ms - sa.effort_ms);
+    m.ai_agent = {
+      ...m.ai_agent,
+      wallclock_ms: newWc,
+      effort_ms: newEff,
+      multiplier: newWc > 0 ? newEff / newWc : 0,
+      subagent: { wallclock_ms: 0, effort_ms: 0, multiplier: 0 },
+    };
+    // blocking.agent_blocking_human ≡ ai_agent.wallclock_ms by definition.
+    m.blocking = { ...m.blocking, agent_blocking_human_ms: newWc };
+  }
+
+  // Human kind filtering — reading/thinking come from gaps; typing is
+  // always-present (it's part of every UPS submission). When a human kind
+  // chip is off, drop its contribution from human total.
+  let newReading = readingOn ? m.human.reading_ms : 0;
+  let newThinking = thinkingOn ? m.human.thinking_ms : 0;
+  // typing is not a separate filter chip; it stays.
+  const newHumanTotal = m.human.typing_ms + newReading + newThinking;
+  m.human = {
+    ...m.human,
+    reading_ms: newReading,
+    thinking_ms: newThinking,
+    wallclock_ms: newHumanTotal,
+    effort_ms: newHumanTotal,
+    // human.multiplier always 1.0 by construction (one brain).
+  };
+
+  // blocking.human_blocking_agent ≡ reading_ms + thinking_ms by definition.
+  m.blocking = { ...m.blocking, human_blocking_agent_ms: newReading + newThinking };
+
+  return m;
+}
+
+// HeadlineCard — three primary numbers (collapsed default) + chevron toggle.
+// Click chevron → expanded prop true → MetricsPanel renders below.
+function HeadlineCard({ metrics, expanded, onToggleExpanded }) {
+  const { kinds: filterKinds } = useFilter();
+  const view = React.useMemo(
+    () => _computeMetricsView(metrics, filterKinds),
+    [metrics, filterKinds]
+  );
+  if (!view) return null;
+
+  // The three headline numbers per Q1 of the spec:
+  //   1. active session wall-clock (engaged-session wall-clock — away-gaps excluded)
+  //   2. human activity wall-clock (typing + reading + thinking)
+  //   3. AI effort hours (agent burst effort-time only — no double counting)
+  const tiles = [
+    { id: 'engaged-session', label: 'Active session',  value_ms: view.engaged_session.wallclock_ms,
+      sub: 'wall-clock' },
+    { id: 'human',           label: 'Human activity',  value_ms: view.human.wallclock_ms,
+      sub: 'wall-clock' },
+    { id: 'ai-effort',       label: 'AI effort',       value_ms: view.ai_agent.effort_ms,
+      sub: 'effort-time' },
+  ];
+
+  // Empty-window check: post-filter zeros across all three headline numbers.
+  const isEmpty = tiles.every(t => t.value_ms === 0);
+  // Raw-empty (pre-filter) check: distinguishes "no data at all" from
+  // "data exists but filtered out".
+  const rawEmpty = metrics.engaged_session.wallclock_ms === 0
+                && metrics.human.wallclock_ms === 0
+                && metrics.ai_agent.effort_ms === 0;
+  const emptyCaption = isEmpty
+    ? (rawEmpty
+        ? 'No tracked activity in the past 7 days'
+        : 'No data matches current filters — adjust chips above to see the past 7 days')
+    : null;
+
+  // WP10 P2.verify-human.2 (back-loop 2026-05-24): the window/date-range
+  // indicator was previously buried in MetricsPanel's header. User asked for
+  // it to be visible without expanding the panel. Surfaced as a `data-metrics-window`
+  // strip in the top-right of the collapsed card.
+  const windowLabel = `Past ${view.window.day_count} days \u00b7 ${view.window.start} \u2192 ${view.window.end}`;
+
+  return (
+    <div
+      data-metrics-card="true"
+      data-metrics-expanded={expanded ? 'true' : 'false'}
+      style={{
+        display: 'flex', alignItems: 'stretch', gap: 0,
+        padding: '14px 20px',
+        borderBottom: `1px solid ${CT_TOKENS.border}`,
+        background: CT_TOKENS.surface,
+        flexShrink: 0,
+      }}>
+      {/* Three tiles */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 28, flex: 1 }}>
+        {tiles.map((t) => (
+          <div key={t.id} data-metric-tile={t.id}
+               style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{
+              fontSize: 10.5, fontFamily: CT_TOKENS.sans, textTransform: 'uppercase',
+              letterSpacing: '0.06em', color: CT_TOKENS.textTertiary,
+            }}>{t.label}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span style={{
+                fontFamily: CT_TOKENS.mono, fontSize: 20, fontWeight: 500,
+                color: CT_TOKENS.textPrimary, letterSpacing: '-0.01em',
+              }}>{emptyCaption ? '\u2014' : _fmtDurMs(t.value_ms)}</span>
+              <span style={{ fontFamily: CT_TOKENS.sans, fontSize: 11, color: CT_TOKENS.textTertiary }}>{t.sub}</span>
+            </div>
+          </div>
+        ))}
+        {emptyCaption && (
+          <div style={{ marginLeft: 14, fontSize: 11.5,
+                        color: CT_TOKENS.textTertiary, fontFamily: CT_TOKENS.sans,
+                        maxWidth: 360 }}>
+            {emptyCaption}
+          </div>
+        )}
+      </div>
+      {/* Right column: window/date-range indicator stacked above chevron toggle. */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+                    justifyContent: 'center', gap: 6 }}>
+        <div
+          data-metrics-window="true"
+          style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 10.5,
+            color: CT_TOKENS.textTertiary,
+            letterSpacing: '0.02em',
+          }}
+          title="Trailing-7-day window — metrics are always computed over this range, view-mode-independent.">
+          {windowLabel}
+        </div>
+        <button
+          data-metric-expand-toggle="true"
+          onClick={onToggleExpanded}
+          title={expanded ? 'Collapse metrics panel' : 'Expand metrics panel'}
+          style={{
+            padding: '4px 8px', background: 'transparent',
+            border: `1px solid ${CT_TOKENS.border}`, borderRadius: 6,
+            cursor: 'pointer',
+            color: CT_TOKENS.textSecondary,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontFamily: CT_TOKENS.sans, fontSize: 11,
+          }}>
+          <span>{expanded ? 'Hide' : 'Details'}</span>
+          {expanded ? <IconChevDown /> : <IconChevRight />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// MetricsPanel — full six-section table, rendered when HeadlineCard is expanded.
+function MetricsPanel({ metrics }) {
+  const { kinds: filterKinds } = useFilter();
+  const view = React.useMemo(
+    () => _computeMetricsView(metrics, filterKinds),
+    [metrics, filterKinds]
+  );
+  if (!view) return null;
+
+  // Header legend describing the wall-clock vs effort-time vocabulary.
+  // The legend is the only inline tooltip-style copy in v1.
+  const legend = 'Wall-clock = elapsed time. Effort-time = sum of durations. \u00d7Multiplier = effort \u00f7 wall-clock.';
+
+  // Helper: render a single metric row (wall-clock | effort-time | ×mult).
+  const Row = ({ label, wc, eff, mult, indent = 0 }) => (
+    <tr>
+      <td style={{ paddingLeft: 8 + indent * 16, fontFamily: CT_TOKENS.sans,
+                   fontSize: 12, color: indent > 0 ? CT_TOKENS.textTertiary : CT_TOKENS.textSecondary }}>
+        {label}
+      </td>
+      <td style={{ fontFamily: CT_TOKENS.mono, fontSize: 12, textAlign: 'right',
+                   color: CT_TOKENS.textPrimary }}>
+        {_fmtDurMs(wc)}
+      </td>
+      <td style={{ fontFamily: CT_TOKENS.mono, fontSize: 12, textAlign: 'right',
+                   color: CT_TOKENS.textPrimary }}>
+        {_fmtDurMs(eff)}
+      </td>
+      <td style={{ fontFamily: CT_TOKENS.mono, fontSize: 12, textAlign: 'right',
+                   color: CT_TOKENS.textSecondary, paddingRight: 8 }}>
+        {_fmtMult(mult)}
+      </td>
+    </tr>
+  );
+
+  const colHeader = (text, align = 'left') => (
+    <th style={{
+      fontFamily: CT_TOKENS.sans, fontSize: 10.5, textTransform: 'uppercase',
+      letterSpacing: '0.06em', color: CT_TOKENS.textTertiary,
+      fontWeight: 500, paddingBottom: 4, textAlign: align,
+    }}>{text}</th>
+  );
+
+  const sectionStyle = {
+    marginBottom: 14, padding: '12px 16px',
+    background: CT_TOKENS.surfaceAlt,
+    border: `1px solid ${CT_TOKENS.border}`,
+    borderRadius: 6,
+  };
+  const sectionHeader = (label) => (
+    <div style={{
+      fontFamily: CT_TOKENS.sans, fontSize: 11.5, fontWeight: 500,
+      color: CT_TOKENS.textPrimary, marginBottom: 6,
+      textTransform: 'uppercase', letterSpacing: '0.04em',
+    }}>{label}</div>
+  );
+
+  return (
+    <div data-metrics-panel="true" style={{
+      background: CT_TOKENS.surface,
+      padding: '16px 20px',
+      borderBottom: `1px solid ${CT_TOKENS.border}`,
+      maxHeight: 480, overflowY: 'auto',
+    }}>
+      <div style={{ fontFamily: CT_TOKENS.sans, fontSize: 11, color: CT_TOKENS.textTertiary,
+                    marginBottom: 12, fontStyle: 'italic' }}>
+        {legend}
+      </div>
+
+      {/* Engaged session */}
+      <div data-metric-section="engaged-session" style={sectionStyle}>
+        {sectionHeader('Engaged session duration')}
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>{colHeader('Metric')}{colHeader('Wall-clock', 'right')}{colHeader('Effort-time', 'right')}{colHeader('×Mult', 'right')}</tr></thead>
+          <tbody>
+            <Row label={`Across ${view.engaged_session.session_count} session(s)`}
+                 wc={view.engaged_session.wallclock_ms}
+                 eff={view.engaged_session.effort_ms}
+                 mult={view.engaged_session.multiplier} />
+          </tbody>
+        </table>
+      </div>
+
+      {/* AI agent */}
+      <div data-metric-section="ai-agent" style={sectionStyle}>
+        {sectionHeader('AI agent activity (bursts)')}
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>{colHeader('Metric')}{colHeader('Wall-clock', 'right')}{colHeader('Effort-time', 'right')}{colHeader('×Mult', 'right')}</tr></thead>
+          <tbody>
+            <Row label="All bursts"
+                 wc={view.ai_agent.wallclock_ms}
+                 eff={view.ai_agent.effort_ms}
+                 mult={view.ai_agent.multiplier} />
+            <Row label="of which: subagent time"
+                 wc={view.ai_agent.subagent.wallclock_ms}
+                 eff={view.ai_agent.subagent.effort_ms}
+                 mult={view.ai_agent.subagent.multiplier}
+                 indent={1} />
+          </tbody>
+        </table>
+      </div>
+
+      {/* Tool call */}
+      <div data-metric-section="tool-call" style={sectionStyle}>
+        {sectionHeader('Tool call duration')}
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>{colHeader('Metric')}{colHeader('Wall-clock', 'right')}{colHeader('Effort-time', 'right')}{colHeader('×Mult', 'right')}</tr></thead>
+          <tbody>
+            <Row label="All tool calls"
+                 wc={view.tool_call.wallclock_ms}
+                 eff={view.tool_call.effort_ms}
+                 mult={view.tool_call.multiplier} />
+            {view.tool_call.top.map((t, i) => (
+              <Row key={t.name} label={`top ${i + 1}: ${t.name}`}
+                   wc={t.wallclock_ms} eff={t.effort_ms} mult={t.multiplier}
+                   indent={1} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Human active */}
+      <div data-metric-section="human" style={sectionStyle}>
+        {sectionHeader('Human active duration')}
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>{colHeader('Metric')}{colHeader('Wall-clock', 'right')}{colHeader('Effort-time', 'right')}{colHeader('×Mult', 'right')}</tr></thead>
+          <tbody>
+            <Row label="Total (one-brain)"
+                 wc={view.human.wallclock_ms}
+                 eff={view.human.effort_ms}
+                 mult={view.human.multiplier} />
+            <Row label="typing"   wc={view.human.typing_ms}   eff={view.human.typing_ms}   mult={1.0} indent={1} />
+            <Row label="reading"  wc={view.human.reading_ms}  eff={view.human.reading_ms}  mult={1.0} indent={1} />
+            <Row label="thinking" wc={view.human.thinking_ms} eff={view.human.thinking_ms} mult={1.0} indent={1} />
+          </tbody>
+        </table>
+      </div>
+
+      {/* Concurrency stratification */}
+      <div data-metric-section="concurrency" style={sectionStyle}>
+        {sectionHeader('Concurrency stratification (engaged sessions)')}
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>{colHeader('Sessions engaged')}{colHeader('Wall-clock', 'right')}{colHeader('Effort-time', 'right')}<th /></tr></thead>
+          <tbody>
+            {view.concurrency.map((c) => (
+              <Row key={c.k}
+                   label={c.is_plus ? `${c.k}+ sessions` : `${c.k} session${c.k === 1 ? '' : 's'}`}
+                   wc={c.wallclock_ms}
+                   eff={c.effort_ms}
+                   mult={null} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Blocking metrics */}
+      <div data-metric-section="blocking" style={sectionStyle}>
+        {sectionHeader('Blocking metrics')}
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>{colHeader('Direction')}{colHeader('Wall-clock', 'right')}<th /><th /></tr></thead>
+          <tbody>
+            <Row label="Human blocking agent (reading + thinking)"
+                 wc={view.blocking.human_blocking_agent_ms}
+                 eff={view.blocking.human_blocking_agent_ms}
+                 mult={null} />
+            <Row label="Agent blocking human (burst wall-clock)"
+                 wc={view.blocking.agent_blocking_human_ms}
+                 eff={view.blocking.agent_blocking_human_ms}
+                 mult={null} />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ── Legend — functional kind-filter chips (WP9 Phase 2, 2026-05-23) ── */
 // Pre-WP9 this was a static color-key. WP9 made each item a clickable
 // toggle: clicking dims the chip (text strikethrough + reduced opacity)

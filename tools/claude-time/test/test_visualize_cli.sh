@@ -554,17 +554,22 @@ else
 fi
 
 # WP5b-2: CLI flag overrides config (0/0 forces single-day back-compat).
+# Note (WP10-P1, 2026-05-24): the metrics payload now emits its own
+# `day_count: 7`, so `! grep -q '"day_count"'` would spuriously trigger.
+# Scoped check: exactly ONE day_count match (from metrics.window), and the
+# `today` payload is single-day shape (has `iso` + no `target_iso`).
 WP5B_OUT2="$WP5B_DIR/override.html"
 CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open --date 2026-05-22 \
     --context-days-prior 0 --context-days-after 0 --out "$WP5B_OUT2" > /dev/null 2>&1
 ovr_rc=$?
+day_count_hits=$(grep -c '"day_count"' "$WP5B_OUT2" 2>/dev/null || echo "0")
 if [ $ovr_rc -eq 0 ] && [ -f "$WP5B_OUT2" ] && \
    grep -q '"iso": "2026-05-22"' "$WP5B_OUT2" && \
    ! grep -q '"target_iso"' "$WP5B_OUT2" && \
-   ! grep -q '"day_count"' "$WP5B_OUT2"; then
+   [ "$day_count_hits" -eq 1 ]; then
     check "WP5b codify: --context-days 0/0 overrides config, single-day back-compat" pass
 else
-    check "WP5b codify: flag-overrides-config" fail "rc=$ovr_rc, shape mismatch"
+    check "WP5b codify: flag-overrides-config" fail "rc=$ovr_rc, shape mismatch (day_count hits=$day_count_hits)"
 fi
 
 # WP5b-3: invalid config values silently fall back to defaults (14/7 = day_count 22).
@@ -593,16 +598,20 @@ else
 fi
 
 # WP5b-4: --demo path forces single-day even with explicit context-days flags.
+# Note (WP10-P1, 2026-05-24): same metrics.day_count scoping as WP5b-2.
+# Demo path emits metrics with day_count=7; check that's the only day_count
+# present (i.e., the today payload didn't grow a day_count of its own).
 WP5B_OUT4="$WP5B_DIR/demo.html"
 CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open --demo \
     --context-days-prior 5 --context-days-after 5 --out "$WP5B_OUT4" > /dev/null 2>&1
 demo_rc=$?
+day_count_hits_demo=$(grep -c '"day_count"' "$WP5B_OUT4" 2>/dev/null || echo "0")
 if [ $demo_rc -eq 0 ] && [ -f "$WP5B_OUT4" ] && \
    ! grep -q '"target_iso"' "$WP5B_OUT4" && \
-   ! grep -q '"day_count"' "$WP5B_OUT4"; then
+   [ "$day_count_hits_demo" -eq 1 ]; then
     check "WP5b codify: --demo forces single-day even with explicit flags" pass
 else
-    check "WP5b codify: --demo-forces-single-day" fail "rc=$demo_rc, shape mismatch"
+    check "WP5b codify: --demo-forces-single-day" fail "rc=$demo_rc, shape mismatch (day_count hits=$day_count_hits_demo)"
 fi
 
 # WP5b-5: integration boundary — Week payload still emitted, independent of Day's context-days.
@@ -1554,6 +1563,324 @@ else
 fi
 
 rm -rf "$WP7_DIR"
+
+# ── WP10 Phase 1: Aggregator + emit wiring (metrics surface) ──────────
+# Phase 1 verify-codify: source-shape pins for `window.CT_DATA.metrics` payload.
+# Phase 1 emits the metrics tree on the --demo path AND on the real-DB path;
+# we use --demo here for hermetic testing (no DB seeding needed).
+
+WP10_DIR="$(mktemp -d -t claude-time-wp10-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR"' EXIT
+WP10_HAPPY="$WP10_DIR/wp10-demo.html"
+CLAUDE_TIME_DIR="$WP10_DIR" "$CLI" visualize --no-open --demo --out "$WP10_HAPPY" > /dev/null 2>&1
+if [ ! -f "$WP10_HAPPY" ]; then
+    check "WP10-P1 codify: --demo emit landed" fail "html missing"
+fi
+
+# WP10-P1-1: window.CT_DATA contains a `metrics` top-level key.
+if grep -qF '"metrics":' "$WP10_HAPPY"; then
+    check "WP10-P1 codify: window.CT_DATA.metrics top-level key present" pass
+else
+    check "WP10-P1 codify: metrics top-level key" fail "missing"
+fi
+
+# WP10-P1-2: all 7 metric sub-keys present (window, engaged_session, ai_agent,
+# tool_call, human, concurrency, blocking).
+if grep -qF '"window":' "$WP10_HAPPY" && \
+   grep -qF '"engaged_session":' "$WP10_HAPPY" && \
+   grep -qF '"ai_agent":' "$WP10_HAPPY" && \
+   grep -qF '"tool_call":' "$WP10_HAPPY" && \
+   grep -qF '"human":' "$WP10_HAPPY" && \
+   grep -qF '"concurrency":' "$WP10_HAPPY" && \
+   grep -qF '"blocking":' "$WP10_HAPPY"; then
+    check "WP10-P1 codify: 7 metric sub-keys (window/engaged_session/ai_agent/tool_call/human/concurrency/blocking)" pass
+else
+    check "WP10-P1 codify: 7 metric sub-keys" fail "one or more missing"
+fi
+
+# WP10-P1-3: window.day_count is exactly 7 (trailing-7-day window — today
+# inclusive + prior 6).
+if grep -qE '"day_count":\s*7' "$WP10_HAPPY"; then
+    check "WP10-P1 codify: metrics.window.day_count == 7 (trailing 7 days)" pass
+else
+    check "WP10-P1 codify: window.day_count" fail "not 7"
+fi
+
+# WP10-P1-4: concurrency array has 4 entries with is_plus on the 4th.
+# JSON serialization is compact in viz_render; grep for the structural shape.
+if grep -qE '"is_plus":\s*true' "$WP10_HAPPY"; then
+    check "WP10-P1 codify: concurrency 4+ bucket has is_plus:true" pass
+else
+    check "WP10-P1 codify: is_plus:true" fail "missing"
+fi
+
+# WP10-P1-5: human.multiplier == 1.0 (one-brain by construction).
+# Compact JSON omits trailing zeros, so check both literal forms.
+if grep -qE '"multiplier":\s*1(\.0)?[,}]' "$WP10_HAPPY"; then
+    check "WP10-P1 codify: human.multiplier == 1.0 (one-brain)" pass
+else
+    check "WP10-P1 codify: multiplier 1.0" fail "not found"
+fi
+
+# WP10-P1-6: ai_agent has a nested `subagent` sub-object (load-bearing for
+# the "ai_agent.subagent" drill row in MetricsPanel).
+if grep -qF '"subagent":' "$WP10_HAPPY"; then
+    check "WP10-P1 codify: ai_agent.subagent nested sub-object present" pass
+else
+    check "WP10-P1 codify: ai_agent.subagent" fail "missing"
+fi
+
+# WP10-P1-7: tool_call has a `top` list (top-5 tools by effort-time).
+if grep -qE '"top":\s*\[' "$WP10_HAPPY"; then
+    check "WP10-P1 codify: tool_call.top list present" pass
+else
+    check "WP10-P1 codify: tool_call.top" fail "missing"
+fi
+
+rm -rf "$WP10_DIR"
+
+# ── WP10 Phase 1 codify: integration-boundary tests (real-DB path) ────
+# The 7 pins above exercise the --demo emit-shape; this block exercises the
+# real-DB events-from-SQLite → build_metrics → emitted HTML pipeline, which
+# is the load-bearing consuming surface for the integration-boundary rule
+# (Phase 1 modifies `_cmd_visualize` in the existing `claude-time visualize`
+# CLI command). User verified this path manually against /tmp/usage_analysis_v3.py
+# in verify-human (22 numeric assertions matched exactly); these pins codify
+# the verified behavior.
+
+WP10C_DIR="$(mktemp -d -t claude-time-wp10-codify-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR"' EXIT
+WP10C_DB="$WP10C_DIR/events.sqlite"
+sqlite3 "$WP10C_DB" <<SQL
+CREATE TABLE events (
+  ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL,
+  event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT
+);
+CREATE INDEX idx_session_ts ON events(session_id, ts);
+CREATE INDEX idx_ts ON events(ts);
+SQL
+
+# Seed one known burst-with-tool-call pattern that landed 1 hour ago — always
+# inside the trailing-7-day window regardless of when the test runs.
+# Burst: UPS at T-3600s, Stop at T-3540s = 60s wall-clock.
+# Tool call: PreToolUse at T-3590s, PostToolUse at T-3580s = 10s.
+# Expected:
+#   metrics.ai_agent.wallclock_ms == 60000 (burst is 60s)
+#   metrics.ai_agent.effort_ms    == 60000 (single burst, effort == wall)
+#   metrics.tool_call.effort_ms   == 10000 (one 10s tool call)
+#   metrics.engaged_session.wallclock_ms == 60000
+#   metrics.engaged_session.session_count == 1
+T_NOW_MS=$(python3 -c "import time; print(int(time.time() * 1000))")
+UPS_MS=$((T_NOW_MS - 3600000))
+STOP_MS=$((T_NOW_MS - 3540000))
+PRE_MS=$((T_NOW_MS - 3590000))
+POST_MS=$((T_NOW_MS - 3580000))
+sqlite3 "$WP10C_DB" "INSERT INTO events VALUES \
+  ($UPS_MS,  'sid-wp10c', '/repo/p', 'UserPromptSubmit', NULL, NULL, '{\"prompt_length_chars\":0}'), \
+  ($PRE_MS,  'sid-wp10c', '/repo/p', 'PreToolUse',       'Bash', NULL, '{\"tool_use_id\":\"t1\"}'), \
+  ($POST_MS, 'sid-wp10c', '/repo/p', 'PostToolUse',      'Bash', NULL, '{\"tool_use_id\":\"t1\"}'), \
+  ($STOP_MS, 'sid-wp10c', '/repo/p', 'Stop',             NULL, NULL, NULL);"
+
+WP10C_HAPPY="$WP10C_DIR/wp10c.html"
+CLAUDE_TIME_DIR="$WP10C_DIR" "$CLI" visualize --no-open --out "$WP10C_HAPPY" > /dev/null 2>&1
+wp10c_rc=$?
+
+# WP10-P1 codify-8: real-DB path emits metrics that reflect seeded events.
+# Extracts metrics tree from emitted HTML and asserts known values from the
+# seeded burst+tool-call pattern.
+if [ $wp10c_rc -eq 0 ] && [ -f "$WP10C_HAPPY" ]; then
+    METRICS_OK=$(python3 <<PYEOF
+import re, json, sys
+with open("$WP10C_HAPPY") as f: html = f.read()
+m = re.search(r"window\.CT_DATA\s*=\s*(\{.*?\});", html, re.DOTALL)
+assert m, "CT_DATA not found"
+mt = json.loads(m.group(1))["metrics"]
+# Burst was 60s (60000ms); single session.
+assert mt["ai_agent"]["wallclock_ms"] == 60000, f"ai_agent.wc {mt['ai_agent']['wallclock_ms']} != 60000"
+assert mt["ai_agent"]["effort_ms"] == 60000, f"ai_agent.eff {mt['ai_agent']['effort_ms']} != 60000"
+assert mt["engaged_session"]["wallclock_ms"] == 60000, f"engaged.wc {mt['engaged_session']['wallclock_ms']} != 60000"
+assert mt["engaged_session"]["session_count"] == 1, f"session_count {mt['engaged_session']['session_count']} != 1"
+# Tool call was 10s.
+assert mt["tool_call"]["effort_ms"] == 10000, f"tool effort {mt['tool_call']['effort_ms']} != 10000"
+assert mt["tool_call"]["wallclock_ms"] == 10000, f"tool wc {mt['tool_call']['wallclock_ms']} != 10000"
+# Top-5 includes Bash with effort 10000.
+top_names = [t["name"] for t in mt["tool_call"]["top"]]
+assert "Bash" in top_names, f"Bash not in top: {top_names}"
+print("OK")
+PYEOF
+2>&1)
+    if [ "$METRICS_OK" = "OK" ]; then
+        check "WP10-P1 codify-8: real-DB path emits metrics reflecting seeded events (consuming surface)" pass
+    else
+        check "WP10-P1 codify-8: real-DB seeded events" fail "$METRICS_OK"
+    fi
+else
+    check "WP10-P1 codify-8: real-DB emit" fail "rc=$wp10c_rc, html_exists=$([ -f "$WP10C_HAPPY" ] && echo yes || echo no)"
+fi
+
+# WP10-P1 codify-9: trailing-7-day window math is correct (today + prior 6).
+# The CLI computes the window from snapshot_dt (wall-clock now). The test's
+# expected window-end is today, window-start is today - 6 days.
+if [ $wp10c_rc -eq 0 ] && [ -f "$WP10C_HAPPY" ]; then
+    WINDOW_OK=$(python3 <<PYEOF
+import re, json
+from datetime import date, timedelta
+with open("$WP10C_HAPPY") as f: html = f.read()
+m = re.search(r"window\.CT_DATA\s*=\s*(\{.*?\});", html, re.DOTALL)
+mt = json.loads(m.group(1))["metrics"]
+today = date.today()
+expected_start = (today - timedelta(days=6)).isoformat()
+expected_end = today.isoformat()
+assert mt["window"]["start"] == expected_start, f"start {mt['window']['start']} != {expected_start}"
+assert mt["window"]["end"] == expected_end, f"end {mt['window']['end']} != {expected_end}"
+assert mt["window"]["day_count"] == 7, f"day_count {mt['window']['day_count']} != 7"
+print("OK")
+PYEOF
+2>&1)
+    if [ "$WINDOW_OK" = "OK" ]; then
+        check "WP10-P1 codify-9: trailing-7-day window math (today + prior 6, day_count=7)" pass
+    else
+        check "WP10-P1 codify-9: window math" fail "$WINDOW_OK"
+    fi
+else
+    check "WP10-P1 codify-9: window math (emit failed)" fail "rc=$wp10c_rc"
+fi
+
+rm -rf "$WP10C_DIR"
+
+# ── WP10 Phase 2 codify: HeadlineCard + MetricsPanel UI source-shape pins ──
+# These pins assert that the JSX components landed in the emitted HTML and
+# that the load-bearing selectors (data-metrics-card, data-metric-tile=*,
+# data-metric-section=*, data-metric-expand-toggle) are present.
+
+WP10P2_DIR="$(mktemp -d -t claude-time-wp10p2-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR" "$WP10P2_DIR"' EXIT
+WP10P2_HAPPY="$WP10P2_DIR/p2.html"
+CLAUDE_TIME_DIR="$WP10P2_DIR" "$CLI" visualize --no-open --demo --out "$WP10P2_HAPPY" > /dev/null 2>&1
+
+# WP10-P2-1: HeadlineCard component definition present in emitted HTML.
+if grep -qF 'function HeadlineCard' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: HeadlineCard component definition present" pass
+else
+    check "WP10-P2 codify: HeadlineCard" fail "missing"
+fi
+
+# WP10-P2-2: MetricsPanel component definition present.
+if grep -qF 'function MetricsPanel' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: MetricsPanel component definition present" pass
+else
+    check "WP10-P2 codify: MetricsPanel" fail "missing"
+fi
+
+# WP10-P2-3: _computeMetricsView filter-aware projection helper present.
+if grep -qF 'function _computeMetricsView' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: _computeMetricsView filter-aware projection helper present" pass
+else
+    check "WP10-P2 codify: _computeMetricsView" fail "missing"
+fi
+
+# WP10-P2-4: data-metrics-card root selector present.
+if grep -qF 'data-metrics-card="true"' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: data-metrics-card root selector present" pass
+else
+    check "WP10-P2 codify: data-metrics-card" fail "missing"
+fi
+
+# WP10-P2-5: three headline tile selectors (engaged-session, human, ai-effort).
+if grep -qF 'data-metric-tile={t.id}' "$WP10P2_HAPPY" && \
+   grep -qF "'engaged-session'" "$WP10P2_HAPPY" && \
+   grep -qF "'ai-effort'" "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: three headline tile selectors (engaged-session, human, ai-effort)" pass
+else
+    check "WP10-P2 codify: headline tile selectors" fail "one or more missing"
+fi
+
+# WP10-P2-6: six metric-section selectors (engaged-session, ai-agent, tool-call, human, concurrency, blocking).
+sections_found=0
+for section in "engaged-session" "ai-agent" "tool-call" "human" "concurrency" "blocking"; do
+    if grep -qF "data-metric-section=\"$section\"" "$WP10P2_HAPPY"; then
+        sections_found=$((sections_found + 1))
+    fi
+done
+if [ "$sections_found" -eq 6 ]; then
+    check "WP10-P2 codify: six data-metric-section selectors (engaged-session, ai-agent, tool-call, human, concurrency, blocking)" pass
+else
+    check "WP10-P2 codify: metric-section selectors" fail "found $sections_found of 6"
+fi
+
+# WP10-P2-7: data-metric-expand-toggle chevron selector present.
+if grep -qF 'data-metric-expand-toggle="true"' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: data-metric-expand-toggle chevron selector present" pass
+else
+    check "WP10-P2 codify: data-metric-expand-toggle" fail "missing"
+fi
+
+# WP10-P2-8: metricsExpanded state + setMetricsExpanded setter in interactive
+# Dashboard wrapper (load-bearing for the chevron toggle behavior).
+if grep -qF '[metricsExpanded, setMetricsExpanded] = React.useState' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: metricsExpanded state in Dashboard wrapper" pass
+else
+    check "WP10-P2 codify: metricsExpanded state" fail "useState not found"
+fi
+
+# WP10-P2-9: hash 'metrics' key writer present (default-elision: writes null when collapsed).
+if grep -qF "updateHash({ metrics: metricsExpanded ? 'expanded' : null })" "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: hash 'metrics' key writer with default-elision" pass
+else
+    check "WP10-P2 codify: hash metrics writer" fail "missing"
+fi
+
+# WP10-P2-10: _initMetricsExpanded IIFE reads hash.metrics === 'expanded' on init.
+if grep -qF "_initMetricsExpanded" "$WP10P2_HAPPY" && \
+   grep -qF "hash.metrics === 'expanded'" "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: _initMetricsExpanded IIFE reads hash.metrics on init" pass
+else
+    check "WP10-P2 codify: _initMetricsExpanded IIFE" fail "missing"
+fi
+
+# WP10-P2-11: empty-window caption literal present.
+if grep -qF 'No tracked activity in the past 7 days' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: empty-window caption literal 'No tracked activity in the past 7 days'" pass
+else
+    check "WP10-P2 codify: empty-window caption" fail "missing"
+fi
+
+# WP10-P2-12: filter-state-aware variant caption (filtered-empty case).
+if grep -qF 'No data matches current filters' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: filter-empty caption variant present" pass
+else
+    check "WP10-P2 codify: filter-empty caption" fail "missing"
+fi
+
+# WP10-P2-13: HeadlineCard + MetricsPanel are rendered inside Dashboard,
+# gated by window.CT_DATA.metrics presence (additive-emit guard).
+if grep -qF 'window.CT_DATA.metrics && (' "$WP10P2_HAPPY" && \
+   grep -qF '<HeadlineCard' "$WP10P2_HAPPY" && \
+   grep -qF '<MetricsPanel' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: HeadlineCard + MetricsPanel rendered in Dashboard, gated by metrics presence" pass
+else
+    check "WP10-P2 codify: Dashboard placement" fail "components or guard missing"
+fi
+
+# WP10-P2-14 (P2.verify-human.2 back-loop, 2026-05-24): data-metrics-window
+# selector on HeadlineCard surfaces the trailing-7-day window context without
+# requiring panel expansion. The label uses the "Past N days · YYYY-MM-DD → YYYY-MM-DD"
+# format with monospaced font for the date pair.
+if grep -qF 'data-metrics-window="true"' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: data-metrics-window selector on collapsed HeadlineCard" pass
+else
+    check "WP10-P2 codify: data-metrics-window selector" fail "missing"
+fi
+
+# WP10-P2-15: the window label format "Past N days · ..." literal present
+# (sanity pin against the format string drifting without intent).
+if grep -qF 'Past ${view.window.day_count} days' "$WP10P2_HAPPY"; then
+    check "WP10-P2 codify: window label uses 'Past N days' format on HeadlineCard" pass
+else
+    check "WP10-P2 codify: window label format" fail "missing"
+fi
+
+rm -rf "$WP10P2_DIR"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

@@ -193,6 +193,82 @@ def tool_durations_ms(events: list[dict]) -> dict[str, int]:
     return dict(totals)
 
 
+def tool_intervals(events: list[dict]) -> dict[str, list[tuple[int, int]]]:
+    """Per-tool list of (start_ms, end_ms) intervals across all sessions.
+
+    Mirrors `tool_durations_ms` pairing logic exactly: PreToolUse paired with
+    next PostToolUse / PostToolUseFailure sharing the same tool_use_id;
+    unpaired Pre events skipped. Difference is the return shape — intervals
+    expose start/end so callers can compute wall-clock (merged) in addition
+    to effort-time (sum). Reverse-zero pairs are skipped.
+
+    Returns dict {tool_name: [(start_ms, end_ms), ...]}.
+    """
+    intervals: dict[str, list[tuple[int, int]]] = defaultdict(list)
+
+    post_by_tuid: dict[str, dict] = {}
+    for e in events:
+        if e.get("event") in ("PostToolUse", "PostToolUseFailure"):
+            tuid = _meta_get(e, "tool_use_id")
+            if tuid:
+                post_by_tuid[tuid] = e
+
+    for e in events:
+        if e.get("event") != "PreToolUse":
+            continue
+        tuid = _meta_get(e, "tool_use_id")
+        if not tuid:
+            continue
+        post = post_by_tuid.get(tuid)
+        if not post:
+            continue
+        s = e.get("ts", 0)
+        end = post.get("ts", 0)
+        if end <= s:
+            continue
+        tool = e.get("tool_name") or "<unknown>"
+        intervals[tool].append((s, end))
+
+    return dict(intervals)
+
+
+def subagent_intervals(events: list[dict]) -> list[tuple[int, int]]:
+    """Flat list of (start_ms, end_ms) subagent intervals across all sessions.
+
+    Mirrors `subagent_durations_ms` pairing logic exactly: SubagentStart
+    paired with next SubagentStop in same session matching by agent_type,
+    chronological FIFO pairing. Skips end <= start. Returns flat list (not
+    per-agent-type) because the metrics-layer caller merges across all
+    subagent work; per-agent-type breakdown is a future drill-down.
+    """
+    pairs: list[tuple[int, int]] = []
+
+    by_session: dict[str, list[dict]] = defaultdict(list)
+    for e in events:
+        if e.get("event") in ("SubagentStart", "SubagentStop"):
+            sid = e.get("session_id")
+            if sid:
+                by_session[sid].append(e)
+    for sid_events in by_session.values():
+        sid_events.sort(key=lambda r: r.get("ts", 0))
+
+    for sid_events in by_session.values():
+        opens: dict[str, list[dict]] = defaultdict(list)
+        for e in sid_events:
+            atype = e.get("agent_type") or "<unknown>"
+            if e.get("event") == "SubagentStart":
+                opens[atype].append(e)
+            elif e.get("event") == "SubagentStop":
+                if opens[atype]:
+                    start = opens[atype].pop(0)
+                    s = start.get("ts", 0)
+                    end = e.get("ts", 0)
+                    if end > s:
+                        pairs.append((s, end))
+
+    return pairs
+
+
 def subagent_durations_ms(events: list[dict]) -> dict[str, int]:
     """Sum per-agent-type subagent wall-clock durations across all sessions.
 

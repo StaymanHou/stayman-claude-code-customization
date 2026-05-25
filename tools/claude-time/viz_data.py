@@ -839,3 +839,298 @@ def build_week_data(
         "days": days_labels,
         "projects": projects_out,
     }
+
+
+# ============================================================================
+# WP10: Metrics aggregator — wall-clock vs effort-time over trailing 7 days.
+#
+# Public entry point: `build_metrics(events, window_start_dt, window_end_dt)`.
+# Emits a metric tree consumed by HeadlineCard + MetricsPanel in dashboard.jsx.
+# Reference implementation: /tmp/usage_analysis_v3.py (user-recreated 2026-05-24).
+#
+# Terminology:
+#   wall-clock = real elapsed time. Overlapping activities collapse via merge.
+#   effort-time = plain sum of all durations. 2 parallel 1h activities = 2h.
+#   ×multiplier = effort-time ÷ wall-clock.
+#
+# Engaged session = burst-spanning windows with away-classified gaps EXCLUDED.
+# The existing `_build_viz_sessions` includes away-gaps inside its session
+# window (sensible for rendering — keeps the session visually intact); the
+# metrics layer needs the engaged definition to avoid inflating "session
+# duration" with away time. Per Q5 of the spec: engaged definition lives in
+# the metrics aggregator only; `_build_viz_sessions` is unchanged.
+# ============================================================================
+
+
+def _merge_intervals(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Merge overlapping (start, end) intervals into a sorted disjoint list.
+
+    Sort by start; for each subsequent interval, if it overlaps or touches
+    the rightmost merged interval, extend its end; otherwise append.
+    Drops zero-width / inverted intervals (end <= start).
+    """
+    if not intervals:
+        return []
+    sorted_iv = sorted(intervals)
+    merged: list[list[int]] = []
+    for s, e in sorted_iv:
+        if e <= s:
+            continue
+        if merged and s <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([s, e])
+    return [(s, e) for s, e in merged]
+
+
+def _sum_intervals(intervals: list[tuple[int, int]]) -> int:
+    """Plain sum of (end - start) over each interval. No merge."""
+    return sum(e - s for s, e in intervals)
+
+
+def _build_engaged_intervals(
+    bursts_by_sid: dict[str, list[dict]],
+    gaps_by_sid_keyed: dict[str, dict[tuple[int, int], object]],
+) -> tuple[list[tuple[int, int]], dict[str, int]]:
+    """Per-session engaged intervals: bursts joined by non-away gaps, split by
+    away gaps.
+
+    For each session's burst sequence, walk pairwise: if the gap between
+    burst[i].end and burst[i+1].start is classified "away", finalize the
+    current engaged interval and start a new one at burst[i+1]. Otherwise,
+    extend the current interval through burst[i+1].
+
+    Returns:
+        (all_intervals, per_session_effort_ms)
+        all_intervals: flat list of (start_ms, end_ms) across all sessions
+                       (un-merged — caller merges for wall-clock or sums for
+                       effort-time).
+        per_session_effort_ms: {session_id: effort_ms} sum of intervals per
+                               session (used by `engaged_session.session_count`
+                               and reconciliation tests).
+
+    Reference: /tmp/usage_analysis_v3.py lines 84–107.
+    """
+    all_intervals: list[tuple[int, int]] = []
+    per_session_ms: dict[str, int] = {}
+
+    for sid, bursts in bursts_by_sid.items():
+        if not bursts:
+            continue
+        sess_gaps = gaps_by_sid_keyed.get(sid, {})
+        cur_start = bursts[0]["start_ts"]
+        cur_end = bursts[0]["end_ts"]
+        iv_for_sess: list[tuple[int, int]] = []
+        for i in range(len(bursts) - 1):
+            this_end = bursts[i]["end_ts"]
+            next_start = bursts[i + 1]["start_ts"]
+            g = sess_gaps.get((this_end, next_start))
+            if g is not None and getattr(g, "bucket", None) == "away":
+                iv_for_sess.append((cur_start, cur_end))
+                cur_start = next_start
+                cur_end = bursts[i + 1]["end_ts"]
+            else:
+                cur_end = bursts[i + 1]["end_ts"]
+        iv_for_sess.append((cur_start, cur_end))
+        per_session_ms[sid] = _sum_intervals(iv_for_sess)
+        all_intervals.extend(iv_for_sess)
+
+    return all_intervals, per_session_ms
+
+
+def _multiplier(wallclock_ms: int, effort_ms: int) -> float:
+    """Effort ÷ wall-clock guarded against div-by-zero."""
+    return (effort_ms / wallclock_ms) if wallclock_ms > 0 else 0.0
+
+
+def _empty_metrics(window_start_iso: str, window_end_iso: str,
+                   day_count: int) -> dict:
+    """Fully-shaped zero tree for empty-events guard."""
+    return {
+        "window": {"start": window_start_iso, "end": window_end_iso,
+                   "day_count": day_count},
+        "engaged_session": {"wallclock_ms": 0, "effort_ms": 0,
+                            "multiplier": 0.0, "session_count": 0},
+        "ai_agent": {
+            "wallclock_ms": 0, "effort_ms": 0, "multiplier": 0.0,
+            "subagent": {"wallclock_ms": 0, "effort_ms": 0, "multiplier": 0.0},
+        },
+        "tool_call": {
+            "wallclock_ms": 0, "effort_ms": 0, "multiplier": 0.0,
+            "top": [],
+        },
+        "human": {
+            "wallclock_ms": 0, "effort_ms": 0, "multiplier": 1.0,
+            "typing_ms": 0, "reading_ms": 0, "thinking_ms": 0,
+        },
+        "concurrency": [
+            {"k": 1, "wallclock_ms": 0, "effort_ms": 0},
+            {"k": 2, "wallclock_ms": 0, "effort_ms": 0},
+            {"k": 3, "wallclock_ms": 0, "effort_ms": 0},
+            {"k": 4, "wallclock_ms": 0, "effort_ms": 0, "is_plus": True},
+        ],
+        "blocking": {
+            "human_blocking_agent_ms": 0,
+            "agent_blocking_human_ms": 0,
+        },
+    }
+
+
+def build_metrics(events: list[dict],
+                  window_start_dt: datetime | None,
+                  window_end_dt: datetime | None) -> dict:
+    """Aggregate wall-clock vs effort-time metrics over a window of events.
+
+    Args:
+        events: chronologically-sorted event-dicts within [window_start_dt,
+                window_end_dt]. Caller is responsible for filtering events
+                to the window — `build_metrics` does not re-filter.
+        window_start_dt / window_end_dt: window endpoints used only for the
+                output's `window` sub-key. Pass `None` when events is empty
+                (e.g., placeholder emit) — the empty-events guard fires
+                first and uses ISO "" for window dates.
+
+    Returns metric tree per the spec/plan; see `_empty_metrics` for shape.
+    """
+    if not events:
+        if window_start_dt is None or window_end_dt is None:
+            return _empty_metrics("", "", 0)
+        return _empty_metrics(window_start_dt.date().isoformat(),
+                              window_end_dt.date().isoformat(),
+                              (window_end_dt.date() - window_start_dt.date()).days + 1)
+
+    window_start_iso = window_start_dt.date().isoformat()
+    window_end_iso = window_end_dt.date().isoformat()
+    day_count = (window_end_dt.date() - window_start_dt.date()).days + 1
+
+    # ---- Bursts and gaps ----
+    bursts_by_sid = reclassify.active_bursts(events)
+    gaps = reclassify.gap_buckets(events)
+    # Key gaps by (start_ts, end_ts) within each session so engaged-interval
+    # construction can look them up by burst boundaries.
+    gaps_by_sid_keyed: dict[str, dict[tuple[int, int], object]] = defaultdict(dict)
+    for g in gaps:
+        gaps_by_sid_keyed[g.session_id][(g.start_ts, g.end_ts)] = g
+
+    # ---- Engaged sessions ----
+    engaged_intervals, per_session_engaged_ms = _build_engaged_intervals(
+        bursts_by_sid, gaps_by_sid_keyed,
+    )
+    engaged_wallclock = _sum_intervals(_merge_intervals(engaged_intervals))
+    engaged_effort = sum(per_session_engaged_ms.values())
+    session_count = sum(1 for v in per_session_engaged_ms.values() if v > 0)
+
+    # ---- AI agent (bursts) ----
+    burst_intervals: list[tuple[int, int]] = []
+    for bursts in bursts_by_sid.values():
+        for b in bursts:
+            if b["end_ts"] > b["start_ts"]:
+                burst_intervals.append((b["start_ts"], b["end_ts"]))
+    agent_wallclock = _sum_intervals(_merge_intervals(burst_intervals))
+    agent_effort = _sum_intervals(burst_intervals)
+
+    # ---- Subagent (intervals, not just durations) ----
+    sa_intervals = reclassify.subagent_intervals(events)
+    subagent_wallclock = _sum_intervals(_merge_intervals(sa_intervals))
+    subagent_effort = _sum_intervals(sa_intervals)
+
+    # ---- Tool calls ----
+    tool_iv_by_name = reclassify.tool_intervals(events)
+    all_tool_iv: list[tuple[int, int]] = []
+    for iv_list in tool_iv_by_name.values():
+        all_tool_iv.extend(iv_list)
+    tool_wallclock = _sum_intervals(_merge_intervals(all_tool_iv))
+    tool_effort = _sum_intervals(all_tool_iv)
+
+    # Top 5 tools by effort-time desc.
+    per_tool_summary: list[dict] = []
+    for tool, iv_list in tool_iv_by_name.items():
+        eff = _sum_intervals(iv_list)
+        wc = _sum_intervals(_merge_intervals(iv_list))
+        per_tool_summary.append({
+            "name": tool,
+            "wallclock_ms": wc,
+            "effort_ms": eff,
+            "multiplier": _multiplier(wc, eff),
+        })
+    per_tool_summary.sort(key=lambda x: -x["effort_ms"])
+    top_tools = per_tool_summary[:5]
+
+    # ---- Human activity (one-brain — no parallelism) ----
+    reading_ms = sum(g.effective_ms for g in gaps if g.bucket == "reading")
+    thinking_ms = sum(g.effective_ms for g in gaps if g.bucket == "thinking")
+    typing_ms = sum(g.typing_debit_ms for g in gaps)
+    human_total = reading_ms + thinking_ms + typing_ms
+
+    # ---- Concurrency stratification (engaged sessions sweep-line) ----
+    sweep: list[tuple[int, int]] = []
+    for s, e in engaged_intervals:
+        sweep.append((s, +1))
+        sweep.append((e, -1))
+    sweep.sort()
+    by_concurrency_ms: dict[int, int] = defaultdict(int)
+    active_count = 0
+    prev_ts: int | None = None
+    for ts, delta in sweep:
+        if prev_ts is not None and active_count > 0:
+            by_concurrency_ms[active_count] += ts - prev_ts
+        active_count += delta
+        prev_ts = ts
+
+    c1 = by_concurrency_ms.get(1, 0)
+    c2 = by_concurrency_ms.get(2, 0)
+    c3 = by_concurrency_ms.get(3, 0)
+    c4plus = sum(v for k, v in by_concurrency_ms.items() if k >= 4)
+    concurrency = [
+        {"k": 1, "wallclock_ms": c1, "effort_ms": c1},
+        {"k": 2, "wallclock_ms": c2, "effort_ms": c2 * 2},
+        {"k": 3, "wallclock_ms": c3, "effort_ms": c3 * 3},
+        {"k": 4, "wallclock_ms": c4plus, "effort_ms": c4plus * 4, "is_plus": True},
+    ]
+
+    # ---- Blocking metrics ----
+    human_blocking_agent_ms = reading_ms + thinking_ms
+    agent_blocking_human_ms = agent_wallclock
+
+    return {
+        "window": {
+            "start": window_start_iso,
+            "end": window_end_iso,
+            "day_count": day_count,
+        },
+        "engaged_session": {
+            "wallclock_ms": engaged_wallclock,
+            "effort_ms": engaged_effort,
+            "multiplier": _multiplier(engaged_wallclock, engaged_effort),
+            "session_count": session_count,
+        },
+        "ai_agent": {
+            "wallclock_ms": agent_wallclock,
+            "effort_ms": agent_effort,
+            "multiplier": _multiplier(agent_wallclock, agent_effort),
+            "subagent": {
+                "wallclock_ms": subagent_wallclock,
+                "effort_ms": subagent_effort,
+                "multiplier": _multiplier(subagent_wallclock, subagent_effort),
+            },
+        },
+        "tool_call": {
+            "wallclock_ms": tool_wallclock,
+            "effort_ms": tool_effort,
+            "multiplier": _multiplier(tool_wallclock, tool_effort),
+            "top": top_tools,
+        },
+        "human": {
+            "wallclock_ms": human_total,
+            "effort_ms": human_total,
+            "multiplier": 1.0,
+            "typing_ms": typing_ms,
+            "reading_ms": reading_ms,
+            "thinking_ms": thinking_ms,
+        },
+        "concurrency": concurrency,
+        "blocking": {
+            "human_blocking_agent_ms": human_blocking_agent_ms,
+            "agent_blocking_human_ms": agent_blocking_human_ms,
+        },
+    }

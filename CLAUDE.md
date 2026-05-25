@@ -184,6 +184,7 @@ When a consumer's current value equals its component-default (e.g., viewport equ
 | WP7 (month) | `month` | `2026-05` (YYYY-MM) | view ≠ `month` |
 | WP8 (custom range) | `range` | `2026-05-01:2026-05-07` (start:end ISO) | view ≠ `custom` |
 | WP9 (filter chips) | `filters` | `active,subagent` (comma-separated kind names) | all kinds enabled (default) |
+| WP10 (metrics card) | `metrics` | `expanded` (the only non-default value) | card is collapsed (default) |
 | WP13 (expanded projects) | `expanded` | `my-thing,om-design` (comma-separated project aliases) | default collapsed-state matches user pref |
 
 ### Round-trip example

@@ -679,10 +679,26 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
         "snapshot_iso": snapshot_dt.isoformat(timespec="seconds"),
     }
 
+    # WP10: trailing-7-day metrics window — always today's date + the prior
+    # 6 days (today inclusive = 7 days). View-mode independent: the same
+    # window is computed regardless of --demo / --week / --month / --range /
+    # --date so Day/Week/Month/Custom all show the same metrics surface.
+    # `snapshot_dt` already captures emit-time wall-clock above.
+    metrics_window_end_dt = snapshot_dt
+    metrics_window_start_dt = snapshot_dt - timedelta(days=6)
+
     if args.demo:
         # Use the design's bundled mock data without touching SQLite.
         data = _load_demo_data(viz_dir)
         data["meta"] = meta
+        # WP10: emit an empty-shaped metrics tree on the demo path. The demo's
+        # bundled events are not loaded as event-dicts here (the demo path
+        # short-circuits SQLite), so we cannot run build_metrics over real
+        # event rows. Emitting an empty-shape tree keeps the JS contract
+        # uniform (always present) without inventing fake numbers.
+        data["metrics"] = viz_data.build_metrics(
+            [], metrics_window_start_dt, metrics_window_end_dt,
+        )
     else:
         if not db_path.exists():
             print(f"error: {db_path} does not exist. Run Claude Code with CLAUDE_TIME_TRACKING=1 to populate it, "
@@ -779,6 +795,21 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
                 auto_alias_fn=_auto_alias_for_cwd,
             )
             data["months"] = {active_iso: today_payload, prev_iso: prev_payload}
+
+        # WP10: load trailing-7-day events (today + prior 6) and run the
+        # metrics aggregator. Window is view-mode-independent — same metrics
+        # surface regardless of Day/Week/Month/Custom. Events are loaded
+        # per-day then concatenated and chronologically sorted.
+        metrics_events: list[dict] = []
+        metrics_window_start_date = metrics_window_start_dt.date()
+        metrics_window_end_date = metrics_window_end_dt.date()
+        for i in range((metrics_window_end_date - metrics_window_start_date).days + 1):
+            d = metrics_window_start_date + timedelta(days=i)
+            metrics_events.extend(_load_window_events(db_path, d))
+        metrics_events.sort(key=lambda r: r.get("ts", 0))
+        data["metrics"] = viz_data.build_metrics(
+            metrics_events, metrics_window_start_dt, metrics_window_end_dt,
+        )
 
     # WP7/WP8: initial view precedence — --month > --range > --week > default.
     # --month and --range each carry a load-bearing payload (the picked window)

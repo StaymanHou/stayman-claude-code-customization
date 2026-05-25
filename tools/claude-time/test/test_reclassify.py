@@ -212,6 +212,106 @@ class SubagentDurationsTests(unittest.TestCase):
         )
 
 
+class ToolIntervalsTests(unittest.TestCase):
+    def test_empty_events(self):
+        self.assertEqual(reclassify.tool_intervals([]), {})
+
+    def test_single_pair(self):
+        events = [
+            ev(0,    "s", "PreToolUse",  tool_name="Bash", meta='{"tool_use_id":"x"}'),
+            ev(1000, "s", "PostToolUse", tool_name="Bash", meta='{"tool_use_id":"x"}'),
+        ]
+        self.assertEqual(reclassify.tool_intervals(events), {"Bash": [(0, 1000)]})
+
+    def test_unpaired_pre_skipped(self):
+        events = [
+            ev(0, "s", "PreToolUse", tool_name="Bash", meta='{"tool_use_id":"x"}'),
+        ]
+        self.assertEqual(reclassify.tool_intervals(events), {})
+
+    def test_failure_post_pairs(self):
+        events = [
+            ev(0,    "s", "PreToolUse",         tool_name="Bash", meta='{"tool_use_id":"x"}'),
+            ev(2500, "s", "PostToolUseFailure", tool_name="Bash", meta='{"tool_use_id":"x"}'),
+        ]
+        self.assertEqual(reclassify.tool_intervals(events), {"Bash": [(0, 2500)]})
+
+    def test_overlapping_pairs_across_sessions(self):
+        # Two concurrent Bash tool calls in different sessions overlap in time.
+        # Both pairs must appear in the per-tool list (no implicit merging).
+        events = [
+            ev(0,    "A", "PreToolUse",  tool_name="Bash", meta='{"tool_use_id":"a"}'),
+            ev(500,  "B", "PreToolUse",  tool_name="Bash", meta='{"tool_use_id":"b"}'),
+            ev(1000, "A", "PostToolUse", tool_name="Bash", meta='{"tool_use_id":"a"}'),
+            ev(1500, "B", "PostToolUse", tool_name="Bash", meta='{"tool_use_id":"b"}'),
+        ]
+        result = reclassify.tool_intervals(events)
+        self.assertEqual(set(result.keys()), {"Bash"})
+        # Order follows the order of PreToolUse occurrences in the input.
+        self.assertEqual(result["Bash"], [(0, 1000), (500, 1500)])
+
+    def test_reverse_zero_pair_skipped(self):
+        # Post before Pre (clock skew or corrupt data) → end <= start → skipped.
+        events = [
+            ev(1000, "s", "PreToolUse",  tool_name="Bash", meta='{"tool_use_id":"x"}'),
+            ev(500,  "s", "PostToolUse", tool_name="Bash", meta='{"tool_use_id":"x"}'),
+        ]
+        self.assertEqual(reclassify.tool_intervals(events), {})
+
+    def test_missing_tool_use_id_skipped(self):
+        events = [
+            ev(0,    "s", "PreToolUse",  tool_name="Bash"),  # no meta → no tool_use_id
+            ev(1000, "s", "PostToolUse", tool_name="Bash"),
+        ]
+        self.assertEqual(reclassify.tool_intervals(events), {})
+
+
+class SubagentIntervalsTests(unittest.TestCase):
+    def test_empty_events(self):
+        self.assertEqual(reclassify.subagent_intervals([]), [])
+
+    def test_single_pair(self):
+        events = [
+            ev(0,    "s", "SubagentStart", agent_type="Explore"),
+            ev(5000, "s", "SubagentStop",  agent_type="Explore"),
+        ]
+        self.assertEqual(reclassify.subagent_intervals(events), [(0, 5000)])
+
+    def test_unpaired_start_skipped(self):
+        events = [ev(0, "s", "SubagentStart", agent_type="Explore")]
+        self.assertEqual(reclassify.subagent_intervals(events), [])
+
+    def test_multiple_pairs_concatenated(self):
+        events = [
+            ev(0,    "s", "SubagentStart", agent_type="Plan"),
+            ev(1000, "s", "SubagentStop",  agent_type="Plan"),
+            ev(2000, "s", "SubagentStart", agent_type="Plan"),
+            ev(2500, "s", "SubagentStop",  agent_type="Plan"),
+        ]
+        # FIFO chronological pairing within session+agent_type.
+        self.assertEqual(reclassify.subagent_intervals(events),
+                         [(0, 1000), (2000, 2500)])
+
+    def test_distinct_agent_types_paired_independently(self):
+        events = [
+            ev(0,    "s", "SubagentStart", agent_type="Plan"),
+            ev(100,  "s", "SubagentStart", agent_type="Explore"),
+            ev(500,  "s", "SubagentStop",  agent_type="Explore"),
+            ev(1000, "s", "SubagentStop",  agent_type="Plan"),
+        ]
+        # Two pairs: Plan (0→1000) and Explore (100→500). Order follows the
+        # event scan; per-agent-type pairings emit on their respective Stops.
+        result = reclassify.subagent_intervals(events)
+        self.assertEqual(sorted(result), [(0, 1000), (100, 500)])
+
+    def test_zero_duration_pair_skipped(self):
+        events = [
+            ev(1000, "s", "SubagentStart", agent_type="Plan"),
+            ev(1000, "s", "SubagentStop",  agent_type="Plan"),
+        ]
+        self.assertEqual(reclassify.subagent_intervals(events), [])
+
+
 class SessionActiveTests(unittest.TestCase):
     def test_single_ups_to_stop_window(self):
         events = [

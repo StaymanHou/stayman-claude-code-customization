@@ -155,6 +155,23 @@ function Dashboard() {
     return { start: todayIso, end: todayIso };
   });
 
+  // WP10: metricsExpanded — collapsed (default) shows just the three
+  // headline numbers; expanded reveals the full MetricsPanel below the card.
+  // Hash key: `metrics=expanded`. Default-elision drops the key when
+  // collapsed. Reload restores from hash.
+  const _initMetricsExpanded = (() => {
+    const hash = parseHash();
+    return hash.metrics === 'expanded';
+  })();
+  const [metricsExpanded, setMetricsExpanded] = React.useState(_initMetricsExpanded);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      updateHash({ metrics: metricsExpanded ? 'expanded' : null });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [metricsExpanded]);
+
   // WP7/WP8: debounced URL-hash write on view + range + monthIso change.
   // Default-elision:
   //   - view === 'day' (project-wide default) → drop view, range, month keys
@@ -502,6 +519,19 @@ function Dashboard() {
         onPrevMonth={onPrevMonth}
         onNextMonth={onNextMonth}
       />
+      {/* WP10: HeadlineCard — three numbers above the timeline; chevron
+          expands to MetricsPanel. View-mode-independent (window is always
+          trailing-7-days from snapshot regardless of Day/Week/Month/Custom). */}
+      {window.CT_DATA.metrics && (
+        <HeadlineCard
+          metrics={window.CT_DATA.metrics}
+          expanded={metricsExpanded}
+          onToggleExpanded={() => setMetricsExpanded(v => !v)}
+        />
+      )}
+      {window.CT_DATA.metrics && metricsExpanded && (
+        <MetricsPanel metrics={window.CT_DATA.metrics} />
+      )}
       <SummaryStrip
         filterChips={filterChips}
         stats={isDayLike ? dayStats : weekStats}

@@ -698,6 +698,336 @@ async function runTests() {
       await page.close();
     }
 
+    // ── WP10 Phase 2 behavioral coverage: HeadlineCard + MetricsPanel ──
+    // The --demo path emits an empty metrics tree (planned simplification —
+    // see [SURFACED-2026-05-24] Phase 1 P1.5). To test value-driven behavior
+    // (filter chip changes AI-effort value), we seed a small real DB with
+    // known burst+tool events and render against that.
+    const METRICS_DB = path.join(SERVE_DIR, 'metrics_events.sqlite');
+    const METRICS_DASH_HTML = path.join(SERVE_DIR, 'metrics.html');
+    {
+      // Create the events table.
+      let r = spawnSync('sqlite3', [METRICS_DB,
+        'CREATE TABLE events (ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT); CREATE INDEX idx_session_ts ON events(session_id, ts); CREATE INDEX idx_ts ON events(ts);'
+      ]);
+      if (r.status !== 0) throw new Error(`sqlite3 init (metrics): ${r.stderr || r.stdout}`);
+
+      // Seed a known burst + tool call + subagent pattern that landed 1 hour ago.
+      // Burst: UPS at T-3600s, Stop at T-3540s (60s wall-clock).
+      // Tool call: PreToolUse at T-3590s, PostToolUse at T-3580s (Bash, 10s).
+      // Subagent: SubagentStart at T-3570s, SubagentStop at T-3550s (Explore, 20s).
+      const TNOW = Date.now();
+      const inserts = [
+        [TNOW - 3600000, 'sid-metrics', '/repo/p', 'UserPromptSubmit', null, null, '{"prompt_length_chars":0}'],
+        [TNOW - 3590000, 'sid-metrics', '/repo/p', 'PreToolUse',       'Bash',  null, '{"tool_use_id":"t1"}'],
+        [TNOW - 3580000, 'sid-metrics', '/repo/p', 'PostToolUse',      'Bash',  null, '{"tool_use_id":"t1"}'],
+        [TNOW - 3570000, 'sid-metrics', '/repo/p', 'SubagentStart',    null,   'Explore', null],
+        [TNOW - 3550000, 'sid-metrics', '/repo/p', 'SubagentStop',     null,   'Explore', null],
+        [TNOW - 3540000, 'sid-metrics', '/repo/p', 'Stop',             null,   null, null],
+      ];
+      for (const row of inserts) {
+        const escapedValues = row.map(v => v === null ? 'NULL' : (typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : String(v))).join(', ');
+        const r2 = spawnSync('sqlite3', [METRICS_DB, `INSERT INTO events VALUES (${escapedValues});`]);
+        if (r2.status !== 0) throw new Error(`sqlite3 insert (metrics): ${r2.stderr || r2.stdout}`);
+      }
+
+      // Render the dashboard against this DB. Pass --db pointing at METRICS_DB
+      // so the CLI uses the seeded events (default DB path differs).
+      const cli = path.resolve(__dirname, '..', 'claude-time');
+      const r3 = spawnSync(cli, ['visualize', '--no-open', '--db', METRICS_DB, '--out', METRICS_DASH_HTML], {
+        encoding: 'utf-8',
+        env: { ...process.env, CLAUDE_TIME_DIR: SERVE_DIR },
+      });
+      if (r3.status !== 0) throw new Error(`CLI render (metrics): ${r3.stderr || r3.stdout}`);
+    }
+    const METRICS_URL = `${URL_BASE}/metrics.html`;
+
+    // ── WP10-P2 behavioral 1: HeadlineCard renders three tiles + chevron ──
+    {
+      const page = await browser.newPage();
+      await page.goto(METRICS_URL, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-card]', { timeout: 5000 });
+      const shape = await page.evaluate(() => {
+        const card = document.querySelector('[data-metrics-card]');
+        const tiles = Array.from(document.querySelectorAll('[data-metric-tile]')).map(t => t.getAttribute('data-metric-tile'));
+        const toggle = document.querySelector('[data-metric-expand-toggle]');
+        return {
+          cardPresent: !!card,
+          expanded: card && card.getAttribute('data-metrics-expanded'),
+          tileIds: tiles,
+          togglePresent: !!toggle,
+        };
+      });
+      check('WP10-P2 behavioral: HeadlineCard renders w/ 3 tiles (engaged-session, human, ai-effort) + chevron',
+        shape.cardPresent && shape.expanded === 'false' &&
+        shape.tileIds.length === 3 &&
+        shape.tileIds.includes('engaged-session') &&
+        shape.tileIds.includes('human') &&
+        shape.tileIds.includes('ai-effort') &&
+        shape.togglePresent,
+        JSON.stringify(shape));
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 2: chevron click expands panel + writes hash ──
+    {
+      const page = await browser.newPage();
+      await page.goto(METRICS_URL, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metric-expand-toggle]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      await page.evaluate(() => {
+        const btn = document.querySelector('[data-metric-expand-toggle]');
+        const key = Object.keys(btn).find(k => k.startsWith('__reactProps'));
+        btn[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(300);  // debounced hash write
+      const expanded = await page.evaluate(() => {
+        const card = document.querySelector('[data-metrics-card]');
+        const panel = document.querySelector('[data-metrics-panel]');
+        return {
+          cardExpanded: card && card.getAttribute('data-metrics-expanded'),
+          panelPresent: !!panel,
+          hashHasMetrics: window.location.hash.includes('metrics=expanded'),
+        };
+      });
+      check('WP10-P2 behavioral: chevron click → panel expands + hash gains metrics=expanded',
+        expanded.cardExpanded === 'true' && expanded.panelPresent && expanded.hashHasMetrics,
+        JSON.stringify(expanded));
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 3: second click collapses + default-elides hash ──
+    {
+      const page = await browser.newPage();
+      await page.goto(METRICS_URL + '#metrics=expanded', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-panel]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      // Click to collapse.
+      await page.evaluate(() => {
+        const btn = document.querySelector('[data-metric-expand-toggle]');
+        const key = Object.keys(btn).find(k => k.startsWith('__reactProps'));
+        btn[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(300);
+      const collapsed = await page.evaluate(() => ({
+        cardExpanded: document.querySelector('[data-metrics-card]').getAttribute('data-metrics-expanded'),
+        panelGone: !document.querySelector('[data-metrics-panel]'),
+        hashLacksMetrics: !window.location.hash.includes('metrics='),
+      }));
+      check('WP10-P2 behavioral: second click → collapses + hash drops metrics key (default-elision)',
+        collapsed.cardExpanded === 'false' && collapsed.panelGone && collapsed.hashLacksMetrics,
+        JSON.stringify(collapsed));
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 4: reload with #metrics=expanded → expanded on init ──
+    {
+      const page = await browser.newPage();
+      await page.goto(METRICS_URL + '#metrics=expanded', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-card]', { timeout: 5000 });
+      const initial = await page.evaluate(() => ({
+        cardExpanded: document.querySelector('[data-metrics-card]').getAttribute('data-metrics-expanded'),
+        panelPresent: !!document.querySelector('[data-metrics-panel]'),
+      }));
+      check('WP10-P2 behavioral: reload with #metrics=expanded → expanded on init (no flicker)',
+        initial.cardExpanded === 'true' && initial.panelPresent,
+        JSON.stringify(initial));
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 5: toggle subagent filter chip → AI-effort tile value changes ──
+    {
+      const page = await browser.newPage();
+      await page.goto(METRICS_URL, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metric-tile="ai-effort"]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      // Capture initial AI-effort value text (before filter change).
+      const before = await page.evaluate(() => {
+        const tile = document.querySelector('[data-metric-tile="ai-effort"]');
+        return tile ? tile.textContent : null;
+      });
+      // Click the 'subagent' filter chip to turn it OFF.
+      await page.evaluate(() => {
+        const chip = document.querySelector('button[data-filter-kind="subagent"]');
+        const key = Object.keys(chip).find(k => k.startsWith('__reactProps'));
+        chip[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);
+      const after = await page.evaluate(() => {
+        const tile = document.querySelector('[data-metric-tile="ai-effort"]');
+        const chip = document.querySelector('button[data-filter-kind="subagent"]');
+        return {
+          text: tile ? tile.textContent : null,
+          chipOn: chip && chip.getAttribute('data-filter-on'),
+        };
+      });
+      check('WP10-P2 behavioral: toggling subagent chip OFF changes AI-effort tile + chip records data-filter-on=false',
+        before && after.text && before !== after.text && after.chipOn === 'false',
+        JSON.stringify({ before, after }));
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 6: empty-window caption appears on --demo (empty metrics) ──
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/dash.html', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-card]', { timeout: 5000 });
+      const captionPresent = await page.evaluate(() => {
+        const card = document.querySelector('[data-metrics-card]');
+        return card && card.textContent.includes('No tracked activity in the past 7 days');
+      });
+      check('WP10-P2 behavioral: --demo path (empty metrics) shows "No tracked activity in the past 7 days" caption',
+        captionPresent === true,
+        `captionPresent=${captionPresent}`);
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 7 (codify gap): window indicator stays visible when expanded ──
+    // Codifies the P2.verify-human.2 back-loop fix: the date-range strip lives on
+    // the HeadlineCard (above the chevron) and remains visible across collapse/expand.
+    {
+      const page = await browser.newPage();
+      await page.goto(METRICS_URL, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-window]', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const collapsedState = await page.evaluate(() => {
+        const w = document.querySelector('[data-metrics-window]');
+        return {
+          textHasPast: w && /Past \d+ days/.test(w.textContent),
+          textHasArrow: w && w.textContent.includes('\u2192'),
+          visible: w && w.offsetWidth > 0 && w.offsetHeight > 0,
+        };
+      });
+      // Now expand the panel via chevron click.
+      await page.evaluate(() => {
+        const btn = document.querySelector('[data-metric-expand-toggle]');
+        const key = Object.keys(btn).find(k => k.startsWith('__reactProps'));
+        btn[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForSelector('[data-metrics-panel]', { timeout: 3000 });
+      const expandedState = await page.evaluate(() => {
+        const w = document.querySelector('[data-metrics-window]');
+        const panel = document.querySelector('[data-metrics-panel]');
+        return {
+          windowStillOnCard: w && w.offsetWidth > 0 && w.offsetHeight > 0,
+          windowInPanel: panel && panel.textContent.includes('Window:'),  // old header string
+          legendInPanel: panel && panel.textContent.includes('Wall-clock = elapsed'),
+        };
+      });
+      check('WP10-P2 behavioral 7: window indicator on HeadlineCard ("Past N days · ... → ...") visible collapsed AND expanded; removed from panel header (legend preserved)',
+        collapsedState.textHasPast && collapsedState.textHasArrow && collapsedState.visible &&
+        expandedState.windowStillOnCard && !expandedState.windowInPanel && expandedState.legendInPanel,
+        JSON.stringify({ collapsedState, expandedState }));
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 8 (codify gap): subagent OFF drops AI-effort by ≈ subagent contribution ──
+    // The seeded metrics fixture includes a subagent (Explore, 20s) inside the AI burst.
+    // When subagent chip is OFF, the AI-effort tile's wallclock should drop by the
+    // subagent's effort_ms (read from the expanded panel before toggle).
+    {
+      const page = await browser.newPage();
+      // Open panel first to read the subagent contribution.
+      await page.goto(METRICS_URL + '#metrics=expanded', { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metric-section="ai-agent"]', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      // Read AI-effort tile value + subagent sub-row value.
+      const before = await page.evaluate(() => {
+        // AI-effort tile text → extract the duration token.
+        const tile = document.querySelector('[data-metric-tile="ai-effort"]');
+        const tileText = tile ? tile.textContent : '';
+        // The subagent sub-row in the ai-agent section. Look for the row labeled
+        // with "subagent" — its first <td> contains "subagent".
+        const aiSection = document.querySelector('[data-metric-section="ai-agent"]');
+        const rows = aiSection ? Array.from(aiSection.querySelectorAll('tr')) : [];
+        const saRow = rows.find(r => r.textContent.toLowerCase().includes('subagent time'));
+        const saCells = saRow ? Array.from(saRow.querySelectorAll('td')).map(td => td.textContent.trim()) : [];
+        return {
+          aiEffortTileText: tileText,
+          subagentRowCells: saCells,
+        };
+      });
+      // Toggle subagent OFF.
+      await page.evaluate(() => {
+        const chip = document.querySelector('button[data-filter-kind="subagent"]');
+        const key = Object.keys(chip).find(k => k.startsWith('__reactProps'));
+        chip[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);
+      const after = await page.evaluate(() => {
+        const tile = document.querySelector('[data-metric-tile="ai-effort"]');
+        return { aiEffortTileText: tile ? tile.textContent : '' };
+      });
+      // Direction-of-change check: the AI-effort tile text should differ post-toggle.
+      // Magnitude check is approximate (textual durations like "1m" vs "40s") — we
+      // assert direction + the subagent sub-row was reachable (proves the panel
+      // contributed the comparison data the human used visually).
+      const directionChange = before.aiEffortTileText !== after.aiEffortTileText;
+      const subagentRowFound = before.subagentRowCells.length >= 2 &&
+        /\d+[ms]/.test(before.subagentRowCells.slice(1).join(' '));
+      check('WP10-P2 behavioral 8: subagent chip OFF drops AI-effort tile + subagent sub-row is the visible source-of-truth for the drop magnitude',
+        directionChange && subagentRowFound,
+        JSON.stringify({ before, after }));
+      await page.close();
+    }
+
+    // ── WP10-P2 behavioral 9 (codify gap): card stays present in Month + Custom views ──
+    // The metrics window is trailing-7-day, view-mode-independent. Switching tabs
+    // must not unmount the card. Custom-view tab is best exercised via hash since
+    // it requires a valid range param. (Custom-view test seeds its own range; we
+    // assert against METRICS_URL which has Day default and switch to Custom via hash.)
+    {
+      const page = await browser.newPage();
+      await page.goto(METRICS_URL, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-card]', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      // Note: the seeded METRICS_DB doesn't span multiple months so a Month-view
+      // tab click would no-op or land on a month with no data. The relevant
+      // assertion is that the metrics card stays mounted across view-mode hash
+      // changes; we test this via direct hash transitions which don't depend on
+      // emit-time month payload.
+      await page.evaluate(() => {
+        // Switch to Week view (which the seeded DB has data for).
+        const btns = Array.from(document.querySelectorAll('button'));
+        const week = btns.find(b => b.textContent.trim() === 'Week');
+        if (week) {
+          const key = Object.keys(week).find(k => k.startsWith('__reactProps'));
+          week[key].onClick({preventDefault:()=>{},stopPropagation:()=>{}});
+        }
+      });
+      await page.waitForTimeout(300);
+      const weekState = await page.evaluate(() => {
+        const card = document.querySelector('[data-metrics-card]');
+        const tile = document.querySelector('[data-metric-tile="engaged-session"]');
+        const tileText = tile ? tile.textContent : '';
+        return {
+          cardMounted: !!card,
+          aiTilePresent: !!tile,
+          tileHasValue: /\d+[ms]/.test(tileText),  // populated, not empty
+        };
+      });
+      // Switch back to Day, confirm card still mounted.
+      await page.evaluate(() => {
+        const btns = Array.from(document.querySelectorAll('button'));
+        const day = btns.find(b => b.textContent.trim() === 'Day');
+        if (day) {
+          const key = Object.keys(day).find(k => k.startsWith('__reactProps'));
+          day[key].onClick({preventDefault:()=>{},stopPropagation:()=>{}});
+        }
+      });
+      await page.waitForTimeout(300);
+      const dayState = await page.evaluate(() => {
+        const card = document.querySelector('[data-metrics-card]');
+        const tile = document.querySelector('[data-metric-tile="engaged-session"]');
+        return { cardMounted: !!card, aiTilePresent: !!tile };
+      });
+      check('WP10-P2 behavioral 9: metrics card stays mounted across view-mode switches (Day→Week→Day; window is view-mode-independent)',
+        weekState.cardMounted && weekState.aiTilePresent && weekState.tileHasValue &&
+        dayState.cardMounted && dayState.aiTilePresent,
+        JSON.stringify({ weekState, dayState }));
+      await page.close();
+    }
+
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) {

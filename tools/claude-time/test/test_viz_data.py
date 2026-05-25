@@ -849,5 +849,365 @@ class BuildComparisonDataTests(unittest.TestCase):
         self.assertEqual(out["deltas"]["proj-a"]["active"]["rel_pct"], 200.0)
 
 
+class BuildMetricsTests(unittest.TestCase):
+    """WP10 Phase 1: `build_metrics(events, start_dt, end_dt)` aggregator.
+
+    Engaged-session definition (away-gaps excluded) is metrics-layer-only;
+    `_build_viz_sessions` is unchanged (verified separately by the existing
+    BuildDayDataShapeTests etc. staying green).
+    """
+
+    # Reuse the existing 2026-05-13 day reference for single-day fixtures;
+    # the metrics aggregator doesn't care about windows being exactly 7 days
+    # in unit tests — it just records what's passed.
+    _WINDOW_START = _dt.datetime(2026, 5, 7, 0, 0, 0)   # 7 days before _DAY
+    _WINDOW_END = _dt.datetime(2026, 5, 13, 23, 59, 59)
+
+    # ---- Merge helper unit tests ----
+
+    def test_merge_intervals_empty(self):
+        self.assertEqual(viz_data._merge_intervals([]), [])
+
+    def test_merge_intervals_single(self):
+        self.assertEqual(viz_data._merge_intervals([(0, 10)]), [(0, 10)])
+
+    def test_merge_intervals_non_overlapping(self):
+        self.assertEqual(viz_data._merge_intervals([(0, 10), (20, 30)]),
+                         [(0, 10), (20, 30)])
+
+    def test_merge_intervals_overlapping(self):
+        self.assertEqual(viz_data._merge_intervals([(0, 10), (5, 15)]),
+                         [(0, 15)])
+
+    def test_merge_intervals_touching_boundary(self):
+        # (0,10) and (10,20) touch at 10 — must merge (10 <= 10).
+        self.assertEqual(viz_data._merge_intervals([(0, 10), (10, 20)]),
+                         [(0, 20)])
+
+    def test_merge_intervals_zero_width_dropped(self):
+        self.assertEqual(viz_data._merge_intervals([(5, 5), (10, 20)]),
+                         [(10, 20)])
+
+    def test_sum_intervals(self):
+        self.assertEqual(viz_data._sum_intervals([]), 0)
+        self.assertEqual(viz_data._sum_intervals([(0, 10), (20, 25)]), 15)
+
+    # ---- Empty-events guard ----
+
+    def test_empty_events_with_window(self):
+        out = viz_data.build_metrics([], self._WINDOW_START, self._WINDOW_END)
+        self.assertEqual(out["window"]["start"], "2026-05-07")
+        self.assertEqual(out["window"]["end"], "2026-05-13")
+        self.assertEqual(out["window"]["day_count"], 7)
+        # All metrics zero, fully-shaped.
+        self.assertEqual(out["engaged_session"]["wallclock_ms"], 0)
+        self.assertEqual(out["engaged_session"]["session_count"], 0)
+        self.assertEqual(out["ai_agent"]["effort_ms"], 0)
+        self.assertEqual(out["tool_call"]["top"], [])
+        self.assertEqual(out["human"]["multiplier"], 1.0)
+        self.assertEqual(len(out["concurrency"]), 4)
+        self.assertTrue(out["concurrency"][3]["is_plus"])
+        self.assertEqual(out["blocking"]["agent_blocking_human_ms"], 0)
+
+    def test_empty_events_no_window(self):
+        # Window may be None for placeholder emits.
+        out = viz_data.build_metrics([], None, None)
+        self.assertEqual(out["window"], {"start": "", "end": "", "day_count": 0})
+
+    # ---- Single-burst session ----
+
+    def test_single_burst_session(self):
+        # One session with one burst from 10:00 to 10:30 → 30min effort+wall.
+        events = [
+            ev(ms_at(10, 0), "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 30), "s1", "Stop", cwd="/repo/p"),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        thirty_min = 30 * 60_000
+        self.assertEqual(out["engaged_session"]["wallclock_ms"], thirty_min)
+        self.assertEqual(out["engaged_session"]["effort_ms"], thirty_min)
+        self.assertEqual(out["engaged_session"]["session_count"], 1)
+        self.assertEqual(out["ai_agent"]["wallclock_ms"], thirty_min)
+        self.assertEqual(out["ai_agent"]["effort_ms"], thirty_min)
+        # Concurrency: all 30min is k=1.
+        self.assertEqual(out["concurrency"][0]["wallclock_ms"], thirty_min)
+        self.assertEqual(out["concurrency"][1]["wallclock_ms"], 0)
+
+    # ---- Engaged-session: away-gap split ----
+
+    def test_two_burst_session_away_gap_splits_engaged(self):
+        # Burst 1: 10:00–10:30. Burst 2: 14:00–14:30. Gap between is 3.5h
+        # of pure away (> 5min thinking threshold → "away"), so engaged
+        # window splits: [10:00–10:30] + [14:00–14:30] = 60min each axis.
+        events = [
+            ev(ms_at(10, 0),  "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 30), "s1", "Stop", cwd="/repo/p"),
+            ev(ms_at(14, 0),  "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(14, 30), "s1", "Stop", cwd="/repo/p"),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertEqual(out["engaged_session"]["wallclock_ms"], 60 * 60_000)
+        self.assertEqual(out["engaged_session"]["effort_ms"], 60 * 60_000)
+        # Importantly: engaged != session-wall-clock-from-10:00-to-14:30,
+        # which would be 4.5h. The away-gap exclusion is the load-bearing
+        # behavior.
+        self.assertNotEqual(out["engaged_session"]["wallclock_ms"], int(4.5 * 60 * 60_000))
+
+    def test_two_burst_session_reading_gap_keeps_engaged_joined(self):
+        # Burst 1: 10:00–10:30. Burst 2: 10:31:30–10:35. Gap = 1.5min →
+        # below 2min reading_threshold → "reading", NOT away → engaged
+        # window stays joined [10:00–10:35] = 5min wall (merged via
+        # joined-interval) but effort = 30min + 3.5min = 33.5min.
+        events = [
+            ev(ms_at(10, 0),  "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 30), "s1", "Stop", cwd="/repo/p"),
+            ev(ms_at(10, 0) + 31 * 60_000 + 30_000, "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 0) + 35 * 60_000, "s1", "Stop", cwd="/repo/p"),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        # Engaged = [10:00 → 10:35] = 35min via the joined-interval path.
+        self.assertEqual(out["engaged_session"]["wallclock_ms"], 35 * 60_000)
+
+    # ---- Concurrency ----
+
+    def test_two_concurrent_sessions(self):
+        # s1: 10:00–11:00; s2: 10:30–11:30. Overlap [10:30–11:00] = 30min.
+        # Concurrency sweep: k=1 for [10:00–10:30] + [11:00–11:30] = 60min;
+        # k=2 for [10:30–11:00] = 30min.
+        events = [
+            ev(ms_at(10, 0),  "s1", "UserPromptSubmit",
+               cwd="/repo/p1", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(11, 0),  "s1", "Stop", cwd="/repo/p1"),
+            ev(ms_at(10, 30), "s2", "UserPromptSubmit",
+               cwd="/repo/p2", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(11, 30), "s2", "Stop", cwd="/repo/p2"),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertEqual(out["concurrency"][0]["wallclock_ms"], 60 * 60_000)
+        self.assertEqual(out["concurrency"][1]["wallclock_ms"], 30 * 60_000)
+        # Effort column = wallclock * k.
+        self.assertEqual(out["concurrency"][1]["effort_ms"], 60 * 60_000)
+
+    # ---- Tool intervals & top-5 ----
+
+    def test_tool_calls_top_5_ordering(self):
+        # 6 distinct tools with effort-time 100, 200, 300, 400, 500, 600 ms.
+        # Top 5 should be 600, 500, 400, 300, 200 (descending by effort).
+        events = []
+        # need a burst window to host the tool calls (no burst → no AI agent
+        # entry, but tools still register independently from PreToolUse)
+        for i, ms in enumerate([100, 200, 300, 400, 500, 600]):
+            events.append(ev(1000 + i * 10_000, f"s{i}", "PreToolUse",
+                             tool_name=f"Tool{i}",
+                             meta=f'{{"tool_use_id":"t{i}"}}'))
+            events.append(ev(1000 + i * 10_000 + ms, f"s{i}", "PostToolUse",
+                             tool_name=f"Tool{i}",
+                             meta=f'{{"tool_use_id":"t{i}"}}'))
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        top = out["tool_call"]["top"]
+        self.assertEqual(len(top), 5)
+        effs = [t["effort_ms"] for t in top]
+        self.assertEqual(effs, [600, 500, 400, 300, 200])
+        # The 100ms tool (Tool0) is dropped.
+        names = [t["name"] for t in top]
+        self.assertNotIn("Tool0", names)
+
+    def test_tool_call_wallclock_vs_effort_with_overlap(self):
+        # Two overlapping tool calls (same session, but tool_intervals is
+        # cross-session anyway): [0, 1000] and [500, 1500].
+        # Effort-time = 1000 + 1000 = 2000; wall-clock (merged) = 1500.
+        events = [
+            ev(0,    "s1", "PreToolUse",  tool_name="Bash",
+               meta='{"tool_use_id":"a"}'),
+            ev(1000, "s1", "PostToolUse", tool_name="Bash",
+               meta='{"tool_use_id":"a"}'),
+            ev(500,  "s2", "PreToolUse",  tool_name="Bash",
+               meta='{"tool_use_id":"b"}'),
+            ev(1500, "s2", "PostToolUse", tool_name="Bash",
+               meta='{"tool_use_id":"b"}'),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertEqual(out["tool_call"]["effort_ms"], 2000)
+        self.assertEqual(out["tool_call"]["wallclock_ms"], 1500)
+        # Multiplier = 2000/1500 ≈ 1.333.
+        self.assertAlmostEqual(out["tool_call"]["multiplier"], 2000 / 1500, places=4)
+
+    # ---- Subagent reconciliation ----
+
+    def test_subagent_subset_of_ai_agent(self):
+        # Burst 10:00–11:00 with a subagent nested 10:15–10:45 inside it.
+        events = [
+            ev(ms_at(10, 0),  "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 15), "s1", "SubagentStart", agent_type="Explore"),
+            ev(ms_at(10, 45), "s1", "SubagentStop",  agent_type="Explore"),
+            ev(ms_at(11, 0),  "s1", "Stop", cwd="/repo/p"),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertLessEqual(out["ai_agent"]["subagent"]["wallclock_ms"],
+                             out["ai_agent"]["wallclock_ms"])
+        self.assertLessEqual(out["ai_agent"]["subagent"]["effort_ms"],
+                             out["ai_agent"]["effort_ms"])
+        self.assertEqual(out["ai_agent"]["subagent"]["wallclock_ms"], 30 * 60_000)
+
+    # ---- Human activity ----
+
+    def test_human_typing_reading_thinking(self):
+        # Single session with three gaps:
+        # - 1.5min gap, 0 chars → reading (≤ 2min)
+        # - 4min gap, 0 chars → thinking (between 2 and 5min)
+        # - typing_debit accumulates: 60 chars at 6cps = 10 sec on each UPS
+        events = [
+            ev(ms_at(10, 0),  "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 5),  "s1", "Stop", cwd="/repo/p"),
+            # Gap1: Stop@10:05 → UPS@10:06:30 = 1.5min → reading
+            ev(ms_at(10, 0) + 6 * 60_000 + 30_000, "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 60}'),
+            ev(ms_at(10, 0) + 10 * 60_000, "s1", "Stop", cwd="/repo/p"),
+            # Gap2: Stop@10:10 → UPS@10:14 = 4min → thinking
+            ev(ms_at(10, 0) + 14 * 60_000, "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 60}'),
+            ev(ms_at(10, 0) + 20 * 60_000, "s1", "Stop", cwd="/repo/p"),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        # reading: 1.5min - 10s typing (60chars/6cps = 10s) = 80s = 80000ms
+        # thinking: 4min - 10s typing = 230s = 230000ms
+        self.assertEqual(out["human"]["typing_ms"], 20_000)  # 2 × 10s
+        self.assertEqual(out["human"]["reading_ms"], 80_000)
+        self.assertEqual(out["human"]["thinking_ms"], 230_000)
+        self.assertEqual(out["human"]["wallclock_ms"], 20_000 + 80_000 + 230_000)
+        self.assertEqual(out["human"]["effort_ms"], out["human"]["wallclock_ms"])
+        self.assertEqual(out["human"]["multiplier"], 1.0)
+
+    # ---- Blocking metrics ----
+
+    def test_blocking_metric_reconciliation(self):
+        # human_blocking_agent = reading + thinking (NOT typing).
+        # agent_blocking_human = ai_agent.wallclock_ms (merged bursts).
+        events = [
+            ev(ms_at(10, 0),  "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 30), "s1", "Stop", cwd="/repo/p"),
+            # 4-minute thinking gap.
+            ev(ms_at(10, 0) + 34 * 60_000, "s1", "UserPromptSubmit",
+               cwd="/repo/p", meta='{"prompt_length_chars": 0}'),
+            ev(ms_at(10, 0) + 40 * 60_000, "s1", "Stop", cwd="/repo/p"),
+        ]
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        # human_blocking_agent = reading_ms + thinking_ms (no typing here).
+        self.assertEqual(out["blocking"]["human_blocking_agent_ms"],
+                         out["human"]["reading_ms"] + out["human"]["thinking_ms"])
+        self.assertEqual(out["blocking"]["agent_blocking_human_ms"],
+                         out["ai_agent"]["wallclock_ms"])
+
+
+class BuildMetricsReconciliationTests(unittest.TestCase):
+    """WP10 Phase 1: invariants that must hold over any input.
+
+    Each test asserts a specific reconciliation property over a seeded
+    multi-day, multi-session fixture. Failing any of these means the
+    aggregator's accounting is broken.
+    """
+
+    _WINDOW_START = _dt.datetime(2026, 5, 7, 0, 0, 0)
+    _WINDOW_END = _dt.datetime(2026, 5, 13, 23, 59, 59)
+
+    @staticmethod
+    def _fixture_seven_days_multi_session():
+        """A 7-day multi-session fixture exercising concurrency, tools,
+        subagents, and gaps. Used by every reconciliation assertion."""
+        events = []
+        # s1, day 0: 10:00–11:00, then 14:00–14:30 (away gap between).
+        events += [
+            ev(ms_at(10, 0), "sA", "UserPromptSubmit",
+               cwd="/repo/p1", meta='{"prompt_length_chars": 30}'),
+            ev(ms_at(11, 0), "sA", "Stop", cwd="/repo/p1"),
+            ev(ms_at(14, 0), "sA", "UserPromptSubmit",
+               cwd="/repo/p1", meta='{"prompt_length_chars": 30}'),
+            ev(ms_at(14, 30), "sA", "Stop", cwd="/repo/p1"),
+        ]
+        # s2 overlaps s1's first burst (concurrency=2 for 10:30–11:00).
+        events += [
+            ev(ms_at(10, 30), "sB", "UserPromptSubmit",
+               cwd="/repo/p2", meta='{"prompt_length_chars": 30}'),
+            ev(ms_at(11, 30), "sB", "Stop", cwd="/repo/p2"),
+        ]
+        # Tool calls inside s1's first burst: 10:05–10:10 (Bash), 10:40–10:50 (Read).
+        events += [
+            ev(ms_at(10, 5),  "sA", "PreToolUse",  tool_name="Bash",
+               meta='{"tool_use_id":"t1"}'),
+            ev(ms_at(10, 10), "sA", "PostToolUse", tool_name="Bash",
+               meta='{"tool_use_id":"t1"}'),
+            ev(ms_at(10, 40), "sA", "PreToolUse",  tool_name="Read",
+               meta='{"tool_use_id":"t2"}'),
+            ev(ms_at(10, 50), "sA", "PostToolUse", tool_name="Read",
+               meta='{"tool_use_id":"t2"}'),
+        ]
+        # Subagent inside s1's first burst: 10:20–10:35.
+        events += [
+            ev(ms_at(10, 20), "sA", "SubagentStart", agent_type="Explore"),
+            ev(ms_at(10, 35), "sA", "SubagentStop",  agent_type="Explore"),
+        ]
+        events.sort(key=lambda r: r["ts"])
+        return events
+
+    def test_concurrency_wallclock_sum_equals_engaged_wallclock(self):
+        events = self._fixture_seven_days_multi_session()
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        concurrency_sum = sum(c["wallclock_ms"] for c in out["concurrency"])
+        self.assertEqual(concurrency_sum, out["engaged_session"]["wallclock_ms"])
+
+    def test_subagent_subset_of_ai_agent_both_axes(self):
+        events = self._fixture_seven_days_multi_session()
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertLessEqual(out["ai_agent"]["subagent"]["wallclock_ms"],
+                             out["ai_agent"]["wallclock_ms"])
+        self.assertLessEqual(out["ai_agent"]["subagent"]["effort_ms"],
+                             out["ai_agent"]["effort_ms"])
+
+    def test_human_multiplier_always_one(self):
+        events = self._fixture_seven_days_multi_session()
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertEqual(out["human"]["multiplier"], 1.0)
+
+    def test_concurrency_effort_equals_wallclock_times_k(self):
+        events = self._fixture_seven_days_multi_session()
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        for i, row in enumerate(out["concurrency"]):
+            expected_k = i + 1
+            self.assertEqual(row["effort_ms"], row["wallclock_ms"] * expected_k,
+                             f"concurrency[k={expected_k}] effort != wallclock × k")
+
+    def test_blocking_agent_equals_ai_agent_wallclock(self):
+        events = self._fixture_seven_days_multi_session()
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertEqual(out["blocking"]["agent_blocking_human_ms"],
+                         out["ai_agent"]["wallclock_ms"])
+
+    def test_top_tools_capped_at_5(self):
+        events = self._fixture_seven_days_multi_session()
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        self.assertLessEqual(len(out["tool_call"]["top"]), 5)
+
+    def test_multipliers_in_valid_range(self):
+        events = self._fixture_seven_days_multi_session()
+        out = viz_data.build_metrics(events, self._WINDOW_START, self._WINDOW_END)
+        # All three metrics that have multiplier: >= 0; and equal to
+        # effort/wallclock when wallclock > 0.
+        for path in (out["engaged_session"], out["ai_agent"], out["tool_call"]):
+            mult = path["multiplier"]
+            self.assertGreaterEqual(mult, 0.0)
+            if path["wallclock_ms"] > 0:
+                self.assertAlmostEqual(mult,
+                                       path["effort_ms"] / path["wallclock_ms"],
+                                       places=4)
+
+
 if __name__ == "__main__":
     unittest.main()
