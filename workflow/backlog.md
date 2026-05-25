@@ -44,7 +44,7 @@
   - Tooltips for each metric explaining wall-clock vs effort-time inline? Or a one-time legend at panel header?
   - Per-project breakdown (a "same metrics sliced by cwd alias" view)? User explicitly declined this in the 2026-05-24 ad-hoc but may want it as a drill-down later.
 - **Priority:** medium — useful, well-scoped, no existing user blocked. Slot after current WBS cycle's open WPs.
-- **Status:** open
+- **Status:** RESOLVED 2026-05-24 by WP10 ship (commit fc4fe2a). Bundled with WP10 at feature-spec (the headline-card + metrics-panel design covered both work items). Shipped: HeadlineCard above timeline (3 numbers + chevron toggle + date-range indicator), MetricsPanel (6 sections: engaged_session, ai_agent, tool_call, human, concurrency, blocking) with wall-clock/effort-time/×multiplier columns, top-5 tools sub-table, concurrency stratification k=1/2/3/4+, engaged-session definition excludes away-gaps (metrics-layer only), trailing-7-day window view-mode-independent. CHANGELOG entry at finalize. Per-project breakdown out-of-scope per Q7 — defer to follow-up.
 
 ## SURFACE-2026-05-23-CLAUDE-TIME-DB-FLAG-OVERRIDES-CLAUDE-TIME-DIR-FOR-CONFIG
 - **Source:** feature:verify-human (claude-time-viz-day-multi-day-window WP5b Phase 1, 2026-05-23)

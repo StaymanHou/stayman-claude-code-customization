@@ -1,7 +1,8 @@
 ---
 workflow: feature
-state: verify-codify (all phases complete)
+state: ship (complete)
 drive_mode: autopilot
+ship_commit: fc4fe2a
 created: 2026-05-24
 cycle: claude-time-visualize-v2
 wbs_wp: WP10
@@ -228,11 +229,31 @@ The feature is done when:
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > READY TO SHIP
-- **Active scope:** (none — both phases complete; awaiting `/feature-ship`)
+- **Path:** Feature > SHIPPED (commit fc4fe2a)
+- **Active scope:** (none — feature shipped; awaiting `/feature-finalize`)
 - **Blocked:** none
-- **Unvisited:** (none — feature implementation + verification complete)
+- **Unvisited:** finalize (retrospect + WBS row → SHIPPED + CHANGELOG + archive WIP)
 - **Open discoveries:** demo-path empty-metrics simplification (logged in `## Discoveries` below)
+
+## Retrospect
+
+- **What changed in our understanding:**
+  - The "wall-clock vs effort-time" frame is the single load-bearing insight for the panel. Q5 of the spec (engaged-session definition with away-gaps excluded) was tagged "load-bearing" at spec time and it stayed load-bearing through ship — every reconciliation invariant test pivots on it. The user's pre-existing `/tmp/usage_analysis_v3.py` was the implementation reference; copying its interval-merge + engaged-interval-construction logic literally gave us exact-match numbers at verify-human (22 numeric assertions matched on a real-DB cross-check). When a user has a working reference impl in hand, transcribe it — don't re-derive.
+  - **Bundling at spec is cheaper than two-WP slot-after.** WP10 (originally a simple headline card) and SURFACE-2026-05-24-AGGREGATE-METRICS-PANEL (a 6-metric panel) were spec-bundled as option 3 ("run /feature-spec to resolve the relationship between them"). The 8 spec questions surfaced design coupling that two separate WPs would have rediscovered. The trade-off accepted: WP10's original sparkline + view-adaptive deltas were dropped; comparison-axis work moves to WP11 cleanly. Net: one feature workflow instead of two.
+  - **Demo path empty-metrics is the right simplification.** The demo's `viz/data.js` is JS-formatted mock data, not event-dicts. Building a JS→event-dict shim for `--demo` would have added one P-task with marginal value (the demo is for layout preview, not metric-number showcase). Surfaced as a Phase 1 discovery, accepted by user at verify-human Phase 1.
+  - **One verify-human back-loop on placement, not behavior.** P2.verify-human.2 was a cosmetic-FAIL on UX surfacing (window indicator buried in expanded panel). Fix was a same-day single-component edit. The behavioral suite (34/0 → 34/0) didn't move at the back-loop; only +2 source-shape pins and +3 codify-gap behavioral pins were added during codify. Pattern: design-decision pivots at verify-human (third consecutive cycle: WP7 had 2, WP8 had 0, WP10 had 1) are real but small when caught at the designed-for verify-human gate.
+
+- **Assumptions that held:**
+  - **Reconciliation invariants are catch-all regression nets.** Seven invariants (concurrency wallclock sum == engaged wallclock; subagent ⊆ ai_agent; human.multiplier == 1.0 exactly; concurrency[i].effort == wallclock × k; blocking.agent == ai_agent.wallclock; |top| ≤ 5; multiplier-in-valid-range) caught zero bugs during build (no surprise — they're invariants by construction), but they're the most reliable regression coverage for the 6-metric tree. Any future refactor of `build_metrics` that breaks math will trip one of these immediately.
+  - **WP7-discovered React-fiber `reactProps[fiberKey].onClick()` pattern still works** (5th consecutive WP using it: WP5b, WP7, WP8, WP9, WP10). Per SURFACE-2026-05-22-PLAYWRIGHT-SYNTHETIC-WHEEL the underlying Playwright/React boundary is still unfixable, but the workaround is now battle-tested across 9+ different click handlers across the cycle.
+  - **Plan-level downstream-contract-impacts catch DID fire — at the changing phase, not at codify.** P1.5 wiring exposed two existing WP5b assertions using `! grep -q '"day_count"'` as a single-day-shape proxy; the new metrics tree always emits its own `day_count: 7` so those negative greps were polluted. Fix scoped to `grep -c day_count == 1` **in P1.7 alongside the changing emit**, not deferred to codify. This is the rule from CLAUDE.md working as intended.
+
+- **Assumptions that were wrong / scope surprises:**
+  - **Original WP10 scope was too small.** The WBS WP10 row described a sparkline-headline card with per-view deltas; what the user actually wanted (revealed at spec dialog Q1) was three load-bearing numbers + an expandable parallelism panel. The spec dialog took 8 numbered questions to surface this gap. Lesson: **at spec, ask "what shape of question does this answer?" before "what does it look like?"** — the shape (engaged-session wall-clock vs AI effort-time vs human activity) is the real spec, the visual is downstream.
+  - **AI-effort headline #3 has a non-obvious double-counting hazard.** Initial plan considered "AI effort = agent_burst_effort + tool_call_effort + subagent_effort". Caught at spec follow-up: tool/subagent intervals are subsets of agent burst windows, so summing all three would double-count. The honest number is `agent_effort_ms` alone (which already contains everything the agent did inside the burst). User accepted. Lesson: **when three nested intervals are candidates for an "additive total", check subset relationships first.** Reconciliation invariant `subagent ⊆ ai_agent` was added as a codified safeguard.
+  - **`_computeMetricsView` is the right SoT, not `_computeHeadline` + parallel panel projection.** Plan tasks P2.1 + P2.2 originally had separate filter-aware projection helpers. During build I realized headline + panel filter-projection logic is identical (both read kindFilters, both apply the same drop-rules). Collapsed to one helper. Plan-task naming followed; WIP P2.2 description updated post-hoc.
+
+- **Approach delta:** Implementation closely matched plan. Two-phase shape held (aggregator-first, UI-on-top — same pattern as WP3→WP5b and WP4→WP10). The plan's "Phase 1 verify-human cross-check against /tmp/usage_analysis_v3.py" hypothesis turned out to be exactly the right discriminator (22 numeric assertions, exact ms-level match). One verify-human back-loop (P2.verify-human.2, placement-cosmetic, fixed same-day). No back-loops to plan or spec.
 
 ## Discoveries
 

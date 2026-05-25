@@ -198,17 +198,17 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 
 ## Phase 3: Self-awareness — headline, comparison, density
 
-### WP10: Headline-stats card
-**Description:** A small card pinned above the timeline that answers "how much real work today" in one number — primary metric (active+subagent time), with secondary metrics (#sessions, #projects touched, longest streak, away total). Card adapts to view: day shows "today vs your trailing-7-day median"; week shows weekly aggregate; custom shows range total.
+### WP10: Headline-stats card → Metrics surface — [x] SHIPPED 2026-05-24 (commit fc4fe2a)
+**Description:** A small card pinned above the timeline that answers "how much real work today" in one number — primary metric (active+subagent time), with secondary metrics (#sessions, #projects touched, longest streak, away total). Card adapts to view: day shows "today vs your trailing-7-day median"; week shows weekly aggregate; custom shows range total. **At spec, bundled with `SURFACE-2026-05-24-CLAUDE-TIME-VIZ-AGGREGATE-METRICS-PANEL`** — what shipped is a **metrics surface** (headline card + expandable 6-metric panel with wall-clock/effort-time/×multiplier columns), not the simpler sparkline-headline originally planned. The trailing-7-day window is view-mode-independent (not per-view-adaptive deltas as originally specced) — comparison-axis work moves to WP11. Sparkline deferred (the wall-clock vs effort-time table replaces it as the primary trend surface).
 **Phase:** 3
-**Dependencies:** WP4 (comparison helpers for the trailing-median delta)
-**Size:** M
+**Dependencies:** WP4 (comparison helpers for the trailing-median delta) — note: trailing-median delta dropped at spec; window became fixed trailing-7-days
+**Size:** M (delivered as 2 phases — aggregator + UI)
 **Tasks:**
-- [ ] 10.1 `HeadlineStats` component above the timeline; layout: big number left, secondary metrics + sparkline right
-- [ ] 10.2 Per-view config: Day default shows "vs trailing-7-day median" delta; Week shows "vs last week" delta; Custom shows range total without delta
-- [ ] 10.3 Sparkline mini-chart (7-day active-time history): inline SVG, ~120px wide
-- [ ] 10.4 Filter-state aware: headline numbers reflect active filter chips (WP9)
-- [ ] 10.5 `test_visualize_cli.sh` assertion: emitted HTML contains HeadlineStats; sparkline svg present
+- [x] 10.1 `HeadlineCard` component above the timeline with three primary tiles (active session wall-clock, human activity wall-clock, AI effort) + chevron toggle + date-range indicator "Past 7 days · YYYY-MM-DD → YYYY-MM-DD" (moved to card via P2.verify-human.2 back-loop).
+- [x] 10.2 Trailing-7-day window: today + prior 6 days, computed at emit time from `snapshot_dt`, view-mode-independent (Day/Week/Month/Custom all show same metrics). View-adaptive deltas dropped at spec; comparison axis moves to WP11.
+- [x] 10.3 ~Sparkline mini-chart~ → Replaced by `MetricsPanel` (expanded) with 6-section table: engaged_session, ai_agent (+ subagent sub-row), tool_call (+ top-5 tools sub-table), human (+ typing/reading/thinking sub-rows), concurrency (k=1/2/3/4+ stratification), blocking (human-blocking-agent + agent-blocking-human). Each row shows wall-clock | effort-time | ×multiplier.
+- [x] 10.4 Filter-state aware via `_computeMetricsView(metrics, filterKinds)` projection helper. Kind chips affect both headline + panel cells; `subagent` OFF drops AI-effort by the subagent contribution; `reading`/`thinking` OFF drop human activity. `active` OFF collapses everything to 0.
+- [x] 10.5 `test_visualize_cli.sh` + `test_visualize_interactive.js` assertions: 15 source-shape pins (WP10-P2-1..15) covering component definitions, data-metrics-card / data-metric-tile=* / data-metric-section=* selectors, hash dispatcher, empty-window caption, window indicator; 9 behavioral pins covering chevron expand/collapse + hash round-trip + filter chip → AI-effort tile change + window indicator persists across collapse/expand + card mounted across view-mode switches. Plus 2 codify integration-boundary pins on Phase 1 (real-DB events → aggregator → emit pipeline with seeded burst+tool, trailing-7-day window math). Plus 38 Python unittests (13 reclassify interval-helpers + 18 BuildMetricsTests + 7 BuildMetricsReconciliationTests). Full claude-time suite 335/0 PASS at ship; structure check 122/0 PASS.
 
 ### WP11: Comparison view (delta lens)
 **Description:** Dedicated view (toolbar tab or modal) showing two windows side-by-side: per-project deltas, per-kind deltas, "you spent 2h more on `replicator-1-0` this week" callouts. Initial form: a stacked bar chart per project comparing A and B + a delta column.
