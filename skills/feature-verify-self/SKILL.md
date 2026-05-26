@@ -44,6 +44,30 @@ Use this taxonomy consistently when classifying failures. It is also embedded in
 
 **Decision rule:** When in doubt, classify as BLOCKING. A false BLOCKING sends you to fix something minor; a false COSMETIC ships a broken feature to the human.
 
+## Subagent Re-Verification Heuristic
+
+**Rule:** If N-1 of N outcomes PASS and the Nth FAIL is mechanically implied by the PASSes, suspect snapshot timing before back-looping; re-run the same Playwright assertions directly from the orchestrator before invoking `/feature-build` with scoped leaves.
+
+**Why this exists:** Verify-self subagents observe the page through Playwright snapshots. On pages whose interactive surface is JIT-compiled in the browser (Babel-standalone in-page transformation), lazily mounted (React lazy / async chunks), or hydrated after an async data fetch, the subagent's snapshot can be taken *before* the relevant DOM/handlers exist. The subagent then reports a BLOCKING FAIL on an outcome that — at observation time — was genuinely not satisfiable, but which the page **does** satisfy a few hundred milliseconds later. Back-looping to build at that point sends the next phase to fix a non-bug.
+
+**Trigger pattern (all conditions must hold):**
+
+1. The subagent reported at least one PASS in the same run.
+2. The reported FAIL is **mechanically implied** by the PASSes — i.e., the failing outcome cannot be false if the passing outcomes are true. ("The hash-restore PASS asserts viewport=720:780, which mechanically implies the ticks PASS that just FAILed must also be true.") This is the calibration that separates genuine fails from snapshot-timing noise.
+3. The page under test uses an in-browser JIT pipeline, lazy mount, or pre-render async fetch.
+
+If any one of these does not hold, treat the FAIL as genuine and back-loop normally.
+
+**Procedure when the heuristic fires:**
+
+1. Do **not** mark the failed leaf `FAILED` yet. Do not emit `TRANSITION: F9b`.
+2. Re-run the failing outcome's assertions **directly from the orchestrator** (not via a fresh subagent) using the same Playwright MCP tools the subagent used. Wait for the interactive surface to be ready before asserting (`browser_wait_for` on a known late-mounting selector, or `browser_evaluate` to poll for the relevant `window.*` value before snapshotting).
+3. Common workaround for React-controlled UI: synthetic DOM events (clicks dispatched via `browser_click` on stale snapshots, `WheelEvent` dispatched via `browser_evaluate`) often do not reach React's synthetic event system on a JIT page. Direct invocation via the React fiber works reliably: `browser_evaluate` something like `el[Object.keys(el).find(k => k.startsWith('__reactProps'))].onClick()` (or equivalent for `onChange`, `onWheel`, etc.). This pattern has been the consistent fix across multiple instances of this heuristic firing.
+4. If the direct re-verification **PASSes**: the original FAIL was a snapshot-timing artifact. Mark the leaf `[x]`, document the re-verification in the WIP file (one line: "Re-verified directly; subagent's FAIL was snapshot-timing noise — orchestrator confirmed PASS."), and proceed to F10b.
+5. If the direct re-verification **FAILs** the same way: the FAIL is genuine. Mark the leaf `FAILED`, document the orchestrator-side re-verification result, and back-loop F9b normally.
+
+**What this heuristic is not:** It is not license to override subagent findings whenever a FAIL is inconvenient. The mechanical-implication test is the gate — if you cannot state in one sentence why the PASSes imply the FAIL must also be true, the FAIL is genuine and back-loop is the right path.
+
 ## Integration-boundary rule
 
 A phase has an **integration boundary** when any of the following is true of the implementation leaves under the current phase:
@@ -113,7 +137,7 @@ Allowed tools for the subagent: `mcp__playwright__browser_navigate`, `mcp__playw
 
 Read the `result` block from the subagent's output. For each outcome:
 - `PASS` → mark the corresponding verify-self leaf `[x]` in the WIP tree
-- `FAIL / BLOCKING` → mark leaf `FAILED` with detail
+- `FAIL / BLOCKING` → **before marking `FAILED`, check the Subagent Re-Verification Heuristic above.** If the FAIL is mechanically implied by sibling PASSes on a JIT-compiled / lazy-mount / async-fetch page, re-verify directly from the orchestrator before classifying. Otherwise, mark leaf `FAILED` with detail.
 - `FAIL / COSMETIC` → mark leaf with `<!-- status: FAILED-cosmetic -->` and note — does NOT block handoff
 
 **Playwright unavailable:** If the subagent errors on Playwright tools, fall back to curl-only for HTTP outcomes. Annotate browser outcomes as `<!-- status: UNVERIFIED: Playwright MCP not available — check manually -->`. These items ARE surfaced to verify-human.

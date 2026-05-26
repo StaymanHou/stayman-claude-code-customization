@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05-26
+
+- **Task closed:** Promoted the verify-self subagent re-verification heuristic — covering the false-BLOCKING-FAIL pattern where a Playwright subagent reports a single FAIL whose outcome is mechanically implied by sibling PASSes on a JIT-compiled / lazy-mount / async-fetch page, observed 5-of-5 times across the claude-time-visualize-v2 cycle (WP5 P3 + WP7 P2 + WP8 P2 + WP9 + WP10) — from the project-local learning draft at `.claude/learnings/2026-05-22-verify-self-subagent-jit-false-fail.md` into `skills/feature-verify-self/SKILL.md` as a new dedicated `## Subagent Re-Verification Heuristic` section (rule statement verbatim, 3 conjunctive trigger conditions, 5-step procedure with `browser_wait_for` + React-fiber `reactProps[fiberKey].onClick()` direct-invocation workaround, explicit "what this heuristic is not" guard against override-on-inconvenience), plus a pointer from §3 (Parse subagent results) so the gate is read at result-parse time, not just at section-read time; structure check 122/0 PASS post-edit; no scenario assertions pinned on the affected section structure.
+- **Backlog resolved:** SURFACE-2026-05-22-LEARNING-VERIFY-SELF-SUBAGENT-JIT-FALSE-FAIL — closed by promotion into `skills/feature-verify-self/SKILL.md`; the pattern was 3-of-3 at the WP7 P2 "definitely promote" gate and reached 5-of-5 by WP10 ship; future feature-verify-self invocations now have the heuristic in their loaded context so the orchestrator-side re-verification fires before back-looping to build on snapshot-timing noise.
+
 ## 2026-05-24
 
 - **Task closed:** `tests/fixtures/settings.json` updated to include the 8 claude-time hook entries (`UserPromptSubmit` / `PreToolUse` / `PostToolUse` / `PostToolUseFailure` / `SessionStart` / `SessionEnd` / `SubagentStart` / `SubagentStop`, each invoking `~/.claude/hooks/claude-time-hook.pl`) plus `env.CLAUDE_TIME_TRACKING: "1"` and root `fileCheckpointingEnabled: false`, mirroring the documented install end-state from `tools/claude-time/README.md`; `tests/check-structure.sh` Phase 7 now reports 122/0 on a clean working tree (was 121/1 with a 10-line drift block obscuring real regressions).
