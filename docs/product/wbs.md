@@ -61,7 +61,9 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [ ] 1.6 Window-level metrics: `build_metrics(all_events, window_start_dt, window_end_dt)` over the entire 90-day window. Attach as top-level `metrics`. (Per-window-slice metrics for compare presets live inside their `compare_payloads_by_preset[preset].{a,b}.metrics` per v2 WP11 Phase 1.B.)
 - [ ] 1.7 Add `BuildWindowDataTests` to `test_viz_data.py` — at minimum: empty window, single-day window, full 90-day shape sanity (all 4 sub-payload maps populated, key sets correct), compare-preset cross-reference (top-level `metrics.engaged_session.wallclock_ms` should equal sum of `day_payloads_by_iso[*].today_total` modulo merge semantics).
 
-### WP2: Emit-time perf budget + 90-day default
+### WP2: Emit-time perf budget + 90-day default 🟢 IN-PROGRESS (measurement complete 2026-05-28)
+**Result (P1.3, 2026-05-28):** 90-day default **CONFIRMED**. Measured against `~/.claude-time/events.sqlite`: 90-day window emits in avg 1012ms (target ≤2000ms) at 431KB (target ≤500KB). Cost is approximately flat across 30→120 day windows (dominated by fixed overhead, not per-day work) — window size is approximately free within this range. See `workflow/wip/wp2-emit-perf-probe.md` `## Decision` for full rationale; permanent perf script lives at `tools/claude-time/test/perf_window_data.py` for re-measurement if `viz_data.py` materially changes.
+
 **Description:** Measure the actual emit cost (SQLite load + `build_window_data` total) for a 90-day window against the user's real DB. If within ~2s wall-clock + ~500KB JSON, lock the default. If over, decide between (a) reducing the default window, (b) lazy-loading sub-payloads, (c) deferring compare-preset pre-render.
 **Phase:** 0
 **Dependencies:** WP1

@@ -413,6 +413,28 @@ else
   check "tools/claude-time/test/privacy_check.sh exists + executable" "fail" "missing or not executable"
 fi
 
+# v3 WP2 perf probe — durable smokes only (existence, syntax, --help). Numeric
+# perf thresholds are intentionally NOT pinned (host wall-clock variance would
+# make them flaky). The script is the artifact; re-run it manually any time
+# viz_data.py materially changes.
+if [ -f tools/claude-time/test/perf_window_data.py ]; then
+  check "tools/claude-time/test/perf_window_data.py exists" "pass"
+else
+  check "tools/claude-time/test/perf_window_data.py exists" "fail" "file missing"
+fi
+
+if python3 -m py_compile tools/claude-time/test/perf_window_data.py 2>/dev/null; then
+  check "tools/claude-time/test/perf_window_data.py passes py_compile" "pass"
+else
+  check "tools/claude-time/test/perf_window_data.py passes py_compile" "fail" "py_compile failed"
+fi
+
+if python3 tools/claude-time/test/perf_window_data.py --help > /dev/null 2>&1; then
+  check "tools/claude-time/test/perf_window_data.py --help exits 0" "pass"
+else
+  check "tools/claude-time/test/perf_window_data.py --help exits 0" "fail" "non-zero exit"
+fi
+
 # Phase 3 additions: reclassifier module + CLI + unit tests
 if [ -f tools/claude-time/reclassify.py ]; then
   check "tools/claude-time/reclassify.py exists" "pass"
