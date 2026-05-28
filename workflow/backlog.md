@@ -1,5 +1,39 @@
 # Backlog
 
+## SURFACE-2026-05-26-CLAUDE-TIME-VIZ-V3-PIVOT-UNIFIED-TIME-RANGE
+- **Source:** WP11 Phase 2.A verify-human (2026-05-26) — surfaced when user noticed the 3 compare preset sub-tabs (WoW, Today-vs-trailing, MoM) all show the same content because the data layer emits only ONE pre-computed comparison window per CLI invocation.
+- **Target level:** product:vision + product:wbs — this is a new product cycle that supersedes WP12 + WP13 of the current claude-time-visualize-v2 cycle.
+- **Type:** architectural pivot
+- **Summary:** The current claude-time visualize emit model is "one CLI invocation = one window (Day/Week/Month/Custom/Compare-preset)." This creates known UX surprises: preset switches don't refresh content; Day/Week tab switches stale on emit-time window; custom-range pickers can't materialize without re-emit. The v3 pivot: emit a **default 90-day window (MTD + last 2 months)** with all sub-payloads pre-rendered, then let the frontend handle every Day/Week/Month/Compare slice as client-side state swaps over the shared dataset. The `--compare`, `--month`, `--range`, `--week`, `--date` flags collapse into either (a) a unified time-range arg or (b) become deprecated entirely (the frontend handles all sub-views).
+- **Trade-offs:** +~500ms emit time (62-day → 90-day SQLite load), +~200-400KB emit size, but unlocks: instant Day/Week/Month/Compare-preset nav, accurate hash-restore for shareable URLs, no more "content didn't change" surprise when clicking preset tabs.
+- **Folds in:** WP12 (multi-instance overlap viz) + WP13 (collapsible project rows + away total + pills) — their *visualization concerns* are independent of the emit model and roll into the v3 spec.
+- **Folds in (continued):** the Phase 2.A content-not-refreshing limitation (P2A.verify-human.3 PARTIAL) — resolved by the v3 emit model.
+- **Suggested action:** Close the current claude-time-visualize-v2 cycle after WP11 ships. Then `/product-wbs` generates the v3 WBS in the next session (2026-05-26 session pauses after the WBS skill emits the cycle scaffold).
+- **Priority:** **high** — this is the immediate next cycle; user-confirmed pivot.
+- **Status:** open — WBS-skill-pending
+
+## SURFACE-2026-05-26-SESSION-PAUSE-MARKER-LEAK-INTO-DURABLE-DOCS
+- **Source:** harness-level repeating issue — first surfaced by Replicator's WP5b-ui-finalize (2026-05-26, learning at `.claude/learnings/2026-05-26-session-pause-marker-leak.md`); confirmed in this repo at WP11 session-resume on 2026-05-26 (`/session-resume` had to excise a stale `## Session Pause — 2026-05-26 09:58` block from `docs/product/wbs.md` before continuing — see Resume context-recovery section of the WIP file)
+- **Target level:** task:plan or feature:plan — modifies the `session-pause` and/or `session-resume` skills
+- **Type:** harness bug / cleanup-tax
+- **Summary:** `session-pause` appends a `## Session Pause — <timestamp>` block to durable product docs (observed on `docs/product/wbs.md` in multiple projects). `session-resume` correctly consumes and deletes `workflow/.session.md` but does NOT sweep these companion blocks. The stale block lingers across subsequent features and risks being committed as part of unrelated work if not noticed. **Now confirmed repeating** across at least two projects (Replicator + this repo) — harness-level, not project-specific.
+- **Suggested action:** Prefer option (a) from the learning — stop `session-pause` from writing to durable product docs entirely. The `workflow/.session.md` pointer is sufficient on its own; duplicating a `## Session Pause` block into `wbs.md` provides no resume signal the pointer doesn't already carry. Option (b) (sweep on resume) adds surface area to fix a leak that shouldn't exist. The fix touches `skills/session-pause/SKILL.md` (stop writing) and possibly `skills/session-resume/SKILL.md` (defensive sweep as a transitional safety net).
+- **Priority:** **high** — repeating cleanup tax; risks dirty commits in unrelated WIP; harness-level so affects every project using these skills.
+- **Status:** open
+
+## SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY
+- **Source:** user observation during WP11 Phase 2 verify-human (2026-05-26)
+- **Target level:** feature:plan or feature:spec — likely Phase 4 (post-WBS) UX work on the `claude-time-visualize-v2` cycle, or its own follow-on WP
+- **Type:** new-work / UX
+- **Summary:** After ~1 week of tracking with the dashboard, the Day view has accumulated too many project rows to comfortably read on a single screen. The row-per-project default works for the first few days of usage, but at the steady-state of multi-week activity history it becomes a visual scan-bottleneck. Likely intersects with WP13 (collapsible project rows, default-collapsed) — but WP13 was planned around the per-project chevron-expand-for-detail pattern, NOT the higher-level "too many rows" problem the user is observing now.
+- **Suggested action:** Revisit at cycle finalization (`/product-finalize`) once the planned WBS is complete. Options to consider:
+  - **(a)** Tighten WP13's default — not just collapsed-by-default but also hide rows with no activity in the visible viewport (data-driven filtering, not just chevron-toggle).
+  - **(b)** Add a min-activity-threshold filter chip (e.g., "show only projects with >15m active") so the long-tail of one-segment projects falls out of the lane.
+  - **(c)** Auto-sort rows by recent activity descending so the top of the list is always the projects the user cares about today.
+  - **(d)** Pagination / row-virtualization if (a)/(b)/(c) don't suffice.
+- **Priority:** medium — directly user-reported; affects daily usability; not blocking ship of WP11–WP13 (those are independent UI/visualization concerns) but should be addressed before declaring the v2 cycle complete or at the next finalize point.
+- **Status:** open — defer until v2 cycle WBS is complete (WP11–WP13 ship first), then evaluate at `/product-finalize` whether to tackle in this cycle or roll into a v3 cycle.
+
 ## SURFACE-2026-05-24-WBS-EXCEEDS-300-LINE-SIZE-GUARD
 - **Source:** feature:spec (claude-time-viz-wp7-month-view, 2026-05-24)
 - **Target level:** task:plan (small/simple — doc-only)

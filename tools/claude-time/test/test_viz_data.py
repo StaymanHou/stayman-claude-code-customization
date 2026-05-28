@@ -849,6 +849,99 @@ class BuildComparisonDataTests(unittest.TestCase):
         self.assertEqual(out["deltas"]["proj-a"]["active"]["rel_pct"], 200.0)
 
 
+class CompareMonthOverMonthTests(unittest.TestCase):
+    """WP11 Phase 1: `compare_month_over_month(this_month_iso)` helper —
+    thin wrapper over `build_comparison_data` with calendar-month window
+    math. Companion to WP4's `compare_week_over_week` and
+    `compare_day_vs_trailing_window`.
+
+    Tests focus on the boundary math (Jan-prev-year wrap, leap year, month
+    count parity) and input validation. The deltas computation itself is
+    covered by BuildComparisonDataTests; these tests assume that path
+    works and pin only the window-selection contract.
+    """
+
+    def test_mid_year_basic(self):
+        out = viz_data.compare_month_over_month(
+            "2026-05",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(out["meta"]["a_start"], "2026-04-01")
+        self.assertEqual(out["meta"]["a_end"], "2026-04-30")
+        self.assertEqual(out["meta"]["b_start"], "2026-05-01")
+        self.assertEqual(out["meta"]["b_end"], "2026-05-31")
+        self.assertEqual(out["meta"]["a_day_count"], 30)
+        self.assertEqual(out["meta"]["b_day_count"], 31)
+
+    def test_january_wraps_to_december_previous_year(self):
+        """The prev_month math must cross the year boundary correctly."""
+        out = viz_data.compare_month_over_month(
+            "2026-01",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(out["meta"]["a_start"], "2025-12-01")
+        self.assertEqual(out["meta"]["a_end"], "2025-12-31")
+        self.assertEqual(out["meta"]["b_start"], "2026-01-01")
+        self.assertEqual(out["meta"]["b_end"], "2026-01-31")
+
+    def test_march_after_february_handles_28_days(self):
+        """Non-leap February → 28-day A window, 31-day B window."""
+        out = viz_data.compare_month_over_month(
+            "2026-03",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(out["meta"]["a_start"], "2026-02-01")
+        self.assertEqual(out["meta"]["a_end"], "2026-02-28")
+        self.assertEqual(out["meta"]["a_day_count"], 28)
+        self.assertEqual(out["meta"]["b_day_count"], 31)
+
+    def test_march_after_february_leap_year(self):
+        """Leap February (2024) → 29-day A window."""
+        out = viz_data.compare_month_over_month(
+            "2024-03",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(out["meta"]["a_end"], "2024-02-29")
+        self.assertEqual(out["meta"]["a_day_count"], 29)
+
+    def test_invalid_shape_raises(self):
+        with self.assertRaises(ValueError):
+            viz_data.compare_month_over_month(
+                "2026/05",
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+        with self.assertRaises(ValueError):
+            viz_data.compare_month_over_month(
+                "26-05",
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+        with self.assertRaises(ValueError):
+            viz_data.compare_month_over_month(
+                "",
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+
+    def test_invalid_month_number_raises(self):
+        with self.assertRaises(ValueError):
+            viz_data.compare_month_over_month(
+                "2026-13",
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+        with self.assertRaises(ValueError):
+            viz_data.compare_month_over_month(
+                "2026-00",
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+
+    def test_emits_all_four_top_level_keys(self):
+        """Sanity pin: every comparison helper returns {a,b,deltas,meta}."""
+        out = viz_data.compare_month_over_month(
+            "2026-05",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(sorted(out.keys()), ["a", "b", "deltas", "meta"])
+
+
 class BuildMetricsTests(unittest.TestCase):
     """WP10 Phase 1: `build_metrics(events, start_dt, end_dt)` aggregator.
 

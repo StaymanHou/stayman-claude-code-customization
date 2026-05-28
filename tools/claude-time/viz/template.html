@@ -38,6 +38,12 @@
   // server-side cap (cfg["viz_custom_range_max_days"], default 90). Single
   // source of truth: Python config → here → Phase 2 client-side validation.
   window.CT_MAX_RANGE_DAYS = {{CT_MAX_RANGE_DAYS}};
+  // WP11: initial Compare-view preset, set by --compare or --compare-range at
+  // emit time. One of: 'wow', 'today-vs-trailing', 'mom', 'custom', or null
+  // when the dashboard was not emitted with --compare*. Phase 2's CompareView
+  // reads this via the same hash-priority pattern as CT_INITIAL_VIEW (hash
+  // 'preset' wins, fallback to CT_INITIAL_PRESET).
+  window.CT_INITIAL_PRESET = {{CT_INITIAL_PRESET}};
 </script>
 
 <script type="text/babel">

@@ -93,5 +93,77 @@ class StripDesignWrapperTests(unittest.TestCase):
         self.assertIn("function Toolbar(", out)
 
 
+class RenderHtmlInitialPresetTests(unittest.TestCase):
+    """WP11 Phase 1: `render_html(...)` accepts `initial_preset: str | None`
+    and emits `window.CT_INITIAL_PRESET = <json-literal>;` into the template.
+
+    Threads through:
+      - None (default) → JS literal `null`, NOT the string `"null"`
+      - "wow" / "today-vs-trailing" / "mom" / "custom" → JSON-quoted string
+      - the template's `{{CT_INITIAL_PRESET}}` placeholder must be fully
+        substituted with no leak into emit
+
+    These tests use the real template.html + dashboard.jsx because the
+    contract is end-to-end (template + transforms + emit). A unit-level
+    string-substitution test would not catch the failure mode where the
+    template's placeholder name drifts.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        viz_dir = _HERE.parent / "viz"
+        cls.template_path = viz_dir / "template.html"
+        cls.jsx_path = viz_dir / "dashboard.jsx"
+        cls.data = {
+            "today": {"label": "Today", "iso": "2026-05-26", "projects": [],
+                      "hour_range": [6, 23]},
+            "week": {"label": "Week", "days": [], "projects": []},
+            "meta": {"snapshot": "10:00", "snapshot_iso": "2026-05-26T10:00:00"},
+        }
+
+    def test_default_initial_preset_is_null_literal(self):
+        """When `initial_preset` is omitted, emit `window.CT_INITIAL_PRESET = null;`
+        (JS null literal, not the string \"null\"). Default-elision must keep
+        Compare-view state out of the hash on un-related emits."""
+        html = viz_render.render_html(
+            self.template_path, self.jsx_path, self.data,
+        )
+        self.assertIn("window.CT_INITIAL_PRESET = null;", html)
+        self.assertNotIn('window.CT_INITIAL_PRESET = "null";', html)
+        # Placeholder must be fully substituted.
+        self.assertNotIn("{{CT_INITIAL_PRESET}}", html)
+
+    def test_explicit_none_initial_preset_is_null_literal(self):
+        """Passing initial_preset=None explicitly must produce the same null literal."""
+        html = viz_render.render_html(
+            self.template_path, self.jsx_path, self.data,
+            initial_preset=None,
+        )
+        self.assertIn("window.CT_INITIAL_PRESET = null;", html)
+
+    def test_string_preset_is_quoted_string_literal(self):
+        """A non-None preset value must emit as a JSON-quoted string."""
+        for preset in ("wow", "today-vs-trailing", "mom", "custom"):
+            with self.subTest(preset=preset):
+                html = viz_render.render_html(
+                    self.template_path, self.jsx_path, self.data,
+                    initial_preset=preset,
+                )
+                self.assertIn(f'window.CT_INITIAL_PRESET = "{preset}";', html)
+                self.assertNotIn("{{CT_INITIAL_PRESET}}", html)
+
+    def test_existing_initial_view_unaffected(self):
+        """The new initial_preset parameter must not regress the existing
+        initial_view placeholder substitution."""
+        html = viz_render.render_html(
+            self.template_path, self.jsx_path, self.data,
+            initial_view="compare", initial_preset="wow",
+        )
+        self.assertIn('window.CT_INITIAL_VIEW = "compare";', html)
+        self.assertIn('window.CT_INITIAL_PRESET = "wow";', html)
+        self.assertNotIn("{{CT_INITIAL_VIEW}}", html)
+        self.assertNotIn("{{CT_INITIAL_PRESET}}", html)
+
+
 if __name__ == "__main__":
     unittest.main()

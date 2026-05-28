@@ -223,6 +223,8 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
   const tabBtn = (label, value, current, enabled = true) => (
     <button
       key={value}
+      data-tab={value}
+      aria-selected={current ? 'true' : 'false'}
       onClick={enabled ? () => onViewChange(value) : undefined}
       disabled={!enabled}
       style={{
@@ -285,6 +287,7 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
         {tabBtn('Week', 'week', view === 'week', true)}
         {tabBtn('Month', 'month', view === 'month', true)}
         {tabBtn('Custom', 'custom', view === 'custom', true)}
+        {tabBtn('Compare', 'compare', view === 'compare', true)}
       </div>
 
       {/* WP7: when view === 'month', the dateLabel slot becomes a month-nav
@@ -626,6 +629,567 @@ function _computeMetricsView(metrics, filterKinds) {
   m.blocking = { ...m.blocking, human_blocking_agent_ms: newReading + newThinking };
 
   return m;
+}
+
+// WP11 Phase 2.A: CompareView UI — effectiveness lens (2026-05-26 re-spec).
+// Replaces the prior delta-lens design (TopShiftsCallouts / PerKindSection /
+// PerProjectSection / _CompareBarRow / _computeComparisonView / _topShifts /
+// _sumKindTotals) that verify-human rejected as answering the wrong question.
+//
+// The new design sources from window.CT_DATA.comparison.{a,b}.metrics — the
+// same shape as window.CT_DATA.metrics that WP10's MetricsPanel consumes.
+// Filter chips apply via _computeMetricsView (WP10) called separately on each
+// window. The 8 rows are rendered by a single generalized EffectivenessRow
+// component dispatching on `kind` (multiplier, ratio-pct, blocking-split,
+// concurrency-mix, absolute-wallclock-effort-mult, absolute-wallclock-only,
+// absolute-engaged).
+// WP11 Phase 2.A: signed-duration formatter for ms-valued deltas.
+// Converts ms → minutes, applies _fmtSignedDur. U+2212 MINUS SIGN per Q4.
+function _fmtSignedDurMs(absMs) {
+  if (absMs === 0 || Math.abs(absMs) < 60_000) return '0m';
+  const sign = absMs > 0 ? '+' : '\u2212';
+  return `${sign}${fmtDur(Math.abs(absMs) / 60_000)}`;
+}
+
+// WP11 Phase 2.A: signed-minute formatter (kept for any legacy callers; CompareView
+// uses _fmtSignedDurMs because metrics tree is ms-valued).
+function _fmtSignedDur(absMin) {
+  if (absMin === 0 || Math.abs(absMin) < 1) return '0m';
+  const sign = absMin > 0 ? '+' : '\u2212';
+  return `${sign}${fmtDur(Math.abs(absMin))}`;
+}
+
+// WP11 Phase 2.A: relative-percentage delta formatter — "(+45%)" / "(\u221212%)" / "(N/A)".
+function _fmtRelPct(relPct) {
+  if (relPct == null) return '(N/A)';
+  if (Math.abs(relPct) < 1) return '(\u00b10%)';
+  const sign = relPct > 0 ? '+' : '\u2212';
+  return `(${sign}${Math.round(Math.abs(relPct))}%)`;
+}
+
+// WP11 Phase 2.A: percentage-point delta formatter — "(+8pp)" / "(\u221214pp)" / "(\u00b10pp)".
+// Used for shares-of-window stats (blocking split, concurrency stratum) where
+// a "percentage of percentage" delta would confuse the reader.
+function _fmtSignedPp(absPp) {
+  if (Math.abs(absPp) < 0.5) return '(\u00b10pp)';
+  const sign = absPp > 0 ? '+' : '\u2212';
+  return `(${sign}${Math.round(Math.abs(absPp))}pp)`;
+}
+
+// WP11 Phase 2.A: ratio-percentage delta as a `+X.XX×` style multiplier delta.
+function _fmtSignedMult(absMult) {
+  if (Math.abs(absMult) < 0.01) return '0.00\u00d7';
+  const sign = absMult > 0 ? '+' : '\u2212';
+  return `${sign}${Math.abs(absMult).toFixed(2)}\u00d7`;
+}
+
+// WP11 Phase 2.A: PresetSelector — four sub-tabs below the main Toolbar (Q7).
+// Unchanged from Phase 2 except the click bug fix in P2A.4 (see below for the
+// `data-compare-preset` button's pointer-events / event-handler attachment).
+function PresetSelector({ preset, onPresetChange,
+                         compareRangeA, compareRangeB, onCompareRangeChange,
+                         maxRangeDays = 90 }) {
+  const presets = [
+    { value: 'wow', label: 'WoW' },
+    { value: 'today-vs-trailing', label: 'Today vs trailing' },
+    { value: 'mom', label: 'MoM' },
+    { value: 'custom', label: 'Custom' },
+  ];
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 8,
+      padding: '8px 20px',
+      borderBottom: `1px solid ${CT_TOKENS.border}`,
+      background: CT_TOKENS.surface,
+    }}>
+      <div style={{
+        display: 'flex', gap: 2, padding: 3,
+        background: CT_TOKENS.surfaceDim, borderRadius: 8,
+        border: `1px solid ${CT_TOKENS.border}`,
+        alignSelf: 'flex-start',
+      }}>
+        {presets.map(p => (
+          <button
+            key={p.value}
+            data-compare-preset={p.value}
+            data-active={p.value === preset ? 'true' : 'false'}
+            onClick={() => onPresetChange(p.value)}
+            style={{
+              background: p.value === preset ? CT_TOKENS.surface : 'transparent',
+              color: p.value === preset ? CT_TOKENS.textPrimary : CT_TOKENS.textSecondary,
+              border: 'none', borderRadius: 6,
+              padding: '5px 10px',
+              fontSize: 12, fontWeight: p.value === preset ? 550 : 450,
+              fontFamily: CT_TOKENS.sans,
+              cursor: 'pointer',
+              boxShadow: p.value === preset
+                ? '0 1px 2px rgba(20,18,12,0.06), inset 0 0 0 1px ' + CT_TOKENS.border
+                : 'none',
+            }}
+          >{p.label}</button>
+        ))}
+      </div>
+      {/* Custom preset: side-by-side RangePicker pair. */}
+      {preset === 'custom' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{
+            fontFamily: CT_TOKENS.sans, fontSize: 11,
+            color: CT_TOKENS.textSecondary, fontWeight: 500,
+          }}>A:</span>
+          <RangePicker
+            startIso={compareRangeA?.start}
+            endIso={compareRangeA?.end}
+            maxRangeDays={maxRangeDays}
+            onChange={(r) => onCompareRangeChange({ a: r, b: compareRangeB })}
+          />
+          <span style={{ fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textTertiary }}>vs</span>
+          <span style={{
+            fontFamily: CT_TOKENS.sans, fontSize: 11,
+            color: CT_TOKENS.textSecondary, fontWeight: 500,
+          }}>B:</span>
+          <RangePicker
+            startIso={compareRangeB?.start}
+            endIso={compareRangeB?.end}
+            maxRangeDays={maxRangeDays}
+            onChange={(r) => onCompareRangeChange({ a: compareRangeA, b: r })}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// WP11 Phase 2.A: EffectivenessRow — generalized 3-column (A · B · Δ) row.
+// `kind` dispatches the column rendering strategy. The component pulls all
+// values from aMetrics + bMetrics (each is window.CT_DATA.comparison.{a,b}.metrics,
+// already filter-projected by _computeMetricsView at the parent).
+//
+// Kind variants:
+//   - multiplier              → engaged_session.multiplier; columns show ×N.NN
+//   - ratio-pct               → AI-effort/human-wallclock as percentage
+//   - blocking-split          → stacked-bar a→h / h→a as shares of engaged wallclock
+//   - concurrency-mix         → stratified bar k=1/2/3/4+ shares of engaged wallclock
+//   - absolute-wallclock-effort-mult → wall/effort/× triplet (ai_agent, tool_call)
+//   - absolute-wallclock-only → wall only (human)
+//   - absolute-engaged        → wall/effort/× + session count (engaged_session)
+function EffectivenessRow({ rowKey, label, aMetrics, bMetrics, kind }) {
+  // Helper: render the standardized 3-column grid layout.
+  const Layout = ({ aContent, bContent, deltaContent }) => (
+    <div data-compare-row={rowKey} style={{
+      display: 'grid',
+      gridTemplateColumns: '160px 1fr 1fr 130px',
+      alignItems: 'center', gap: 8,
+      padding: '8px 20px',
+      borderBottom: `1px solid ${CT_TOKENS.border}`,
+    }}>
+      <div style={{
+        fontFamily: CT_TOKENS.sans, fontSize: 12, fontWeight: 500,
+        color: CT_TOKENS.textPrimary,
+      }}>{label}</div>
+      <div data-compare-col="a" style={{
+        fontFamily: CT_TOKENS.mono, fontSize: 12,
+        color: CT_TOKENS.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{aContent}</div>
+      <div data-compare-col="b" style={{
+        fontFamily: CT_TOKENS.mono, fontSize: 12,
+        color: CT_TOKENS.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+        fontWeight: 550,
+      }}>{bContent}</div>
+      <div data-compare-col="delta" style={{
+        textAlign: 'right',
+        fontFamily: CT_TOKENS.mono, fontSize: 12,
+        fontVariantNumeric: 'tabular-nums',
+        fontWeight: 500,
+      }}>{deltaContent}</div>
+    </div>
+  );
+
+  // Colored Δ text — active-blue for positive, muted-gray for negative. No red/green (R4).
+  const DeltaText = ({ children, positive }) => (
+    <span style={{ color: positive ? CT_TOKENS.active : CT_TOKENS.textMuted }}>
+      {children}
+    </span>
+  );
+
+  if (kind === 'multiplier') {
+    const aM = aMetrics?.engaged_session?.multiplier ?? 0;
+    const bM = bMetrics?.engaged_session?.multiplier ?? 0;
+    const absDelta = bM - aM;
+    const relPct = aM === 0 ? null : ((bM - aM) / aM) * 100;
+    return (
+      <Layout
+        aContent={`${aM.toFixed(2)}\u00d7`}
+        bContent={`${bM.toFixed(2)}\u00d7`}
+        deltaContent={
+          <DeltaText positive={absDelta >= 0}>
+            <div>{_fmtSignedMult(absDelta)}</div>
+            <div style={{ fontSize: 10, color: CT_TOKENS.textTertiary, fontWeight: 400 }}>
+              {_fmtRelPct(relPct)}
+            </div>
+          </DeltaText>
+        }
+      />
+    );
+  }
+
+  if (kind === 'ratio-pct') {
+    // AI-effort / human-wallclock (×100 for percentage).
+    const aAi = aMetrics?.ai_agent?.effort_ms || 0;
+    const aHu = aMetrics?.human?.wallclock_ms || 0;
+    const bAi = bMetrics?.ai_agent?.effort_ms || 0;
+    const bHu = bMetrics?.human?.wallclock_ms || 0;
+    const aRatio = aHu === 0 ? 0 : (aAi / aHu) * 100;
+    const bRatio = bHu === 0 ? 0 : (bAi / bHu) * 100;
+    const absDelta = bRatio - aRatio;
+    return (
+      <Layout
+        aContent={aHu === 0 ? '\u2014' : `${aRatio.toFixed(1)}%`}
+        bContent={bHu === 0 ? '\u2014' : `${bRatio.toFixed(1)}%`}
+        deltaContent={
+          <DeltaText positive={absDelta >= 0}>
+            {(aHu === 0 || bHu === 0) ? '(N/A)' : _fmtSignedPp(absDelta)}
+          </DeltaText>
+        }
+      />
+    );
+  }
+
+  if (kind === 'blocking-split') {
+    // Show split as a stacked horizontal bar per side + textual Δ on the larger-shift component.
+    const aWall = aMetrics?.engaged_session?.wallclock_ms || 0;
+    const bWall = bMetrics?.engaged_session?.wallclock_ms || 0;
+    const aAh = aMetrics?.blocking?.agent_blocking_human_ms || 0;
+    const aHa = aMetrics?.blocking?.human_blocking_agent_ms || 0;
+    const bAh = bMetrics?.blocking?.agent_blocking_human_ms || 0;
+    const bHa = bMetrics?.blocking?.human_blocking_agent_ms || 0;
+    const aAhShare = aWall === 0 ? 0 : (aAh / aWall) * 100;
+    const aHaShare = aWall === 0 ? 0 : (aHa / aWall) * 100;
+    const bAhShare = bWall === 0 ? 0 : (bAh / bWall) * 100;
+    const bHaShare = bWall === 0 ? 0 : (bHa / bWall) * 100;
+    const ahShift = bAhShare - aAhShare;
+    const haShift = bHaShare - aHaShare;
+    // Report the larger-magnitude shift in the Δ column.
+    const showShift = Math.abs(ahShift) >= Math.abs(haShift) ? ahShift : haShift;
+    const showLabel = Math.abs(ahShift) >= Math.abs(haShift) ? 'agent→human' : 'human→agent';
+    const Bar = ({ ahShare, haShare }) => (
+      <div style={{
+        display: 'flex', height: 10, borderRadius: 2, overflow: 'hidden',
+        background: CT_TOKENS.surfaceDim,
+      }} title={`agent→human: ${ahShare.toFixed(1)}%, human→agent: ${haShare.toFixed(1)}%`}>
+        <div style={{ width: `${ahShare}%`, background: CT_TOKENS.active }} />
+        <div style={{ width: `${haShare}%`, background: CT_TOKENS.textMuted }} />
+      </div>
+    );
+    return (
+      <Layout
+        aContent={aWall === 0 ? '\u2014' : <Bar ahShare={aAhShare} haShare={aHaShare} />}
+        bContent={bWall === 0 ? '\u2014' : <Bar ahShare={bAhShare} haShare={bHaShare} />}
+        deltaContent={
+          <DeltaText positive={showShift >= 0}>
+            <div style={{ fontSize: 10 }}>{showLabel}</div>
+            <div>{_fmtSignedPp(showShift)}</div>
+          </DeltaText>
+        }
+      />
+    );
+  }
+
+  if (kind === 'concurrency-mix') {
+    // Stratified bar k=1/2/3/4+ as shares of engaged wallclock. Report the
+    // single largest-magnitude stratum shift in the Δ column.
+    const buildShares = (m) => {
+      const wall = m?.engaged_session?.wallclock_ms || 0;
+      const conc = m?.concurrency || [];
+      if (wall === 0) return { k1: 0, k2: 0, k3: 0, k4: 0 };
+      const find = (k) => (conc.find(c => c.k === k)?.wallclock_ms || 0) / wall * 100;
+      return { k1: find(1), k2: find(2), k3: find(3), k4: find(4) };
+    };
+    const aShares = buildShares(aMetrics);
+    const bShares = buildShares(bMetrics);
+    const aWall = aMetrics?.engaged_session?.wallclock_ms || 0;
+    const bWall = bMetrics?.engaged_session?.wallclock_ms || 0;
+    const colors = [CT_TOKENS.textMuted, CT_TOKENS.active, CT_TOKENS.textPrimary, CT_TOKENS.textPrimary];
+    const Bar = ({ shares }) => (
+      <div style={{
+        display: 'flex', height: 10, borderRadius: 2, overflow: 'hidden',
+        background: CT_TOKENS.surfaceDim,
+      }} title={`k=1: ${shares.k1.toFixed(1)}%, k=2: ${shares.k2.toFixed(1)}%, k=3: ${shares.k3.toFixed(1)}%, k=4+: ${shares.k4.toFixed(1)}%`}>
+        <div style={{ width: `${shares.k1}%`, background: colors[0], opacity: 0.5 }} />
+        <div style={{ width: `${shares.k2}%`, background: colors[1] }} />
+        <div style={{ width: `${shares.k3}%`, background: colors[2], opacity: 0.7 }} />
+        <div style={{ width: `${shares.k4}%`, background: colors[3] }} />
+      </div>
+    );
+    // Find the largest-magnitude stratum shift for the Δ column.
+    const shifts = [
+      { k: 1, label: 'k=1', delta: bShares.k1 - aShares.k1 },
+      { k: 2, label: 'k=2', delta: bShares.k2 - aShares.k2 },
+      { k: 3, label: 'k=3', delta: bShares.k3 - aShares.k3 },
+      { k: 4, label: 'k=4+', delta: bShares.k4 - aShares.k4 },
+    ];
+    shifts.sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
+    const top = shifts[0];
+    return (
+      <Layout
+        aContent={aWall === 0 ? '\u2014' : <Bar shares={aShares} />}
+        bContent={bWall === 0 ? '\u2014' : <Bar shares={bShares} />}
+        deltaContent={
+          <DeltaText positive={top.delta >= 0}>
+            <div style={{ fontSize: 10 }}>{top.label} share</div>
+            <div>{_fmtSignedPp(top.delta)}</div>
+          </DeltaText>
+        }
+      />
+    );
+  }
+
+  if (kind === 'absolute-wallclock-effort-mult') {
+    // For ai_agent / tool_call: show wall · effort · × on each side.
+    const path = rowKey === 'ai-agent' ? 'ai_agent' : 'tool_call';
+    const aSub = aMetrics?.[path] || {};
+    const bSub = bMetrics?.[path] || {};
+    const aWall = aSub.wallclock_ms || 0;
+    const aEff = aSub.effort_ms || 0;
+    const aMult = aSub.multiplier ?? 0;
+    const bWall = bSub.wallclock_ms || 0;
+    const bEff = bSub.effort_ms || 0;
+    const bMult = bSub.multiplier ?? 0;
+    const wallDelta = bWall - aWall;
+    const wallRelPct = aWall === 0 ? null : ((bWall - aWall) / aWall) * 100;
+    const Cell = ({ wall, eff, mult }) => (
+      <div>
+        <div>{fmtDur(wall / 60_000)}</div>
+        <div style={{ fontSize: 10, color: CT_TOKENS.textSecondary }}>
+          {`eff: ${fmtDur(eff / 60_000)} \u00b7 ${mult.toFixed(2)}\u00d7`}
+        </div>
+      </div>
+    );
+    return (
+      <Layout
+        aContent={<Cell wall={aWall} eff={aEff} mult={aMult} />}
+        bContent={<Cell wall={bWall} eff={bEff} mult={bMult} />}
+        deltaContent={
+          <DeltaText positive={wallDelta >= 0}>
+            <div>{_fmtSignedDurMs(wallDelta)}</div>
+            <div style={{ fontSize: 10, color: CT_TOKENS.textTertiary, fontWeight: 400 }}>
+              {_fmtRelPct(wallRelPct)}
+            </div>
+          </DeltaText>
+        }
+      />
+    );
+  }
+
+  if (kind === 'absolute-wallclock-only') {
+    // human: just wall-clock (effort === wallclock by construction; × is always 1.0).
+    const aWall = aMetrics?.human?.wallclock_ms || 0;
+    const bWall = bMetrics?.human?.wallclock_ms || 0;
+    const wallDelta = bWall - aWall;
+    const wallRelPct = aWall === 0 ? null : ((bWall - aWall) / aWall) * 100;
+    return (
+      <Layout
+        aContent={fmtDur(aWall / 60_000)}
+        bContent={fmtDur(bWall / 60_000)}
+        deltaContent={
+          <DeltaText positive={wallDelta >= 0}>
+            <div>{_fmtSignedDurMs(wallDelta)}</div>
+            <div style={{ fontSize: 10, color: CT_TOKENS.textTertiary, fontWeight: 400 }}>
+              {_fmtRelPct(wallRelPct)}
+            </div>
+          </DeltaText>
+        }
+      />
+    );
+  }
+
+  if (kind === 'absolute-engaged') {
+    // engaged_session: wall + effort + × + session_count.
+    const aS = aMetrics?.engaged_session || {};
+    const bS = bMetrics?.engaged_session || {};
+    const aWall = aS.wallclock_ms || 0;
+    const bWall = bS.wallclock_ms || 0;
+    const wallDelta = bWall - aWall;
+    const wallRelPct = aWall === 0 ? null : ((bWall - aWall) / aWall) * 100;
+    const Cell = ({ s }) => (
+      <div>
+        <div>{fmtDur((s.wallclock_ms || 0) / 60_000)}</div>
+        <div style={{ fontSize: 10, color: CT_TOKENS.textSecondary }}>
+          {`eff: ${fmtDur((s.effort_ms || 0) / 60_000)} \u00b7 ${(s.multiplier ?? 0).toFixed(2)}\u00d7`}
+        </div>
+        <div style={{ fontSize: 10, color: CT_TOKENS.textTertiary }}>
+          {s.session_count || 0} sessions
+        </div>
+      </div>
+    );
+    return (
+      <Layout
+        aContent={<Cell s={aS} />}
+        bContent={<Cell s={bS} />}
+        deltaContent={
+          <DeltaText positive={wallDelta >= 0}>
+            <div>{_fmtSignedDurMs(wallDelta)}</div>
+            <div style={{ fontSize: 10, color: CT_TOKENS.textTertiary, fontWeight: 400 }}>
+              {_fmtRelPct(wallRelPct)}
+            </div>
+          </DeltaText>
+        }
+      />
+    );
+  }
+
+  // Unknown kind — shouldn't happen at runtime.
+  return null;
+}
+
+// WP11 Phase 2.A: CompareView root — effectiveness-lens redesign (2026-05-26).
+// Sources from window.CT_DATA.comparison.{a,b}.metrics (Phase 1.B). Filter chips
+// project both windows via WP10's _computeMetricsView. Renders 8 rows in the
+// priority order locked at re-spec (R1): 4 headline ratios first, then 4
+// supporting absolutes.
+function CompareView({ comparison }) {
+  const { kinds: filterKinds } = useFilter();
+  const aMetrics = React.useMemo(
+    () => _computeMetricsView(comparison?.a?.metrics, filterKinds),
+    [comparison, filterKinds]
+  );
+  const bMetrics = React.useMemo(
+    () => _computeMetricsView(comparison?.b?.metrics, filterKinds),
+    [comparison, filterKinds]
+  );
+
+  // No comparison payload at all (e.g., dashboard emitted without --compare).
+  if (!comparison || !aMetrics || !bMetrics) {
+    return (
+      <div data-compare-view="true" style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: CT_TOKENS.surface,
+      }}>
+        <div style={{
+          fontFamily: CT_TOKENS.sans, fontSize: 13,
+          color: CT_TOKENS.textSecondary, fontWeight: 500,
+        }}>No comparison data — emit with <code style={{
+          fontFamily: CT_TOKENS.mono, padding: '1px 4px',
+          background: CT_TOKENS.surfaceAlt, borderRadius: 3,
+        }}>claude-time visualize --compare wow</code></div>
+      </div>
+    );
+  }
+
+  // Empty-window check (engaged_session.wallclock_ms === 0 on each side).
+  const aWall = aMetrics.engaged_session?.wallclock_ms || 0;
+  const bWall = bMetrics.engaged_session?.wallclock_ms || 0;
+  const aEmpty = aWall === 0;
+  const bEmpty = bWall === 0;
+  const bothEmpty = aEmpty && bEmpty;
+  const meta = comparison.meta || {};
+  const aDay = meta.a_day_count;
+  const bDay = meta.b_day_count;
+  const lengthMismatch = aDay && bDay && aDay !== bDay;
+
+  // 8 rows in priority order (R1): 4 headline ratios, then 4 supporting absolutes.
+  const rows = [
+    { rowKey: 'parallelism-multiplier',      label: 'Parallelism ×',         kind: 'multiplier' },
+    { rowKey: 'ai-effort-per-human-wallclock', label: 'AI effort / human wall', kind: 'ratio-pct' },
+    { rowKey: 'blocking-split',              label: 'Blocking split',         kind: 'blocking-split' },
+    { rowKey: 'concurrency-mix',             label: 'Concurrency mix',        kind: 'concurrency-mix' },
+    { rowKey: 'ai-agent',                    label: 'AI agent',               kind: 'absolute-wallclock-effort-mult' },
+    { rowKey: 'tool-call',                   label: 'Tool calls',             kind: 'absolute-wallclock-effort-mult' },
+    { rowKey: 'human',                       label: 'Human (you)',            kind: 'absolute-wallclock-only' },
+    { rowKey: 'engaged-session',             label: 'Engaged sessions',       kind: 'absolute-engaged' },
+  ];
+
+  return (
+    <div data-compare-view="true" style={{
+      flex: 1,
+      display: 'flex', flexDirection: 'column',
+      overflow: 'auto',
+      background: CT_TOKENS.bg,
+    }}>
+      {/* Window labels — A and B with day-counts (carry-over from Phase 2). */}
+      <div data-compare-section="window-labels" style={{
+        display: 'flex', justifyContent: 'space-around',
+        padding: '10px 20px',
+        background: CT_TOKENS.surface,
+        borderBottom: `1px solid ${CT_TOKENS.border}`,
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontFamily: CT_TOKENS.sans, fontSize: 10, fontWeight: 500,
+            color: CT_TOKENS.textTertiary, textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}>A {aEmpty ? '(empty)' : ''}</div>
+          <div style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11, color: CT_TOKENS.textPrimary,
+          }}>{`${meta.a_start || '\u2014'} \u2192 ${meta.a_end || '\u2014'} (${aDay || 0}d)`}</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontFamily: CT_TOKENS.sans, fontSize: 10, fontWeight: 500,
+            color: CT_TOKENS.textTertiary, textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}>B {bEmpty ? '(empty)' : ''}</div>
+          <div style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11, color: CT_TOKENS.textPrimary,
+          }}>{`${meta.b_start || '\u2014'} \u2192 ${meta.b_end || '\u2014'} (${bDay || 0}d)`}</div>
+        </div>
+      </div>
+      {lengthMismatch && (
+        <div data-compare-warning="length-mismatch" style={{
+          padding: '6px 20px',
+          background: CT_TOKENS.surfaceDim,
+          fontFamily: CT_TOKENS.sans, fontSize: 11,
+          color: CT_TOKENS.textSecondary,
+          borderBottom: `1px solid ${CT_TOKENS.border}`,
+        }}>
+          {`windows are different lengths: A is ${aDay}d, B is ${bDay}d \u2014 deltas are absolute, not normalized`}
+        </div>
+      )}
+      {bothEmpty ? (
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            fontFamily: CT_TOKENS.sans, fontSize: 13,
+            color: CT_TOKENS.textSecondary, fontWeight: 500,
+          }}>no tracked time in either window</div>
+        </div>
+      ) : (
+        <div data-compare-section="effectiveness" style={{
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Column headers above the rows. */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '160px 1fr 1fr 130px',
+            alignItems: 'center', gap: 8,
+            padding: '6px 20px',
+            background: CT_TOKENS.surfaceDim,
+            borderBottom: `1px solid ${CT_TOKENS.border}`,
+            fontFamily: CT_TOKENS.sans, fontSize: 10, fontWeight: 600,
+            color: CT_TOKENS.textTertiary, textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}>
+            <div>Metric</div>
+            <div>A</div>
+            <div>B</div>
+            <div style={{ textAlign: 'right' }}>Δ (B − A)</div>
+          </div>
+          {rows.map(r => (
+            <EffectivenessRow
+              key={r.rowKey}
+              rowKey={r.rowKey}
+              label={r.label}
+              aMetrics={aMetrics}
+              bMetrics={bMetrics}
+              kind={r.kind}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // HeadlineCard — three primary numbers (collapsed default) + chevron toggle.

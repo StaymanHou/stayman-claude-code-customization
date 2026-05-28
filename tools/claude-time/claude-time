@@ -469,6 +469,20 @@ def main(argv: list[str] | None = None) -> int:
                           "are ignored when present (the month carries its own window). "
                           "Emit-time pre-loads the requested month plus the previous "
                           "month so the prev-arrow swap is instant client-side.")
+    viz.add_argument("--compare", dest="compare", default=None,
+                     choices=["wow", "today-vs-trailing", "mom"],
+                     help="render the Compare view (delta lens) with a preset comparison: "
+                          "wow=week-over-week, today-vs-trailing=today vs trailing 7-day, "
+                          "mom=month-over-month. Mutually exclusive with --compare-range, "
+                          "--range, --month, --date (when explicitly set); compatible with "
+                          "--demo (synthetic window).")
+    viz.add_argument("--compare-range", dest="compare_range", default=None,
+                     metavar="A_START:A_END,B_START:B_END",
+                     help="render the Compare view with two user-picked windows separated "
+                          "by a comma. Each half follows the same YYYY-MM-DD:YYYY-MM-DD "
+                          "shape as --range. Mutually exclusive with --compare, --range, "
+                          "--month, --date (when explicitly set); cap "
+                          "viz_custom_range_max_days applies per window.")
     viz.add_argument(
         "--db",
         help="override DB path (default: $CLAUDE_TIME_DIR/events.sqlite or ~/.claude-time/events.sqlite)",
@@ -595,6 +609,125 @@ def _parse_range_flag(raw: str, max_days: int) -> tuple[date, date] | None:
     return start, end
 
 
+def _compare_window_bounds(
+    preset: str,
+    compare_range_pair: tuple[tuple[date, date], tuple[date, date]] | None,
+    target_day: date,
+    monday: date,
+) -> tuple[date, date, date, date]:
+    """Return (a_start, a_end, b_start, b_end) for the given comparison preset.
+
+    Window selection:
+      wow                 → A=[monday-7..monday-1], B=[monday..monday+6]
+      today-vs-trailing   → A=[target-7..target-1], B=[target, target]
+      mom                 → A=prev calendar month, B=current calendar month
+                            (anchored to target_day)
+      custom              → caller-supplied (compare_range_pair must be set)
+    """
+    import calendar as _calendar
+    if preset == "wow":
+        a_start = monday - timedelta(days=7)
+        a_end = monday - timedelta(days=1)
+        b_start = monday
+        b_end = monday + timedelta(days=6)
+        return a_start, a_end, b_start, b_end
+    if preset == "today-vs-trailing":
+        a_start = target_day - timedelta(days=7)
+        a_end = target_day - timedelta(days=1)
+        b_start = target_day
+        b_end = target_day
+        return a_start, a_end, b_start, b_end
+    if preset == "mom":
+        year, month = target_day.year, target_day.month
+        prev_y, prev_m = _prev_month(year, month)
+        a_start = date(prev_y, prev_m, 1)
+        a_end = date(prev_y, prev_m, _calendar.monthrange(prev_y, prev_m)[1])
+        b_start = date(year, month, 1)
+        b_end = date(year, month, _calendar.monthrange(year, month)[1])
+        return a_start, a_end, b_start, b_end
+    if preset == "custom":
+        if compare_range_pair is None:
+            raise ValueError("preset='custom' requires compare_range_pair to be set")
+        (a_start, a_end), (b_start, b_end) = compare_range_pair
+        return a_start, a_end, b_start, b_end
+    raise ValueError(f"unknown compare preset: {preset!r}")
+
+
+def _build_demo_comparison(
+    preset: str,
+    compare_range_pair: tuple[tuple[date, date], tuple[date, date]] | None,
+    cfg: dict,
+) -> dict:
+    """Build an empty-shape comparison payload for the --demo path.
+
+    Demo data is a single-day fixture (viz/data.js); we cannot compute real
+    comparison numbers. Emit an empty-shape tree that keeps the JS contract
+    uniform — both A and B are empty range payloads, deltas is empty, meta is
+    populated so the UI can render window labels.
+    """
+    import viz_data  # noqa
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    a_start, a_end, b_start, b_end = _compare_window_bounds(
+        preset, compare_range_pair, today, monday,
+    )
+
+    def _auto_alias_noop(cwd: str) -> str:
+        return cwd or "unknown"
+
+    payload = viz_data.build_comparison_data(
+        a_start.isoformat(), a_end.isoformat(),
+        b_start.isoformat(), b_end.isoformat(),
+        events_by_day_a={}, events_by_day_b={},
+        cfg=cfg, auto_alias_fn=_auto_alias_noop,
+    )
+
+    # WP11 Phase 1.B: attach empty-shape metrics per window so the JS
+    # contract is uniform (CompareView always reads comparison.a.metrics
+    # and .b.metrics). Demo path has no real events to aggregate, so
+    # build_metrics([], ...) produces the same shape as a real-data call
+    # over an empty window — engaged_session.wallclock_ms === 0, etc.
+    a_start_dt = datetime.combine(a_start, time.min)
+    a_end_dt = datetime.combine(a_end + timedelta(days=1), time.min)
+    b_start_dt = datetime.combine(b_start, time.min)
+    b_end_dt = datetime.combine(b_end + timedelta(days=1), time.min)
+    payload["a"]["metrics"] = viz_data.build_metrics([], a_start_dt, a_end_dt)
+    payload["b"]["metrics"] = viz_data.build_metrics([], b_start_dt, b_end_dt)
+    return payload
+
+
+def _parse_compare_range_flag(
+    raw: str, max_days: int
+) -> tuple[tuple[date, date], tuple[date, date]] | None:
+    """Parse and validate `--compare-range A_START:A_END,B_START:B_END`.
+
+    On success returns ((a_start, a_end), (b_start, b_end)) inclusive.
+    On any failure, prints a stderr message naming the rule that failed and
+    returns None — caller exits with code 2.
+
+    Validation rules:
+      - shape: exactly one ',' separator, two A:B halves
+      - each half satisfies `_parse_range_flag` (shape, end>=start, end<=today,
+        days<=max_days). Windows of different lengths are allowed — the data
+        layer is policy-free; the UI surfaces a warning at render time.
+    """
+    parts = raw.split(",")
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        print(f"error: --compare-range expects A_START:A_END,B_START:B_END "
+              f"(two ranges separated by a comma), got {raw!r}", file=sys.stderr)
+        return None
+    a = _parse_range_flag(parts[0], max_days)
+    if a is None:
+        # _parse_range_flag already wrote a rule-named error; tag which half failed.
+        print(f"error: --compare-range first range (A) failed validation", file=sys.stderr)
+        return None
+    b = _parse_range_flag(parts[1], max_days)
+    if b is None:
+        print(f"error: --compare-range second range (B) failed validation", file=sys.stderr)
+        return None
+    return a, b
+
+
 def _cmd_visualize(args, cfg, db_path, claude_time_dir):
     """Emit the dashboard HTML to disk. See `--help visualize`."""
     import webbrowser
@@ -608,6 +741,28 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
     if not template_path.exists() or not dashboard_jsx_path.exists():
         print(f"error: viz template assets not found under {viz_dir}", file=sys.stderr)
         return 2
+
+    # WP11: cross-flag mutex check fires FIRST so the error message names the
+    # right pair of flags. Without this, --compare + --range would hit the
+    # --range vs --demo guard with a misleading message. Compare-range
+    # parsing itself happens later (needs cfg for max_days).
+    if args.compare is not None and args.compare_range is not None:
+        print("error: --compare and --compare-range are mutually exclusive "
+              "(pick one preset or one window-pair, not both)", file=sys.stderr)
+        return 2
+    if args.compare is not None or args.compare_range is not None:
+        if args.range is not None:
+            print("error: --compare/--compare-range is incompatible with --range "
+                  "(pick one initial-view and window source)", file=sys.stderr)
+            return 2
+        if args.month is not None:
+            print("error: --compare/--compare-range is incompatible with --month "
+                  "(pick one initial-view and window source)", file=sys.stderr)
+            return 2
+        if args.date is not None:
+            print("error: --compare/--compare-range is incompatible with --date "
+                  "(pick one initial-view and window source)", file=sys.stderr)
+            return 2
 
     # WP8: parse + validate --range early so error paths abort before any DB
     # work. Mutual-exclusion guards: --range conflicts with --demo (demo data
@@ -647,6 +802,22 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
         if parsed is None:
             return 2
         month_dates = parsed
+
+    # WP11: parse --compare-range now that --range / --month parsing is done.
+    # Cross-flag mutex was checked above (before any parse) so the error
+    # messages name the right pair of flags. --compare is a choice flag
+    # (no parsing needed — argparse already validated against choices=).
+    compare_preset: str | None = None
+    compare_range_pair: tuple[tuple[date, date], tuple[date, date]] | None = None
+    if args.compare_range is not None:
+        max_days = int(cfg.get("viz_custom_range_max_days", 90))
+        parsed_pair = _parse_compare_range_flag(args.compare_range, max_days)
+        if parsed_pair is None:
+            return 2
+        compare_range_pair = parsed_pair
+        compare_preset = "custom"
+    elif args.compare is not None:
+        compare_preset = args.compare
 
     # Pick today (or --date) for the day-view data.
     target_day = date.fromisoformat(args.date) if args.date else date.today()
@@ -699,6 +870,15 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
         data["metrics"] = viz_data.build_metrics(
             [], metrics_window_start_dt, metrics_window_end_dt,
         )
+        # WP11: emit an empty-shape comparison tree on the demo path. Like
+        # `metrics`, the JS contract is always-present; demo has no real events
+        # to compare so both windows are empty and deltas are zero/None. The
+        # comparison window pair is derived from the preset choice so the UI
+        # still has meta.{a_start, a_end, b_start, b_end} to render labels.
+        if compare_preset is not None:
+            data["comparison"] = _build_demo_comparison(
+                compare_preset, compare_range_pair, cfg,
+            )
     else:
         if not db_path.exists():
             print(f"error: {db_path} does not exist. Run Claude Code with CLAUDE_TIME_TRACKING=1 to populate it, "
@@ -811,12 +991,69 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
             metrics_events, metrics_window_start_dt, metrics_window_end_dt,
         )
 
-    # WP7/WP8: initial view precedence — --month > --range > --week > default.
-    # --month and --range each carry a load-bearing payload (the picked window)
-    # that only their corresponding view knows how to display. --week is
-    # ignored when either is present. The "week" emission stays under
-    # `data["week"]` so the Week tab still functions when the user clicks it.
-    if month_dates is not None:
+        # WP11: when --compare or --compare-range is active, compute the
+        # comparison payload. Window selection per preset:
+        #   wow                 → compare_week_over_week(monday_iso)
+        #   today-vs-trailing   → compare_day_vs_trailing_window(target_iso, 7)
+        #   mom                 → compare_month_over_month(this_month_iso)
+        #   custom              → build_comparison_data(A_start..A_end, B_start..B_end)
+        # Events are loaded for the union of A and B windows.
+        if compare_preset is not None:
+            (cmp_a_start, cmp_a_end,
+             cmp_b_start, cmp_b_end) = _compare_window_bounds(
+                compare_preset, compare_range_pair, target_day, monday,
+            )
+            union_start = min(cmp_a_start, cmp_b_start)
+            union_end = max(cmp_a_end, cmp_b_end)
+            cmp_events_by_day: dict[str, list[dict]] = {}
+            for i in range((union_end - union_start).days + 1):
+                d = union_start + timedelta(days=i)
+                cmp_events_by_day[d.isoformat()] = _load_window_events(db_path, d)
+            data["comparison"] = viz_data.build_comparison_data(
+                cmp_a_start.isoformat(), cmp_a_end.isoformat(),
+                cmp_b_start.isoformat(), cmp_b_end.isoformat(),
+                events_by_day_a={
+                    iso: evts for iso, evts in cmp_events_by_day.items()
+                    if cmp_a_start <= date.fromisoformat(iso) <= cmp_a_end
+                },
+                events_by_day_b={
+                    iso: evts for iso, evts in cmp_events_by_day.items()
+                    if cmp_b_start <= date.fromisoformat(iso) <= cmp_b_end
+                },
+                cfg=cfg,
+                auto_alias_fn=_auto_alias_for_cwd,
+            )
+
+            # WP11 Phase 1.B: per-window metrics emit. Compute build_metrics
+            # over each window's events so the CompareView UI can render
+            # productivity ratios (parallelism multiplier, AI-effort/human-
+            # wall-clock, blocking split, concurrency mix). Events for both
+            # windows are already loaded in cmp_events_by_day — extract per
+            # window, sort chronologically, call build_metrics, attach.
+            # Window endpoint convention matches _load_window_events: start
+            # at midnight-local of the first day, end at midnight-local of
+            # the day AFTER the last day (exclusive upper bound).
+            def _metrics_for_window(win_start: date, win_end: date) -> dict:
+                evts: list[dict] = []
+                for iso, day_evts in cmp_events_by_day.items():
+                    d = date.fromisoformat(iso)
+                    if win_start <= d <= win_end:
+                        evts.extend(day_evts)
+                evts.sort(key=lambda r: r.get("ts", 0))
+                start_dt = datetime.combine(win_start, time.min)
+                end_dt = datetime.combine(win_end + timedelta(days=1), time.min)
+                return viz_data.build_metrics(evts, start_dt, end_dt)
+
+            data["comparison"]["a"]["metrics"] = _metrics_for_window(cmp_a_start, cmp_a_end)
+            data["comparison"]["b"]["metrics"] = _metrics_for_window(cmp_b_start, cmp_b_end)
+
+    # WP7/WP8/WP11: initial view precedence — --compare* > --month > --range >
+    # --week > default. --compare and --compare-range are mutually exclusive
+    # with --month and --range (mutex guarded above), so reaching the
+    # "compare" branch implies the others are unset.
+    if compare_preset is not None:
+        initial_view = "compare"
+    elif month_dates is not None:
         initial_view = "month"
     elif range_dates is not None:
         initial_view = "custom"
@@ -826,7 +1063,8 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
         initial_view = "day"
     max_range_days = int(cfg.get("viz_custom_range_max_days", 90))
     html = viz_render.render_html(template_path, dashboard_jsx_path, data,
-                                  initial_view, max_range_days=max_range_days)
+                                  initial_view, max_range_days=max_range_days,
+                                  initial_preset=compare_preset)
 
     out_path = Path(args.out).expanduser() if args.out else (claude_time_dir / "visualize.html")
     out_path.parent.mkdir(parents=True, exist_ok=True)

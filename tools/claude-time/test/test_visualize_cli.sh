@@ -1189,22 +1189,23 @@ else
     check "WP8-P2 codify: range state hash-restore" fail "useState initializer not in emit"
 fi
 
-# WP8-P2-8 (extended by WP7-P2): Debounced view+range+month hash-write
-# useEffect with FOUR-branch dispatch (day/week/custom/month). WP7 added
-# the 'month' branch + threaded the `month` key through all four branches
-# (set when view==='month', null otherwise per default-elision).
-# Triaged 2026-05-24 as obsolete-test (high-confidence): updated to match
-# the new contract; the previous three-branch pin was checking a pre-WP7
-# shape that no longer exists.
-# The effect body contains the four view-conditional updateHash calls.
+# WP8-P2-8 (extended by WP7-P2 then WP11-P2): Debounced view+range+month
+# hash-write useEffect with FIVE-branch dispatch (day/week/custom/month/compare).
+# WP7 added the 'month' branch; WP11 added 'compare' + threaded the new
+# `preset` and `ranges` keys through all non-compare branches (set when
+# view==='compare', null otherwise per default-elision).
+# Triaged 2026-05-24 as obsolete-test (high-confidence): updated for WP7
+# month branch. Triaged 2026-05-26 again as obsolete-test (high-confidence):
+# updated for WP11 compare branch + preset/ranges threading.
+# The effect body contains the five view-conditional updateHash calls.
 if grep -qF "if (view === 'month') {" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: 'month', month: monthIso, range: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null })" "$WP8_HAPPY" && \
    grep -qF "updateHash({ view: 'custom', range:" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: 'week', range: null, month: null })" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: null, range: null, month: null })" "$WP8_HAPPY"; then
-    check "WP8-P2+WP7-P2 codify: view+range+month hash-write four-branch dispatch (month/custom/week/day)" pass
+   grep -qF "updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: null, range: null, month: null, preset: null, ranges: null })" "$WP8_HAPPY"; then
+    check "WP8-P2+WP7-P2+WP11-P2 codify: view+range+month+preset+ranges hash-write five-branch dispatch (compare/month/custom/week/day)" pass
 else
-    check "WP8-P2+WP7-P2 codify: hash-write four-branch dispatch" fail "one or more dispatch branches missing"
+    check "WP8-P2+WP7-P2+WP11-P2 codify: hash-write five-branch dispatch" fail "one or more dispatch branches missing"
 fi
 
 # WP8-P2-9: isDayLike used at all 6 consumer surfaces. Count must be >= 6.
@@ -1881,6 +1882,357 @@ else
 fi
 
 rm -rf "$WP10P2_DIR"
+
+# ── WP11 Phase 1 codify: --compare / --compare-range CLI surface + emit pins ──
+# Integration boundary: this block exercises the consuming surfaces (the
+# `visualize` subcommand's argparse + _cmd_visualize + viz_render.render_html
+# + template.html) by emit-and-grep. Source-shape pins are in this file;
+# Python unit tests for compare_month_over_month live in test_viz_data.py
+# (CompareMonthOverMonthTests) and the render_html signature/emit test lives
+# in test_viz_render.py.
+
+WP11P1_DIR="$(mktemp -d -t claude-time-wp11p1-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR" "$WP10P2_DIR" "$WP11P1_DIR"' EXIT
+
+WP11_WOW="$WP11P1_DIR/wow.html"
+WP11_RANGE="$WP11P1_DIR/range.html"
+WP11_DEFAULT="$WP11P1_DIR/default.html"
+
+CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --no-open --demo --compare wow --out "$WP11_WOW" > /dev/null 2>&1
+CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --no-open --demo --compare-range 2026-05-13:2026-05-19,2026-05-20:2026-05-26 --out "$WP11_RANGE" > /dev/null 2>&1
+CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --no-open --demo --out "$WP11_DEFAULT" > /dev/null 2>&1
+
+# WP11-P1-1: --help lists both new flags.
+WP11_HELP="$("$CLI" visualize --help 2>&1)"
+if echo "$WP11_HELP" | grep -qE -- '--compare \{wow,today-vs-trailing,mom\}'; then
+    check "WP11-P1 codify: --help lists --compare with choices" pass
+else
+    check "WP11-P1 codify: --help --compare" fail "missing or choices changed"
+fi
+
+if echo "$WP11_HELP" | grep -qE -- '--compare-range A_START:A_END,B_START:B_END'; then
+    check "WP11-P1 codify: --help lists --compare-range with metavar" pass
+else
+    check "WP11-P1 codify: --help --compare-range" fail "missing or metavar changed"
+fi
+
+# WP11-P1-2: --compare wow emit has CT_INITIAL_VIEW = "compare".
+if grep -qF 'window.CT_INITIAL_VIEW = "compare";' "$WP11_WOW"; then
+    check "WP11-P1 codify: --compare wow emits CT_INITIAL_VIEW=\"compare\"" pass
+else
+    check "WP11-P1 codify: CT_INITIAL_VIEW=compare on --compare wow" fail "wrong or missing"
+fi
+
+# WP11-P1-3: --compare wow emit has CT_INITIAL_PRESET = "wow".
+if grep -qF 'window.CT_INITIAL_PRESET = "wow";' "$WP11_WOW"; then
+    check "WP11-P1 codify: --compare wow emits CT_INITIAL_PRESET=\"wow\"" pass
+else
+    check "WP11-P1 codify: CT_INITIAL_PRESET=wow" fail "wrong or missing"
+fi
+
+# WP11-P1-4: --compare-range emit has CT_INITIAL_PRESET = "custom".
+if grep -qF 'window.CT_INITIAL_PRESET = "custom";' "$WP11_RANGE"; then
+    check "WP11-P1 codify: --compare-range emits CT_INITIAL_PRESET=\"custom\"" pass
+else
+    check "WP11-P1 codify: CT_INITIAL_PRESET=custom" fail "wrong or missing"
+fi
+
+# WP11-P1-5: default (no --compare* flag) → CT_INITIAL_PRESET = null.
+# Pin against the JSON-encoded null literal, not the string "null".
+if grep -qF 'window.CT_INITIAL_PRESET = null;' "$WP11_DEFAULT"; then
+    check "WP11-P1 codify: default CT_INITIAL_PRESET=null (no compare flag)" pass
+else
+    check "WP11-P1 codify: default CT_INITIAL_PRESET=null" fail "wrong or missing"
+fi
+
+# WP11-P1-6: --compare wow emit has window.CT_DATA.comparison object with
+# {a, b, deltas, meta} keys. Use a Python sub-shell to JSON-parse the
+# CT_DATA literal because grep-on-JSON is brittle.
+python3 -c "
+import re, json, sys
+h = open('$WP11_WOW').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+if not m: sys.exit('CT_DATA assignment not found in emit')
+d = json.loads(m.group(1))
+if 'comparison' not in d: sys.exit('comparison key missing')
+c = d['comparison']
+missing = [k for k in ('a','b','deltas','meta') if k not in c]
+if missing: sys.exit(f'comparison missing keys: {missing}')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1 codify: --compare wow emits CT_DATA.comparison with {a,b,deltas,meta}" pass
+else
+    check "WP11-P1 codify: CT_DATA.comparison shape" fail "missing or wrong keys"
+fi
+
+# WP11-P1-7: default emit (no --compare* flag) does NOT include the
+# comparison key — default-elision keeps unrelated payloads out.
+if grep -qE '"comparison"\s*:' "$WP11_DEFAULT"; then
+    check "WP11-P1 codify: default emit comparison absent" fail "comparison key present on default emit"
+else
+    check "WP11-P1 codify: default emit has no comparison key" pass
+fi
+
+# WP11-P1-8: mutex --compare + --compare-range returns rc=2 with the right
+# error message naming both flags.
+err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --compare-range 2026-05-13:2026-05-19,2026-05-20:2026-05-26 --demo --no-open --out "$WP11P1_DIR/m1.html" 2>&1)
+rc=$?
+if [ $rc -eq 2 ] && echo "$err" | grep -qF -- '--compare and --compare-range are mutually exclusive'; then
+    check "WP11-P1 codify: mutex --compare ⨯ --compare-range (rc=2 + right msg)" pass
+else
+    check "WP11-P1 codify: mutex --compare ⨯ --compare-range" fail "rc=$rc msg=$err"
+fi
+
+# WP11-P1-9: mutex --compare + --range — the error must name --range, not
+# --demo. This catches the build-time discovery: cross-flag mutex must fire
+# BEFORE --range vs --demo parsing.
+err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --range 2026-05-01:2026-05-07 --demo --no-open --out "$WP11P1_DIR/m2.html" 2>&1)
+rc=$?
+if [ $rc -eq 2 ] && echo "$err" | grep -qF 'incompatible with --range'; then
+    check "WP11-P1 codify: mutex --compare ⨯ --range names --range (rc=2)" pass
+else
+    check "WP11-P1 codify: mutex --compare ⨯ --range error precedence" fail "rc=$rc msg=$err"
+fi
+
+# WP11-P1-10: mutex --compare + --month — same error-precedence pin.
+err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --month 2026-05 --demo --no-open --out "$WP11P1_DIR/m3.html" 2>&1)
+rc=$?
+if [ $rc -eq 2 ] && echo "$err" | grep -qF 'incompatible with --month'; then
+    check "WP11-P1 codify: mutex --compare ⨯ --month names --month (rc=2)" pass
+else
+    check "WP11-P1 codify: mutex --compare ⨯ --month error precedence" fail "rc=$rc msg=$err"
+fi
+
+# WP11-P1-11: mutex --compare + --date — explicit --date conflict.
+err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --date 2026-05-20 --demo --no-open --out "$WP11P1_DIR/m4.html" 2>&1)
+rc=$?
+if [ $rc -eq 2 ] && echo "$err" | grep -qF 'incompatible with --date'; then
+    check "WP11-P1 codify: mutex --compare ⨯ --date names --date (rc=2)" pass
+else
+    check "WP11-P1 codify: mutex --compare ⨯ --date" fail "rc=$rc msg=$err"
+fi
+
+# WP11-P1-12: bad --compare-range shape returns rc=2 with rule-named error.
+err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare-range 'no-comma-here' --demo --no-open --out "$WP11P1_DIR/m5.html" 2>&1)
+rc=$?
+if [ $rc -eq 2 ] && echo "$err" | grep -qF 'two ranges separated by a comma'; then
+    check "WP11-P1 codify: --compare-range bad shape (no comma) → rc=2 + rule-named error" pass
+else
+    check "WP11-P1 codify: --compare-range bad shape" fail "rc=$rc msg=$err"
+fi
+
+# WP11-P1-13: bad --compare-range first half tags which half failed.
+err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare-range 'bogus,2026-05-20:2026-05-26' --demo --no-open --out "$WP11P1_DIR/m6.html" 2>&1)
+rc=$?
+if [ $rc -eq 2 ] && echo "$err" | grep -qF 'first range (A) failed validation'; then
+    check "WP11-P1 codify: --compare-range A-half failure tagged" pass
+else
+    check "WP11-P1 codify: --compare-range A-half tag" fail "rc=$rc msg=$err"
+fi
+
+# WP11-P1-14: render_html template placeholder substitution worked. If the
+# replacement is missed, the raw '{{CT_INITIAL_PRESET}}' would leak into the
+# emit and break JS parsing.
+if grep -qF '{{CT_INITIAL_PRESET}}' "$WP11_WOW"; then
+    check "WP11-P1 codify: template placeholder leak" fail "{{CT_INITIAL_PRESET}} leaked into emit"
+else
+    check "WP11-P1 codify: no template placeholder leak in emit" pass
+fi
+
+# WP11-P1-15: --compare-range meta windows match input. The data-layer
+# emits comparison.meta.{a_start,a_end,b_start,b_end} which Phase 2 will
+# render — this pin guards the byte-equivalence.
+python3 -c "
+import re, json, sys
+h = open('$WP11_RANGE').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+d = json.loads(m.group(1))
+meta = d['comparison']['meta']
+expected = {'a_start':'2026-05-13','a_end':'2026-05-19','b_start':'2026-05-20','b_end':'2026-05-26',
+            'a_day_count':7,'b_day_count':7}
+for k, v in expected.items():
+    if meta.get(k) != v: sys.exit(f'meta.{k} = {meta.get(k)!r} (expected {v!r})')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1 codify: --compare-range meta windows match input verbatim" pass
+else
+    check "WP11-P1 codify: --compare-range meta windows" fail "shape mismatch"
+fi
+
+rm -rf "$WP11P1_DIR"
+
+# ── WP11 Phase 1.B codify: per-window metrics emit ──
+# Phase 1.B adds `comparison.a.metrics` and `comparison.b.metrics` sub-trees
+# to the emit, sourced by calling viz_data.build_metrics over each window's
+# events. The CompareView UI (Phase 2.A) consumes these. Pins exercise the
+# emit-side contract: shape, key set, demo empty-shape sanity.
+
+WP11P1B_DIR="$(mktemp -d -t claude-time-wp11p1b-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR" "$WP10P2_DIR" "$WP11P1_DIR" "$WP11P1B_DIR"' EXIT
+
+WP11P1B_DEMO="$WP11P1B_DIR/demo.html"
+CLAUDE_TIME_DIR="$WP11P1B_DIR" "$CLI" visualize --no-open --demo --compare wow --out "$WP11P1B_DEMO" > /dev/null 2>&1
+
+# WP11-P1B-1: comparison.a.metrics is a dict (object).
+python3 -c "
+import re, json, sys
+h = open('$WP11P1B_DEMO').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+d = json.loads(m.group(1))
+am = d.get('comparison', {}).get('a', {}).get('metrics')
+if not isinstance(am, dict): sys.exit(f'a.metrics is not a dict: {type(am)}')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1B codify: comparison.a.metrics is a dict on emit" pass
+else
+    check "WP11-P1B codify: a.metrics shape" fail "missing or wrong type"
+fi
+
+# WP11-P1B-2: comparison.b.metrics is a dict (object).
+python3 -c "
+import re, json, sys
+h = open('$WP11P1B_DEMO').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+d = json.loads(m.group(1))
+bm = d.get('comparison', {}).get('b', {}).get('metrics')
+if not isinstance(bm, dict): sys.exit(f'b.metrics is not a dict: {type(bm)}')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1B codify: comparison.b.metrics is a dict on emit" pass
+else
+    check "WP11-P1B codify: b.metrics shape" fail "missing or wrong type"
+fi
+
+# WP11-P1B-3: both a.metrics and b.metrics have the 6 expected top-level
+# keys (engaged_session, ai_agent, tool_call, human, concurrency, blocking) —
+# the shape contract matches the existing data.metrics tree, so CompareView
+# can reuse _computeMetricsView (WP10) over both windows.
+python3 -c "
+import re, json, sys
+h = open('$WP11P1B_DEMO').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+d = json.loads(m.group(1))
+EXPECTED = {'engaged_session', 'ai_agent', 'tool_call', 'human', 'concurrency', 'blocking'}
+for side in ('a', 'b'):
+    keys = set(d['comparison'][side]['metrics'].keys())
+    missing = EXPECTED - keys
+    if missing: sys.exit(f'{side}.metrics missing keys: {missing}')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1B codify: a.metrics and b.metrics both have the 6 canonical keys" pass
+else
+    check "WP11-P1B codify: a.metrics + b.metrics key set" fail "missing canonical keys"
+fi
+
+# WP11-P1B-4: demo path emits empty-shape metrics on both sides
+# (engaged_session.wallclock_ms === 0). Confirms _build_demo_comparison was
+# extended (not just the real-DB branch).
+python3 -c "
+import re, json, sys
+h = open('$WP11P1B_DEMO').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+d = json.loads(m.group(1))
+a_wc = d['comparison']['a']['metrics']['engaged_session']['wallclock_ms']
+b_wc = d['comparison']['b']['metrics']['engaged_session']['wallclock_ms']
+if a_wc != 0: sys.exit(f'demo a.engaged_session.wallclock_ms expected 0, got {a_wc}')
+if b_wc != 0: sys.exit(f'demo b.engaged_session.wallclock_ms expected 0, got {b_wc}')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1B codify: demo path emits empty-shape metrics (wallclock_ms === 0 on both sides)" pass
+else
+    check "WP11-P1B codify: demo empty-shape" fail "demo metrics not empty-shape"
+fi
+
+rm -rf "$WP11P1B_DIR"
+
+# ── WP11 Phase 2.A codify: effectiveness-lens UI source-shape pins ──
+# Phase 2.A replaces the rejected delta-lens design (TopShiftsCallouts /
+# PerKindSection / PerProjectSection / _CompareBarRow) with an
+# effectiveness-lens design sourced from comparison.{a,b}.metrics. Pins
+# assert: (a) obsolete delta-lens components are GONE; (b) new effectiveness
+# section + 8 ratio/absolute rows are present; (c) generalized
+# EffectivenessRow component is defined.
+
+WP11P2A_DIR="$(mktemp -d -t claude-time-wp11p2a-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR" "$WP10P2_DIR" "$WP11P1_DIR" "$WP11P1B_DIR" "$WP11P2A_DIR"' EXIT
+
+WP11P2A_EMIT="$WP11P2A_DIR/emit.html"
+CLAUDE_TIME_DIR="$WP11P2A_DIR" "$CLI" visualize --no-open --demo --compare wow --out "$WP11P2A_EMIT" > /dev/null 2>&1
+
+# WP11-P2A-1: EffectivenessRow component definition present in emitted HTML.
+if grep -qF 'function EffectivenessRow(' "$WP11P2A_EMIT"; then
+    check "WP11-P2A codify: EffectivenessRow component definition present" pass
+else
+    check "WP11-P2A codify: EffectivenessRow" fail "missing"
+fi
+
+# WP11-P2A-2: data-compare-section="effectiveness" container is present.
+if grep -qF 'data-compare-section="effectiveness"' "$WP11P2A_EMIT"; then
+    check "WP11-P2A codify: data-compare-section=\"effectiveness\" container present" pass
+else
+    check "WP11-P2A codify: effectiveness section" fail "missing"
+fi
+
+# WP11-P2A-3: 8 effectiveness rows in priority order (R1). Pin each
+# data-compare-row="<key>" as a separate assertion so we know exactly
+# which row went missing if regression hits.
+for row_key in parallelism-multiplier ai-effort-per-human-wallclock blocking-split concurrency-mix ai-agent tool-call human engaged-session; do
+    if grep -qF "rowKey: '${row_key}'" "$WP11P2A_EMIT"; then
+        check "WP11-P2A codify: row '${row_key}' present in rows[] array" pass
+    else
+        check "WP11-P2A codify: row '${row_key}'" fail "missing from rows[]"
+    fi
+done
+
+# WP11-P2A-4: negative pin — the 4 obsolete delta-lens selectors are GONE.
+# This is the explicit "do not regress" guard against re-introducing the
+# rejected design.
+for obsolete_sel in 'data-compare-section="top-shifts"' 'data-compare-section="per-kind"' 'data-compare-section="per-kind-total"' 'data-compare-section="per-project"'; do
+    if grep -qF "$obsolete_sel" "$WP11P2A_EMIT"; then
+        check "WP11-P2A codify: obsolete delta-lens selector ${obsolete_sel} is GONE" fail "still present"
+    else
+        check "WP11-P2A codify: obsolete delta-lens selector ${obsolete_sel} is GONE" pass
+    fi
+done
+
+# WP11-P2A-5: negative pin — the 4 obsolete delta-lens component functions are GONE.
+for obsolete_fn in 'function TopShiftsCallouts(' 'function PerKindSection(' 'function PerProjectSection(' 'function _CompareBarRow('; do
+    if grep -qF "$obsolete_fn" "$WP11P2A_EMIT"; then
+        check "WP11-P2A codify: obsolete component '${obsolete_fn}' is GONE" fail "still defined"
+    else
+        check "WP11-P2A codify: obsolete component '${obsolete_fn}' is GONE" pass
+    fi
+done
+
+# WP11-P2A-6: negative pin — _computeComparisonView helper is GONE (replaced
+# by twice-applied _computeMetricsView from WP10).
+if grep -qF 'function _computeComparisonView(' "$WP11P2A_EMIT"; then
+    check "WP11-P2A codify: obsolete _computeComparisonView helper is GONE" fail "still defined"
+else
+    check "WP11-P2A codify: obsolete _computeComparisonView helper is GONE" pass
+fi
+
+# WP11-P2A-7: CompareView consumes comparison.a.metrics + comparison.b.metrics
+# via _computeMetricsView (the same projection helper WP10 uses for the
+# trailing-7-day MetricsPanel). Pin both calls.
+if grep -qF '_computeMetricsView(comparison?.a?.metrics' "$WP11P2A_EMIT" && \
+   grep -qF '_computeMetricsView(comparison?.b?.metrics' "$WP11P2A_EMIT"; then
+    check "WP11-P2A codify: CompareView calls _computeMetricsView on both windows" pass
+else
+    check "WP11-P2A codify: CompareView projection helper wiring" fail "missing one or both _computeMetricsView calls"
+fi
+
+# WP11-P2A-8: column-header selectors data-compare-col=a/b/delta on each row
+# (Playwright behavioral test will assert these too).
+if grep -qF 'data-compare-col="a"' "$WP11P2A_EMIT" && \
+   grep -qF 'data-compare-col="b"' "$WP11P2A_EMIT" && \
+   grep -qF 'data-compare-col="delta"' "$WP11P2A_EMIT"; then
+    check "WP11-P2A codify: data-compare-col=\"a/b/delta\" selectors present" pass
+else
+    check "WP11-P2A codify: data-compare-col selectors" fail "missing one or more of a/b/delta"
+fi
+
+rm -rf "$WP11P2A_DIR"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

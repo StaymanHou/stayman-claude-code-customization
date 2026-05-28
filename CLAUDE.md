@@ -185,6 +185,8 @@ When a consumer's current value equals its component-default (e.g., viewport equ
 | WP8 (custom range) | `range` | `2026-05-01:2026-05-07` (start:end ISO) | view ≠ `custom` |
 | WP9 (filter chips) | `filters` | `active,subagent` (comma-separated kind names) | all kinds enabled (default) |
 | WP10 (metrics card) | `metrics` | `expanded` (the only non-default value) | card is collapsed (default) |
+| WP11 (compare preset) | `preset` | `wow` \| `today-vs-trailing` \| `mom` \| `custom` | view ≠ `compare` |
+| WP11 (compare custom ranges) | `ranges` | `2026-05-13:2026-05-19,2026-05-20:2026-05-26` (two `:`-joined ISO pairs, comma-separated) | preset ≠ `custom` (and view ≠ `compare`) |
 | WP13 (expanded projects) | `expanded` | `my-thing,om-design` (comma-separated project aliases) | default collapsed-state matches user pref |
 
 ### Round-trip example

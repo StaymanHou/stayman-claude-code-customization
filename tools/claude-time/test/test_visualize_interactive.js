@@ -30,6 +30,16 @@ const DASH_HTML = path.join(SERVE_DIR, 'dash.html');
 // rather than --demo (which is single-day-only).
 const MONTH_DB = path.join(SERVE_DIR, 'month_events.sqlite');
 const MONTH_DASH_HTML = path.join(SERVE_DIR, 'month.html');
+// WP11 Phase 2.A behavioral coverage: --compare wow --demo dashboard for
+// the preset-click regression pin (verify-human REJECTED Phase 2 because real
+// mouse-click on a preset sub-tab didn't fire onClick; the prior React-fiber-
+// direct-invocation test hid this).
+const COMPARE_DASH_HTML = path.join(SERVE_DIR, 'compare.html');
+// WP11 Phase 2.A behavioral 2: separate "compare with real seeded data" dashboard
+// so the effectiveness panel renders (demo short-circuits to bothEmpty since both
+// windows have engaged_session.wallclock_ms === 0).
+const COMPARE_REAL_DB = path.join(SERVE_DIR, 'compare_events.sqlite');
+const COMPARE_REAL_DASH_HTML = path.join(SERVE_DIR, 'compare_real.html');
 const URL_BASE = `http://localhost:${PORT}`;
 
 let pass = 0;
@@ -122,6 +132,66 @@ function renderMonthDashboard() {
   if (!fs.existsSync(MONTH_DASH_HTML)) throw new Error(`expected ${MONTH_DASH_HTML} after CLI render`);
 }
 
+// 1c. WP11 Phase 2.A: render --compare wow --demo for preset-click regression.
+// Demo path is sufficient because the bug under test is event propagation, not
+// data shape — and demo emits empty-shape comparison.{a,b}.metrics so the UI
+// still mounts the bothEmpty short-circuit but the PresetSelector renders the
+// 4 sub-tabs unconditionally.
+function renderCompareDashboard() {
+  const cli = path.resolve(__dirname, '..', 'claude-time');
+  const r = spawnSync(cli, ['visualize', '--no-open', '--demo', '--compare', 'wow',
+                            '--out', COMPARE_DASH_HTML], {
+    encoding: 'utf-8',
+    env: { ...process.env, CLAUDE_TIME_DIR: SERVE_DIR },
+  });
+  if (r.status !== 0) throw new Error(`CLI --compare render failed: ${r.stderr || r.stdout}`);
+  if (!fs.existsSync(COMPARE_DASH_HTML)) throw new Error(`expected ${COMPARE_DASH_HTML} after CLI render`);
+}
+
+// 1d. WP11 Phase 2.A behavioral 2: render --compare-range with real seeded events
+// so the effectiveness panel renders (the demo's empty-shape metrics short-circuits
+// to bothEmpty). Seeds two non-overlapping weeks with multi-session activity each.
+function renderCompareDashboardRealData() {
+  // Create the events table.
+  let r = spawnSync('sqlite3', [COMPARE_REAL_DB,
+    'CREATE TABLE events (ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL, event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT); CREATE INDEX idx_session_ts ON events(session_id, ts); CREATE INDEX idx_ts ON events(ts);'
+  ]);
+  if (r.status !== 0) throw new Error(`sqlite3 init (compare): ${r.stderr || r.stdout}`);
+
+  // Two non-overlapping weeks: A = 2026-04-13..04-19, B = 2026-04-20..04-26.
+  // Use --compare-range so today's date doesn't matter.
+  const seed = [
+    // Week A
+    { iso: '2026-04-13', cwd: '/repo/alpha', mins: 90 },
+    { iso: '2026-04-14', cwd: '/repo/alpha', mins: 60 },
+    { iso: '2026-04-15', cwd: '/repo/beta',  mins: 120 },
+    // Week B (slightly more parallel work; different multipliers)
+    { iso: '2026-04-21', cwd: '/repo/alpha', mins: 60 },
+    { iso: '2026-04-22', cwd: '/repo/beta',  mins: 90 },
+    { iso: '2026-04-23', cwd: '/repo/beta',  mins: 45 },
+  ];
+  let counter = 0;
+  for (const { iso, cwd, mins } of seed) {
+    const ms = new Date(`${iso}T09:00:00`).getTime();
+    const stop = ms + mins * 60000;
+    counter++;
+    const sid = `c${String(counter).padStart(2, '0')}-${Math.random().toString(36).slice(2, 9)}`;
+    const sql = `INSERT INTO events VALUES (${ms}, '${sid}', '${cwd}', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars":5}'), (${stop}, '${sid}', '${cwd}', 'Stop', NULL, NULL, NULL);`;
+    r = spawnSync('sqlite3', [COMPARE_REAL_DB, sql]);
+    if (r.status !== 0) throw new Error(`sqlite3 seed (compare): ${r.stderr || r.stdout}`);
+  }
+
+  const cli = path.resolve(__dirname, '..', 'claude-time');
+  r = spawnSync(cli, ['visualize', '--no-open',
+                       '--compare-range', '2026-04-13:2026-04-19,2026-04-20:2026-04-26',
+                       '--db', COMPARE_REAL_DB, '--out', COMPARE_REAL_DASH_HTML], {
+    encoding: 'utf-8',
+    env: { ...process.env, CLAUDE_TIME_DIR: SERVE_DIR },
+  });
+  if (r.status !== 0) throw new Error(`CLI --compare-range render failed: ${r.stderr || r.stdout}`);
+  if (!fs.existsSync(COMPARE_REAL_DASH_HTML)) throw new Error(`expected ${COMPARE_REAL_DASH_HTML} after CLI render`);
+}
+
 // 2. Start a transient python3 -m http.server in the background.
 function startServer() {
   const child = spawn('python3', ['-m', 'http.server', String(PORT)], {
@@ -163,6 +233,12 @@ async function runTests() {
     // served from the same SERVE_DIR; the Month behavioral block below
     // navigates to /month.html instead of /dash.html.
     renderMonthDashboard();
+    // WP11 Phase 2.A: render a --compare wow dashboard for the preset-click
+    // regression pin (verify-human REJECTED Phase 2 on this bug).
+    renderCompareDashboard();
+    // WP11 Phase 2.A behavioral 2: real-seeded compare dashboard (the demo
+    // path short-circuits to bothEmpty since both windows have wallclock_ms=0).
+    renderCompareDashboardRealData();
     server = startServer();
     await waitForServer();
 
@@ -1025,6 +1101,101 @@ async function runTests() {
         weekState.cardMounted && weekState.aiTilePresent && weekState.tileHasValue &&
         dayState.cardMounted && dayState.aiTilePresent,
         JSON.stringify({ weekState, dayState }));
+      await page.close();
+    }
+
+    // ── WP11-P2A behavioral 1: preset sub-tab mouse-click changes active preset + URL hash ──
+    // Regression pin for the verify-human-reported bug. Uses page.locator(...).click()
+    // (a real mouse-click semantic via Playwright) — NOT a React-fiber direct invocation.
+    // If this test passes but a user still reports the bug in their browser, the issue
+    // is environment-specific (browser quirk, OS, accessibility tool, etc.) and the user
+    // should re-test in fresh browser context.
+    {
+      const page = await browser.newPage();
+      const errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+      page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+      await page.goto(URL_BASE + '/compare.html');
+      // Wait for Babel JIT to compile + Dashboard to mount.
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(500);
+      // Pre-state: emit was with --compare wow so preset should default to "wow".
+      const before = await page.evaluate(() => ({
+        active: document.querySelector('[data-compare-preset][data-active="true"]')?.getAttribute('data-compare-preset'),
+        hash: location.hash,
+      }));
+      check('WP11-P2A behavioral 1a: initial active preset is "wow" (from --compare wow emit)',
+        before.active === 'wow',
+        `before=${JSON.stringify(before)}`);
+      // Real mouse-click on today-vs-trailing.
+      await page.locator(`button[data-compare-preset='today-vs-trailing']`).click();
+      await page.waitForTimeout(300);
+      const after = await page.evaluate(() => ({
+        active: document.querySelector('[data-compare-preset][data-active="true"]')?.getAttribute('data-compare-preset'),
+        hash: location.hash,
+      }));
+      check('WP11-P2A behavioral 1b: mouse-click on today-vs-trailing fires onClick → active preset switches',
+        after.active === 'today-vs-trailing',
+        `after=${JSON.stringify(after)}`);
+      check('WP11-P2A behavioral 1c: mouse-click on today-vs-trailing updates URL hash',
+        after.hash.includes('preset=today-vs-trailing'),
+        `hash=${after.hash}`);
+      // Click mom as a second preset to confirm not preset-specific.
+      await page.locator(`button[data-compare-preset='mom']`).click();
+      await page.waitForTimeout(300);
+      const momState = await page.evaluate(() => ({
+        active: document.querySelector('[data-compare-preset][data-active="true"]')?.getAttribute('data-compare-preset'),
+        hash: location.hash,
+      }));
+      check('WP11-P2A behavioral 1d: mouse-click on mom also works (preset-click is not preset-specific)',
+        momState.active === 'mom' && momState.hash.includes('preset=mom'),
+        `momState=${JSON.stringify(momState)}`);
+      // Filter benign noise: favicon 404, Babel dev-build informational.
+      const jsErrors = errors.filter(e => !/favicon|Babel/i.test(e));
+      check('WP11-P2A behavioral 1e: no JS console errors during preset switching',
+        jsErrors.length === 0,
+        jsErrors.length ? jsErrors.join(' | ') : '');
+      await page.close();
+    }
+
+    // ── WP11-P2A behavioral 2: effectiveness panel renders 8 rows in priority order ──
+    // Uses the real-seeded compare dashboard (compare_real.html); the demo path
+    // short-circuits to bothEmpty since wallclock_ms === 0 on both windows.
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/compare_real.html');
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(500);
+      const summary = await page.evaluate(() => {
+        const sections = {
+          effectiveness: !!document.querySelector('[data-compare-section="effectiveness"]'),
+          windowLabels: !!document.querySelector('[data-compare-section="window-labels"]'),
+        };
+        const obsolete = {
+          topShifts: document.querySelectorAll('[data-compare-section="top-shifts"]').length,
+          perKind: document.querySelectorAll('[data-compare-section="per-kind"]').length,
+          perProject: document.querySelectorAll('[data-compare-section="per-project"]').length,
+          perKindTotal: document.querySelectorAll('[data-compare-section="per-kind-total"]').length,
+        };
+        const rows = Array.from(document.querySelectorAll('[data-compare-row]'))
+          .map(el => el.getAttribute('data-compare-row'));
+        return { sections, obsolete, rows };
+      });
+      const expectedRows = [
+        'parallelism-multiplier', 'ai-effort-per-human-wallclock', 'blocking-split',
+        'concurrency-mix', 'ai-agent', 'tool-call', 'human', 'engaged-session',
+      ];
+      check('WP11-P2A behavioral 2a: data-compare-section="effectiveness" mounts',
+        summary.sections.effectiveness, JSON.stringify(summary.sections));
+      check('WP11-P2A behavioral 2b: window-labels strip mounts (carry-over)',
+        summary.sections.windowLabels, JSON.stringify(summary.sections));
+      check('WP11-P2A behavioral 2c: 8 effectiveness rows present in DOM-order priority',
+        summary.rows.length === 8 && expectedRows.every((k, i) => summary.rows[i] === k),
+        `rows=${JSON.stringify(summary.rows)}`);
+      check('WP11-P2A behavioral 2d: obsolete delta-lens selectors are GONE',
+        summary.obsolete.topShifts === 0 && summary.obsolete.perKind === 0 &&
+        summary.obsolete.perProject === 0 && summary.obsolete.perKindTotal === 0,
+        JSON.stringify(summary.obsolete));
       await page.close();
     }
 

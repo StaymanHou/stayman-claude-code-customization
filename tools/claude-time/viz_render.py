@@ -83,6 +83,7 @@ function Dashboard() {
   // (otherwise there's no data to render).
   const _initView = (() => {
     const hash = parseHash();
+    if (hash.view === 'compare') return 'compare';
     if (hash.view === 'month' && /^\d{4}-\d{2}$/.test(hash.month || '') && monthsMap) {
       return 'month';
     }
@@ -90,10 +91,14 @@ function Dashboard() {
       return 'custom';
     }
     if (hash.view === 'week' || hash.view === 'day') return hash.view;
-    // Fallthrough: emit-time default. CT_INITIAL_VIEW is 'day'|'week'|'custom'|'month'
-    // (WP7 added 'month'; WP8 added 'custom'). For 'custom' emit-time, we
-    // require today.meta.start to be present; for 'month', we require
-    // monthsMap to be present.
+    // Fallthrough: emit-time default. CT_INITIAL_VIEW is 'day'|'week'|'custom'|'month'|'compare'
+    // (WP7 added 'month'; WP8 added 'custom'; WP11 added 'compare'). For
+    // 'custom' emit-time, we require today.meta.start to be present; for
+    // 'month', we require monthsMap to be present; for 'compare', we require
+    // window.CT_DATA.comparison to be present.
+    if (window.CT_INITIAL_VIEW === 'compare' && window.CT_DATA.comparison) {
+      return 'compare';
+    }
     if (window.CT_INITIAL_VIEW === 'month' && monthsMap) {
       return 'month';
     }
@@ -104,6 +109,54 @@ function Dashboard() {
     return 'day';
   })();
   const [view, setView] = React.useState(_initView);
+
+  // WP11: Compare preset state — one of 'wow', 'today-vs-trailing', 'mom',
+  // 'custom'. Hash takes precedence on init; falls back to CT_INITIAL_PRESET
+  // (set by --compare or --compare-range at emit time); falls back to a
+  // sensible default derived from initial view (Q1).
+  const _initPreset = (() => {
+    const hash = parseHash();
+    if (hash.preset && ['wow', 'today-vs-trailing', 'mom', 'custom'].includes(hash.preset)) {
+      return hash.preset;
+    }
+    if (window.CT_INITIAL_PRESET) return window.CT_INITIAL_PRESET;
+    // Derive from emit-time initial view (Q1 mapping).
+    if (window.CT_INITIAL_VIEW === 'week') return 'wow';
+    if (window.CT_INITIAL_VIEW === 'month') return 'mom';
+    if (window.CT_INITIAL_VIEW === 'custom') return 'custom';
+    return 'today-vs-trailing';
+  })();
+  const [preset, setPreset] = React.useState(_initPreset);
+
+  // WP11: compareRanges state — for `preset === 'custom'`, the user-picked
+  // {a: {start, end}, b: {start, end}} pair. Hash key is `ranges=A_s:A_e,B_s:B_e`.
+  // On init, restore from hash if present + valid; otherwise seed from
+  // comparison.meta (which Phase 1 emits whenever --compare-range or any
+  // --compare* flag was used).
+  const _initCompareRanges = (() => {
+    const hash = parseHash();
+    if (hash.ranges) {
+      const m = hash.ranges.match(/^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/);
+      if (m) {
+        return {
+          a: { start: m[1], end: m[2] },
+          b: { start: m[3], end: m[4] },
+        };
+      }
+    }
+    if (window.CT_DATA.comparison && window.CT_DATA.comparison.meta) {
+      const meta = window.CT_DATA.comparison.meta;
+      return {
+        a: { start: meta.a_start, end: meta.a_end },
+        b: { start: meta.b_start, end: meta.b_end },
+      };
+    }
+    // No comparison data — placeholder ranges; the UI shows the custom
+    // RangePicker pair so the user can pick.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return { a: { start: todayIso, end: todayIso }, b: { start: todayIso, end: todayIso } };
+  })();
+  const [compareRanges, setCompareRanges] = React.useState(_initCompareRanges);
 
   // WP7: monthIso state — which month's grid is currently rendered. Hash
   // takes precedence on init; falls back to active-month emit (today.meta.start
@@ -183,19 +236,33 @@ function Dashboard() {
   //     — month grid identity is the month key)
   React.useEffect(() => {
     const t = setTimeout(() => {
-      if (view === 'month') {
-        updateHash({ view: 'month', month: monthIso, range: null });
+      if (view === 'compare') {
+        // WP11: preset is always emitted when in compare view; ranges only
+        // when preset === 'custom' (its load-bearing identity).
+        const patch = {
+          view: 'compare',
+          preset,
+          range: null, month: null,
+        };
+        if (preset === 'custom') {
+          patch.ranges = `${compareRanges.a.start}:${compareRanges.a.end},${compareRanges.b.start}:${compareRanges.b.end}`;
+        } else {
+          patch.ranges = null;
+        }
+        updateHash(patch);
+      } else if (view === 'month') {
+        updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null });
       } else if (view === 'custom') {
-        updateHash({ view: 'custom', range: `${range.start}:${range.end}`, month: null });
+        updateHash({ view: 'custom', range: `${range.start}:${range.end}`, month: null, preset: null, ranges: null });
       } else if (view === 'week') {
-        updateHash({ view: 'week', range: null, month: null });
+        updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null });
       } else {
         // 'day' is the default — drop all keys.
-        updateHash({ view: null, range: null, month: null });
+        updateHash({ view: null, range: null, month: null, preset: null, ranges: null });
       }
     }, 100);
     return () => clearTimeout(t);
-  }, [view, range, monthIso]);
+  }, [view, range, monthIso, preset, compareRanges]);
 
   // WP8: when the user picks a different range via the date-range picker,
   // we don't re-fetch data (would require a CLI round-trip). Instead, the
@@ -359,7 +426,17 @@ function Dashboard() {
   const isDay = view === 'day';
   const isCustom = view === 'custom';
   const isMonth = view === 'month';
+  const isCompare = view === 'compare';
   const isDayLike = isDay || isCustom;
+
+  // WP11: change handler for the custom-preset RangePicker pair. When the
+  // user picks both A and B ranges, write to state — the URL-hash effect
+  // above writes `ranges=A:B`, then the user re-runs `claude-time visualize
+  // --compare-range A:B` from a shareable URL to materialize fresh comparison
+  // data. Pattern mirrors WP8's onRangeChange — no fetch-from-browser.
+  const onCompareRangeChange = React.useCallback((next) => {
+    setCompareRanges(next);
+  }, []);
 
   // WP7: nav handlers for MonthView. Click-day always triggers reload-redirect
   // toast (D3 + D7 — click-day always means "drill into this day"). Prev-month
@@ -583,8 +660,22 @@ function Dashboard() {
           is identical — build_range_data is the same multi-day union used
           by WP5b's Day view). The only Custom-specific bit is the
           empty-state label. */}
+      {/* WP11: PresetSelector sub-tabs render below the date-header strip,
+          above the body, but only when in compare view. */}
+      {isCompare && (
+        <PresetSelector
+          preset={preset}
+          onPresetChange={setPreset}
+          compareRangeA={compareRanges.a}
+          compareRangeB={compareRanges.b}
+          onCompareRangeChange={onCompareRangeChange}
+          maxRangeDays={window.CT_MAX_RANGE_DAYS || 90}
+        />
+      )}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {isMonth ? (
+        {isCompare ? (
+          <CompareView comparison={window.CT_DATA.comparison} />
+        ) : isMonth ? (
           (monthsMap && monthsMap[monthIso]) ? (
             <MonthView
               monthIso={monthIso}
@@ -610,7 +701,7 @@ function Dashboard() {
         ) : (
           <WeekTimeline data={week} />
         )}
-        {!isMonth && selSession && (
+        {!isMonth && !isCompare && selSession && (
           <SidePanel
             session={selSession}
             project={selProject}
@@ -622,8 +713,9 @@ function Dashboard() {
       {/* WP5 Phase 3 + WP8: minimap (Day/Custom views — re-orientation aid
           after deep zoom). Custom shares the Day-like multi-day data shape
           so Minimap works identically. WP7: Month view skips the minimap —
-          the calendar grid IS the navigation surface. */}
-      {isDayLike && !today.empty && (
+          the calendar grid IS the navigation surface. WP11: Compare view
+          also skips (it's an aggregate-bars view, not a timeline). */}
+      {isDayLike && !isCompare && !today.empty && (
         <Minimap data={today} />
       )}
       {/* WP7: nav toast (renders only when a click/nav requires reload-redirect). */}
@@ -817,13 +909,20 @@ function InterruptHairlines({ interrupts, dayOffset = 0 }) {
 
 def render_html(template_path: Path, dashboard_jsx_path: Path,
                 data: dict, initial_view: str = "day",
-                max_range_days: int = 90) -> str:
+                max_range_days: int = 90,
+                initial_preset: str | None = None) -> str:
     """Read template + dashboard.jsx, apply transforms, return the rendered HTML.
 
     WP8: `max_range_days` is the server-side cap for the Custom-view date-range
     picker, threaded through `window.CT_MAX_RANGE_DAYS` so client-side
     validation matches the CLI's `viz_custom_range_max_days` config (default
     90). Phase 1 emits the value; Phase 2 reads it from the picker.
+
+    WP11: `initial_preset` is the Compare-view preset chosen at emit time —
+    one of 'wow', 'today-vs-trailing', 'mom', 'custom', or None when the
+    dashboard was not emitted with --compare*. Threaded through
+    `window.CT_INITIAL_PRESET` as a JS literal (string or null) so the Phase
+    2 CompareView can read it without extra parsing.
     """
     template = template_path.read_text()
     jsx = dashboard_jsx_path.read_text()
@@ -837,9 +936,14 @@ def render_html(template_path: Path, dashboard_jsx_path: Path,
     # JSON-encode data; embed as a literal so the browser's JSON.parse path
     # is bypassed (this is JS-literal, not JSON-in-a-string).
     data_literal = json.dumps(data, ensure_ascii=False)
+    # JSON-encode initial_preset so the emitted JS gets a quoted string or
+    # `null` — no manual quoting, no injection surface from preset values
+    # (which are constrained to argparse choices on the CLI side anyway).
+    preset_literal = json.dumps(initial_preset, ensure_ascii=False)
 
     html = template.replace("{{CT_DATA_JSON}}", data_literal)
     html = html.replace("{{DASHBOARD_JSX}}", jsx)
     html = html.replace("{{CT_INITIAL_VIEW}}", initial_view)
     html = html.replace("{{CT_MAX_RANGE_DAYS}}", str(int(max_range_days)))
+    html = html.replace("{{CT_INITIAL_PRESET}}", preset_literal)
     return html

@@ -759,6 +759,57 @@ def compare_day_vs_trailing_window(
     )
 
 
+def compare_month_over_month(
+    this_month_iso: str,
+    *,
+    events_by_day: dict[str, list[dict]],
+    cfg: dict,
+    auto_alias_fn,
+) -> dict:
+    """Compare last calendar month vs this calendar month.
+
+    `this_month_iso` is `YYYY-MM` (matches the CLI's --month flag shape).
+
+    A = [first_day(prev_month), last_day(prev_month)]
+    B = [first_day(this_month), last_day(this_month)]
+
+    Single `events_by_day` is partitioned internally; the caller doesn't need
+    to know the month boundaries.
+    """
+    import re as _re
+    import calendar as _calendar
+    if not _re.match(r"^\d{4}-\d{2}$", this_month_iso):
+        raise ValueError(
+            f"this_month_iso must be YYYY-MM, got {this_month_iso!r}"
+        )
+    year = int(this_month_iso[:4])
+    month = int(this_month_iso[5:])
+    if month < 1 or month > 12:
+        raise ValueError(
+            f"this_month_iso month must be 01..12, got {month:02d}"
+        )
+
+    if month == 1:
+        prev_year, prev_month = year - 1, 12
+    else:
+        prev_year, prev_month = year, month - 1
+
+    prev_last_day = _calendar.monthrange(prev_year, prev_month)[1]
+    this_last_day = _calendar.monthrange(year, month)[1]
+
+    a_start_iso = date(prev_year, prev_month, 1).isoformat()
+    a_end_iso = date(prev_year, prev_month, prev_last_day).isoformat()
+    b_start_iso = date(year, month, 1).isoformat()
+    b_end_iso = date(year, month, this_last_day).isoformat()
+
+    return build_comparison_data(
+        a_start_iso, a_end_iso, b_start_iso, b_end_iso,
+        events_by_day_a=_partition_events_by_day(events_by_day, a_start_iso, a_end_iso),
+        events_by_day_b=_partition_events_by_day(events_by_day, b_start_iso, b_end_iso),
+        cfg=cfg, auto_alias_fn=auto_alias_fn,
+    )
+
+
 def build_week_data(
     week_monday_iso: str,
     events_by_day: dict[str, list[dict]],
