@@ -14,6 +14,7 @@
 - **Suggested action:** Update `skills/feature-verify-human/SKILL.md` §2 + the orchestrator pause-policy table to add the conditional auto-skip. Add a test scenario (F-something) asserting that a no-boundary phase in autopilot fires F11 without a pause. Update `agents/feature-workflow/AGENTS.md` to document the new rule. Likely a small task — slot as `task:plan` rather than feature, since it's a tightly scoped behavioral change.
 - **Priority:** medium — repeats friction but not a blocker; user-flagged 2026-05-28.
 - **Status:** pending
+- **Update 2026-05-28 (v3 WP2 finalize):** WP2 hit verify-human with no integration boundary but the F11 skip path was the **wrong** choice — the probe's load-bearing deliverable IS the human's decision ACK on the 90-day measurement. WP2 presented a one-leaf checklist (not a skip prompt) and got a substantive "confirmed". This is a useful refinement for the rule: the gate should be "no integration boundary AND no probe-type or decision-artifact outcomes either." A probe WP has all-PASS verify-self and no boundary, but the decision review is still required. Update the proposed auto-skip rule to add condition (e): "the phase's observable outcomes do not include a decision artifact, retrospect anchor, or measurement review" — these are humans-only review items even without a UI surface.
 
 ## SURFACE-2026-05-26-CLAUDE-TIME-VIZ-V3-PIVOT-UNIFIED-TIME-RANGE
 - **Source:** WP11 Phase 2.A verify-human (2026-05-26) — surfaced when user noticed the 3 compare preset sub-tabs (WoW, Today-vs-trailing, MoM) all show the same content because the data layer emits only ONE pre-computed comparison window per CLI invocation.
@@ -28,7 +29,7 @@
 - **Status:** RESOLVED 2026-05-26 — v2 cycle closed (WP11 shipped, WP12+WP13 superseded), v3 WBS generated at `docs/product/wbs.md` (10 WPs across 4 phases), v2 wbs.md archived to `docs/product/archive/claude-time-visualize-v2/wbs.md`. The pivot decision is now operationalized as the v3 cycle scope.
 
 ## SURFACE-2026-05-26-SESSION-PAUSE-MARKER-LEAK-INTO-DURABLE-DOCS
-- **Source:** harness-level repeating issue — first surfaced by Replicator's WP5b-ui-finalize (2026-05-26, learning at `.claude/learnings/2026-05-26-session-pause-marker-leak.md`); confirmed in this repo at WP11 session-resume on 2026-05-26 (`/session-resume` had to excise a stale `## Session Pause — 2026-05-26 09:58` block from `docs/product/wbs.md` before continuing — see Resume context-recovery section of the WIP file)
+- **Source:** harness-level repeating issue — first surfaced by Replicator's WP5b-ui-finalize (2026-05-26, learning at `.claude/learnings/2026-05-26-session-pause-marker-leak.md`); confirmed in this repo at WP11 session-resume on 2026-05-26, then again at v3 WP1 session-resume (2026-05-28), then again at v3 WP2 session-resume (2026-05-28 — same session, two consecutive pause/resume cycles, BOTH leaked). Total observed occurrences: **4** as of 2026-05-28. The leak is deterministic — every `session-pause` invocation appends to `docs/product/wbs.md`; every `session-resume` has to excise it.
 - **Target level:** task:plan or feature:plan — modifies the `session-pause` and/or `session-resume` skills
 - **Type:** harness bug / cleanup-tax
 - **Summary:** `session-pause` appends a `## Session Pause — <timestamp>` block to durable product docs (observed on `docs/product/wbs.md` in multiple projects). `session-resume` correctly consumes and deletes `workflow/.session.md` but does NOT sweep these companion blocks. The stale block lingers across subsequent features and risks being committed as part of unrelated work if not noticed. **Now confirmed repeating** across at least two projects (Replicator + this repo) — harness-level, not project-specific.
@@ -47,7 +48,7 @@
   - **(c)** Auto-sort rows by recent activity descending so the top of the list is always the projects the user cares about today.
   - **(d)** Pagination / row-virtualization if (a)/(b)/(c) don't suffice.
 - **Priority:** medium — directly user-reported; affects daily usability; not blocking ship of WP11–WP13 (those are independent UI/visualization concerns) but should be addressed before declaring the v2 cycle complete or at the next finalize point.
-- **Status:** open — defer until v2 cycle WBS is complete (WP11–WP13 ship first), then evaluate at `/product-finalize` whether to tackle in this cycle or roll into a v3 cycle.
+- **Status:** **RESOLVED-as-decision 2026-05-28** — rolled into the v3 cycle WBS as WP10 ("Row-density mitigation") + WP11 (collapsible project rows / pills / away total, the v2 WP13 carry-over). See `docs/product/wbs.md` Phase 3. Item stays open in the sense that the fix isn't shipped, but the planning question ("which cycle?") is answered — closing as a backlog item.
 
 ## SURFACE-2026-05-24-WBS-EXCEEDS-300-LINE-SIZE-GUARD
 - **Source:** feature:spec (claude-time-viz-wp7-month-view, 2026-05-24)

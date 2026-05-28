@@ -1,6 +1,7 @@
 ---
 workflow: feature
-state: verify-codify (all phases complete; ready to ship)
+state: complete (shipped 64fb865; finalized 2026-05-28)
+completed: 2026-05-28
 drive_mode: autopilot
 cycle: claude-time-visualize-v3
 wp: WP2
@@ -120,3 +121,24 @@ Codify's normal regression-securing role is awkward for a probe. The script IS t
 - **Frontend perf measurements** (paint time, hydration cost) — not Phase 0's concern; if the emit-size budget holds, downstream paint cost is the same as v2 plus the new sub-payload reads (which are O(1) hash lookups, not work).
 - **Test-DB seeding** — the probe runs against the *user's real DB*, which is what the v3 default will face in practice. Synthetic data (e.g., `seed_perf_dataset.py`-style) would test scaling but not the actual operating point. If the real DB is too small to be representative (e.g., <30 days of events), surface that at P1.2 and decide whether to seed up or just accept the small-DB measurement (which would confirm a lower bound and be conservative for the 90-day Go decision).
 - **Cold vs warm SQLite cache differentiation** — measure as-is; report variance. If the variance is wider than the budget margin, surface at verify-self.
+
+## Retrospect
+
+- **What changed in our understanding:** The cost of `build_window_data` against a real-sized DB is **dominated by fixed overhead** (SQLite open, compare-preset compute, import-time machinery), not by per-day work. The 30→120 day curve is essentially flat (1037→1045ms avg). This was not pre-known — the WBS budgeted a "+~500ms emit time" for 90-day vs 22-day, implicitly assuming per-day work would dominate. The measurement disproved that. **Downstream implication:** the 90-day default is comfortably within budget AND a future cycle could safely raise the default further if user need emerges. WP3's `--window` flag should treat the window-size knob as approximately free in the 30–120d range.
+- **Assumptions that held:**
+  - The 90-day default fits the user's "slightly longer load time and larger file size is acceptable" tolerance (confirmed: 50% of wall-clock budget, 86% of emit-size budget).
+  - The right verify-codify scope for a probe is to pin durability + smokes, NOT numeric thresholds (the alternative would have been a flaky CI dependency on host wall-clock variance).
+  - Importing `build_window_data` directly + reusing the CLI's `_load_window_events` and `_auto_alias_for_cwd` would measure the right code path (it does — the perf script exercises the same helpers `_cmd_visualize` will use post-WP3).
+- **Assumptions that were wrong:**
+  - **importlib.util.spec_from_file_location can load any file path.** It cannot — the hyphen-named entrypoint `claude-time` has no `.py` extension, so loader-inference returns None. Fix: use `SourceFileLoader` explicitly. This cost one failed run during P1.2. The pattern is generalizable to any tool that needs to dynamically load a hyphenated CLI as a module; encoded as a code comment in the script, not as a project-wide convention (would be over-application of one data point).
+  - The plan budgeted P1.4 (wbs.md update) as conditional-on-REJECT. The CONFIRMED path actually does need a small wbs.md edit (the `**Result:**` line + 🟢 IN-PROGRESS heading flag) — accidentally aligned with what the plan called for, but the plan's wording was loose ("only the **Result:** line"). Future probe-WP plans should treat the result-line annotation as mandatory regardless of decision direction.
+- **Approach delta:** Implementation matched the plan very closely. One small deviation: verify-self ran orchestrator-direct instead of spawning a Playwright subagent, because the phase had no browser surface. The plan didn't explicitly green-light this — the SKILL's §2 mandates a subagent spawn — but the spawn would have just shelled out to the same Bash commands the orchestrator can run directly. Worth a small backlog note if it recurs (probe-type WPs benefit from a no-subagent path in verify-self), but not surfacing for one occurrence.
+
+**Mid-build hiccup not load-bearing enough to surface:** the `CLAUDE.md` modification from WP1 (the `build_metrics` empty-window contract bullet, added via session-reflect at the end of the previous session) had been sitting `M` in git status for the entire WP2 cycle. I rolled it into the WP2 ship commit because it's WP1-cycle work directly relevant to WP2. If this pattern recurs (workflow `session-reflect` updates to durable docs not being committed at the session that created them), worth a `task:plan` to make `session-reflect` either stage+commit or surface what it modified.
+
+## Communicate
+
+**Feature complete:** claude-time visualize v3 WP2 (emit-time perf probe + 90-day default) has shipped to `origin/main` as commit `64fb865`. It measures `build_window_data` against the user's real DB across 30/60/90/120-day windows and produced a permanent measurement script (`tools/claude-time/test/perf_window_data.py`) plus a 90-day-default-CONFIRMED decision recorded in WBS. The unblock signal: Phase 1 (WP3 unified `--window` flag, WP4 legacy flag removal) and Phase 2 (WP5–WP9 frontend sub-payload routing) can now proceed.
+
+Requester = operator — closure notice for self-record.
+
