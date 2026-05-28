@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-24
+updated: 2026-05-26
 cycle: claude-time-visualize-v2
 ---
 
@@ -210,19 +210,23 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [x] 10.4 Filter-state aware via `_computeMetricsView(metrics, filterKinds)` projection helper. Kind chips affect both headline + panel cells; `subagent` OFF drops AI-effort by the subagent contribution; `reading`/`thinking` OFF drop human activity. `active` OFF collapses everything to 0.
 - [x] 10.5 `test_visualize_cli.sh` + `test_visualize_interactive.js` assertions: 15 source-shape pins (WP10-P2-1..15) covering component definitions, data-metrics-card / data-metric-tile=* / data-metric-section=* selectors, hash dispatcher, empty-window caption, window indicator; 9 behavioral pins covering chevron expand/collapse + hash round-trip + filter chip → AI-effort tile change + window indicator persists across collapse/expand + card mounted across view-mode switches. Plus 2 codify integration-boundary pins on Phase 1 (real-DB events → aggregator → emit pipeline with seeded burst+tool, trailing-7-day window math). Plus 38 Python unittests (13 reclassify interval-helpers + 18 BuildMetricsTests + 7 BuildMetricsReconciliationTests). Full claude-time suite 335/0 PASS at ship; structure check 122/0 PASS.
 
-### WP11: Comparison view (delta lens)
-**Description:** Dedicated view (toolbar tab or modal) showing two windows side-by-side: per-project deltas, per-kind deltas, "you spent 2h more on `replicator-1-0` this week" callouts. Initial form: a stacked bar chart per project comparing A and B + a delta column.
+### WP11: Comparison view (delta lens → effectiveness lens) — [x] SHIPPED 2026-05-26 (commit 4edaabb)
+**Description (as shipped):** Compare view answering "am I leveraging Claude Code more WoW / MoM?" — 4 headline ratio rows (parallelism multiplier, AI effort / human wall-clock, blocking split, concurrency mix) + 4 supporting absolute rows (AI agent, tool calls, human, engaged sessions). **Re-spec mid-cycle (2026-05-26):** original delta-lens design (per-project deltas, per-kind raw-minute aggregates, top-shifts callouts) was rejected at verify-human as wrong-axis; user wanted productivity ratios, not segment deltas. Rebuilt around per-window `comparison.{a,b}.metrics` trees (Phase 1.B extension).
 **Phase:** 3
-**Dependencies:** WP4, WP9 (filter chips apply to both sides)
-**Size:** L
-**Tasks:**
-- [ ] 11.1 `CompareView` component — accepts `{a, b, deltas}` from `build_comparison_data`
-- [ ] 11.2 Three layout slots: per-project comparison rows (one per project, A bar above B bar), per-kind aggregate (active vs away vs reading deltas across whole window), top-shifts callouts ("`my-thing`: +2h 15m vs trailing week median")
-- [ ] 11.3 Comparison-preset toolbar: "Week over week" / "Today vs trailing week" / "This month vs last month" / "Custom A vs B" (custom uses two range pickers)
-- [ ] 11.4 CLI flag: `claude-time visualize --compare wow` (week-over-week), `--compare today-vs-median`, `--compare-range A:B`
-- [ ] 11.5 `test_visualize_cli.sh` assertions: emitted HTML contains CompareView when invoked with `--compare`; CLI flags work end-to-end
+**Dependencies:** WP4 (data layer), WP9 (filter chips, reused via _computeMetricsView projection), WP10 (MetricsPanel visual vocabulary)
+**Size:** L (shipped as 3 phases — Phase 1 CLI+emit, Phase 1.B per-window metrics emit, Phase 2.A effectiveness-lens UI; Phase 2 delta-lens design built-then-superseded by re-spec back-loop)
+**Tasks (as shipped):**
+- [x] 11.1 (Phase 1) — `--compare {wow,today-vs-trailing,mom}` + `--compare-range A:B,C:D` CLI flags; `_parse_compare_range_flag`; `_compare_window_bounds`; mutex matrix; `compare_month_over_month` in `viz_data.py`; `viz_render.render_html(initial_preset=...)` plumbing; `window.CT_INITIAL_PRESET` emit; `window.CT_DATA.comparison.{a,b,deltas,meta}` payload.
+- [x] 11.2 (Phase 1.B) — Per-window metrics emit: `comparison.a.metrics` + `comparison.b.metrics` via `viz_data.build_metrics` over each window's events (both demo empty-shape + real-DB paths).
+- [x] 11.3 (Phase 2.A) — `CompareView` UI redesign from delta-lens to effectiveness-lens. Generalized `EffectivenessRow({rowKey, label, aMetrics, bMetrics, kind})` component with 7 kind variants (multiplier, ratio-pct, blocking-split, concurrency-mix, absolute-wallclock-effort-mult, absolute-wallclock-only, absolute-engaged). 8 row instantiations in priority order: parallelism-multiplier, ai-effort-per-human-wallclock, blocking-split, concurrency-mix, ai-agent, tool-call, human, engaged-session. Reuses WP10's `_computeMetricsView` projection (no new helper). `PresetSelector` sub-tabs (WoW / Today vs trailing / MoM / Custom). Compare tab in Toolbar with `data-tab` + `aria-selected`. URL hash schema: `view=compare;preset=*;ranges=*` with default-elision. `data-compare-section="effectiveness"` + `data-compare-row="<key>"` + `data-compare-col=a/b/delta` selectors. CLAUDE.md hash-key reservation table updated with 2 rows (preset, ranges).
+- [x] 11.4 Test coverage: +25 CLI pins in `test_visualize_cli.sh` (16 WP11-P1 + 4 WP11-P1B + 21 WP11-P2A; full suite 197/0); +14 Playwright behavioral pins in `test_visualize_interactive.js` (preset-click regression + effectiveness panel mount; full suite 46/0); +11 Python unit tests (`CompareMonthOverMonthTests` 7 + `RenderHtmlInitialPresetTests` 4; full Python suite 124/0). Structure check 122/0.
+- **Re-spec mid-cycle (2026-05-26):** delta-lens build → verify-human REJECTED ("answers the wrong question") → back-loop F12-equivalent → spec re-entry → Phase 1.B + Phase 2.A redesign → user-confirmed close. Documented in WIP audit trail.
+- **Known limitation deferred to v3:** preset sub-tab clicks switch the active preset + URL hash but content doesn't refresh because the data layer pre-renders only one comparison window per CLI emit. v3 cycle (next) will pre-render MTD + last 2 months and let the frontend handle all sub-views as client-side state swaps. Logged as `SURFACE-2026-05-26-CLAUDE-TIME-VIZ-V3-PIVOT-UNIFIED-TIME-RANGE`.
 
-### WP12: Multi-instance overlap visualization
+### WP12: Multi-instance overlap visualization — [~] SUPERSEDED 2026-05-26 (folded into v3 cycle)
+**Status:** Not implemented in this cycle. User pivot decision (2026-05-26, during WP11 Phase 2.A verify-human) folds the multi-instance overlap visualization concern into the next product cycle (claude-time-visualize-v3). The visualization design is sound; the emit model is what's changing. See `workflow/backlog.md` → `SURFACE-2026-05-26-CLAUDE-TIME-VIZ-V3-PIVOT-UNIFIED-TIME-RANGE`.
+
+### WP12 (original spec — preserved for v3 reference)
 **Description:** When two sessions ran in parallel on the same wall-clock minute (you had two Claude Code instances open), the dashboard currently renders them on separate session rows but doesn't visually distinguish "parallel" from "sequential." Add an explicit overlap rendering: in expanded-project (per-session) view, overlapping bars are visually layered with a slight vertical offset + an "overlap" badge in the side panel. The reclassifier's cross-session typing-debit attribution already handles the data correctly — this is a visualization layer only.
 **Phase:** 3
 **Dependencies:** WP3 (so multi-day ranges can show overlaps that span days), WP13 (collapsed-row overlap semantics)
@@ -234,7 +238,10 @@ This WBS bundles those gaps into a single cycle. It is **not** a continuation of
 - [ ] 12.4 Headline stats: "X minutes of parallel work" stat when overlaps exist in the current view
 - [ ] 12.5 `test_visualize_cli.sh` assertion against a seeded DB with synthetic overlapping sessions: emitted HTML renders the overlap indicator
 
-### WP13: Collapsible project rows + idle/away total visibility + project pills
+### WP13: Collapsible project rows + idle/away total visibility + project pills — [~] SUPERSEDED 2026-05-26 (folded into v3 cycle)
+**Status:** Not implemented in this cycle. User pivot decision (2026-05-26) folds row-density + away-total + project-pills concerns into the v3 cycle. The collapsible-rows + pills design is sound; the unified time-range emit model in v3 is what changes the surrounding context. Day-view row-density observation (`SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY`) feeds into the v3 spec.
+
+### WP13 (original spec — preserved for v3 reference)
 **Description:** Three small UX wins bundled because they touch the same layout primitives:
 (1) Project rows default to **collapsed** (one row per project, segments from all that project's sessions merged into one track via overlay/blend). Click chevron to expand to per-session rows. Multi-instance overlap (WP12) handles the overlapping-segment case by rendering parallel session segments at slight vertical offsets even within the collapsed row.
 (2) Per-project **total pill** at the left of each row (active+subagent time, in monospace), per spec user story #5. Confirms the "where did the hours go" question at a glance.
