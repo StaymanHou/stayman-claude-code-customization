@@ -47,7 +47,7 @@ v3 also folds in two v2-deferred WPs (WP12 multi-instance overlap + WP13 collaps
 
 This phase is also the riskiest in terms of emit-time performance (90-day SQLite load + N sub-payload builds). Doing it first quantifies the actual cost and lets us decide whether the 90-day default needs adjustment before downstream WPs accumulate dependencies on it.
 
-### WP1: Unified emit-window coordinator (`build_window_data`)
+### WP1: Unified emit-window coordinator (`build_window_data`) ✅ SHIPPED 2026-05-28 (commit `4dd8d6d`)
 **Description:** New top-level coordinator in `viz_data.py` that takes `(window_start_iso, window_end_iso)` and produces the full pre-rendered payload: `{window, day_payloads_by_iso, week_payloads_by_monday, month_payloads_by_iso, compare_payloads_by_preset, metrics}`. Reuses existing `build_day_data`, `build_range_data`, `build_week_data`, `build_comparison_data`, `build_metrics` as worker functions. The coordinator is responsible for: (1) computing which days/weeks/months/compares fall within the window; (2) calling each worker once; (3) attaching results under the canonical sub-payload keys.
 **Phase:** 0
 **Dependencies:** —
