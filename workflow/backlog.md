@@ -10,7 +10,7 @@
 - **Folds in (continued):** the Phase 2.A content-not-refreshing limitation (P2A.verify-human.3 PARTIAL) — resolved by the v3 emit model.
 - **Suggested action:** Close the current claude-time-visualize-v2 cycle after WP11 ships. Then `/product-wbs` generates the v3 WBS in the next session (2026-05-26 session pauses after the WBS skill emits the cycle scaffold).
 - **Priority:** **high** — this is the immediate next cycle; user-confirmed pivot.
-- **Status:** open — WBS-skill-pending
+- **Status:** RESOLVED 2026-05-26 — v2 cycle closed (WP11 shipped, WP12+WP13 superseded), v3 WBS generated at `docs/product/wbs.md` (10 WPs across 4 phases), v2 wbs.md archived to `docs/product/archive/claude-time-visualize-v2/wbs.md`. The pivot decision is now operationalized as the v3 cycle scope.
 
 ## SURFACE-2026-05-26-SESSION-PAUSE-MARKER-LEAK-INTO-DURABLE-DOCS
 - **Source:** harness-level repeating issue — first surfaced by Replicator's WP5b-ui-finalize (2026-05-26, learning at `.claude/learnings/2026-05-26-session-pause-marker-leak.md`); confirmed in this repo at WP11 session-resume on 2026-05-26 (`/session-resume` had to excise a stale `## Session Pause — 2026-05-26 09:58` block from `docs/product/wbs.md` before continuing — see Resume context-recovery section of the WIP file)

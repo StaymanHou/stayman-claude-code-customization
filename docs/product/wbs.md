@@ -2,317 +2,274 @@
 stage: wbs
 state: in-progress
 updated: 2026-05-26
-cycle: claude-time-visualize-v2
+cycle: claude-time-visualize-v3
 ---
 
-# WBS — `claude-time visualize` v2
+# WBS — `claude-time visualize` v3
 
 ## Context
 
-`claude-time visualize` shipped its MVP on 2026-05-19 (day view + week view, snapshot per invocation, single full-bleed dashboard, click-bar-for-side-panel). Real-data usage immediately surfaced a cluster of gaps that map cleanly to (a) the spec's deliberately-deferred "Out of Scope" items, (b) UX affordances the snapshot model doesn't satisfy, and (c) one critical timeline-navigation feature missing from v1 (zoomable / draggable multi-track timeline, audio-editor style).
+The v2 cycle shipped 11/14 WPs across 2026-05-19 through 2026-05-26, delivering: adaptive ruler, NOW marker, range-aware data layer, comparison data layer, zoomable timeline, multi-day Day view, Day-rename, Month view, Custom-range view, filter chips, metrics surface, and Compare view (effectiveness lens). v2 archived to `docs/product/archive/claude-time-visualize-v2/`.
 
-This WBS bundles those gaps into a single cycle. It is **not** a continuation of the workflow-system roadmap (which is a separate product) — it's a new product cycle for the `claude-time` tool that lives in this repo.
+v3 begins from a user-confirmed pivot surfaced at WP11 verify-human (2026-05-26): the existing **one-CLI-invocation-emits-one-window** model forces re-emit for every sub-view switch and produces a UX surprise where preset sub-tabs don't refresh content. v3 inverts the model: **one CLI invocation emits a 90-day default window with ALL sub-payloads pre-rendered**, and the frontend handles every Day/Week/Month/Compare slice as client-side state swaps. The `--compare`, `--month`, `--range`, `--week`, `--date` flags become advisory (URL-hash dispatched) rather than load-bearing on the emit model.
+
+This unlocks instant Day-arrow nav, instant Week-arrow nav, accurate hash-restore for shareable URLs, and content-refresh on every preset sub-tab click. The trade-off is +~500ms emit time (90-day vs current ~22-day load) and +~200-400KB emit size — both user-confirmed acceptable.
+
+v3 also folds in two v2-deferred WPs (WP12 multi-instance overlap + WP13 collapsible rows / pills / away total) and one v2-surfaced UX problem (`SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY` — too many project rows after a week of tracking).
 
 ## Scope
 
-**Included (12 work packages):**
-- Adaptive hour-ruler (consume existing `hour_range` field)
-- Zoomable + draggable multi-track timeline ⭐ **critical / foundational**
-- Multi-day data window for Day view (extends WP5 to render trailing+leading context days — user-prioritized, added at WP5 finalize 2026-05-22)
-- "Today" → "Day" rename
-- Month view
-- Custom-range view
-- Interactive filter chips
-- Comparison view (delta lens — week-over-week, day-vs-median)
-- Headline-stats card (above-the-fold "how much real work today")
-- Multi-instance overlap visualization
-- Idle/away total visibility
-- Project total pills on the row label
-- NOW marker bug fix (currently stuck at emit-time)
-- Collapsible project rows (default-collapsed, expand for per-session detail)
+**Included (10 work packages, 4 phases):**
+- Range-aware emit refactor: 90-day default window, all sub-payloads pre-rendered
+- Unified time-range CLI arg (`--window` or similar — decided at spec time)
+- Flag deprecation map (`--date` / `--week` / `--month` / `--range` / `--compare*` become advisory aliases)
+- URL hash schema extension (back-compat for v2 hash keys + new keys for sub-view state)
+- Frontend state-routing refactor: CompareView, MonthView, WeekTimeline, DayTimeline all read pre-rendered sub-payloads instead of `window.CT_DATA.today`
+- Instant Day-arrow nav (←/→ between pre-rendered days)
+- Instant Week-arrow nav (←/→ between pre-rendered weeks)
+- Multi-instance overlap visualization (v2 WP12 carry-over)
+- Collapsible project rows (default collapsed) + per-project pills + away-total visibility (v2 WP13 carry-over)
+- Row-density mitigation (`SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY`)
 
 **Not included (explicitly deferred):**
-- Dark theme (out-of-scope hold; revisit after this cycle ships)
+- Dark theme (still out-of-scope hold from v2; revisit after v3 ships)
 - Live auto-refresh / filesystem watcher (out-of-scope hold)
-- Pre-transpile JSX / drop unpkg CDN (engineering polish; revisit if v2 makes the page noticeably slow)
+- Pre-transpile JSX / drop unpkg CDN (engineering polish; revisit if v3 page-load gets noticeably slow)
 - Export-as-PNG / share affordances (single-user constraint stands)
 - Eye-tracking / typing-detection improvements (not viz-side concerns)
+- Configurable window size beyond default 90-day (user can use --window for arbitrary; no UI affordance to tune the default)
 
 ---
 
-## Phase 0: Data-layer foundations (range + comparison)
+## Phase 0: Data-layer refactor (range expansion + pre-render coordination)
 
-**Phase rationale:** Several v2 features (custom-range, month, comparison, zoomable timeline) all need the data layer to emit arbitrary `[start, end]` windows, not just `today` / `current week`. Build the range-aware data path **before** any UI consumes it; otherwise we'd retrofit JSON shape mid-cycle and rework Phase 5c byte pins.
+**Phase rationale (learning-sequence):** The v3 emit model is the load-bearing change. Every UI WP downstream depends on the new payload shape. Build the data-layer refactor first; verify shape contracts under unit tests; only then touch the UI. Failure to lock the shape early would force re-render of every UI WP if the shape shifts mid-cycle.
 
-### WP1: Adaptive hour-ruler (consume existing `hour_range`) — [x] SHIPPED 2026-05-19 (commit 2760c6b)
-**Description:** Wire the already-emitted `today.hour_range: [start, end]` field into `dashboard.jsx`'s ruler / segment-positioning math. Replaces the hardcoded `DAY_HOURS = [6..22]`. Resolves the deleted backlog item `SURFACE-2026-05-19-CLAUDE-TIME-VIZ-DAY-HOURS-NOT-ADAPTIVE`.
-**Phase:** 0
-**Dependencies:** —
-**Size:** XS
-**Why first:** smallest possible change, exercises the byte-pin + emit-time-transform pattern under low risk, validates the dev loop end-to-end before larger phases. Also unblocks: zoomable timeline needs flexible ruler math anyway.
-**Tasks:**
-- [x] 1.1 Edit `viz/dashboard.jsx` source directly: derive `DAY_HOURS` / `DAY_START_MIN` / `DAY_END_MIN` / `DAY_RANGE_MIN` from `window.CT_DATA.today.hour_range` at runtime (with `[6, 23]` fallback). v2 cycle's first source edit; emit-time-transform pattern replaced by direct edit since byte-pin is relaxed in this same WP.
-- [x] 1.2 Verified `--demo` path: `data.js` now includes `hour_range: [6, 23]`; derivation produces v1-identical 17-tick ruler.
-- [x] 1.3 No SegmentBar `pct()` math changes needed — it already reads from the module-level `DAY_*` constants which now derive adaptively. Single source change propagates.
-- [x] 1.4 `test_visualize_cli.sh` assertion #14: seeds 14:00–15:00 narrow-window DB, asserts emitted HTML contains `"hour_range": [13, 16]`.
-- [x] **Plus** byte-pin relaxation in `tests/check-structure.sh` Phase 5c + CLAUDE.md "Design-as-data" convention rewrite (historical-origin + current-state form, encoding the unlock-condition lesson).
+This phase is also the riskiest in terms of emit-time performance (90-day SQLite load + N sub-payload builds). Doing it first quantifies the actual cost and lets us decide whether the 90-day default needs adjustment before downstream WPs accumulate dependencies on it.
 
-### WP2: NOW marker — client-side `Date.now()` + staleness indicator — [x] SHIPPED 2026-05-19
-**Description:** v1 emits the NOW marker position at HTML-generation time, so it freezes on every page. Move NOW computation to the client (`useEffect` + `setInterval(60s)`). Add a small "data snapshot: HH:MM (re-run for latest)" caption to communicate that the underlying *data* is still a snapshot.
-**Phase:** 0
-**Dependencies:** —
-**Size:** S
-**Tasks:**
-- [x] 2.1 Stripped emit-time `NOW_MIN` constant; `useNowMin()` hook in `viz/dashboard.jsx` returns `{nowMin, todayISO}` from `Date.now()` via `React.useState` + `React.useEffect` with `setInterval(60_000)` and `clearInterval` cleanup.
-- [x] 2.2 NOW marker hidden when `data.iso !== todayISO` (e.g., `--date 2026-05-01` or any non-today date) — plus an `inWindow` guard so the marker also hides when clock is outside the adaptive ruler range.
-- [x] 2.3 `snapshot: HH:MM` caption rendered in `InteractiveToolbar` (`viz_render.py`), reading `window.CT_DATA.meta.snapshot` populated by `_cmd_visualize` at emit time. Hover tooltip explains the live-cursor + snapshot-data duality.
-- [x] 2.4 `test_visualize_cli.sh` extended 14 → 19 assertions: emitted HTML lacks `NOW_MIN = 17 * 60 + 22`; lacks `NOW · 17:22`; contains `Date.now()`/`new Date(`; contains `"snapshot"` key; contains `clearInterval` cleanup.
-
-### WP3: Range-aware data layer — `build_range_data(start_iso, end_iso)` — [x] SHIPPED 2026-05-21 (commit 9ebad84)
-**Description:** Extract a single `build_range_data(start, end)` from the current `build_day_data` / `build_week_data`. The new function emits the same project/session/segment shape over any arbitrary `[start, end]` window. Day / week / custom / month all become thin wrappers that compute `(start, end)` and call this.
+### WP1: Unified emit-window coordinator (`build_window_data`)
+**Description:** New top-level coordinator in `viz_data.py` that takes `(window_start_iso, window_end_iso)` and produces the full pre-rendered payload: `{window, day_payloads_by_iso, week_payloads_by_monday, month_payloads_by_iso, compare_payloads_by_preset, metrics}`. Reuses existing `build_day_data`, `build_range_data`, `build_week_data`, `build_comparison_data`, `build_metrics` as worker functions. The coordinator is responsible for: (1) computing which days/weeks/months/compares fall within the window; (2) calling each worker once; (3) attaching results under the canonical sub-payload keys.
 **Phase:** 0
 **Dependencies:** —
 **Size:** M
 **Tasks:**
-- [x] 3.1 Added `build_range_data(start_iso, end_iso, *, events_by_day, cfg, auto_alias_fn)` to `viz_data.py` as the multi-day coordinator. (Note: the plan's "single core" framing was off — the truthful seam is per-day worker + multi-day coordinator; `build_day_data` remains the per-day worker because `_ts_to_minutes` / burst pairing is naturally day-anchored.)
-- [x] 3.2 `build_week_data` re-implemented as a thin wrapper over `build_range_data` (output shape unchanged from pre-WP3). `build_day_data` kept as per-day worker (called per-day by `build_range_data`); same day shape preserved byte-for-byte.
-- [x] 3.3 `hour_range_by_day: {iso: [start, end]}` per-day adaptive map + `day_window: [global_start, global_end]` union of all per-day ranges. For `day_count == 1`, flat `hour_range` mirrors `hour_range_by_day[only_iso]` for back-compat.
-- [x] 3.4 `meta: {start, end, day_count}` emitted on the range payload only — intentionally NOT propagated into day/week wrapper returns to avoid collision with `_cmd_visualize`'s flat-level `window.CT_DATA.meta.snapshot` key.
-- [x] 3.5 22 pre-existing tests PASS unchanged; 7 new added (6 `BuildRangeDataTests` covering empty-range default per-day, single-day back-compat, `day_window` union of adaptive ranges, cross-day project aggregation, `meta` exact-keys, defensive `ValueError` on inverted ranges; 1 `WrapperPreservationTests.test_day_shape_equivalence`).
+- [ ] 1.1 Define `build_window_data(start_iso, end_iso, *, events_by_day, cfg, auto_alias_fn) -> dict` signature in `viz_data.py`. Return shape: `{window: {start, end, day_count}, day_payloads_by_iso: {iso: <build_day_data output>}, week_payloads_by_monday: {monday_iso: <build_week_data output>}, month_payloads_by_iso: {month_iso: <build_range_data output>}, compare_payloads_by_preset: {wow: <build_comparison_data output>, today-vs-trailing: <...>, mom: <...>}, metrics: <build_metrics output for the full window>}`
+- [ ] 1.2 Per-day loop: for each ISO day in `[start_iso..end_iso]`, call `build_day_data` with that day's events. Attach to `day_payloads_by_iso`.
+- [ ] 1.3 Per-week loop: for each Monday-anchored week intersecting the window, call `build_week_data`. Attach to `week_payloads_by_monday`.
+- [ ] 1.4 Per-month loop: for each calendar month intersecting the window, call `build_range_data` over that month's days. Attach to `month_payloads_by_iso` keyed by `YYYY-MM`.
+- [ ] 1.5 Compare-preset loop: call `compare_week_over_week(today_monday_iso)`, `compare_day_vs_trailing_window(today_iso, 7)`, `compare_month_over_month(today_month_iso)` — using "today" as the anchor (the most-recent day in the window). Attach to `compare_payloads_by_preset` keyed by preset name.
+- [ ] 1.6 Window-level metrics: `build_metrics(all_events, window_start_dt, window_end_dt)` over the entire 90-day window. Attach as top-level `metrics`. (Per-window-slice metrics for compare presets live inside their `compare_payloads_by_preset[preset].{a,b}.metrics` per v2 WP11 Phase 1.B.)
+- [ ] 1.7 Add `BuildWindowDataTests` to `test_viz_data.py` — at minimum: empty window, single-day window, full 90-day shape sanity (all 4 sub-payload maps populated, key sets correct), compare-preset cross-reference (top-level `metrics.engaged_session.wallclock_ms` should equal sum of `day_payloads_by_iso[*].today_total` modulo merge semantics).
 
-### WP4: Comparison data layer — `build_comparison_data(window_a, window_b)` — [x] SHIPPED 2026-05-21 (commit 4f61904)
-**Description:** Emit a side-by-side data payload for two windows (e.g., this-week vs last-week, today vs trailing-7-day median, this-month vs last-month). Per-project totals + per-segment-kind totals for both windows, ready to render as a delta lens.
+### WP2: Emit-time perf budget + 90-day default
+**Description:** Measure the actual emit cost (SQLite load + `build_window_data` total) for a 90-day window against the user's real DB. If within ~2s wall-clock + ~500KB JSON, lock the default. If over, decide between (a) reducing the default window, (b) lazy-loading sub-payloads, (c) deferring compare-preset pre-render.
 **Phase:** 0
+**Dependencies:** WP1
+**Size:** S
+**Type:** probe (learning, not a build artifact)
+**Learning objective:** Confirm the 90-day default fits the user's "slightly longer load time and larger file size is acceptable" tolerance, OR identify the smaller default that does.
+**Timebox:** half-day
+**Success criterion:** Documented timing measurement (5 runs, min/avg/max) + emit-size measurement (bytes) + Go/No-Go decision on the 90-day default OR a counter-proposal (e.g., 60 days).
+**Tasks:**
+- [ ] 2.1 Add a perf script `tools/claude-time/test/perf_window_data.py` that runs `build_window_data` over the user's real DB 5 times with varying window sizes (30, 60, 90, 120 days) and reports wall-clock + output JSON byte count.
+- [ ] 2.2 Run the perf script; record results in a comment block at the top of the script + summarize in the WP retrospect.
+- [ ] 2.3 Decision: confirm 90-day default OR propose alternative + rationale.
+
+**Phase 0 → Phase 1 rationale:** Once `build_window_data` is shape-locked and perf-validated, every UI WP can rely on the pre-rendered payload existing. Skipping the perf probe risks downstream WPs being built on an emit cost the user later rejects, forcing a Phase-0 rework mid-cycle.
+
+---
+
+## Phase 1: CLI surface refactor (unified time-range + flag deprecation)
+
+**Phase rationale:** The CLI surface change is downstream of the data layer (the new flag has to produce a `build_window_data` payload to be testable) but upstream of the frontend refactor (the frontend needs the new payload structure to consume). Doing it second isolates the CLI change from frontend state-routing complexity.
+
+### WP3: Unified `--window` flag (or chosen name)
+**Description:** New CLI flag that takes a time-range arg (e.g., `--window 90d`, `--window MTD-2`, `--window 2026-04-01:2026-05-26`) and produces a single-emit pre-rendered 90-day-default dashboard. Existing flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`) are not removed in this phase — they remain as advisory aliases that set URL-hash defaults for the emitted dashboard, but they all internally route to `build_window_data` under the hood.
+**Phase:** 1
+**Dependencies:** WP1
+**Size:** M
+**Tasks:**
+- [ ] 3.1 Spec the unified time-range arg syntax at feature-spec time. Candidates: `--window 90d` (rolling N days back from today), `--window MTD-2` (month-to-date plus 2 prior months), `--window 2026-04-01:2026-05-26` (explicit range), or a combination. Decision recorded in the feature spec.
+- [ ] 3.2 Add the new flag to the `viz` subparser. Validation: must produce a `(start_iso, end_iso)` pair with `end >= start` and `end <= today` and `day_count <= viz_window_max_days` (new config key, default 365).
+- [ ] 3.3 In `_cmd_visualize`, when the new flag is set: load events for the window, call `build_window_data`, emit. The output becomes `window.CT_DATA` with the new shape (sub-payload maps).
+- [ ] 3.4 Back-compat: when the new flag is NOT set AND no existing flag is set, default to the 90-day window (or whatever WP2 confirms). When an existing flag IS set, internally compute its window bounds and call `build_window_data` over those bounds — the existing flag becomes a syntactic shortcut.
+- [ ] 3.5 `test_visualize_cli.sh` pins: `--window 30d` produces a payload with `day_payloads_by_iso` keys covering 30 days; `--window 2026-04-01:2026-05-26` matches explicit bounds; default invocation produces the WP2-confirmed default; mutex with `--demo` (demo data is single-day).
+
+### WP4: Flag deprecation map (legacy flags → advisory aliases)
+**Description:** Existing v2 flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`) get reinterpreted: rather than picking the emit window, they pick the URL-hash initial state inside a pre-rendered 90-day emit. Internally, each flag computes its own `(start_iso, end_iso)` for the data window AND sets the right hash defaults so the dashboard opens on that view. Deprecation warning printed to stderr (not error — back-compat).
+**Phase:** 1
 **Dependencies:** WP3
 **Size:** S
 **Tasks:**
-- [x] 4.1 `build_comparison_data(start_a_iso, end_a_iso, start_b_iso, end_b_iso, *, events_by_day_a, events_by_day_b, cfg, auto_alias_fn)` in `viz_data.py` — coordinator pattern (two `build_range_data` calls + `_compute_deltas` join). Returns `{a, b, deltas: {alias: {kind: {abs_min, rel_pct}}}, meta: {a_start, a_end, b_start, b_end, a_day_count, b_day_count}}`. Plan-time decision: dropped the WBS-pseudocode `kind={absolute|relative}` parameter — `kind` in the result is the segment-kind axis (active/reading/thinking/away/subagent), not a comparison mode; emitting both `abs_min` and `rel_pct` keeps the data layer policy-free.
-- [x] 4.2 Helpers `compare_week_over_week(this_monday_iso)` and `compare_day_vs_trailing_window(target_day_iso, window_days=7)` (build-time rename from `compare_day_vs_median` — the data layer emits raw per-day payloads, so the median-vs-mean-vs-sum aggregate is a UI rendering choice deferred to WP10). Both helpers partition a single `events_by_day` into A/B sub-dicts internally.
-- [x] 4.3 `BuildComparisonDataTests` in `test_viz_data.py` with 11 methods (empty-both, empty-A, empty-B, identical, regression, meta shape, synthesised `total_active_subagent`, both helpers' window math, `ValueError` guard, cross-window partition correctness). Full claude-time suite 134/134 PASS (69 unittest + 29 cli + 19 viz_cli + 17 hook), net +11 vs WP3 baseline 123. Zero regressions; no integration boundary.
+- [ ] 4.1 For each legacy flag, document: (a) the window it implies; (b) the URL hash it sets; (c) the deprecation message printed to stderr. Add to `--help` text.
+- [ ] 4.2 Implement the routing in `_cmd_visualize`: each legacy flag's parsing block now sets the same `(start_iso, end_iso)` AND the URL hash, then falls through to the unified `build_window_data` path.
+- [ ] 4.3 `test_visualize_cli.sh` pins: each legacy flag still works (rc=0, dashboard emits) AND produces the expected URL hash AND prints the deprecation warning to stderr.
 
-**Phase 0 → Phase 1 rationale:** Once the data layer can emit any window + comparisons, the UI work in Phases 1–3 doesn't have to re-touch Python. This is the standard "backend before frontend wraps" ordering applied at the v2 boundary.
-
----
-
-## Phase 1: Critical UX foundation — zoomable / draggable timeline
-
-**Phase rationale:** This is the user-designated **critical feature** for v2 ("the UX that matters most"). It is also load-bearing for custom-range, month view, and the renamed Day tab. Land it before adding more views so each view inherits the same interaction model rather than each phase reinventing pan/zoom.
-
-### WP5: Zoomable + draggable multi-track timeline ⭐ — [x] SHIPPED 2026-05-22 (commit 140de22)
-**Description:** Reshape the timeline component into a horizontally-scrollable, zoomable canvas — audio/video-editor metaphor. Drag the ruler to pan; mouse-wheel / pinch / keyboard `+/-` to zoom in/out on the time axis (project rows stay vertically stationary). Visible window is independent of the underlying data window — load the broadest reasonable range, then pan/zoom within it. Replaces the current "fit the day to the available width" approach.
-**Phase:** 1
-**Dependencies:** WP1 (adaptive ruler math), WP3 (data layer can emit broader-than-day windows)
-**Size:** XL
-**Tasks:**
-- [x] 5.1 `useViewport()` Context-plumbed state (`{visible_start_min, visible_end_min}`); URL-hash read on mount + debounced write via shared `parseHash`/`updateHash`/`serializeHash` helpers; default-elision rule. (Phases 1 + 3)
-- [x] 5.2 `viewportPct(start, end, viewport)` replaces module-level `pct()`; module-level `DAY_START_MIN/DAY_END_MIN/DAY_RANGE_MIN` removed from segment-positioning path; `overflow: hidden` row containers clip off-viewport segments. (Phase 1)
-- [x] 5.3 Drag-on-ruler / drag-on-empty-row pan via `useTimelineGestures`; cursor-anchor invariant (data minute under cursor stays under cursor); `grab`/`grabbing` cursor; gutter-excluded. (Phase 2)
-- [x] 5.4 Wheel-zoom with `ctrlKey || metaKey` (covers Safari/Chrome trackpad pinch); keyboard `+`/`-` at viewport center; `0` reset; cursor-anchored zoom. Clamped to `[1, dataWindowRange]` minutes. (Phase 2)
-- [x] 5.5 Adaptive ruler density via `pickTickInterval(viewport)` (picks densest interval from `[60, 30, 15, 10, 5, 1]` producing 8–30 ticks); `ticksInViewport(viewport, intervalMin)` generator; labels `HH:00` for hour intervals, `HH:MM` for finer. (Phase 2)
-- [x] 5.6 Performance budget: rAF-throttled `scheduleSet` for all viewport mutations; measured **60.2 fps avg / 59.5 fps min** at 1-month / 1800-segment dataset across three independent runs. **DOM-per-segment stays; canvas fallback NOT needed.** (Phase 4 P4.4)
-- [x] 5.7 Minimap (single combined ~80px track) with draggable visible-window rectangle: `data-minimap-mode="rect"` pans, `edge-left`/`edge-right` zoom via endpoint drag, click-elsewhere re-centers viewport. (Phase 3)
-- [x] 5.8 Keyboard shortcuts: ArrowLeft/Right pan ±10% range; `+`/`=` and `-`/`_` zoom 1.5x at center; `0` reset; `Home`/`End` jump to data start/end (zoom preserved). Filtered against INPUT/TEXTAREA/contentEditable targets. (Phase 2)
-- [x] 5.9 `test_visualize_cli.sh` 22 source-shape assertions added across Phase 1/2/3 + 1 hardening regression-pin (catches future orphaned `DAY_*_MIN` consumers after the InterruptHairlines fix). Test count 19 → 41. (Phases 1–3 + verify-human fix)
-- [x] 5.10 `test_visualize_interactive.{js,sh}` Playwright behavioral test inside the test-environment container: 10 PASS + 1 documented SKIP (synthetic `WheelEvent` doesn't propagate to React handler). Picks up the deferred WP5-P1 codify "17 HH:00 ruler labels" runtime assertion + Phase 2 gesture-math + Phase 3 hash-round-trip behavioral coverage. (Phase 4 P4.2)
-- [x] **Plus** opportunistic P2.7 fold-in: `flipNowLeft` branch in HourRuler resolves `SURFACE-2026-05-19-CLAUDE-TIME-VIZ-NOW-LABEL-OVERLAPS-RULER-TICK`. **Plus** Phase 3 verify-human caught + fixed a BLOCKING runtime regression: `InterruptHairlines` orphan-referenced the deleted `DAY_START_MIN` (3-line fix in `viz_render.py` + regression-pin in `test_visualize_cli.sh`).
-
-### WP5b: Multi-day data window for Day view — [x] SHIPPED 2026-05-23 (commit 02d6237)
-**Description:** Day view loads trailing+leading context days into the data window. Current day is default-viewport center; pan reveals neighbors. Resolves `SURFACE-2026-05-22-CLAUDE-TIME-VIZ-DAY-VIEW-MULTI-DAY-DATA-WINDOW`.
-**Phase:** 2 (sits with view-modes phase as a Day-view extension)
-**Dependencies:** WP3 (range-aware data layer — shipped), WP5 (viewport mechanic + URL hash — shipped 2026-05-22)
-**Size:** Actual M (planned S–M). Plan-time scope hidden two double-path bugs (viz_render.py wrapper had its own viewport-init; Minimap density bars also needed day-offset) — both caught at verify-self and verify-human, both fixed in-flight.
-**Tasks:**
-- [x] 5b.1 `_cmd_visualize` calls `build_range_data(start, end)` when ctx_prior + ctx_after > 0; computes `[date − N_prior, date + N_after]`; defaults `prior=14, after=7` (locked at backlog-grooming).
-- [x] 5b.2 New CLI flags `--context-days-prior N` + `--context-days-after M` added to the `viz` subparser (compact `--context PRIOR:AFTER` form not implemented — separate flags were sufficient and easier to document).
-- [x] 5b.3 New config keys `viz_context_days_prior` (14) + `viz_context_days_after` (7) added to `DEFAULT_CONFIG` with non-negative-int validator + silent fallback. Precedence: CLI flag > config > built-in default.
-- [x] 5b.4 ISO-day-aware label formatter via `_formatDayLabel(dayIx, windowStartIso)` helper. `ticksInViewport(viewport, intervalMin, windowStartIso)` emits `MMM DD` for day-level ticks and on midnight-crossing tick boundaries; `HH:00` / `HH:MM` within a single day.
-- [x] 5b.5 `pickTickInterval` scale set extended to `[1440, 360, 60, 30, 15, 10, 5, 1]`. At 21-day default-window zoom-out → 21 ticks (in 8–30 band).
-- [x] 5b.6 Initial viewport centered on requested day via `_initialViewport` reading `data.target_iso + meta.start + hour_range_by_day[target_iso]` with day-offset applied. Default-hash regression-pinned (single-day path: `--context-days 0/0` produces byte-identical pre-WP5b shape).
-- [x] 5b.7 9 new Phase 2 codify assertions in `test_visualize_cli.sh` (incl. 3 explicit regression-pins for the in-flight double-path bug fixes); 6 new Phase 1 codify assertions. Full claude-time suite: 174/174 (was 165 pre-WP5b).
-- [x] **Plus** opportunistic plumbing not in plan: `DataWindowContext` (cleaner than prop-drill), `SegmentBar` `dayOffset` prop, `InterruptHairlines` `dayOffset`, `Minimap.allSegs` pre-shift, `SessionRow` `key={s.day_iso}:${s.id}` to prevent React duplicate-key warnings, `viz_render.py` wrapper consolidated to call `_initialViewport()` (eliminates double-path drift).
-
-**Why XL:** This is genuinely large — viewport state, pixel-from-viewport math touching every segment renderer, gesture handling across mouse + trackpad + keyboard, ruler adaptive ticks, minimap, performance work, plus testing infrastructure for interactive behavior. Splitting into smaller WPs would be possible (pan, zoom, minimap, keyboard as 4 separate WPs) but the integration risk is in the *interaction* between them — single WP keeps that owned.
-
-**Phase 1 → Phase 2 rationale:** Once the timeline is zoomable/draggable, the view-mode buttons (Day / Week / Month / Custom) become "presets that set initial viewport range," and the navigation primitive is shared. Building those views first then retrofitting them to use a viewport would be wasted work.
+**Phase 1 → Phase 2 rationale:** Once the CLI surface stably produces the new payload shape (with full back-compat for v2 invocations), the frontend can be refactored to consume the new shape. Doing the frontend refactor in Phase 1 would force the CLI surface to be designed against an unstable consumer.
 
 ---
 
-## Phase 2: View modes and navigation
+## Phase 2: Frontend state-routing refactor
 
-**Phase rationale:** Build out the four view modes on the now-shared viewport infrastructure. "Today" is renamed to "Day" here too. Filter chips become functional in the same phase because they share the per-view re-render path.
+**Phase rationale:** The dashboard currently dispatches on `window.CT_INITIAL_VIEW` + `window.CT_INITIAL_PRESET` to pick a single view from a single payload. v3 changes this to: hash dispatches to a view + sub-view-state, and each view reads the appropriate pre-rendered sub-payload from `window.CT_DATA.<sub_payload_map>[<key>]`. This phase touches every view component (Day, Week, Month, Custom, Compare) but leaves their internal rendering largely unchanged — only the **data-source plumbing** changes.
 
-### WP6: "Today" → "Day" rename — [x] SHIPPED 2026-05-23 (commit 217cfe3)
-**Description:** Toolbar tab label rename + any internal references (the data layer's `today` key in `window.CT_DATA` is fine to keep as a stable contract or rename to `day` — decide in WP3 and propagate). Touch the README usage section too.
+### WP5: Day view sub-payload routing
+**Description:** `DayTimeline` reads `window.CT_DATA.day_payloads_by_iso[currentDayIso]` instead of `window.CT_DATA.today`. Day-iso state lives in `useState` initialized from URL hash (`date=2026-05-26` key). Day-arrow ←/→ nav becomes a client-side state swap (pre-rendered payloads available for every iso in the window).
 **Phase:** 2
-**Dependencies:** —
-**Size:** XS
-**Tasks:**
-- [x] 6.1 Updated toolbar tab label in `viz_render.py::InteractiveToolbar` (line 414): `tabBtn('Today', 'day', ...)` → `tabBtn('Day', 'day', ...)`, plus the section comment.
-- [x] 6.2 **Decision: keep `window.CT_DATA.today`** as the data-layer key (UI-only rename). Rationale: WP5b stabilized six consumers (`_initialViewport`, `SessionRow`, `DayTimeline.dwCtx`, `Minimap.allSegs`, `viz_render.py` wrapper, `claude-time:586`) on the `.today.*` shape. Renaming the key would touch all six with no functional benefit; WP3's `meta.start/end` escape hatch keeps a future data-key rename cheap if needed. Documented as inline comment in `viz_render.py` above the View tabs section.
-- [x] 6.3 Updated `README.md` line 157 ("The `Day` and `Week` toolbar tabs are interactive"). Lines 81/134 (CLI-side `report`/default `visualize` prose) intentionally left untouched.
-- [x] 6.4 Added 3 WP6 codify assertions to `test_visualize_cli.sh` (59 → 62 PASS): positive consuming-surface pin on the shipped `tabBtn('Day', 'day', view === 'day', true)`, negative regression-pin against the legacy `tabBtn('Today',...)` form, and a data-layer `.today` preservation pin.
-- **Plan-defect caught at F9 back-loop:** initial 5 leaves edited only `viz/dashboard.jsx::Toolbar` (design-canvas static prototype, dead from shipped-UI perspective — `viz_render.py` strips it at emit). Verify-auto caught it via grep miss on `activeRange={isDay ? 'day' : 'week'}`. F9 added P1.6 + P1.7 to edit the actual shipped `InteractiveToolbar`. Lesson: the WBS task 6.1 text "the emit-time-appended interactive Dashboard wrapper, not the byte-pinned source" was correct but the plan mis-mapped it.
-
-### WP7: Month view — [x] SHIPPED 2026-05-24 (commit ce1c7ec)
-**Description:** Calendar-month rollup — 7-column Mon-first grid where each day-cell is a GitHub-contribution-graph-style single-tile encoding daily intensity via monochrome saturation (active-blue 268° hue, 5 buckets + empty). Click-day → reload-redirect toast with `claude-time visualize --date YYYY-MM-DD` (file:// dashboard has no server to navigate to). Reuses WP3's `build_range_data` for the data layer; emit-time pre-loads two months (active + prev) so prev-arrow nav is a pure client-side state swap.
-**Phase:** 2
-**Dependencies:** WP3, WP5 (both shipped)
-**Size:** L (2 phases shipped: CLI `--month` flag + two-month payload emit; MonthView UI + nav + URL hash + toast reload-redirect)
-**Tasks:**
-- [x] 7.1 `MonthView` component in `viz/dashboard.jsx`: 7-column Monday-first calendar grid, leading/trailing padding cells inert, day-of-week header row (MON–SUN), today highlighted with `CT_TOKENS.active` border. Cell rendering = single-tile monochrome `_intensityColor(intensity)` via 6-entry `_MONTH_INTENSITY_PALETTE` (empty + 5 oklch buckets in 268° hue), `aspectRatio: '2 / 1'` (fits-in-viewport-height contract — user-tuned at verify-human from initial 1.7:1). **Design-decision pivot:** initial spec D5 was per-project vertical-strip density; rejected at verify-human in favor of D5' single-tile monochrome — Month view's primary axis is 1D "how busy was this day", not 2D project composition (Day view answers that via drill-down).
-- [x] 7.2 Click-day handler: `onDayClick(iso)` → `MonthNavToast` with `claude-time visualize --date YYYY-MM-DD` command + auto-clipboard-copy (P2.5 resolution — file:// dashboard can't navigate-redirect, so non-modal toast + clipboard is the honest UX). Same reload-redirect mechanism for next-month and prev-of-prev nav.
-- [x] 7.3 Month toolbar tab enabled (`tabBtn('Month', 'month', view === 'month', true)`; was `false, false`). URL hash carries `view=month;month=YYYY-MM` per CLAUDE.md hash schema. Four-branch hash dispatcher (day/week/custom/month) with default-elision — `month` key dropped when `view !== 'month'`.
-- [x] 7.4 Empty-day rendering: `data-month-day-active="false"` + bucket-0 background (`oklch(0.965 0.005 268)` — barely-tinted) + `title="no tracked time"` tooltip. Visually distinct from even the lowest non-zero bucket.
-- [x] 7.5 Cross-month nav: prev-month arrow does client-side state swap (D1, instant — reads from pre-loaded `window.CT_DATA.months[prev_iso]`); next-month + prev-of-prev trigger `MonthNavToast` reload-redirect with `--month YYYY-MM` command. `‹` `›` arrows in the month-name pill inside the dateLabel slot when `view === 'month'`.
-- [x] 7.6 Test coverage: 17 source-shape pins in `test_visualize_cli.sh` (WP7-P2-1 through -17) + 6 behavioral pins in `test_visualize_interactive.js` via new `renderMonthDashboard()` helper. Plus Phase 1: 13 source-shape pins (WP7-P1-1 through -13). Net +36 assertions across the WP7 cycle; 264/0 full claude-time suite at ship.
-- **Plus** opportunistic in-flight: one obsolete-test triaged + updated mid-codify (WP8-P2-8 three-branch hash dispatch → four-branch); one stale session-pause marker removed from `wbs.md`; D6 fallback (when `--month` is set, `data.today` is the active-month payload so Day/Week tabs in Month-emit mode have a coherent payload to render).
-
-### WP8: Custom-range view — [x] SHIPPED 2026-05-24 (commit 14a1cfc)
-**Description:** "Pick a start date and end date" tab. With WP5's viewport already supporting pan/zoom over arbitrary ranges, this is mostly UI: a date-range picker and toolbar tab.
-**Phase:** 2
-**Dependencies:** WP3, WP5 (both shipped)
-**Size:** M (2 phases shipped: CLI `--range` flag + range-aware emit; UI Custom tab + date-range picker + URL-hash round-trip)
-**Tasks:**
-- [x] 8.1 Date-range picker UI component — `RangePicker` in `viz/dashboard.jsx` (two `<input type=date>` controls + "→" separator, `data-range-picker="start"|"end"` Playwright-stable selectors, buffer-then-commit on blur/Enter, native browser date-picker behavior).
-- [x] 8.2 Toolbar: Custom tab enabled (`tabBtn('Custom', 'custom', view === 'custom', true)`), URL hash carries `view=custom;range=YYYY-MM-DD:YYYY-MM-DD` per the CLAUDE.md hash schema (semicolon separator, `range` key value is colon-joined start:end, default-elision drops both keys when view==='day').
-- [x] 8.3 Range validation: client-side `validateRange` helper mirrors Python's `_parse_range_flag` rules (shape, end>=start, end<=today, days<=`window.CT_MAX_RANGE_DAYS`). Invalid input gets red border (`#c84a4a`) + tooltip naming the rule. `viz_custom_range_max_days` config key (default 90) is single-sourced from Python via `{{CT_MAX_RANGE_DAYS}}` template placeholder.
-- [x] 8.4 Empty-range message: `EmptyState` component reused with custom date string (`${range.start} to ${range.end}`). Produces "No tracked time on 2026-05-20 to 2026-05-22" for empty Custom view.
-- [x] 8.5 CLI parity: `claude-time visualize --range 2026-05-01:2026-05-07` flag wired through `_cmd_visualize` to `build_range_data`. Sets `initial_view = "custom"` in the emitted HTML. Mutual-exclusion with `--demo`; warning when combined with `--context-days-*`. New `_parse_range_flag` helper with rule-naming stderr messages on rc=2 failures.
-- [x] 8.6 `test_visualize_cli.sh` assertions: 25 new WP8 pins (14 Phase 1 + 11 Phase 2; suite went 76 → 102) covering --help flag listing, validation paths, mutual-exclusion + warning, config cap override, CT_INITIAL_VIEW="custom" emit + opt-in regression, range-shape vs single-day distinction, RangePicker presence + data-range-picker selectors, validateRange + 4 rule messages, isCustom/isDayLike constants, Toolbar range-props handshake, _initView IIFE hash priority, range state hash-restore, view+range three-branch hash-write, isDayLike consumer surfaces (9), EmptyState range-string format. Plus P1.disc.1: hardened the flag-count regex in test #1 against wrapped help-text false-matches (column-3 + EOL/space anchor).
-
-### WP9: Interactive filter chips — [x] SHIPPED 2026-05-23 (commit f5a1123)
-**Description:** Toolbar filter chips ("active", "reading", "thinking", "away", "subagent") become functional toggles. Off-state hides that segment kind across all rows. Bonus: per-project filter chip popover (toggle individual projects on/off). Bundled bonus: Phase 1 collapsed the design-canvas/InteractiveToolbar duality (resolves `SURFACE-2026-05-23-CLAUDE-TIME-VIZ-DESIGN-CANVAS-INTERACTIVE-TOOLBAR-DUALITY`) — viz_render.py::InteractiveToolbar deleted; the canonical Toolbar now lives in viz/dashboard.jsx. Future toolbar-touching WPs (WP10, WP12) edit a single file.
-**Phase:** 2
-**Dependencies:** WP3, WP5 (viewport-aware render path)
-**Size:** S (5 phases shipped: duality collapse + functional chips + URL-hash persistence + per-project popover + codify-cleanup-superseded)
-**Tasks:**
-- [x] 9.1 Wire chip click handlers in the appended interactive Dashboard wrapper; state lives in `useState`. **Surface:** the static `<Legend />` was upgraded into clickable kind-chips (`data-filter-kind=<kind>` + `data-filter-on=true|false`) — not Toolbar, per documented plan deviation (Toolbar stays clean for view + date controls; filter affordances cluster near the Legend).
-- [x] 9.2 Segments + per-row totals consume filter state when rendering. `SegmentBar` returns null when its kind is OFF (per-segment hide preserves layout stability). `SessionRow.totalActive` is filter-aware via `session.segs.filter(s => filterKinds[s.kind] !== false)`. **Note:** headline stats (WP10/WP11) will consume `useFilter()` when they ship — wiring is in place.
-- [x] 9.3 URL hash carries `filters=active,subagent` (canonical-order serialization: `active,reading,thinking,subagent,away`) per CLAUDE.md "Claude-time visualize URL-hash state" schema. Default-elision drops the key when all kinds are ON. Hash-restore on init + debounced 100ms write on change + replaceState (no history pollution) + malformed-hash fallback to all-ON.
-- [x] 9.4 Per-project filter popover: new `ProjectFilterPopover` component next to Legend chips, IconFilter + "Projects" trigger button with hidden-count badge, floating panel with checkbox list, outside-click dismiss via document mousedown listener. Scope: Day view only (WeekTimeline's rollup aggregation deferred to a future WP).
-- [x] 9.5 `test_visualize_cli.sh` assertion: emitted HTML contains the filter state machine. Landed as **14 WP9-prefixed assertions** (62 → 76 PASS) distributed across per-phase verify-codify: P1 (2 — Toolbar duality), P2 (3 — data-kind + Legend kinds + FilterContext+filterKinds), P3 (4 — hash.filters + updateHash + default-elision + canonical-order), P4 (5 — ProjectFilterPopover + trigger + item + mousedown listener). Plus **12 behavioral Playwright assertions** in `test_visualize_interactive.js` (10 → 22 PASS) covering hash round-trip + popover open/uncheck/restore/outside-click. Plus **6 NEW unit tests** in `test_viz_render.py` for the in-phase `_strip_design_wrapper` regex fix (dash-count drift + prose-mention false-match guard).
-
-**Phase 2 → Phase 3 rationale:** Once Day/Week/Month/Custom + filters all share the same viewport and data layer, the value-add features (headline stats, comparison view, multi-instance overlap, away totals, project pills, collapsible rows) layer cleanly on top without depending on view-specific code.
-
----
-
-## Phase 3: Self-awareness — headline, comparison, density
-
-### WP10: Headline-stats card → Metrics surface — [x] SHIPPED 2026-05-24 (commit fc4fe2a)
-**Description:** A small card pinned above the timeline that answers "how much real work today" in one number — primary metric (active+subagent time), with secondary metrics (#sessions, #projects touched, longest streak, away total). Card adapts to view: day shows "today vs your trailing-7-day median"; week shows weekly aggregate; custom shows range total. **At spec, bundled with `SURFACE-2026-05-24-CLAUDE-TIME-VIZ-AGGREGATE-METRICS-PANEL`** — what shipped is a **metrics surface** (headline card + expandable 6-metric panel with wall-clock/effort-time/×multiplier columns), not the simpler sparkline-headline originally planned. The trailing-7-day window is view-mode-independent (not per-view-adaptive deltas as originally specced) — comparison-axis work moves to WP11. Sparkline deferred (the wall-clock vs effort-time table replaces it as the primary trend surface).
-**Phase:** 3
-**Dependencies:** WP4 (comparison helpers for the trailing-median delta) — note: trailing-median delta dropped at spec; window became fixed trailing-7-days
-**Size:** M (delivered as 2 phases — aggregator + UI)
-**Tasks:**
-- [x] 10.1 `HeadlineCard` component above the timeline with three primary tiles (active session wall-clock, human activity wall-clock, AI effort) + chevron toggle + date-range indicator "Past 7 days · YYYY-MM-DD → YYYY-MM-DD" (moved to card via P2.verify-human.2 back-loop).
-- [x] 10.2 Trailing-7-day window: today + prior 6 days, computed at emit time from `snapshot_dt`, view-mode-independent (Day/Week/Month/Custom all show same metrics). View-adaptive deltas dropped at spec; comparison axis moves to WP11.
-- [x] 10.3 ~Sparkline mini-chart~ → Replaced by `MetricsPanel` (expanded) with 6-section table: engaged_session, ai_agent (+ subagent sub-row), tool_call (+ top-5 tools sub-table), human (+ typing/reading/thinking sub-rows), concurrency (k=1/2/3/4+ stratification), blocking (human-blocking-agent + agent-blocking-human). Each row shows wall-clock | effort-time | ×multiplier.
-- [x] 10.4 Filter-state aware via `_computeMetricsView(metrics, filterKinds)` projection helper. Kind chips affect both headline + panel cells; `subagent` OFF drops AI-effort by the subagent contribution; `reading`/`thinking` OFF drop human activity. `active` OFF collapses everything to 0.
-- [x] 10.5 `test_visualize_cli.sh` + `test_visualize_interactive.js` assertions: 15 source-shape pins (WP10-P2-1..15) covering component definitions, data-metrics-card / data-metric-tile=* / data-metric-section=* selectors, hash dispatcher, empty-window caption, window indicator; 9 behavioral pins covering chevron expand/collapse + hash round-trip + filter chip → AI-effort tile change + window indicator persists across collapse/expand + card mounted across view-mode switches. Plus 2 codify integration-boundary pins on Phase 1 (real-DB events → aggregator → emit pipeline with seeded burst+tool, trailing-7-day window math). Plus 38 Python unittests (13 reclassify interval-helpers + 18 BuildMetricsTests + 7 BuildMetricsReconciliationTests). Full claude-time suite 335/0 PASS at ship; structure check 122/0 PASS.
-
-### WP11: Comparison view (delta lens → effectiveness lens) — [x] SHIPPED 2026-05-26 (commit 4edaabb)
-**Description (as shipped):** Compare view answering "am I leveraging Claude Code more WoW / MoM?" — 4 headline ratio rows (parallelism multiplier, AI effort / human wall-clock, blocking split, concurrency mix) + 4 supporting absolute rows (AI agent, tool calls, human, engaged sessions). **Re-spec mid-cycle (2026-05-26):** original delta-lens design (per-project deltas, per-kind raw-minute aggregates, top-shifts callouts) was rejected at verify-human as wrong-axis; user wanted productivity ratios, not segment deltas. Rebuilt around per-window `comparison.{a,b}.metrics` trees (Phase 1.B extension).
-**Phase:** 3
-**Dependencies:** WP4 (data layer), WP9 (filter chips, reused via _computeMetricsView projection), WP10 (MetricsPanel visual vocabulary)
-**Size:** L (shipped as 3 phases — Phase 1 CLI+emit, Phase 1.B per-window metrics emit, Phase 2.A effectiveness-lens UI; Phase 2 delta-lens design built-then-superseded by re-spec back-loop)
-**Tasks (as shipped):**
-- [x] 11.1 (Phase 1) — `--compare {wow,today-vs-trailing,mom}` + `--compare-range A:B,C:D` CLI flags; `_parse_compare_range_flag`; `_compare_window_bounds`; mutex matrix; `compare_month_over_month` in `viz_data.py`; `viz_render.render_html(initial_preset=...)` plumbing; `window.CT_INITIAL_PRESET` emit; `window.CT_DATA.comparison.{a,b,deltas,meta}` payload.
-- [x] 11.2 (Phase 1.B) — Per-window metrics emit: `comparison.a.metrics` + `comparison.b.metrics` via `viz_data.build_metrics` over each window's events (both demo empty-shape + real-DB paths).
-- [x] 11.3 (Phase 2.A) — `CompareView` UI redesign from delta-lens to effectiveness-lens. Generalized `EffectivenessRow({rowKey, label, aMetrics, bMetrics, kind})` component with 7 kind variants (multiplier, ratio-pct, blocking-split, concurrency-mix, absolute-wallclock-effort-mult, absolute-wallclock-only, absolute-engaged). 8 row instantiations in priority order: parallelism-multiplier, ai-effort-per-human-wallclock, blocking-split, concurrency-mix, ai-agent, tool-call, human, engaged-session. Reuses WP10's `_computeMetricsView` projection (no new helper). `PresetSelector` sub-tabs (WoW / Today vs trailing / MoM / Custom). Compare tab in Toolbar with `data-tab` + `aria-selected`. URL hash schema: `view=compare;preset=*;ranges=*` with default-elision. `data-compare-section="effectiveness"` + `data-compare-row="<key>"` + `data-compare-col=a/b/delta` selectors. CLAUDE.md hash-key reservation table updated with 2 rows (preset, ranges).
-- [x] 11.4 Test coverage: +25 CLI pins in `test_visualize_cli.sh` (16 WP11-P1 + 4 WP11-P1B + 21 WP11-P2A; full suite 197/0); +14 Playwright behavioral pins in `test_visualize_interactive.js` (preset-click regression + effectiveness panel mount; full suite 46/0); +11 Python unit tests (`CompareMonthOverMonthTests` 7 + `RenderHtmlInitialPresetTests` 4; full Python suite 124/0). Structure check 122/0.
-- **Re-spec mid-cycle (2026-05-26):** delta-lens build → verify-human REJECTED ("answers the wrong question") → back-loop F12-equivalent → spec re-entry → Phase 1.B + Phase 2.A redesign → user-confirmed close. Documented in WIP audit trail.
-- **Known limitation deferred to v3:** preset sub-tab clicks switch the active preset + URL hash but content doesn't refresh because the data layer pre-renders only one comparison window per CLI emit. v3 cycle (next) will pre-render MTD + last 2 months and let the frontend handle all sub-views as client-side state swaps. Logged as `SURFACE-2026-05-26-CLAUDE-TIME-VIZ-V3-PIVOT-UNIFIED-TIME-RANGE`.
-
-### WP12: Multi-instance overlap visualization — [~] SUPERSEDED 2026-05-26 (folded into v3 cycle)
-**Status:** Not implemented in this cycle. User pivot decision (2026-05-26, during WP11 Phase 2.A verify-human) folds the multi-instance overlap visualization concern into the next product cycle (claude-time-visualize-v3). The visualization design is sound; the emit model is what's changing. See `workflow/backlog.md` → `SURFACE-2026-05-26-CLAUDE-TIME-VIZ-V3-PIVOT-UNIFIED-TIME-RANGE`.
-
-### WP12 (original spec — preserved for v3 reference)
-**Description:** When two sessions ran in parallel on the same wall-clock minute (you had two Claude Code instances open), the dashboard currently renders them on separate session rows but doesn't visually distinguish "parallel" from "sequential." Add an explicit overlap rendering: in expanded-project (per-session) view, overlapping bars are visually layered with a slight vertical offset + an "overlap" badge in the side panel. The reclassifier's cross-session typing-debit attribution already handles the data correctly — this is a visualization layer only.
-**Phase:** 3
-**Dependencies:** WP3 (so multi-day ranges can show overlaps that span days), WP13 (collapsed-row overlap semantics)
+**Dependencies:** WP1, WP3
 **Size:** M
 **Tasks:**
-- [ ] 12.1 Detect overlapping sessions at render time: two session windows overlapping in time within the visible viewport
-- [ ] 12.2 Visual: overlapping segments get a slight vertical offset (half-height stagger) so both are visible; tooltip says "overlapping with session XXX"
-- [ ] 12.3 Side panel: when a session overlaps with one or more others, add an "Overlaps with" section listing the other sessions
-- [ ] 12.4 Headline stats: "X minutes of parallel work" stat when overlaps exist in the current view
-- [ ] 12.5 `test_visualize_cli.sh` assertion against a seeded DB with synthetic overlapping sessions: emitted HTML renders the overlap indicator
+- [ ] 5.1 In the interactive Dashboard wrapper (`viz_render.py::_interactive_dashboard`): replace direct `today` reads with a `dayIso` state + memoized lookup into `day_payloads_by_iso`.
+- [ ] 5.2 Add Day-arrow nav UI (`‹` / `›` buttons in the date header strip, adjacent to the date label). Disable when at window boundary.
+- [ ] 5.3 URL hash: add `date=YYYY-MM-DD` key under the consumer-reservation table. Default-elision when `dayIso === todayIso` (the most-recent day in the window).
+- [ ] 5.4 `test_visualize_cli.sh` source-shape pins: `day_payloads_by_iso` consumer wiring; day-arrow nav buttons; `date=` hash dispatcher.
+- [ ] 5.5 `test_visualize_interactive.js` behavioral: Day-arrow click → DayTimeline re-renders with new day's segments; URL hash updates; data-day-iso selector reflects current day.
 
-### WP13: Collapsible project rows + idle/away total visibility + project pills — [~] SUPERSEDED 2026-05-26 (folded into v3 cycle)
-**Status:** Not implemented in this cycle. User pivot decision (2026-05-26) folds row-density + away-total + project-pills concerns into the v3 cycle. The collapsible-rows + pills design is sound; the unified time-range emit model in v3 is what changes the surrounding context. Day-view row-density observation (`SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY`) feeds into the v3 spec.
+### WP6: Week view sub-payload routing + Week-arrow nav
+**Description:** `WeekTimeline` reads `window.CT_DATA.week_payloads_by_monday[currentMondayIso]`. Same pattern as WP5 for Day. Week-arrow ←/→ nav between pre-rendered weeks.
+**Phase:** 2
+**Dependencies:** WP1, WP3
+**Size:** S
+**Tasks:**
+- [ ] 6.1 Week-iso state + memoized lookup into `week_payloads_by_monday`.
+- [ ] 6.2 Week-arrow nav UI in the date header strip.
+- [ ] 6.3 URL hash: add `week=YYYY-MM-DD` key (Monday-anchored). Default-elision when `mondayIso === current_week_monday`.
+- [ ] 6.4 Test pins.
 
-### WP13 (original spec — preserved for v3 reference)
-**Description:** Three small UX wins bundled because they touch the same layout primitives:
-(1) Project rows default to **collapsed** (one row per project, segments from all that project's sessions merged into one track via overlay/blend). Click chevron to expand to per-session rows. Multi-instance overlap (WP12) handles the overlapping-segment case by rendering parallel session segments at slight vertical offsets even within the collapsed row.
-(2) Per-project **total pill** at the left of each row (active+subagent time, in monospace), per spec user story #5. Confirms the "where did the hours go" question at a glance.
-(3) **Idle/away total** rendered next to the headline stats and per-project pills — the counterweight to active time. "Away: 3h 12m" makes the day total honest.
+### WP7: Month view sub-payload routing
+**Description:** `MonthView` reads `window.CT_DATA.month_payloads_by_iso[currentMonthIso]`. The existing `MonthNavToast` reload-redirect (v2 WP7) becomes obsolete for months *inside* the pre-rendered window — instant client-side swap. For months *outside* the window, the toast remains.
+**Phase:** 2
+**Dependencies:** WP1, WP3
+**Size:** S
+**Tasks:**
+- [ ] 7.1 Month-iso state + memoized lookup into `month_payloads_by_iso`.
+- [ ] 7.2 Month-arrow ←/→: instant swap when target month is in the pre-rendered window; reload-redirect toast otherwise (v2 WP7 behavior preserved for the edge case).
+- [ ] 7.3 Test pins for both paths.
+
+### WP8: Compare view sub-payload routing (resolves v2 WP11 known limitation)
+**Description:** `CompareView` reads `window.CT_DATA.compare_payloads_by_preset[currentPreset]` instead of `window.CT_DATA.comparison`. Preset sub-tab click becomes an instant content swap (NOT just a hash + label swap as in v2). **Resolves the v2 Phase 2.A verify-human PARTIAL finding** (preset content-not-refreshing).
+**Phase:** 2
+**Dependencies:** WP1, WP3
+**Size:** S
+**Tasks:**
+- [ ] 8.1 Replace `_computeMetricsView(comparison?.a?.metrics, ...)` with `_computeMetricsView(compare_payloads_by_preset[preset]?.a?.metrics, ...)`. Same for `b.metrics`.
+- [ ] 8.2 PresetSelector onClick now actually refreshes content because the sub-payload swap is reactive.
+- [ ] 8.3 Custom preset (preset === 'custom') still requires re-emit since user-picked ranges aren't pre-rendered — preserve v2's behavior (RangePicker pair + reload-redirect-toast).
+- [ ] 8.4 Update v2 WP11 P2A.verify-human.3 PARTIAL annotation in the v2 archive: link to v3 WP8 ship as the resolution.
+- [ ] 8.5 Test pins: preset switch via real mouse-click → content (not just hash) changes; `test_visualize_interactive.js` adds a behavioral pin asserting `[data-compare-row="parallelism-multiplier"] [data-compare-col="a"]` text content differs between WoW and MoM preset selections.
+
+### WP9: Custom-range view sub-payload routing
+**Description:** Custom-range view (v2 WP8) currently reads `window.CT_DATA.today` (the multi-day Day-view-like payload). v3 routes it through `day_payloads_by_iso[*]` for ranges inside the pre-rendered window. For ranges OUTSIDE the pre-rendered window, the RangePicker still triggers a reload-redirect.
+**Phase:** 2
+**Dependencies:** WP1, WP3, WP5
+**Size:** S
+**Tasks:**
+- [ ] 9.1 Custom-range render path: when `[range.start..range.end]` ⊆ pre-rendered window, render directly from `day_payloads_by_iso` union. Otherwise, reload-redirect toast.
+- [ ] 9.2 RangePicker onChange detects in-window vs out-of-window and swaps between instant-render and reload-redirect.
+- [ ] 9.3 Test pins.
+
+**Phase 2 → Phase 3 rationale:** Once the frontend state-routing refactor is done, ALL the v2 view-mode infrastructure is intact AND consuming pre-rendered sub-payloads. The remaining v2-deferred UX work (overlap viz, collapsible rows, row density) can now build on the stable v3 substrate without worrying about emit-model surprises.
+
+---
+
+## Phase 3: UX polish (v2-deferred + v3-surfaced)
+
+**Phase rationale:** These three WPs are UI features that the v3 substrate (pre-rendered window, frontend state-routing) unlocks more naturally than v2 could have shipped them. WP12-carry can now correctly visualize overlaps across day boundaries (pre-rendered window contains multi-day data). WP13-carry's collapsible rows + pills + away-total benefits from the row-density work being holistic. WP10 (row-density) is the user's explicit week-of-tracking pain point.
+
+### WP10: Day-view row-density mitigation (resolves SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY)
+**Description:** After ~1 week of tracking, Day view has too many project rows to read comfortably. Options to evaluate at feature-spec time: (a) auto-hide rows with no activity in the visible viewport (data-driven filtering); (b) min-activity-threshold filter chip (e.g., "show only projects with >15m active"); (c) auto-sort rows by recent activity descending; (d) virtualization. Likely a combination of (a) + (c) is the cheapest user-impact win.
 **Phase:** 3
-**Dependencies:** WP1, WP9 (filter state)
+**Dependencies:** WP5
 **Size:** M
 **Tasks:**
-- [ ] 13.1 Collapsed-row segment merging: union of all session segments within a project, rendered as a single track (segments may overlap visually when multi-instance — handled in WP12 via vertical offset semantics within the lane)
-- [ ] 13.2 Per-row chevron + expand/collapse state (`useState`, defaults to collapsed); URL hash carries `expanded=project1,project2`
-- [ ] 13.3 Project total pill on row label: monospace `1h 23m` cell + project name + chevron
-- [ ] 13.4 Away-total surfaced in two places: (a) per-project row label as a secondary stat under the active total, (b) headline-stats card alongside the main active number
-- [ ] 13.5 Filter-state aware: pills and totals reflect active filter chips
-- [ ] 13.6 `test_visualize_cli.sh` assertions: collapsed-row default, expand-on-click, pill content, away-total presence
+- [ ] 10.1 At feature-spec time: pick the mitigation strategy (a/b/c/d combination). Record decision rationale.
+- [ ] 10.2 Implement chosen strategy in `DayTimeline` (and `WeekTimeline` if applicable).
+- [ ] 10.3 URL hash: any new state (e.g., min-activity threshold) gets a hash key per the consumer-reservation table.
+- [ ] 10.4 Test pins.
 
-**Phase 3 → cycle close rationale:** Once these are in, the v2 UX answers all the questions v1 left implicit: how much active vs idle, what changed week over week, where did parallel instances overlap, where are the per-project totals at a glance.
+### WP11: Collapsible project rows + per-project pills + away-total visibility (carry from v2 WP13)
+**Description:** Three small UX wins, originally bundled in v2 WP13 (SUPERSEDED 2026-05-26):
+(1) Project rows default to **collapsed** (one row per project, sessions merged into one track). Click chevron to expand to per-session rows.
+(2) Per-project **total pill** at the row label (active+subagent time, monospace).
+(3) **Idle/away total** rendered next to headline stats and per-project pills — the counterweight to active time.
+**Phase:** 3
+**Dependencies:** WP5, WP10 (row-density mitigation may inform how pills display)
+**Size:** M
+**Tasks:**
+- [ ] 11.1 Collapsed-row segment merging: union of all session segments within a project, rendered as a single track.
+- [ ] 11.2 Per-row chevron + expand/collapse state (`useState`, defaults to collapsed). URL hash: `expanded=projectA,projectB` per existing CLAUDE.md reservation (originally WP13 reserved).
+- [ ] 11.3 Project total pill on row label.
+- [ ] 11.4 Away-total in two places: per-project row + headline-stats card.
+- [ ] 11.5 Filter-state aware (pills + totals reflect active filter chips).
+- [ ] 11.6 Test pins.
+
+### WP12: Multi-instance overlap visualization (carry from v2 WP12)
+**Description:** When two sessions ran in parallel on the same wall-clock minute, render the overlap visually (slight vertical offset + "overlap" badge in side panel). The reclassifier handles the data correctly; this is a visualization-only layer.
+**Phase:** 3
+**Dependencies:** WP5, WP11 (collapsed-row semantics define how overlap renders in the collapsed lane)
+**Size:** M
+**Tasks:**
+- [ ] 12.1 Detect overlapping sessions at render time within the visible viewport.
+- [ ] 12.2 Visual: half-height vertical stagger on overlapping segments + tooltip.
+- [ ] 12.3 Side panel: "Overlaps with" section when applicable.
+- [ ] 12.4 Headline stat: "X minutes of parallel work" when overlaps exist.
+- [ ] 12.5 Test pins against a seeded DB with synthetic overlapping sessions.
+
+**Phase 3 → cycle close rationale:** Once these three UX WPs ship, the v3 cycle has delivered everything v2 deferred (overlap viz, collapsible rows, pills, away total) plus the v2-surfaced user pain (row density) plus the architectural fix (preset content-refresh, instant nav within window). Cycle close on `/product-finalize`.
 
 ---
 
 ## Dependency Map
 
 ```
-WP1 (adaptive ruler) ─┬─→ WP5 (zoomable timeline) ─┬─→ WP7 (month view)
-                      │                            ├─→ WP8 (custom range)
-                      │                            └─→ WP9 (filter chips)
-WP2 (NOW marker)      │                                    │
-                      │                                    ▼
-WP3 (range data) ─────┴─→ WP4 (comparison data) ─→ WP11 (compare view)
-                                                  └─→ WP10 (headline stats)
-
-WP6 (Day rename) ────────────────────────────────────→ (no deps; can land any time in Phase 2)
-                                                       │
-WP12 (multi-instance overlap) ←──────── WP13 (collapsible rows + pills + away total)
-                              └─ depends on WP3 + WP9
+WP1 (build_window_data) ───┬─→ WP2 (perf probe)
+                           ├─→ WP3 (unified --window flag)
+                           │     │
+                           │     └─→ WP4 (legacy flag deprecation)
+                           │
+                           └─→ WP5/6/7/8/9 (view sub-payload routing, parallelizable)
+                                                                          │
+                                                                          ▼
+                                                            WP10 (row density)
+                                                                          │
+                                                                          ▼
+                                                            WP11 (collapsible rows + pills)
+                                                                          │
+                                                                          ▼
+                                                            WP12 (overlap viz)
 ```
 
-**Critical path:** WP3 → WP5 → WP7/8/9 → WP11/13 → WP12.
+**Critical path:** WP1 → WP2 (decision gate) → WP3 → WP5 → WP10 → WP11 → WP12.
 
-**Parallelizable:** WP1, WP2, WP6 (each independent, small).
-
-**Highest-risk WP:** WP5 (XL, performance-sensitive, interaction-heavy). Recommend tackling it early in Phase 1 and budgeting time for one feature-build → verify-self → back-loop cycle on the gesture/perf surface specifically.
-
----
+**Parallelizable:** WP6, WP7, WP8, WP9 (all depend on WP1 + WP3 but not on each other). WP4 depends only on WP3.
 
 ## Sizing summary
 
-| Phase | WPs | Size mix | Rough magnitude |
-|-------|-----|---------------|-----------------|
-| 0     | WP1–4 | XS, S, M, S | small-to-medium foundation |
-| 1     | WP5 | XL | one large WP (gated milestone) — SHIPPED 2026-05-22 |
-| 2     | WP5b, WP6–9 | S–M, XS, L, M, S | medium phase, 5 WPs (WP5b added 2026-05-22 — user-prioritized Day-view extension) |
-| 3     | WP10–13 | M, L, M, M | medium phase, 4 WPs |
+| Phase | WPs | Sizes |
+|---|---|---|
+| Phase 0 | WP1, WP2 | M + S(probe) |
+| Phase 1 | WP3, WP4 | M + S |
+| Phase 2 | WP5, WP6, WP7, WP8, WP9 | M + S + S + S + S |
+| Phase 3 | WP10, WP11, WP12 | M + M + M |
 
-14 work packages total (was 13; +1 for WP5b — multi-day data window for Day view, added at WP5 finalize). No probe WPs needed — no new 3rd-party integrations; React/Babel/SQLite/Python are all already in use.
+**10 WPs total.** Roughly 3 M's + 6 S's + 1 probe — somewhat smaller than v2 (14 WPs) because much of the v2 infrastructure (data layer helpers, MetricsPanel, CompareView core) is being *reorganized*, not rebuilt.
 
----
+## Decisions locked at WBS approval (2026-05-26)
 
-## Decisions locked at WBS approval (2026-05-19)
-
-- **Claude Design extract is now reference-only.** Source edits to `viz/dashboard.jsx`, `viz/data.js`, etc. are permitted starting with WP1. The byte-pin design-as-data convention (introduced 2026-05-19 in `CLAUDE.md`, enforced by `tests/check-structure.sh` Phase 5c) is **superseded** by this cycle. WP1's build will (a) remove or relax the Phase 5c byte-size pinning, (b) update the `CLAUDE.md` convention to document the v2 shift and the rationale, (c) re-import additional assets from the design extract if and only if a downstream WP genuinely needs them.
-- **URL-hash state convention.** WP5's first task drafts the URL-hash-state spec (key shape, merge semantics for multi-WP state coexistence, reload behavior), codifies it in `CLAUDE.md`, and downstream WPs (filters, view tabs, expanded projects, viewport) follow it.
-- **Drive mode for this cycle:** Autopilot (pause only at verify-human per the standard policy).
+1. **Default window: 90 days (MTD + 2 prior months)** — user-confirmed; WP2 probe confirms or counter-proposes.
+2. **Legacy v2 flags stay as advisory aliases**, not hard-deprecated, for at least one cycle.
+3. **Cycle-name convention preserved:** `claude-time-visualize-v3` follows v2's naming.
+4. **Existing CLAUDE.md hash-schema table is carried forward verbatim.** New keys (`date`, `week`) get added per the consumer-reservation convention.
+5. **No new external dependencies.** v3 is a pure-refactor + UX-additions cycle.
 
 ## Notes / open questions
 
-- **Performance ceiling.** WP5's 60fps pan/zoom with a 1-month range may push the DOM-per-segment approach to its limit. If `requestAnimationFrame` throttling isn't enough, fall back to canvas-rendering for the timeline (DOM stays for tooltips + side panel). Decide at WP5 verify-self time, not at plan time — measure first.
-
----
+- **Unified flag name decision deferred to WP3 feature-spec.** Candidates noted above (`--window 90d` vs `MTD-2` vs explicit range or combined). Each has trade-offs; spec elicitation is the right venue.
+- **Compare custom-preset** still requires re-emit for arbitrary user-picked ranges (no way to pre-render an infinite space of custom ranges). WP8 preserves the v2 reload-redirect-toast for this case.
+- **The 90-day default's relationship to `viz_context_days_*` config** (v2 WP5b) — WP3 should clarify whether the new flag supersedes those, makes them advisory, or aliases them.
 
 ## Next step
 
-Per the project's convention: this repo skips `/product-context` (the project has a hand-maintained `CLAUDE.md` that serves the equivalent purpose). After WBS review, this cycle transitions directly to **feature workflows** — start with WP1 (smallest, validates the dev loop) via `/feature-plan`, then WP2 and WP6 in parallel, then tackle WP5 as the gated milestone.
+Run `/product-context` (P9) to refresh the project's `CLAUDE.md` — or skip if the existing CLAUDE.md already covers the new conventions adequately (this project intentionally maintains its own CLAUDE.md per the doc-loading rules). Most likely action: minimal CLAUDE.md updates at WP3 + WP5 / WP6 ship times to add new hash keys, not a separate /product-context invocation.
 
-When all 13 WPs are marked `[x]` by `feature-finalize` runs, `/product-finalize` will resync durable docs, sweep backlog, and archive this WBS to `docs/product/archive/claude-time-visualize-v2/`.
+After CLAUDE.md updates land, individual WPs are entered via `/feature-spec` or `/feature-plan` from the WBS task list, one at a time.
