@@ -1302,5 +1302,150 @@ class BuildMetricsReconciliationTests(unittest.TestCase):
                                        places=4)
 
 
+class BuildWindowDataTests(unittest.TestCase):
+    """v3 WP1: `build_window_data(start_iso, end_iso)` — top-level coordinator
+    that pre-renders day/week/month/compare sub-payloads + window-level metrics
+    for the single-emit dashboard model."""
+
+    def _day_n_ms(self, day, hh, mm):
+        ds = int(_dt.datetime.combine(day, _dt.time.min).timestamp() * 1000)
+        return ds + (hh * 60 + mm) * 60_000
+
+    def _one_burst_events(self, day, hh_start, hh_end, *, sid=None, cwd="/repo/proj-a"):
+        if sid is None:
+            sid = f"sid-{day.isoformat()}"
+        return [
+            ev(self._day_n_ms(day, hh_start, 0), sid, "UserPromptSubmit",
+               cwd=cwd, meta='{"prompt_length_chars": 0}'),
+            ev(self._day_n_ms(day, hh_end, 0), sid, "Stop", cwd=cwd),
+        ]
+
+    def test_empty_window_three_day_shape(self):
+        """Empty events_by_day, 3-day window → all sub-payload maps populated
+        with the right key sets; metrics emits the empty-window shape."""
+        out = viz_data.build_window_data(
+            "2026-05-26", "2026-05-28",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(set(out.keys()), {
+            "window", "day_payloads_by_iso", "week_payloads_by_monday",
+            "month_payloads_by_iso", "compare_payloads_by_preset", "metrics",
+        })
+        self.assertEqual(out["window"],
+                         {"start": "2026-05-26", "end": "2026-05-28", "day_count": 3})
+        self.assertEqual(set(out["day_payloads_by_iso"].keys()),
+                         {"2026-05-26", "2026-05-27", "2026-05-28"})
+        # 2026-05-26 is a Tuesday; the containing Monday is 2026-05-25.
+        # Window ends 2026-05-28 (still in the same ISO week). One Monday.
+        self.assertEqual(set(out["week_payloads_by_monday"].keys()),
+                         {"2026-05-25"})
+        self.assertEqual(set(out["month_payloads_by_iso"].keys()), {"2026-05"})
+        self.assertEqual(set(out["compare_payloads_by_preset"].keys()),
+                         {"wow", "today-vs-trailing", "mom"})
+        # Empty-window metrics: engaged_session.wallclock_ms is 0.
+        self.assertEqual(out["metrics"]["engaged_session"]["wallclock_ms"], 0)
+
+    def test_single_day_window_shape(self):
+        """start == end → exactly one entry in day/week/month maps."""
+        d = _dt.date(2026, 5, 26)  # Tuesday; containing Monday is 2026-05-25
+        events = self._one_burst_events(d, 9, 10)  # 60 minutes active
+        out = viz_data.build_window_data(
+            "2026-05-26", "2026-05-26",
+            events_by_day={"2026-05-26": events},
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(out["window"]["day_count"], 1)
+        self.assertEqual(set(out["day_payloads_by_iso"].keys()), {"2026-05-26"})
+        self.assertEqual(set(out["week_payloads_by_monday"].keys()), {"2026-05-25"})
+        self.assertEqual(set(out["month_payloads_by_iso"].keys()), {"2026-05"})
+
+    def test_compare_preset_anchors_on_window_end(self):
+        """end_iso is the anchor for compare presets, NOT real-world today.
+        A window ending on a historical date pins WoW b_start to that day's
+        containing Monday — proves the pre-rendered payload is reproducible
+        regardless of when emitted."""
+        # Pick a historical window ending on Wed 2026-05-13.
+        # Containing Monday: 2026-05-11. Containing month: 2026-05.
+        out = viz_data.build_window_data(
+            "2026-05-07", "2026-05-13",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        # WoW: B = [this_monday, this_monday + 6 days] = [2026-05-11, 2026-05-17]
+        self.assertEqual(out["compare_payloads_by_preset"]["wow"]["meta"]["b_start"],
+                         "2026-05-11")
+        # today-vs-trailing: B = [end_iso, end_iso]
+        self.assertEqual(
+            out["compare_payloads_by_preset"]["today-vs-trailing"]["meta"]["b_start"],
+            "2026-05-13",
+        )
+        self.assertEqual(
+            out["compare_payloads_by_preset"]["today-vs-trailing"]["meta"]["b_end"],
+            "2026-05-13",
+        )
+        # MoM: B = [first_of_month, last_of_month] for end_iso's month
+        self.assertEqual(out["compare_payloads_by_preset"]["mom"]["meta"]["b_start"],
+                         "2026-05-01")
+        self.assertEqual(out["compare_payloads_by_preset"]["mom"]["meta"]["b_end"],
+                         "2026-05-31")
+
+    def test_metrics_cross_check_against_direct_call(self):
+        """Top-level metrics should equal what build_metrics returns when
+        called directly with the same flattened+sorted event list and the
+        same window dts. Pins: no double-counting, no partitioning bug."""
+        d = _dt.date(2026, 5, 26)
+        events = self._one_burst_events(d, 9, 10)  # 60-min active burst
+        events_by_day = {"2026-05-26": events}
+        out = viz_data.build_window_data(
+            "2026-05-26", "2026-05-26",
+            events_by_day=events_by_day,
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        # Direct call: flatten + sort the same way build_window_data does.
+        all_events = sorted(
+            (e for day_events in events_by_day.values() for e in day_events),
+            key=lambda e: e["ts"],
+        )
+        start = _dt.date.fromisoformat("2026-05-26")
+        end = _dt.date.fromisoformat("2026-05-26")
+        window_start_dt = _dt.datetime.combine(start, _dt.time.min)
+        window_end_dt = _dt.datetime.combine(end, _dt.time.max)
+        direct = viz_data.build_metrics(all_events, window_start_dt, window_end_dt)
+        # Engaged-session wallclock is the most sensitive cross-check field.
+        self.assertGreater(out["metrics"]["engaged_session"]["wallclock_ms"], 0)
+        self.assertEqual(out["metrics"]["engaged_session"]["wallclock_ms"],
+                         direct["engaged_session"]["wallclock_ms"])
+        # AI-agent + tool_call should also match.
+        self.assertEqual(out["metrics"]["ai_agent"]["wallclock_ms"],
+                         direct["ai_agent"]["wallclock_ms"])
+        self.assertEqual(out["metrics"]["tool_call"]["wallclock_ms"],
+                         direct["tool_call"]["wallclock_ms"])
+
+    def test_end_before_start_raises(self):
+        """Mirrors build_range_data's contract: end < start → ValueError."""
+        with self.assertRaises(ValueError):
+            viz_data.build_window_data(
+                "2026-05-28", "2026-05-26",
+                events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+            )
+
+    def test_90_day_window_smoke(self):
+        """Empty 90-day window from a fixed start → 90 days, 13 or 14 Mondays
+        depending on alignment, 3 or 4 calendar months. No perf assertion."""
+        # 2026-03-01 (Sunday) + 89 days = 2026-05-29 (Friday).
+        # Months touched: 2026-03, 2026-04, 2026-05 → 3 months.
+        # First Monday on or before 2026-03-01: 2026-02-23. Then 2026-03-02,
+        # 03-09, ..., walking in 7-day steps while monday <= 2026-05-29.
+        out = viz_data.build_window_data(
+            "2026-03-01", "2026-05-29",
+            events_by_day={}, cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        self.assertEqual(out["window"]["day_count"], 90)
+        self.assertEqual(len(out["day_payloads_by_iso"]), 90)
+        # 14 Mondays in this 90-day span (2026-02-23 through 2026-05-25).
+        self.assertEqual(len(out["week_payloads_by_monday"]), 14)
+        self.assertEqual(set(out["month_payloads_by_iso"].keys()),
+                         {"2026-03", "2026-04", "2026-05"})
+
+
 if __name__ == "__main__":
     unittest.main()

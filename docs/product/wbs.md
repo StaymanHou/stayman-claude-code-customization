@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-26
+updated: 2026-05-28
 cycle: claude-time-visualize-v3
 ---
 
@@ -22,7 +22,7 @@ v3 also folds in two v2-deferred WPs (WP12 multi-instance overlap + WP13 collaps
 **Included (10 work packages, 4 phases):**
 - Range-aware emit refactor: 90-day default window, all sub-payloads pre-rendered
 - Unified time-range CLI arg (`--window` or similar — decided at spec time)
-- Flag deprecation map (`--date` / `--week` / `--month` / `--range` / `--compare*` become advisory aliases)
+- Legacy flag removal (`--date` / `--week` / `--month` / `--range` / `--compare*` deleted; `--window` + URL hash cover all use cases)
 - URL hash schema extension (back-compat for v2 hash keys + new keys for sub-view state)
 - Frontend state-routing refactor: CompareView, MonthView, WeekTimeline, DayTimeline all read pre-rendered sub-payloads instead of `window.CT_DATA.today`
 - Instant Day-arrow nav (←/→ between pre-rendered days)
@@ -79,12 +79,12 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 
 ---
 
-## Phase 1: CLI surface refactor (unified time-range + flag deprecation)
+## Phase 1: CLI surface refactor (unified time-range + legacy flag removal)
 
 **Phase rationale:** The CLI surface change is downstream of the data layer (the new flag has to produce a `build_window_data` payload to be testable) but upstream of the frontend refactor (the frontend needs the new payload structure to consume). Doing it second isolates the CLI change from frontend state-routing complexity.
 
 ### WP3: Unified `--window` flag (or chosen name)
-**Description:** New CLI flag that takes a time-range arg (e.g., `--window 90d`, `--window MTD-2`, `--window 2026-04-01:2026-05-26`) and produces a single-emit pre-rendered 90-day-default dashboard. Existing flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`) are not removed in this phase — they remain as advisory aliases that set URL-hash defaults for the emitted dashboard, but they all internally route to `build_window_data` under the hood.
+**Description:** New CLI flag that takes a time-range arg (e.g., `--window 90d`, `--window MTD-2`, `--window 2026-04-01:2026-05-26`) and produces a single-emit pre-rendered 90-day-default dashboard. WP3 introduces `--window` only; WP4 removes the legacy flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`).
 **Phase:** 1
 **Dependencies:** WP1
 **Size:** M
@@ -92,20 +92,20 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [ ] 3.1 Spec the unified time-range arg syntax at feature-spec time. Candidates: `--window 90d` (rolling N days back from today), `--window MTD-2` (month-to-date plus 2 prior months), `--window 2026-04-01:2026-05-26` (explicit range), or a combination. Decision recorded in the feature spec.
 - [ ] 3.2 Add the new flag to the `viz` subparser. Validation: must produce a `(start_iso, end_iso)` pair with `end >= start` and `end <= today` and `day_count <= viz_window_max_days` (new config key, default 365).
 - [ ] 3.3 In `_cmd_visualize`, when the new flag is set: load events for the window, call `build_window_data`, emit. The output becomes `window.CT_DATA` with the new shape (sub-payload maps).
-- [ ] 3.4 Back-compat: when the new flag is NOT set AND no existing flag is set, default to the 90-day window (or whatever WP2 confirms). When an existing flag IS set, internally compute its window bounds and call `build_window_data` over those bounds — the existing flag becomes a syntactic shortcut.
+- [ ] 3.4 Default behavior: when `--window` is not set, default to the 90-day window (or whatever WP2 confirms). Legacy flags are removed in WP4 — WP3 does not need to preserve them.
 - [ ] 3.5 `test_visualize_cli.sh` pins: `--window 30d` produces a payload with `day_payloads_by_iso` keys covering 30 days; `--window 2026-04-01:2026-05-26` matches explicit bounds; default invocation produces the WP2-confirmed default; mutex with `--demo` (demo data is single-day).
 
-### WP4: Flag deprecation map (legacy flags → advisory aliases)
-**Description:** Existing v2 flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`) get reinterpreted: rather than picking the emit window, they pick the URL-hash initial state inside a pre-rendered 90-day emit. Internally, each flag computes its own `(start_iso, end_iso)` for the data window AND sets the right hash defaults so the dashboard opens on that view. Deprecation warning printed to stderr (not error — back-compat).
+### WP4: Legacy flag removal
+**Description:** Existing v2 flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`) are removed from the `viz` subparser entirely. The unified `--window` flag (WP3) plus URL-hash dispatch (Phase 2) cover every use case. Single-user tool, no external consumers — clean removal is preferable to a deprecation-alias surface.
 **Phase:** 1
 **Dependencies:** WP3
 **Size:** S
 **Tasks:**
-- [ ] 4.1 For each legacy flag, document: (a) the window it implies; (b) the URL hash it sets; (c) the deprecation message printed to stderr. Add to `--help` text.
-- [ ] 4.2 Implement the routing in `_cmd_visualize`: each legacy flag's parsing block now sets the same `(start_iso, end_iso)` AND the URL hash, then falls through to the unified `build_window_data` path.
-- [ ] 4.3 `test_visualize_cli.sh` pins: each legacy flag still works (rc=0, dashboard emits) AND produces the expected URL hash AND prints the deprecation warning to stderr.
+- [ ] 4.1 Delete the legacy flag definitions from the `viz` subparser. Remove their handler branches in `_cmd_visualize`.
+- [ ] 4.2 Update `--help` text and any in-tree usage docs (README sections, comments) to reference only `--window`.
+- [ ] 4.3 `test_visualize_cli.sh`: delete the legacy-flag scenarios; replace with `--window`-based equivalents where the underlying behavior is still in scope. Removed flags should produce an argparse error (rc=2) — pin one such case to confirm.
 
-**Phase 1 → Phase 2 rationale:** Once the CLI surface stably produces the new payload shape (with full back-compat for v2 invocations), the frontend can be refactored to consume the new shape. Doing the frontend refactor in Phase 1 would force the CLI surface to be designed against an unstable consumer.
+**Phase 1 → Phase 2 rationale:** Once the CLI surface stably produces the new payload shape via `--window`, the frontend can be refactored to consume it. Doing the frontend refactor in Phase 1 would force the CLI surface to be designed against an unstable consumer.
 
 ---
 
@@ -225,7 +225,7 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 WP1 (build_window_data) ───┬─→ WP2 (perf probe)
                            ├─→ WP3 (unified --window flag)
                            │     │
-                           │     └─→ WP4 (legacy flag deprecation)
+                           │     └─→ WP4 (legacy flag removal)
                            │
                            └─→ WP5/6/7/8/9 (view sub-payload routing, parallelizable)
                                                                           │
@@ -257,7 +257,7 @@ WP1 (build_window_data) ───┬─→ WP2 (perf probe)
 ## Decisions locked at WBS approval (2026-05-26)
 
 1. **Default window: 90 days (MTD + 2 prior months)** — user-confirmed; WP2 probe confirms or counter-proposes.
-2. **Legacy v2 flags stay as advisory aliases**, not hard-deprecated, for at least one cycle.
+2. **Legacy v2 flags are removed outright** (revised 2026-05-28). Single-user tool, no external consumers — `--window` plus URL hash cover every use case.
 3. **Cycle-name convention preserved:** `claude-time-visualize-v3` follows v2's naming.
 4. **Existing CLAUDE.md hash-schema table is carried forward verbatim.** New keys (`date`, `week`) get added per the consumer-reservation convention.
 5. **No new external dependencies.** v3 is a pure-refactor + UX-additions cycle.

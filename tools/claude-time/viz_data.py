@@ -1185,3 +1185,129 @@ def build_metrics(events: list[dict],
             "agent_blocking_human_ms": agent_blocking_human_ms,
         },
     }
+
+
+def build_window_data(
+    start_iso: str,
+    end_iso: str,
+    *,
+    events_by_day: dict[str, list[dict]],
+    cfg: dict,
+    auto_alias_fn,
+) -> dict:
+    """v3 top-level coordinator: pre-render every sub-view payload over a window.
+
+    Inputs:
+      start_iso, end_iso  — "YYYY-MM-DD" inclusive day bounds (end >= start)
+      events_by_day       — dict mapping "YYYY-MM-DD" → list of that day's
+                            events. Days missing from the dict are treated as
+                            empty. The full dict is passed to compare helpers
+                            (they self-partition internally).
+      cfg, auto_alias_fn  — same semantics as the other coordinators
+
+    Returns:
+      {
+        window: {start, end, day_count},
+        day_payloads_by_iso:     {iso: <build_day_data output>},
+        week_payloads_by_monday: {monday_iso: <build_week_data output>},
+        month_payloads_by_iso:   {YYYY-MM: <build_range_data output for month>},
+        compare_payloads_by_preset: {
+            "wow":               <compare_week_over_week output>,
+            "today-vs-trailing": <compare_day_vs_trailing_window output>,
+            "mom":               <compare_month_over_month output>,
+        },
+        metrics: <build_metrics output for the whole window>,
+      }
+
+    Compare-preset anchor: `end_iso` is treated as "today" (the most-recent day
+    in the window). A pre-rendered payload over a historical window therefore
+    contains compare-presets anchored on that window's end, not on real-world
+    today — this is intentional, so the emit is reproducible and shareable.
+    """
+    start = date.fromisoformat(start_iso)
+    end = date.fromisoformat(end_iso)
+    if end < start:
+        raise ValueError(f"end_iso {end_iso} precedes start_iso {start_iso}")
+    day_count = (end - start).days + 1
+
+    # --- Per-day payloads ---
+    day_payloads_by_iso: dict[str, dict] = {}
+    for i in range(day_count):
+        day_iso = (start + timedelta(days=i)).isoformat()
+        day_events = events_by_day.get(day_iso, [])
+        day_payloads_by_iso[day_iso] = build_day_data(
+            day_iso, day_events, cfg, auto_alias_fn,
+        )
+
+    # --- Per-week payloads (Monday-anchored ISO weeks intersecting the window) ---
+    # First Monday at or before `start`; last Monday at or before `end`. Walk
+    # in 7-day steps. A week intersects the window iff its Monday <= end.
+    first_monday = start - timedelta(days=start.weekday())
+    week_payloads_by_monday: dict[str, dict] = {}
+    monday = first_monday
+    while monday <= end:
+        monday_iso = monday.isoformat()
+        week_payloads_by_monday[monday_iso] = build_week_data(
+            monday_iso, events_by_day, cfg, auto_alias_fn,
+        )
+        monday = monday + timedelta(days=7)
+
+    # --- Per-month payloads (calendar months intersecting the window) ---
+    # Each month's range is clipped to the window bounds — a month at the edge
+    # may be partial. Keyed by "YYYY-MM" per the WBS spec.
+    import calendar as _calendar
+    month_payloads_by_iso: dict[str, dict] = {}
+    cur_year, cur_month = start.year, start.month
+    while (cur_year, cur_month) <= (end.year, end.month):
+        last_day_of_month = _calendar.monthrange(cur_year, cur_month)[1]
+        month_first = date(cur_year, cur_month, 1)
+        month_last = date(cur_year, cur_month, last_day_of_month)
+        clipped_start = max(month_first, start)
+        clipped_end = min(month_last, end)
+        month_key = f"{cur_year:04d}-{cur_month:02d}"
+        month_payloads_by_iso[month_key] = build_range_data(
+            clipped_start.isoformat(), clipped_end.isoformat(),
+            events_by_day=events_by_day, cfg=cfg, auto_alias_fn=auto_alias_fn,
+        )
+        if cur_month == 12:
+            cur_year, cur_month = cur_year + 1, 1
+        else:
+            cur_month = cur_month + 1
+
+    # --- Compare presets, anchored on end_iso ("today" within the window) ---
+    today_iso = end_iso
+    today_monday_iso = (end - timedelta(days=end.weekday())).isoformat()
+    today_month_iso = f"{end.year:04d}-{end.month:02d}"
+    compare_payloads_by_preset = {
+        "wow": compare_week_over_week(
+            today_monday_iso,
+            events_by_day=events_by_day, cfg=cfg, auto_alias_fn=auto_alias_fn,
+        ),
+        "today-vs-trailing": compare_day_vs_trailing_window(
+            today_iso,
+            window_days=7,
+            events_by_day=events_by_day, cfg=cfg, auto_alias_fn=auto_alias_fn,
+        ),
+        "mom": compare_month_over_month(
+            today_month_iso,
+            events_by_day=events_by_day, cfg=cfg, auto_alias_fn=auto_alias_fn,
+        ),
+    }
+
+    # --- Window-level metrics ---
+    all_events = sorted(
+        (e for day_events in events_by_day.values() for e in day_events),
+        key=lambda e: e["ts"],
+    )
+    window_start_dt = datetime.combine(start, time.min)
+    window_end_dt = datetime.combine(end, time.max)
+    metrics = build_metrics(all_events, window_start_dt, window_end_dt)
+
+    return {
+        "window": {"start": start_iso, "end": end_iso, "day_count": day_count},
+        "day_payloads_by_iso": day_payloads_by_iso,
+        "week_payloads_by_monday": week_payloads_by_monday,
+        "month_payloads_by_iso": month_payloads_by_iso,
+        "compare_payloads_by_preset": compare_payloads_by_preset,
+        "metrics": metrics,
+    }

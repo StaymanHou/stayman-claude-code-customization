@@ -1,5 +1,20 @@
 # Backlog
 
+## SURFACE-2026-05-28-VERIFY-HUMAN-AUTO-SKIP-WHEN-NO-INTEGRATION-BOUNDARY
+- **Source:** Repeated friction observed across v3 WP1 Phase 1 + Phase 2 (2026-05-28) — orchestrator paused at verify-human for both phases, presented the integration-boundary affirmation, and waited for the user to type "skip" each time. For phases where the affirmation cleanly holds (no integration boundary, isolated new artifacts only), the user's "skip" is mechanical and predictable; making them type it adds nothing.
+- **Target level:** harness / skill (skills/feature-verify-human + AGENTS.md pause policy)
+- **Type:** UX polish / autopilot calibration
+- **Summary:** When drive_mode is `autopilot` (or higher) AND the phase has been affirmed as having no integration boundary (the affirmation rules in `skills/feature-verify-human/SKILL.md` §2 already exist), the F11 skip should fire automatically without a user prompt. The user should only be paused when there is genuinely something for them to evaluate.
+- **Proposed rules (where to skip vs. not):**
+  - **Auto-skip (F11 fires without prompt) when ALL hold:** (a) drive_mode is autopilot or full-autopilot; (b) verify-self reported all PASS (no UNVERIFIED, no FAILED, no FAILED-cosmetic); (c) the integration-boundary check confirms no boundary applies — i.e., the phase only modifies files that no existing endpoint/UI/CLI/job/external-call consumes (test files, new isolated modules, new unimported helpers); (d) no observable outcome cites a consuming surface by name (the integration-boundary rule's existing test).
+  - **Still pause (today's behavior) when ANY hold:** boundary applies; verify-self had ANY non-PASS leaf; Mode 1 (step-by-step) or Mode 2 (orchestrated) is active; the phase touched UI/HTTP/CLI surfaces even nominally.
+  - **Belt-and-suspenders:** the auto-skip must STILL emit the affirmation block in chat (one paragraph naming the isolated new artifacts), just without the "do you agree?" prompt — the user retains read-time veto.
+- **Why this matters:** Two of the four WP1 verify-human prompts this session were one-word "skip" responses. At v3's expected 10 WPs × 2–4 phases each, this compounds to 30+ trivial prompts. The skip path is *already gated by an objective check* (the integration-boundary rules) — the human pause is redundant when the gate is clean and the drive mode is autopilot.
+- **Risk:** A false-negative on the boundary check would auto-skip a phase that genuinely needed human review. Mitigation: the existing §2 affirmation rules are conservative (any HTTP/UI/CLI/job/external-call touch → boundary applies → no skip). Plus an escape hatch: presenting the affirmation in chat lets the user catch a mis-applied skip and back-loop manually.
+- **Suggested action:** Update `skills/feature-verify-human/SKILL.md` §2 + the orchestrator pause-policy table to add the conditional auto-skip. Add a test scenario (F-something) asserting that a no-boundary phase in autopilot fires F11 without a pause. Update `agents/feature-workflow/AGENTS.md` to document the new rule. Likely a small task — slot as `task:plan` rather than feature, since it's a tightly scoped behavioral change.
+- **Priority:** medium — repeats friction but not a blocker; user-flagged 2026-05-28.
+- **Status:** pending
+
 ## SURFACE-2026-05-26-CLAUDE-TIME-VIZ-V3-PIVOT-UNIFIED-TIME-RANGE
 - **Source:** WP11 Phase 2.A verify-human (2026-05-26) — surfaced when user noticed the 3 compare preset sub-tabs (WoW, Today-vs-trailing, MoM) all show the same content because the data layer emits only ONE pre-computed comparison window per CLI invocation.
 - **Target level:** product:vision + product:wbs — this is a new product cycle that supersedes WP12 + WP13 of the current claude-time-visualize-v2 cycle.
