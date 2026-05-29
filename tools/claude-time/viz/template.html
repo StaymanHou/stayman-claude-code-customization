@@ -30,19 +30,18 @@
 <script>
   // Data inlined at emit time by the `claude-time visualize` Python subcommand.
   window.CT_DATA = {{CT_DATA_JSON}};
-  // Initial view selection (set by --week flag at emit time; default 'day').
-  // WP8 (2026-05-24): 'custom' is now a valid value, emitted when the user
-  // invokes `claude-time visualize --range START:END`.
+  // Initial view selection. Always 'day' in v3 (URL hash drives view
+  // selection client-side; the emitter no longer picks a view).
   window.CT_INITIAL_VIEW = "{{CT_INITIAL_VIEW}}";
   // WP8: max-days cap for the Custom-view date-range picker. Mirrors the
   // server-side cap (cfg["viz_custom_range_max_days"], default 90). Single
   // source of truth: Python config → here → Phase 2 client-side validation.
   window.CT_MAX_RANGE_DAYS = {{CT_MAX_RANGE_DAYS}};
-  // WP11: initial Compare-view preset, set by --compare or --compare-range at
-  // emit time. One of: 'wow', 'today-vs-trailing', 'mom', 'custom', or null
-  // when the dashboard was not emitted with --compare*. Phase 2's CompareView
-  // reads this via the same hash-priority pattern as CT_INITIAL_VIEW (hash
-  // 'preset' wins, fallback to CT_INITIAL_PRESET).
+  // WP11: initial Compare-view preset. In v3 always null (the unified
+  // `--window` emit doesn't pick a preset; URL hash drives Compare-view
+  // selection client-side). One of 'wow' | 'today-vs-trailing' | 'mom' |
+  // 'custom' | null. CompareView reads this via the same hash-priority
+  // pattern as CT_INITIAL_VIEW (hash 'preset' wins, fallback to this).
   window.CT_INITIAL_PRESET = {{CT_INITIAL_PRESET}};
 </script>
 

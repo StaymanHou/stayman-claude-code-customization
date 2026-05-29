@@ -131,17 +131,20 @@ claude-time report --by cwd
 If a text table doesn't give you the temporal intuition you want, render a Gantt-style HTML dashboard:
 
 ```bash
-# Today, opens in your default browser
+# Default window (MTD plus the 2 prior calendar months), opens in your default browser
 claude-time visualize
 
 # Don't auto-open; just write the file and print the path
 claude-time visualize --no-open
 
-# Start in week-rollup view instead of day
-claude-time visualize --week
+# Rolling 7-day window (week view)
+claude-time visualize --window 7d
 
 # A specific past day
-claude-time visualize --date 2026-05-15
+claude-time visualize --window 2026-05-15:2026-05-15
+
+# An explicit date range
+claude-time visualize --window 2026-04-01:2026-04-30
 
 # Custom output path
 claude-time visualize --out /tmp/dashboard.html
@@ -156,7 +159,7 @@ The day view shows one row per project, expanded into one row per Claude Code se
 
 The `Day` and `Week` toolbar tabs are interactive; `Month` and `Custom` are placeholders for future phases.
 
-**Live NOW marker, snapshot data.** The vertical NOW line (and its `NOW · HH:MM` label) is computed client-side from your system clock and advances every 60 seconds, so reopening a stale tab still shows the correct current-time cursor. The underlying session/segment data is a snapshot taken at the moment you ran `claude-time visualize` — re-run the command to refresh. The toolbar carries a small `snapshot: HH:MM` caption so you can tell at a glance how stale the bars are relative to the moving cursor. When viewing a non-today date via `--date`, the NOW marker is hidden (it's only meaningful for the current day).
+**Live NOW marker, snapshot data.** The vertical NOW line (and its `NOW · HH:MM` label) is computed client-side from your system clock and advances every 60 seconds, so reopening a stale tab still shows the correct current-time cursor. The underlying session/segment data is a snapshot taken at the moment you ran `claude-time visualize` — re-run the command to refresh. The toolbar carries a small `snapshot: HH:MM` caption so you can tell at a glance how stale the bars are relative to the moving cursor. When viewing a non-today date, the NOW marker is hidden (it's only meaningful for the current day).
 
 **Note:** opening `tools/claude-time/viz/index.html` directly via `file://` will NOT work — that path is the design prototype and uses external `text/babel` scripts that Chrome blocks for `file://` origins. Serve it with `python3 -m http.server` from the `viz/` directory if you want to preview the design canvas. The output of `claude-time visualize` inlines everything in one file and works from `file://` cleanly.
 

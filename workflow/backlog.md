@@ -1,5 +1,14 @@
 # Backlog
 
+## SURFACE-2026-05-29-BULK-DELETE-MISSED-HELPER-IN-CLUSTER
+- **Source:** v3 WP4 Phase 1 build P1.4 (2026-05-29) — deleted six "v2 helper functions" by line-range (502-777). The range accidentally included `_parse_window_arg`, a WP3 helper sandwiched between `_parse_range_flag` (line 583-697, v2) and `_compare_window_bounds` (line 699-740, v2). The spatial proximity misled the scope check; the named-function callers grep ran against the six **named** v2 helpers but not against the **range** being deleted. Caught at first smoke test (`--window 30d` → `NameError: _parse_window_arg`). Recovered from git HEAD; reinserted before `_cmd_visualize`.
+- **Target level:** documentation / convention (CLAUDE.md)
+- **Type:** bulk-delete safety pattern
+- **Summary:** When deleting a "block of related functions" by line-range, the function-by-function caller grep alone is insufficient — the range may include unrelated functions sandwiched between the named ones. Before bulk-deleting a line-range, list EVERY function-def inside the range (e.g. `grep -n "^def " <file> | awk '$1 > start && $1 < end'`) and confirm each by name belongs to the deletion set. The function-name-driven scope check at planning time catches this if it's done; the line-range execution at build time can lose that fidelity if the deletions get batched.
+- **Proposed fix:** Add to project CLAUDE.md a one-line bulk-delete discipline: "Before deleting a line-range that spans multiple functions, enumerate every `def` inside the range and confirm each by name. Spatial proximity is not the same as semantic membership." Alternatively, prefer per-function Edit deletions for clusters smaller than ~10 functions — slower but safer.
+- **Priority:** low-medium — caught immediately by smoke test (no production impact); but the same pattern would bite harder on a code path with weaker test coverage.
+- **Status:** pending
+
 ## SURFACE-2026-05-29-ALIAS-KEY-AUDIT-METHOD-MISSES-DESTRUCTURING
 - **Source:** v3 WP3 Phase 2 verify-self (2026-05-29) — alias-key audit at build P2.4 used `grep CT_DATA\.` to enumerate what the v2 frontend reads off `window.CT_DATA`. The grep caught direct property access but missed `const {today, week} = window.CT_DATA` destructuring at `viz_render.py::_interactive_dashboard:69` + `viz/dashboard.jsx:3198`. Result: `week` alias key was not populated; Dashboard crashed on mount with `TypeError: Cannot read properties of undefined (reading 'projects')`. 3 BLOCKING fails at first browser-load attempt; fixed in-place during verify-self.
 - **Target level:** documentation / convention
@@ -68,15 +77,6 @@
 - **Suggested action:** Close the current claude-time-visualize-v2 cycle after WP11 ships. Then `/product-wbs` generates the v3 WBS in the next session (2026-05-26 session pauses after the WBS skill emits the cycle scaffold).
 - **Priority:** **high** — this is the immediate next cycle; user-confirmed pivot.
 - **Status:** RESOLVED 2026-05-26 — v2 cycle closed (WP11 shipped, WP12+WP13 superseded), v3 WBS generated at `docs/product/wbs.md` (10 WPs across 4 phases), v2 wbs.md archived to `docs/product/archive/claude-time-visualize-v2/wbs.md`. The pivot decision is now operationalized as the v3 cycle scope.
-
-## SURFACE-2026-05-26-SESSION-PAUSE-MARKER-LEAK-INTO-DURABLE-DOCS
-- **Source:** harness-level repeating issue — first surfaced by Replicator's WP5b-ui-finalize (2026-05-26, learning at `.claude/learnings/2026-05-26-session-pause-marker-leak.md`); confirmed in this repo at WP11 session-resume on 2026-05-26, then again at v3 WP1 session-resume (2026-05-28), then again at v3 WP2 session-resume (2026-05-28 — same session, two consecutive pause/resume cycles, BOTH leaked). Total observed occurrences: **4** as of 2026-05-28. The leak is deterministic — every `session-pause` invocation appends to `docs/product/wbs.md`; every `session-resume` has to excise it.
-- **Target level:** task:plan or feature:plan — modifies the `session-pause` and/or `session-resume` skills
-- **Type:** harness bug / cleanup-tax
-- **Summary:** `session-pause` appends a `## Session Pause — <timestamp>` block to durable product docs (observed on `docs/product/wbs.md` in multiple projects). `session-resume` correctly consumes and deletes `workflow/.session.md` but does NOT sweep these companion blocks. The stale block lingers across subsequent features and risks being committed as part of unrelated work if not noticed. **Now confirmed repeating** across at least two projects (Replicator + this repo) — harness-level, not project-specific.
-- **Suggested action:** Prefer option (a) from the learning — stop `session-pause` from writing to durable product docs entirely. The `workflow/.session.md` pointer is sufficient on its own; duplicating a `## Session Pause` block into `wbs.md` provides no resume signal the pointer doesn't already carry. Option (b) (sweep on resume) adds surface area to fix a leak that shouldn't exist. The fix touches `skills/session-pause/SKILL.md` (stop writing) and possibly `skills/session-resume/SKILL.md` (defensive sweep as a transitional safety net).
-- **Priority:** **high** — repeating cleanup tax; risks dirty commits in unrelated WIP; harness-level so affects every project using these skills.
-- **Status:** open
 
 ## SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY
 - **Source:** user observation during WP11 Phase 2 verify-human (2026-05-26)

@@ -70,48 +70,23 @@ echo "  CLI: $CLI"
 echo "  CLAUDE_TIME_DIR: $TMPDIR"
 echo
 
-# ── 1. --help exits 0 and lists the original 5 visualize flags ─────────
-# The regex anchors at "  --foo " (column 3 indent, flag name, then a space
-# or end-of-help-arg). This avoids matching wrapped help-text continuation
-# lines that mention sibling flag names mid-paragraph (WP8 hardening — the
-# new --range flag's help text references --demo/--week/--date by name).
+# ── 1. --help exits 0, lists the v3 surviving 5 flags ───────────────────
+# v3 WP4 (2026-05-29) removed 8 legacy view-selecting flags. The surviving
+# 5 are: --window (the unified time-range arg), --demo, --no-open, --out,
+# --db. The argparse-error regression pins for each removed flag are at
+# the bottom of this file (`v3 WP4 P1 codify` block); this scenario pins
+# the positive surface — that the 5 surviving flags ARE listed in --help.
+# Wrap-fragility note: tested 5 flag names via the column-3 anchor pattern;
+# the prior help-text-phrase tests (MTD-N / Nd / YYYY-MM-DD shapes) were
+# fragile to argparse's auto-wrap and are dropped in favor of behavioral
+# pins (WP3 P3 codify) that exercise the actual emit.
 OUT=$("$CLI" visualize --help 2>&1)
 rc=$?
-flag_count=$(echo "$OUT" | grep -cE '^  --(date|week|demo|no-open|out)( |$)')
+flag_count=$(echo "$OUT" | grep -cE '^  --(window|demo|no-open|out|db)( |$)')
 if [ $rc -eq 0 ] && [ "$flag_count" = "5" ]; then
-    check "visualize --help exits 0, lists 5 original flags" pass
+    check "visualize --help exits 0, lists the v3 surviving 5 flags" pass
 else
-    check "visualize --help exits 0, lists 5 original flags" fail "rc=$rc, flags=$flag_count"
-fi
-
-# ── 1b. WP5b: --help lists the two new context-days flags + updated --demo text ──
-# Note: argparse wraps long help-strings at terminal width; flatten newlines before
-# matching the demo-text phrase so the assertion is wrap-tolerant.
-new_flag_count=$(echo "$OUT" | grep -cE '^\s+--context-days-(prior|after)\b')
-demo_text_flat=$(echo "$OUT" | tr '\n' ' ' | tr -s ' ')
-if [ $rc -eq 0 ] && [ "$new_flag_count" = "2" ] && \
-   echo "$demo_text_flat" | grep -q 'forces context-days-prior/after to 0'; then
-    check "WP5b: --help lists --context-days-prior + --context-days-after, --demo text updated" pass
-else
-    check "WP5b: --help new flags + demo text" fail "rc=$rc, new_flags=$new_flag_count, demo_text_match=fail"
-fi
-
-# ── 1c. v3 WP3 Phase 1: --help lists --window with all three forms named ──
-# Phase 1 consuming-surface contract: the new `--window` arg appears at column-3
-# in --help; help text names all three accepted forms (MTD-N / Nd /
-# YYYY-MM-DD:YYYY-MM-DD) plus the MTD-2 default. WP3 Phase 3 adds behavioral
-# tests for the flag itself; this assertion only locks the help-text contract
-# established in Phase 1.
-window_flag_present=$(echo "$OUT" | grep -cE '^  --window VALUE\b')
-help_flat=$(echo "$OUT" | tr '\n' ' ' | tr -s ' ')
-if [ $rc -eq 0 ] && [ "$window_flag_present" = "1" ] && \
-   echo "$help_flat" | grep -q 'MTD-N' && \
-   echo "$help_flat" | grep -q 'Nd ' && \
-   echo "$help_flat" | grep -q 'YYYY-MM-DD:YYYY-MM-DD' && \
-   echo "$help_flat" | grep -q 'Default when omitted: MTD-2'; then
-    check "v3 WP3 P1: --help lists --window VALUE with three forms + MTD-2 default" pass
-else
-    check "v3 WP3 P1: --window help-text contract" fail "rc=$rc, flag_at_col3=$window_flag_present, MTD-N=$(echo $help_flat | grep -c 'MTD-N'), default=$(echo $help_flat | grep -c 'Default when omitted: MTD-2')"
+    check "visualize --help exits 0, lists v3 surviving 5 flags" fail "rc=$rc, flags=$flag_count"
 fi
 
 # ── 2. Default visualize against seeded DB writes file + prints path ──
@@ -206,11 +181,17 @@ else
     check "no DB + no --demo: helpful error" fail "rc=$rc, out='$OUT'"
 fi
 
-# ── 14. Adaptive hour-ruler reflects today.hour_range from data ───────
+# ── 14. Adaptive hour-ruler reflects per-day hour_range (v3 WP4 P3 reroute) ──
 # Seed a DB with events confined to 14:00–15:00 on a fixed past date.
 # Adaptive computation: viz_data._hour_range_for emits [min_hour-1, max_hour+1]
 # clamped to [0,24] — events at 14:00–15:00 → hour_range = [13, 16].
-# The emitted HTML's hour-ruler should reflect that range, not the default [6..22].
+#
+# v3 reroute: invoke via --window (single-day form for byte-back-compat with
+# v2's flat-hour_range shape; multi-day windows now produce per-day shapes
+# under day_payloads_by_iso[iso].hour_range, which is the same field name).
+# The v2 distinction between "single-day flat" vs "multi-day by_day" no
+# longer exists in v3 — every day in the window has its own flat hour_range
+# inside day_payloads_by_iso[iso].
 ADAPT_DIR="$(mktemp -d -t claude-time-adaptive-test-XXXXXX)"
 trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$ADAPT_DIR"' EXIT
 ADAPT_DB="$ADAPT_DIR/events.sqlite"
@@ -232,29 +213,63 @@ INSERT INTO events VALUES
   ($ADAPT_STOP_MS,  'sid-narrow', '/repo/narrow', 'Stop',             NULL, NULL, NULL);
 SQL
 ADAPT_OUT="$ADAPT_DIR/adaptive.html"
-# WP5b: default Day payload is multi-day (prior=14, after=7). The per-day
-# adaptive hour_range is now surfaced under `hour_range_by_day["2026-05-01"]`,
-# not the top-level `hour_range`. Use --context-days 0/0 to assert the
-# single-day back-compat shape's flat `hour_range` field too.
-CLAUDE_TIME_DIR="$ADAPT_DIR" "$CLI" visualize --no-open --date 2026-05-01 --out "$ADAPT_OUT" > /dev/null 2>&1
+# v3: single-day explicit-range window. day_payloads_by_iso["2026-05-01"]
+# carries the flat hour_range from build_day_data.
+CLAUDE_TIME_DIR="$ADAPT_DIR" "$CLI" visualize --no-open --window 2026-05-01:2026-05-01 --out "$ADAPT_OUT" > /dev/null 2>&1
 adapt_rc=$?
-if [ $adapt_rc -eq 0 ] && [ -f "$ADAPT_OUT" ] && \
-   grep -q '"2026-05-01": \[13, 16\]' "$ADAPT_OUT"; then
-    check "adaptive hour-ruler: narrow-event-window emits hour_range_by_day [13,16]" pass
+adapt_audit=$(python3 - <<PY
+import re, json, sys
+try:
+    h = open("$ADAPT_OUT").read()
+    m = re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', h, re.DOTALL)
+    d = json.loads(m.group(1))
+    p = d["day_payloads_by_iso"]["2026-05-01"]
+    hr = p.get("hour_range")
+    if hr != [13, 16]:
+        print(f"FAIL: day_payloads_by_iso['2026-05-01'].hour_range = {hr!r} (expected [13, 16])")
+        sys.exit(0)
+    print("PASS")
+except Exception as e:
+    print(f"FAIL: {e}")
+PY
+)
+if [ $adapt_rc -eq 0 ] && [ "$adapt_audit" = "PASS" ]; then
+    check "adaptive hour-ruler (v3): single-day --window emits hour_range [13,16] under day_payloads_by_iso" pass
 else
-    check "adaptive hour-ruler narrow-window (multi-day shape)" fail "rc=$adapt_rc, hour_range_by_day pattern not found"
+    check "adaptive hour-ruler narrow-window (v3 single-day --window)" fail "rc=$adapt_rc, audit=$adapt_audit"
 fi
 
-# ── 14b. WP5b single-day path: flat hour_range still emitted (back-compat) ──
-ADAPT_OUT_SINGLE="$ADAPT_DIR/adaptive-single.html"
-CLAUDE_TIME_DIR="$ADAPT_DIR" "$CLI" visualize --no-open --date 2026-05-01 \
-    --context-days-prior 0 --context-days-after 0 --out "$ADAPT_OUT_SINGLE" > /dev/null 2>&1
-adapt_single_rc=$?
-if [ $adapt_single_rc -eq 0 ] && [ -f "$ADAPT_OUT_SINGLE" ] && \
-   grep -q '"hour_range": \[13, 16\]' "$ADAPT_OUT_SINGLE"; then
-    check "WP5b single-day path: flat hour_range [13,16] preserved" pass
+# ── 14b. Multi-day window: every day under day_payloads_by_iso has its own
+# flat hour_range field (v3's per-day pre-render uniformly preserves the v2
+# single-day shape per day).
+ADAPT_OUT_MULTI="$ADAPT_DIR/adaptive-multi.html"
+CLAUDE_TIME_DIR="$ADAPT_DIR" "$CLI" visualize --no-open --window 2026-04-25:2026-05-08 --out "$ADAPT_OUT_MULTI" > /dev/null 2>&1
+adapt_multi_rc=$?
+adapt_multi_audit=$(python3 - <<PY
+import re, json, sys
+try:
+    h = open("$ADAPT_OUT_MULTI").read()
+    m = re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', h, re.DOTALL)
+    d = json.loads(m.group(1))
+    p = d["day_payloads_by_iso"]["2026-05-01"]
+    hr = p.get("hour_range")
+    if hr != [13, 16]:
+        print(f"FAIL: hour_range = {hr!r} (expected [13, 16])")
+        sys.exit(0)
+    # Also confirm every other day in the window has a hour_range key.
+    missing = [iso for iso, dp in d["day_payloads_by_iso"].items() if "hour_range" not in dp]
+    if missing:
+        print(f"FAIL: days missing hour_range: {missing[:3]}")
+        sys.exit(0)
+    print("PASS")
+except Exception as e:
+    print(f"FAIL: {e}")
+PY
+)
+if [ $adapt_multi_rc -eq 0 ] && [ "$adapt_multi_audit" = "PASS" ]; then
+    check "adaptive hour-ruler (v3): multi-day --window — every day_payloads_by_iso[iso] has flat hour_range" pass
 else
-    check "WP5b single-day hour_range" fail "rc=$adapt_single_rc, flat hour_range missing"
+    check "adaptive hour-ruler multi-day (v3 --window)" fail "rc=$adapt_multi_rc, audit=$adapt_multi_audit"
 fi
 
 # ── 13. WP2: NOW marker is client-side (no hardcoded values, has Date.now + cleanup) ─
@@ -1528,233 +1543,178 @@ fi
 
 rm -rf "$WP10P2_DIR"
 
-# ── WP11 Phase 1 codify: --compare / --compare-range CLI surface + emit pins ──
+# ── WP11 Phase 1 codify (v3 WP4 P3.2 reroute, 2026-05-29): Compare data emit ──
 # Integration boundary: this block exercises the consuming surfaces (the
-# `visualize` subcommand's argparse + _cmd_visualize + viz_render.render_html
-# + template.html) by emit-and-grep. Source-shape pins are in this file;
-# Python unit tests for compare_month_over_month live in test_viz_data.py
-# (CompareMonthOverMonthTests) and the render_html signature/emit test lives
-# in test_viz_render.py.
+# `visualize` subcommand's _cmd_visualize + viz_render.render_html +
+# template.html + viz_data.build_window_data's compare_payloads_by_preset
+# loop) by emit-and-grep. The v3 unified `--window` path always populates
+# `compare_payloads_by_preset.{wow, today-vs-trailing, mom}` over the
+# window's events; the `wow` preset is aliased to top-level `comparison` for
+# v2-frontend coexistence (removed in WP9 verify-codify).
+#
+# v3 WP4 deleted the v2 `--compare` / `--compare-range` flags + the
+# preset/range emit-driven init-state pins. The surviving contract is the
+# data-layer shape, exercised here via real-DB --window emit. Custom-range
+# compare emit is gone with --compare-range; URL-hash dispatch will handle
+# user-picked ranges client-side (Phase 2 WP8).
+#
+# Python unit tests for compare_week_over_week / compare_month_over_month
+# live in test_viz_data.py; the render_html signature/emit test lives in
+# test_viz_render.py.
 
-WP11P1_DIR="$(mktemp -d -t claude-time-wp11p1-test-XXXXXX)"
-trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR" "$WP10P2_DIR" "$WP11P1_DIR"' EXIT
+# Emit one real-DB --window 30d dashboard against the shared TMPDIR.
+WP11_30D="$TMPDIR/wp11p1-30d.html"
+"$CLI" visualize --no-open --window 30d --out "$WP11_30D" > /dev/null 2>&1
 
-WP11_WOW="$WP11P1_DIR/wow.html"
-WP11_RANGE="$WP11P1_DIR/range.html"
-WP11_DEFAULT="$WP11P1_DIR/default.html"
-
-CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --no-open --demo --compare wow --out "$WP11_WOW" > /dev/null 2>&1
-CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --no-open --demo --compare-range 2026-05-13:2026-05-19,2026-05-20:2026-05-26 --out "$WP11_RANGE" > /dev/null 2>&1
-CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --no-open --demo --out "$WP11_DEFAULT" > /dev/null 2>&1
-
-# WP11-P1-1: --help lists both new flags.
-WP11_HELP="$("$CLI" visualize --help 2>&1)"
-if echo "$WP11_HELP" | grep -qE -- '--compare \{wow,today-vs-trailing,mom\}'; then
-    check "WP11-P1 codify: --help lists --compare with choices" pass
-else
-    check "WP11-P1 codify: --help --compare" fail "missing or choices changed"
-fi
-
-if echo "$WP11_HELP" | grep -qE -- '--compare-range A_START:A_END,B_START:B_END'; then
-    check "WP11-P1 codify: --help lists --compare-range with metavar" pass
-else
-    check "WP11-P1 codify: --help --compare-range" fail "missing or metavar changed"
-fi
-
-# WP11-P1-2: --compare wow emit has CT_INITIAL_VIEW = "compare".
-if grep -qF 'window.CT_INITIAL_VIEW = "compare";' "$WP11_WOW"; then
-    check "WP11-P1 codify: --compare wow emits CT_INITIAL_VIEW=\"compare\"" pass
-else
-    check "WP11-P1 codify: CT_INITIAL_VIEW=compare on --compare wow" fail "wrong or missing"
-fi
-
-# WP11-P1-3: --compare wow emit has CT_INITIAL_PRESET = "wow".
-if grep -qF 'window.CT_INITIAL_PRESET = "wow";' "$WP11_WOW"; then
-    check "WP11-P1 codify: --compare wow emits CT_INITIAL_PRESET=\"wow\"" pass
-else
-    check "WP11-P1 codify: CT_INITIAL_PRESET=wow" fail "wrong or missing"
-fi
-
-# WP11-P1-4: --compare-range emit has CT_INITIAL_PRESET = "custom".
-if grep -qF 'window.CT_INITIAL_PRESET = "custom";' "$WP11_RANGE"; then
-    check "WP11-P1 codify: --compare-range emits CT_INITIAL_PRESET=\"custom\"" pass
-else
-    check "WP11-P1 codify: CT_INITIAL_PRESET=custom" fail "wrong or missing"
-fi
-
-# WP11-P1-5: default (no --compare* flag) → CT_INITIAL_PRESET = null.
-# Pin against the JSON-encoded null literal, not the string "null".
-if grep -qF 'window.CT_INITIAL_PRESET = null;' "$WP11_DEFAULT"; then
-    check "WP11-P1 codify: default CT_INITIAL_PRESET=null (no compare flag)" pass
-else
-    check "WP11-P1 codify: default CT_INITIAL_PRESET=null" fail "wrong or missing"
-fi
-
-# WP11-P1-6: --compare wow emit has window.CT_DATA.comparison object with
-# {a, b, deltas, meta} keys. Use a Python sub-shell to JSON-parse the
-# CT_DATA literal because grep-on-JSON is brittle.
+# WP11-P1-1 (rerouted): real-DB emit has compare_payloads_by_preset with all
+# three canonical presets populated.
 python3 -c "
 import re, json, sys
-h = open('$WP11_WOW').read()
+h = open('$WP11_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 if not m: sys.exit('CT_DATA assignment not found in emit')
 d = json.loads(m.group(1))
-if 'comparison' not in d: sys.exit('comparison key missing')
-c = d['comparison']
-missing = [k for k in ('a','b','deltas','meta') if k not in c]
-if missing: sys.exit(f'comparison missing keys: {missing}')
+cpbp = d.get('compare_payloads_by_preset')
+if not isinstance(cpbp, dict): sys.exit(f'compare_payloads_by_preset missing or not a dict: {type(cpbp)}')
+EXPECTED = {'wow', 'today-vs-trailing', 'mom'}
+missing = EXPECTED - set(cpbp.keys())
+if missing: sys.exit(f'compare_payloads_by_preset missing keys: {missing}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1 codify: --compare wow emits CT_DATA.comparison with {a,b,deltas,meta}" pass
+    check "WP11-P1 codify (v3): real-DB emit populates compare_payloads_by_preset {wow, today-vs-trailing, mom}" pass
 else
-    check "WP11-P1 codify: CT_DATA.comparison shape" fail "missing or wrong keys"
+    check "WP11-P1 codify (v3): compare_payloads_by_preset shape" fail "missing or wrong keys"
 fi
 
-# WP11-P1-7: default emit (no --compare* flag) does NOT include the
-# comparison key — default-elision keeps unrelated payloads out.
-if grep -qE '"comparison"\s*:' "$WP11_DEFAULT"; then
-    check "WP11-P1 codify: default emit comparison absent" fail "comparison key present on default emit"
-else
-    check "WP11-P1 codify: default emit has no comparison key" pass
-fi
-
-# WP11-P1-8: mutex --compare + --compare-range returns rc=2 with the right
-# error message naming both flags.
-err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --compare-range 2026-05-13:2026-05-19,2026-05-20:2026-05-26 --demo --no-open --out "$WP11P1_DIR/m1.html" 2>&1)
-rc=$?
-if [ $rc -eq 2 ] && echo "$err" | grep -qF -- '--compare and --compare-range are mutually exclusive'; then
-    check "WP11-P1 codify: mutex --compare ⨯ --compare-range (rc=2 + right msg)" pass
-else
-    check "WP11-P1 codify: mutex --compare ⨯ --compare-range" fail "rc=$rc msg=$err"
-fi
-
-# WP11-P1-9: mutex --compare + --range — the error must name --range, not
-# --demo. This catches the build-time discovery: cross-flag mutex must fire
-# BEFORE --range vs --demo parsing.
-err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --range 2026-05-01:2026-05-07 --demo --no-open --out "$WP11P1_DIR/m2.html" 2>&1)
-rc=$?
-if [ $rc -eq 2 ] && echo "$err" | grep -qF 'incompatible with --range'; then
-    check "WP11-P1 codify: mutex --compare ⨯ --range names --range (rc=2)" pass
-else
-    check "WP11-P1 codify: mutex --compare ⨯ --range error precedence" fail "rc=$rc msg=$err"
-fi
-
-# WP11-P1-10: mutex --compare + --month — same error-precedence pin.
-err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --month 2026-05 --demo --no-open --out "$WP11P1_DIR/m3.html" 2>&1)
-rc=$?
-if [ $rc -eq 2 ] && echo "$err" | grep -qF 'incompatible with --month'; then
-    check "WP11-P1 codify: mutex --compare ⨯ --month names --month (rc=2)" pass
-else
-    check "WP11-P1 codify: mutex --compare ⨯ --month error precedence" fail "rc=$rc msg=$err"
-fi
-
-# WP11-P1-11: mutex --compare + --date — explicit --date conflict.
-err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare wow --date 2026-05-20 --demo --no-open --out "$WP11P1_DIR/m4.html" 2>&1)
-rc=$?
-if [ $rc -eq 2 ] && echo "$err" | grep -qF 'incompatible with --date'; then
-    check "WP11-P1 codify: mutex --compare ⨯ --date names --date (rc=2)" pass
-else
-    check "WP11-P1 codify: mutex --compare ⨯ --date" fail "rc=$rc msg=$err"
-fi
-
-# WP11-P1-12: bad --compare-range shape returns rc=2 with rule-named error.
-err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare-range 'no-comma-here' --demo --no-open --out "$WP11P1_DIR/m5.html" 2>&1)
-rc=$?
-if [ $rc -eq 2 ] && echo "$err" | grep -qF 'two ranges separated by a comma'; then
-    check "WP11-P1 codify: --compare-range bad shape (no comma) → rc=2 + rule-named error" pass
-else
-    check "WP11-P1 codify: --compare-range bad shape" fail "rc=$rc msg=$err"
-fi
-
-# WP11-P1-13: bad --compare-range first half tags which half failed.
-err=$(CLAUDE_TIME_DIR="$WP11P1_DIR" "$CLI" visualize --compare-range 'bogus,2026-05-20:2026-05-26' --demo --no-open --out "$WP11P1_DIR/m6.html" 2>&1)
-rc=$?
-if [ $rc -eq 2 ] && echo "$err" | grep -qF 'first range (A) failed validation'; then
-    check "WP11-P1 codify: --compare-range A-half failure tagged" pass
-else
-    check "WP11-P1 codify: --compare-range A-half tag" fail "rc=$rc msg=$err"
-fi
-
-# WP11-P1-14: render_html template placeholder substitution worked. If the
-# replacement is missed, the raw '{{CT_INITIAL_PRESET}}' would leak into the
-# emit and break JS parsing.
-if grep -qF '{{CT_INITIAL_PRESET}}' "$WP11_WOW"; then
-    check "WP11-P1 codify: template placeholder leak" fail "{{CT_INITIAL_PRESET}} leaked into emit"
-else
-    check "WP11-P1 codify: no template placeholder leak in emit" pass
-fi
-
-# WP11-P1-15: --compare-range meta windows match input. The data-layer
-# emits comparison.meta.{a_start,a_end,b_start,b_end} which Phase 2 will
-# render — this pin guards the byte-equivalence.
+# WP11-P1-2 (rerouted): the wow sub-payload has the canonical {a,b,deltas,meta}
+# shape (same contract as the v2 top-level `comparison` key).
 python3 -c "
 import re, json, sys
-h = open('$WP11_RANGE').read()
+h = open('$WP11_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
-meta = d['comparison']['meta']
-expected = {'a_start':'2026-05-13','a_end':'2026-05-19','b_start':'2026-05-20','b_end':'2026-05-26',
-            'a_day_count':7,'b_day_count':7}
-for k, v in expected.items():
-    if meta.get(k) != v: sys.exit(f'meta.{k} = {meta.get(k)!r} (expected {v!r})')
+wow = d['compare_payloads_by_preset']['wow']
+missing = [k for k in ('a','b','deltas','meta') if k not in wow]
+if missing: sys.exit(f'wow missing keys: {missing}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1 codify: --compare-range meta windows match input verbatim" pass
+    check "WP11-P1 codify (v3): compare_payloads_by_preset.wow has {a,b,deltas,meta}" pass
 else
-    check "WP11-P1 codify: --compare-range meta windows" fail "shape mismatch"
+    check "WP11-P1 codify (v3): wow preset shape" fail "missing or wrong keys"
 fi
 
-rm -rf "$WP11P1_DIR"
+# WP11-P1-3 (rerouted): the legacy top-level `comparison` alias key on real-DB
+# emit equals compare_payloads_by_preset.wow (alias for v2-frontend
+# coexistence; WP9 verify-codify will remove this).
+python3 -c "
+import re, json, sys
+h = open('$WP11_30D').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+d = json.loads(m.group(1))
+if 'comparison' not in d: sys.exit('top-level comparison alias missing')
+if d['comparison'] is not d['compare_payloads_by_preset']['wow']:
+    # JSON round-trip breaks identity; compare by value instead.
+    if d['comparison'] != d['compare_payloads_by_preset']['wow']:
+        sys.exit('comparison alias does not equal compare_payloads_by_preset.wow')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1 codify (v3): top-level comparison alias === compare_payloads_by_preset.wow" pass
+else
+    check "WP11-P1 codify (v3): comparison alias" fail "alias missing or diverged"
+fi
 
-# ── WP11 Phase 1.B codify: per-window metrics emit ──
+# WP11-P1-4 (rerouted): the wow preset's meta has the {a_start,a_end,b_start,
+# b_end,a_day_count,b_day_count} shape. For wow, A and B are 7-day Monday-
+# anchored windows; we don't pin specific dates (they're today-relative), only
+# that the keys exist and a_day_count == b_day_count == 7.
+python3 -c "
+import re, json, sys
+h = open('$WP11_30D').read()
+m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
+d = json.loads(m.group(1))
+meta = d['compare_payloads_by_preset']['wow']['meta']
+for k in ('a_start','a_end','b_start','b_end','a_day_count','b_day_count'):
+    if k not in meta: sys.exit(f'meta.{k} missing')
+if meta['a_day_count'] != 7 or meta['b_day_count'] != 7:
+    sys.exit(f'wow day_counts: a={meta[\"a_day_count\"]} b={meta[\"b_day_count\"]} (expected 7,7)')
+" 2>/dev/null
+if [ $? -eq 0 ]; then
+    check "WP11-P1 codify (v3): wow meta has full shape + a/b day_count=7" pass
+else
+    check "WP11-P1 codify (v3): wow meta shape" fail "shape mismatch"
+fi
+
+# WP11-P1-5 (rerouted): render_html template placeholder substitution worked.
+# Catches placeholder-leak regressions (raw '{{CT_INITIAL_PRESET}}' in emit).
+if grep -qF '{{CT_INITIAL_PRESET}}' "$WP11_30D"; then
+    check "WP11-P1 codify (v3): template placeholder leak" fail "{{CT_INITIAL_PRESET}} leaked into emit"
+else
+    check "WP11-P1 codify (v3): no template placeholder leak in emit" pass
+fi
+
+# WP11-P1-6 (rerouted): default emit has CT_INITIAL_PRESET = null (v3 unified
+# --window emit always produces null; URL-hash drives Compare-view selection).
+if grep -qF 'window.CT_INITIAL_PRESET = null;' "$WP11_30D"; then
+    check "WP11-P1 codify (v3): default CT_INITIAL_PRESET=null" pass
+else
+    check "WP11-P1 codify (v3): CT_INITIAL_PRESET=null" fail "wrong or missing"
+fi
+
+rm -f "$WP11_30D"
+
+# ── WP11 Phase 1.B codify (v3 WP4 P3.3 reroute, 2026-05-29): per-window metrics emit ──
 # Phase 1.B adds `comparison.a.metrics` and `comparison.b.metrics` sub-trees
 # to the emit, sourced by calling viz_data.build_metrics over each window's
 # events. The CompareView UI (Phase 2.A) consumes these. Pins exercise the
-# emit-side contract: shape, key set, demo empty-shape sanity.
+# emit-side contract: shape, key set.
+#
+# v3 WP4 reroute: emit via --window 30d (real-DB) instead of the deleted
+# --demo --compare wow. The contract is identical — comparison.{a,b}.metrics
+# is aliased from compare_payloads_by_preset.wow.{a,b}.metrics. The old
+# demo-empty-shape pin is no longer applicable (v3 --demo emits empty
+# comparison: {} rather than synthesizing a full empty-shape tree — see WP4
+# P1.6); replaced with a real-DB metrics-presence pin.
 
-WP11P1B_DIR="$(mktemp -d -t claude-time-wp11p1b-test-XXXXXX)"
-trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR" "$WP10P2_DIR" "$WP11P1_DIR" "$WP11P1B_DIR"' EXIT
+WP11P1B_30D="$TMPDIR/wp11p1b-30d.html"
+"$CLI" visualize --no-open --window 30d --out "$WP11P1B_30D" > /dev/null 2>&1
 
-WP11P1B_DEMO="$WP11P1B_DIR/demo.html"
-CLAUDE_TIME_DIR="$WP11P1B_DIR" "$CLI" visualize --no-open --demo --compare wow --out "$WP11P1B_DEMO" > /dev/null 2>&1
-
-# WP11-P1B-1: comparison.a.metrics is a dict (object).
+# WP11-P1B-1 (rerouted): comparison.a.metrics is a dict on real-DB emit.
 python3 -c "
 import re, json, sys
-h = open('$WP11P1B_DEMO').read()
+h = open('$WP11P1B_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
 am = d.get('comparison', {}).get('a', {}).get('metrics')
 if not isinstance(am, dict): sys.exit(f'a.metrics is not a dict: {type(am)}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1B codify: comparison.a.metrics is a dict on emit" pass
+    check "WP11-P1B codify (v3): comparison.a.metrics is a dict on real-DB emit" pass
 else
-    check "WP11-P1B codify: a.metrics shape" fail "missing or wrong type"
+    check "WP11-P1B codify (v3): a.metrics shape" fail "missing or wrong type"
 fi
 
-# WP11-P1B-2: comparison.b.metrics is a dict (object).
+# WP11-P1B-2 (rerouted): comparison.b.metrics is a dict.
 python3 -c "
 import re, json, sys
-h = open('$WP11P1B_DEMO').read()
+h = open('$WP11P1B_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
 bm = d.get('comparison', {}).get('b', {}).get('metrics')
 if not isinstance(bm, dict): sys.exit(f'b.metrics is not a dict: {type(bm)}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1B codify: comparison.b.metrics is a dict on emit" pass
+    check "WP11-P1B codify (v3): comparison.b.metrics is a dict on real-DB emit" pass
 else
-    check "WP11-P1B codify: b.metrics shape" fail "missing or wrong type"
+    check "WP11-P1B codify (v3): b.metrics shape" fail "missing or wrong type"
 fi
 
-# WP11-P1B-3: both a.metrics and b.metrics have the 6 expected top-level
-# keys (engaged_session, ai_agent, tool_call, human, concurrency, blocking) —
-# the shape contract matches the existing data.metrics tree, so CompareView
-# can reuse _computeMetricsView (WP10) over both windows.
+# WP11-P1B-3 (rerouted): both a.metrics and b.metrics have the 6 canonical
+# top-level keys (engaged_session, ai_agent, tool_call, human, concurrency,
+# blocking) — the shape contract matches the existing data.metrics tree, so
+# CompareView can reuse _computeMetricsView (WP10) over both windows.
 python3 -c "
 import re, json, sys
-h = open('$WP11P1B_DEMO').read()
+h = open('$WP11P1B_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
 EXPECTED = {'engaged_session', 'ai_agent', 'tool_call', 'human', 'concurrency', 'blocking'}
@@ -1764,31 +1724,38 @@ for side in ('a', 'b'):
     if missing: sys.exit(f'{side}.metrics missing keys: {missing}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1B codify: a.metrics and b.metrics both have the 6 canonical keys" pass
+    check "WP11-P1B codify (v3): a.metrics and b.metrics both have the 6 canonical keys" pass
 else
-    check "WP11-P1B codify: a.metrics + b.metrics key set" fail "missing canonical keys"
+    check "WP11-P1B codify (v3): a.metrics + b.metrics key set" fail "missing canonical keys"
 fi
 
-# WP11-P1B-4: demo path emits empty-shape metrics on both sides
-# (engaged_session.wallclock_ms === 0). Confirms _build_demo_comparison was
-# extended (not just the real-DB branch).
+# WP11-P1B-4 (rerouted): the cross-preset shape uniformity — every preset in
+# compare_payloads_by_preset has the same {a, b, deltas, meta} skeleton, so
+# CompareView's preset-switch is a pure data swap. Pin replaces the v2 "demo
+# empty-shape" assertion which is obsolete (v3 --demo emits comparison: {}
+# without the metrics sub-tree, per WP4 P1.6 demo skeleton).
 python3 -c "
 import re, json, sys
-h = open('$WP11P1B_DEMO').read()
+h = open('$WP11P1B_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
-a_wc = d['comparison']['a']['metrics']['engaged_session']['wallclock_ms']
-b_wc = d['comparison']['b']['metrics']['engaged_session']['wallclock_ms']
-if a_wc != 0: sys.exit(f'demo a.engaged_session.wallclock_ms expected 0, got {a_wc}')
-if b_wc != 0: sys.exit(f'demo b.engaged_session.wallclock_ms expected 0, got {b_wc}')
+cpbp = d['compare_payloads_by_preset']
+for preset in ('wow', 'today-vs-trailing', 'mom'):
+    p = cpbp[preset]
+    for side in ('a', 'b'):
+        if 'metrics' not in p[side]: sys.exit(f'{preset}.{side}.metrics missing')
+        # also verify the 6-key shape uniformly
+        keys = set(p[side]['metrics'].keys())
+        if not {'engaged_session', 'ai_agent', 'tool_call', 'human', 'concurrency', 'blocking'} <= keys:
+            sys.exit(f'{preset}.{side}.metrics key set incomplete: {keys}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1B codify: demo path emits empty-shape metrics (wallclock_ms === 0 on both sides)" pass
+    check "WP11-P1B codify (v3): all 3 presets uniformly have {a,b}.metrics with 6 canonical keys" pass
 else
-    check "WP11-P1B codify: demo empty-shape" fail "demo metrics not empty-shape"
+    check "WP11-P1B codify (v3): preset uniformity" fail "shape mismatch"
 fi
 
-rm -rf "$WP11P1B_DIR"
+rm -f "$WP11P1B_30D"
 
 # ── WP11 Phase 2.A codify: effectiveness-lens UI source-shape pins ──
 # Phase 2.A replaces the rejected delta-lens design (TopShiftsCallouts /
@@ -1798,11 +1765,12 @@ rm -rf "$WP11P1B_DIR"
 # section + 8 ratio/absolute rows are present; (c) generalized
 # EffectivenessRow component is defined.
 
-WP11P2A_DIR="$(mktemp -d -t claude-time-wp11p2a-test-XXXXXX)"
-trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10C_DIR" "$WP10P2_DIR" "$WP11P1_DIR" "$WP11P1B_DIR" "$WP11P2A_DIR"' EXIT
-
-WP11P2A_EMIT="$WP11P2A_DIR/emit.html"
-CLAUDE_TIME_DIR="$WP11P2A_DIR" "$CLI" visualize --no-open --demo --compare wow --out "$WP11P2A_EMIT" > /dev/null 2>&1
+# v3 WP4 P3.3 reroute (2026-05-29): emit via --window 30d real-DB instead of
+# the deleted --demo --compare wow. The JSX source-shape patterns are
+# independent of the emit-flag — dashboard.jsx is bundled verbatim in every
+# emit, so the grep patterns survive any emit method. Reuse the shared TMPDIR.
+WP11P2A_EMIT="$TMPDIR/wp11p2a-emit.html"
+"$CLI" visualize --no-open --window 30d --out "$WP11P2A_EMIT" > /dev/null 2>&1
 
 # WP11-P2A-1: EffectivenessRow component definition present in emitted HTML.
 if grep -qF 'function EffectivenessRow(' "$WP11P2A_EMIT"; then
@@ -1877,7 +1845,7 @@ else
     check "WP11-P2A codify: data-compare-col selectors" fail "missing one or more of a/b/delta"
 fi
 
-rm -rf "$WP11P2A_DIR"
+rm -f "$WP11P2A_EMIT"
 
 # ── v3 WP3 Phase 2 codify: --window emits both v3 sub-payload maps AND ──
 # ── legacy alias keys side-by-side (the v2-frontend coexistence contract) ──
@@ -2180,6 +2148,110 @@ else
 fi
 
 rm -rf "$WP3P3_DIR"
+
+# ── v3 WP4 Phase 1 codify: removed-flag argparse-error pins ────────────
+# Integration boundary: WP4 deletes 8 legacy v2 view-selecting flags from the
+# `visualize` subparser. The consuming surface is argparse — these pins
+# assert each removed flag is now rejected with rc=2 and the canonical
+# "unrecognized arguments: --<flag>" stderr message. One scenario per flag;
+# any future re-introduction (intentional or accidental) breaks these.
+
+_wp4_removed_flag_pin() {
+    # $1 = flag name (e.g. "--date")
+    # $2 = full argv (e.g. "--date 2026-05-15 --no-open")
+    local flag="$1"; shift
+    # shellcheck disable=SC2086
+    local out rc
+    out=$("$CLI" visualize $@ 2>&1)
+    rc=$?
+    if [ "$rc" = "2" ] && echo "$out" | grep -qF -- "unrecognized arguments: $flag"; then
+        check "v3 WP4 P1 codify: $flag → rc=2 with argparse 'unrecognized arguments'" pass
+    else
+        check "v3 WP4 P1 codify: $flag argparse rejection" fail "rc=$rc msg=$out"
+    fi
+}
+
+_wp4_removed_flag_pin "--date"                "--date 2026-05-15 --no-open"
+_wp4_removed_flag_pin "--week"                "--week --no-open"
+_wp4_removed_flag_pin "--month"               "--month 2026-05 --no-open"
+_wp4_removed_flag_pin "--range"               "--range 2026-05-01:2026-05-07 --no-open"
+_wp4_removed_flag_pin "--compare"             "--compare wow --no-open"
+_wp4_removed_flag_pin "--compare-range"       "--compare-range 2026-05-13:2026-05-19,2026-05-20:2026-05-26 --no-open"
+_wp4_removed_flag_pin "--context-days-prior"  "--context-days-prior 7 --no-open"
+_wp4_removed_flag_pin "--context-days-after"  "--context-days-after 3 --no-open"
+
+# ── v3 WP4 Phase 2 codify: toast-string + empty-state source-shape pins ────
+# Integration boundary: Phase 2 modified the existing CompareView empty-state
+# JSX (viz/dashboard.jsx) + MonthView nav-toast handlers (viz_render.py).
+# Both consuming surfaces are user-visible UI emitted in the dashboard HTML.
+# These pins assert the new --window-flavored strings landed and the legacy
+# --date/--month/--compare strings are absent. Single emit → all assertions
+# against the same artifact.
+
+# Re-use the shared $TMPDIR (seeded DB at $TMPDIR/events.sqlite) — emit one
+# dashboard with --window 30d and assert against it. Per the surrounding
+# scenarios' pattern, $CLAUDE_TIME_DIR is already exported at line 26.
+WP4P2_HTML="$TMPDIR/wp4p2.html"
+
+"$CLI" visualize --no-open --window 30d --out "$WP4P2_HTML" > /dev/null 2>&1
+
+# P2.1: new _navCmdForDay helper present in emitted JS.
+if grep -qF "_navCmdForDay" "$WP4P2_HTML"; then
+    check "v3 WP4 P2 codify: _navCmdForDay helper present in emitted dashboard" pass
+else
+    check "v3 WP4 P2 codify: _navCmdForDay helper" fail "missing from emitted HTML"
+fi
+
+# P2.2: new _navCmdForMonth helper present.
+if grep -qF "_navCmdForMonth" "$WP4P2_HTML"; then
+    check "v3 WP4 P2 codify: _navCmdForMonth helper present" pass
+else
+    check "v3 WP4 P2 codify: _navCmdForMonth helper" fail "missing from emitted HTML"
+fi
+
+# P2.3: day-toast template literal shape — `--window ${iso}:${iso}`.
+if grep -qF '`claude-time visualize --window ${iso}:${iso}`' "$WP4P2_HTML"; then
+    check "v3 WP4 P2 codify: day-toast template shape (--window iso:iso)" pass
+else
+    check "v3 WP4 P2 codify: day-toast template shape" fail "template literal mismatch"
+fi
+
+# P2.4: month-toast template literal shape — `--window ${monthIso}-01:${monthIso}-${lastDayStr}`.
+if grep -qF '`claude-time visualize --window ${monthIso}-01:${monthIso}-${lastDayStr}`' "$WP4P2_HTML"; then
+    check "v3 WP4 P2 codify: month-toast template shape (--window M-01:M-LL)" pass
+else
+    check "v3 WP4 P2 codify: month-toast template shape" fail "template literal mismatch"
+fi
+
+# P2.5: CompareView empty-state references `--window 14d` (replaces `--compare wow`).
+if grep -qF "claude-time visualize --window 14d" "$WP4P2_HTML"; then
+    check "v3 WP4 P2 codify: CompareView empty-state uses '--window 14d'" pass
+else
+    check "v3 WP4 P2 codify: CompareView empty-state '--window 14d'" fail "string absent"
+fi
+
+# P2.6: emitted HTML has zero removed-flag toast strings. Greps for any
+# `claude-time visualize --<removed-flag>` substring; if found, regression.
+# This is the post-change consuming-surface pin: even if a future edit
+# re-introduces a removed flag in any JSX string, this pin trips.
+# grep -c returns 0 on stdout when match-count is 0, but exits with 1 — use
+# grep -q + invert so the conditional reads directly off the exit code.
+if grep -qE "claude-time visualize --(date|week|month|range|compare|compare-range|context-days)" "$WP4P2_HTML"; then
+    check "v3 WP4 P2 codify: zero removed-flag toast strings in emitted HTML" fail "removed-flag toast strings present"
+else
+    check "v3 WP4 P2 codify: zero removed-flag toast strings in emitted HTML" pass
+fi
+
+# P2.7: old _navCmd(flag, value) function is gone (replaced by the two
+# purpose-specific helpers). Catches a regression where someone re-introduces
+# the generic helper alongside the new ones.
+if ! grep -qE "_navCmd\b\(" "$WP4P2_HTML"; then
+    check "v3 WP4 P2 codify: legacy _navCmd(flag, value) helper removed" pass
+else
+    check "v3 WP4 P2 codify: legacy _navCmd helper absent" fail "old helper signature still present"
+fi
+
+rm -f "$WP4P2_HTML"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

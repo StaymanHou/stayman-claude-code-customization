@@ -67,11 +67,12 @@ def _interactive_dashboard() -> str:
 /* ── Dashboard wrapper (interactive, shipped variant) ───────── */
 function Dashboard() {
   const { today, week } = window.CT_DATA;
-  // WP7: months map — present only on --month emits. Maps ISO month strings
-  // ("YYYY-MM") to range_data payloads. Pre-loads exactly two months
-  // (active + previous) so prev-arrow nav is a pure client-side state swap;
-  // any other nav (next-arrow, day-click, going back further than the prev
-  // month) triggers reload-redirect via MonthNavToast (P2.5 resolution).
+  // WP7: months map. Pre v3, populated only on --month emits; in v3 the
+  // `--window` flag's pre-rendered window always emits month_payloads_by_iso
+  // covering the full window (aliased to top-level `months` for v2-frontend
+  // coexistence). Maps ISO month strings ("YYYY-MM") to range_data payloads.
+  // Prev-arrow nav is a pure client-side state swap when target month is in
+  // the map; any other nav triggers reload-redirect via MonthNavToast.
   const monthsMap = window.CT_DATA.months || null;
   // WP8: hash.view (if present) wins over CT_INITIAL_VIEW so a shareable
   // URL like #view=custom;range=2026-05-20:2026-05-22 restores correctly.
@@ -112,8 +113,9 @@ function Dashboard() {
 
   // WP11: Compare preset state — one of 'wow', 'today-vs-trailing', 'mom',
   // 'custom'. Hash takes precedence on init; falls back to CT_INITIAL_PRESET
-  // (set by --compare or --compare-range at emit time); falls back to a
-  // sensible default derived from initial view (Q1).
+  // (emitter-supplied, always null in v3 since the unified `--window` emit
+  // doesn't pick a preset — URL hash drives Compare-view selection); falls
+  // back to a sensible default derived from initial view (Q1).
   const _initPreset = (() => {
     const hash = parseHash();
     if (hash.preset && ['wow', 'today-vs-trailing', 'mom', 'custom'].includes(hash.preset)) {
@@ -131,8 +133,8 @@ function Dashboard() {
   // WP11: compareRanges state — for `preset === 'custom'`, the user-picked
   // {a: {start, end}, b: {start, end}} pair. Hash key is `ranges=A_s:A_e,B_s:B_e`.
   // On init, restore from hash if present + valid; otherwise seed from
-  // comparison.meta (which Phase 1 emits whenever --compare-range or any
-  // --compare* flag was used).
+  // comparison.meta (the wow-preset payload aliased as `comparison` always
+  // ships meta.{a_start,a_end,b_start,b_end} for label rendering).
   const _initCompareRanges = (() => {
     const hash = parseHash();
     if (hash.ranges) {
@@ -167,8 +169,7 @@ function Dashboard() {
       return hash.month;
     }
     if (monthsMap) {
-      // Pick the active month — the one matching today.meta.start (D6: active
-      // payload is mirrored at top-level today on --month emit). If that
+      // Pick the active month — the one matching today.meta.start. If that
       // doesn't match a months[] key, fall back to the first key.
       if (today.meta && today.meta.start) {
         const iso = today.meta.start.slice(0, 7);
@@ -189,8 +190,9 @@ function Dashboard() {
 
   // WP8: range state (start/end ISO date strings). Identity of the Custom
   // view — without a range the view is empty. Hash-restore on init if
-  // present + valid; otherwise seed from data.today.meta (the CLI's
-  // --range invocation persists its picked range here).
+  // present + valid; otherwise seed from data.today.meta (the `--window`
+  // explicit-range form persists its picked range here via the legacy
+  // alias keys).
   const [range, setRange] = React.useState(() => {
     const hash = parseHash();
     if (hash.range && /^\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(hash.range)) {
@@ -431,9 +433,9 @@ function Dashboard() {
 
   // WP11: change handler for the custom-preset RangePicker pair. When the
   // user picks both A and B ranges, write to state — the URL-hash effect
-  // above writes `ranges=A:B`, then the user re-runs `claude-time visualize
-  // --compare-range A:B` from a shareable URL to materialize fresh comparison
-  // data. Pattern mirrors WP8's onRangeChange — no fetch-from-browser.
+  // above writes `ranges=A:B` so a shareable URL restores the same custom
+  // compare pair on reload. Pattern mirrors WP8's onRangeChange — no
+  // fetch-from-browser.
   const onCompareRangeChange = React.useCallback((next) => {
     setCompareRanges(next);
   }, []);
@@ -443,15 +445,30 @@ function Dashboard() {
   // is a pure client-side swap when the prev-month payload is in monthsMap;
   // otherwise reload-redirect. Next-month is always reload-redirect (no future
   // month is pre-loaded).
-  const _navCmd = React.useCallback((flag, value) => {
-    return `claude-time visualize ${flag} ${value}`;
+  //
+  // v3 WP4: nav toasts emit `--window` commands instead of the removed
+  // `--date`/`--month` flags. Single-day window is `YYYY-MM-DD:YYYY-MM-DD`;
+  // full-month window is `YYYY-MM-01:YYYY-MM-LL` (LL = last day of month).
+  const _navCmdForDay = React.useCallback((iso) => {
+    return `claude-time visualize --window ${iso}:${iso}`;
+  }, []);
+  const _navCmdForMonth = React.useCallback((monthIso) => {
+    // monthIso is "YYYY-MM". Compute last day via Date(y, m, 0).getDate() —
+    // month is 1-indexed in our ISO but 0-indexed to Date; passing day=0 of
+    // month=m+1 (i.e. JS-month m) yields the last day of month m.
+    const [yStr, mStr] = monthIso.split('-');
+    const y = parseInt(yStr, 10);
+    const m = parseInt(mStr, 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    const lastDayStr = String(lastDay).padStart(2, '0');
+    return `claude-time visualize --window ${monthIso}-01:${monthIso}-${lastDayStr}`;
   }, []);
   const onDayClick = React.useCallback((iso) => {
     setNavToast({
       message: `Drill into ${iso}? Run this in your terminal to open Day view on that date:`,
-      command: _navCmd('--date', iso),
+      command: _navCmdForDay(iso),
     });
-  }, [_navCmd]);
+  }, [_navCmdForDay]);
   const onPrevMonth = React.useCallback(() => {
     const prevIso = _prevMonthIso(monthIso);
     if (!prevIso) return;
@@ -460,10 +477,10 @@ function Dashboard() {
     } else {
       setNavToast({
         message: `View ${_monthIsoToLabel(prevIso)}? Run this in your terminal to load that month:`,
-        command: _navCmd('--month', prevIso),
+        command: _navCmdForMonth(prevIso),
       });
     }
-  }, [monthIso, monthsMap, _navCmd]);
+  }, [monthIso, monthsMap, _navCmdForMonth]);
   const onNextMonth = React.useCallback(() => {
     const nextIso = _nextMonthIso(monthIso);
     if (!nextIso) return;
@@ -472,10 +489,10 @@ function Dashboard() {
     } else {
       setNavToast({
         message: `View ${_monthIsoToLabel(nextIso)}? Run this in your terminal to load that month:`,
-        command: _navCmd('--month', nextIso),
+        command: _navCmdForMonth(nextIso),
       });
     }
-  }, [monthIso, monthsMap, _navCmd]);
+  }, [monthIso, monthsMap, _navCmdForMonth]);
 
   // Resolve the selected session + project for the side panel.
   let selSession = null;
@@ -919,10 +936,10 @@ def render_html(template_path: Path, dashboard_jsx_path: Path,
     90). Phase 1 emits the value; Phase 2 reads it from the picker.
 
     WP11: `initial_preset` is the Compare-view preset chosen at emit time —
-    one of 'wow', 'today-vs-trailing', 'mom', 'custom', or None when the
-    dashboard was not emitted with --compare*. Threaded through
-    `window.CT_INITIAL_PRESET` as a JS literal (string or null) so the Phase
-    2 CompareView can read it without extra parsing.
+    one of 'wow', 'today-vs-trailing', 'mom', 'custom', or None. In v3 this
+    is always None (the unified `--window` emit doesn't pick a preset; URL
+    hash drives Compare-view selection client-side). Threaded through
+    `window.CT_INITIAL_PRESET` as a JS literal (string or null).
     """
     template = template_path.read_text()
     jsx = dashboard_jsx_path.read_text()

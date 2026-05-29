@@ -120,37 +120,55 @@ function renderMonthDashboard() {
   }
 
   const cli = path.resolve(__dirname, '..', 'claude-time');
+  // v3 WP4 (2026-05-29) reroute: --month YYYY-MM → --window spanning the
+  // active month + the previous month (matches v2's --month emit semantics
+  // which pre-loaded the requested month + prev so prev-arrow nav is a
+  // client-side state swap). build_window_data populates
+  // month_payloads_by_iso for every calendar month intersecting the window,
+  // so a window spanning 2026-03-01..2026-04-30 produces month payloads for
+  // both 2026-03 and 2026-04, satisfying the prev-arrow client-side-swap test.
   // Pass --db pointing at MONTH_DB so the config.json above is also loaded
   // from the same dir (claude-time treats db_path.parent as the config dir
   // when --db is set).
-  r = spawnSync(cli, ['visualize', '--no-open', '--month', '2026-04',
+  r = spawnSync(cli, ['visualize', '--no-open',
+                       '--window', '2026-03-01:2026-04-30',
                        '--db', MONTH_DB, '--out', MONTH_DASH_HTML], {
     encoding: 'utf-8',
     env: { ...process.env, CLAUDE_TIME_DIR: SERVE_DIR },
   });
-  if (r.status !== 0) throw new Error(`CLI --month render failed: ${r.stderr || r.stdout}`);
+  if (r.status !== 0) throw new Error(`CLI --window 2026-04 render failed: ${r.stderr || r.stdout}`);
   if (!fs.existsSync(MONTH_DASH_HTML)) throw new Error(`expected ${MONTH_DASH_HTML} after CLI render`);
 }
 
-// 1c. WP11 Phase 2.A: render --compare wow --demo for preset-click regression.
-// Demo path is sufficient because the bug under test is event propagation, not
-// data shape — and demo emits empty-shape comparison.{a,b}.metrics so the UI
-// still mounts the bothEmpty short-circuit but the PresetSelector renders the
-// 4 sub-tabs unconditionally.
+// 1c. WP11 Phase 2.A: render --demo for preset-click regression coverage.
+// v3 WP4 (2026-05-29) reroute: --compare wow flag is removed; v3's --demo
+// emits empty compare_payloads_by_preset, so the bothEmpty short-circuit
+// fires and PresetSelector is what tests can still exercise via hash
+// dispatch (#view=compare;preset=wow). The data-shape regression test
+// is covered separately by the real-data fixture below.
 function renderCompareDashboard() {
   const cli = path.resolve(__dirname, '..', 'claude-time');
-  const r = spawnSync(cli, ['visualize', '--no-open', '--demo', '--compare', 'wow',
+  const r = spawnSync(cli, ['visualize', '--no-open', '--demo',
                             '--out', COMPARE_DASH_HTML], {
     encoding: 'utf-8',
     env: { ...process.env, CLAUDE_TIME_DIR: SERVE_DIR },
   });
-  if (r.status !== 0) throw new Error(`CLI --compare render failed: ${r.stderr || r.stdout}`);
+  if (r.status !== 0) throw new Error(`CLI --demo render failed: ${r.stderr || r.stdout}`);
   if (!fs.existsSync(COMPARE_DASH_HTML)) throw new Error(`expected ${COMPARE_DASH_HTML} after CLI render`);
 }
 
-// 1d. WP11 Phase 2.A behavioral 2: render --compare-range with real seeded events
-// so the effectiveness panel renders (the demo's empty-shape metrics short-circuits
-// to bothEmpty). Seeds two non-overlapping weeks with multi-session activity each.
+// 1d. WP11 Phase 2.A behavioral 2: render --window real-DB so the
+// effectiveness panel renders (the --demo path's empty-shape comparison
+// short-circuits to bothEmpty). Seeds two non-overlapping weeks with
+// multi-session activity each.
+//
+// v3 WP4 (2026-05-29) reroute: --compare-range 2026-04-13:2026-04-19,
+// 2026-04-20:2026-04-26 (deleted flag) → --window 2026-04-13:2026-04-26.
+// build_window_data anchors the wow preset on the window's end_iso
+// (2026-04-26 = Sunday); today_monday_iso = 2026-04-20 → wow.A is
+// 2026-04-13..04-19, wow.B is 2026-04-20..04-26. Exactly the same window
+// pair the original --compare-range invocation produced; CompareView in
+// the dashboard renders preset=wow by default.
 function renderCompareDashboardRealData() {
   // Create the events table.
   let r = spawnSync('sqlite3', [COMPARE_REAL_DB,
@@ -183,12 +201,12 @@ function renderCompareDashboardRealData() {
 
   const cli = path.resolve(__dirname, '..', 'claude-time');
   r = spawnSync(cli, ['visualize', '--no-open',
-                       '--compare-range', '2026-04-13:2026-04-19,2026-04-20:2026-04-26',
+                       '--window', '2026-04-13:2026-04-26',
                        '--db', COMPARE_REAL_DB, '--out', COMPARE_REAL_DASH_HTML], {
     encoding: 'utf-8',
     env: { ...process.env, CLAUDE_TIME_DIR: SERVE_DIR },
   });
-  if (r.status !== 0) throw new Error(`CLI --compare-range render failed: ${r.stderr || r.stdout}`);
+  if (r.status !== 0) throw new Error(`CLI --window render failed: ${r.stderr || r.stdout}`);
   if (!fs.existsSync(COMPARE_REAL_DASH_HTML)) throw new Error(`expected ${COMPARE_REAL_DASH_HTML} after CLI render`);
 }
 
@@ -694,8 +712,8 @@ async function runTests() {
         const code = t.querySelector('code');
         return { present: true, command: code ? code.textContent : null };
       });
-      check('WP7-P2 behavioral: click-day on 2026-04-15 → toast w/ `claude-time visualize --date 2026-04-15`',
-        toast && toast.present && toast.command === 'claude-time visualize --date 2026-04-15',
+      check('WP7-P2 behavioral: click-day on 2026-04-15 → toast w/ `claude-time visualize --window 2026-04-15:2026-04-15`',
+        toast && toast.present && toast.command === 'claude-time visualize --window 2026-04-15:2026-04-15',
         JSON.stringify(toast));
       await page.close();
     }
@@ -744,8 +762,8 @@ async function runTests() {
         const code = t.querySelector('code');
         return { present: true, command: code ? code.textContent : null };
       });
-      check('WP7-P2 behavioral: next-month arrow → toast w/ `claude-time visualize --month 2026-05`',
-        toast && toast.present && toast.command === 'claude-time visualize --month 2026-05',
+      check('WP7-P2 behavioral: next-month arrow → toast w/ `claude-time visualize --window 2026-05-01:2026-05-31`',
+        toast && toast.present && toast.command === 'claude-time visualize --window 2026-05-01:2026-05-31',
         JSON.stringify(toast));
       await page.close();
     }
@@ -1115,16 +1133,19 @@ async function runTests() {
       const errors = [];
       page.on('pageerror', e => errors.push(e.message));
       page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-      await page.goto(URL_BASE + '/compare.html');
+      // v3 WP4 (2026-05-29): URL-hash drives Compare-view preset selection
+      // (the --compare flag is gone; CT_INITIAL_PRESET is always null at emit).
+      // Set preset=wow via hash to recreate the original "starts on wow" pre-state.
+      await page.goto(URL_BASE + '/compare.html#view=compare;preset=wow');
       // Wait for Babel JIT to compile + Dashboard to mount.
       await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
       await page.waitForTimeout(500);
-      // Pre-state: emit was with --compare wow so preset should default to "wow".
+      // Pre-state: hash sets preset=wow so the active preset should be "wow".
       const before = await page.evaluate(() => ({
         active: document.querySelector('[data-compare-preset][data-active="true"]')?.getAttribute('data-compare-preset'),
         hash: location.hash,
       }));
-      check('WP11-P2A behavioral 1a: initial active preset is "wow" (from --compare wow emit)',
+      check('WP11-P2A behavioral 1a: initial active preset is "wow" (from #preset=wow hash)',
         before.active === 'wow',
         `before=${JSON.stringify(before)}`);
       // Real mouse-click on today-vs-trailing.
@@ -1161,9 +1182,12 @@ async function runTests() {
     // ── WP11-P2A behavioral 2: effectiveness panel renders 8 rows in priority order ──
     // Uses the real-seeded compare dashboard (compare_real.html); the demo path
     // short-circuits to bothEmpty since wallclock_ms === 0 on both windows.
+    // v3 WP4 (2026-05-29): emit-time CT_INITIAL_VIEW is always 'day' (v3 doesn't
+    // pick a view at emit; URL hash drives view selection client-side). Use
+    // #view=compare;preset=wow to land on the Compare view with the wow preset.
     {
       const page = await browser.newPage();
-      await page.goto(URL_BASE + '/compare_real.html');
+      await page.goto(URL_BASE + '/compare_real.html#view=compare;preset=wow');
       await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
       await page.waitForTimeout(500);
       const summary = await page.evaluate(() => {

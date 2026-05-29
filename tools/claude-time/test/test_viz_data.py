@@ -1446,6 +1446,58 @@ class BuildWindowDataTests(unittest.TestCase):
         self.assertEqual(set(out["month_payloads_by_iso"].keys()),
                          {"2026-03", "2026-04", "2026-05"})
 
+    def test_compare_payloads_attach_per_window_metrics(self):
+        """v3 WP4 P3.3 contract: every preset in compare_payloads_by_preset has
+        a `metrics` sub-key on each side (a + b), with the 6 canonical top-level
+        keys that the CompareView UI consumes via _computeMetricsView.
+
+        Pins the data-layer fix that restored the v2 `comparison.{a,b}.metrics`
+        contract after WP4 P1 accidentally dropped the CLI-layer attachment.
+        Without this, CompareView fires the empty-state on every real-DB emit.
+        """
+        # 14-day window ensures wow preset (which compares two adjacent 7-day
+        # weeks) has both halves entirely inside the window with non-trivial
+        # event data.
+        d_a = _dt.date(2026, 5, 12)  # Tue of week-A
+        d_b = _dt.date(2026, 5, 19)  # Tue of week-B
+        events_by_day = {
+            d_a.isoformat(): self._one_burst_events(d_a, 9, 10),
+            d_b.isoformat(): self._one_burst_events(d_b, 9, 11),
+        }
+        out = viz_data.build_window_data(
+            "2026-05-11", "2026-05-24",  # Mon→Sun spanning both weeks
+            events_by_day=events_by_day,
+            cfg=CFG, auto_alias_fn=stub_auto_alias,
+        )
+        EXPECTED_METRIC_KEYS = {
+            "engaged_session", "ai_agent", "tool_call",
+            "human", "concurrency", "blocking",
+        }
+        cpbp = out["compare_payloads_by_preset"]
+        for preset_name in ("wow", "today-vs-trailing", "mom"):
+            with self.subTest(preset=preset_name):
+                preset = cpbp[preset_name]
+                # Per-side metrics keys exist + carry the canonical 6 fields.
+                for side in ("a", "b"):
+                    self.assertIn("metrics", preset[side],
+                                  f"{preset_name}.{side}.metrics missing")
+                    side_metrics = preset[side]["metrics"]
+                    self.assertIsInstance(side_metrics, dict)
+                    self.assertGreaterEqual(set(side_metrics.keys()),
+                                            EXPECTED_METRIC_KEYS,
+                                            f"{preset_name}.{side}.metrics missing canonical keys")
+        # Cross-check value: wow.b should aggregate the d_b=2026-05-19 burst
+        # (60-min wallclock), wow.a should aggregate the d_a=2026-05-12 burst
+        # (60-min wallclock). Both > 0.
+        self.assertGreater(
+            cpbp["wow"]["a"]["metrics"]["engaged_session"]["wallclock_ms"], 0,
+            "wow.a should have non-zero engaged_session.wallclock_ms from week-A burst",
+        )
+        self.assertGreater(
+            cpbp["wow"]["b"]["metrics"]["engaged_session"]["wallclock_ms"], 0,
+            "wow.b should have non-zero engaged_session.wallclock_ms from week-B burst",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

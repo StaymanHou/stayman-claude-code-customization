@@ -1294,6 +1294,37 @@ def build_window_data(
         ),
     }
 
+    # Attach per-window metrics to each preset's A and B sides. CompareView
+    # consumes comparison.{a,b}.metrics; v3 WP4 (2026-05-29) restored this
+    # contract that v2's _cmd_visualize previously attached at the CLI layer.
+    # Data-layer is the right home for shape; the CLI no longer needs to
+    # know about compare-window-metrics composition.
+    def _events_for_window(win_start_iso: str, win_end_iso: str) -> list:
+        s = date.fromisoformat(win_start_iso)
+        e = date.fromisoformat(win_end_iso)
+        evts = []
+        for iso, day_events in events_by_day.items():
+            d = date.fromisoformat(iso)
+            if s <= d <= e:
+                evts.extend(day_events)
+        evts.sort(key=lambda r: r.get("ts", 0))
+        return evts
+
+    for _preset_name, _preset_payload in compare_payloads_by_preset.items():
+        _meta = _preset_payload.get("meta", {})
+        _a_start, _a_end = _meta.get("a_start"), _meta.get("a_end")
+        _b_start, _b_end = _meta.get("b_start"), _meta.get("b_end")
+        if _a_start and _a_end:
+            _a_evts = _events_for_window(_a_start, _a_end)
+            _a_start_dt = datetime.combine(date.fromisoformat(_a_start), time.min)
+            _a_end_dt = datetime.combine(date.fromisoformat(_a_end) + timedelta(days=1), time.min)
+            _preset_payload["a"]["metrics"] = build_metrics(_a_evts, _a_start_dt, _a_end_dt)
+        if _b_start and _b_end:
+            _b_evts = _events_for_window(_b_start, _b_end)
+            _b_start_dt = datetime.combine(date.fromisoformat(_b_start), time.min)
+            _b_end_dt = datetime.combine(date.fromisoformat(_b_end) + timedelta(days=1), time.min)
+            _preset_payload["b"]["metrics"] = build_metrics(_b_evts, _b_start_dt, _b_end_dt)
+
     # --- Window-level metrics ---
     all_events = sorted(
         (e for day_events in events_by_day.values() for e in day_events),

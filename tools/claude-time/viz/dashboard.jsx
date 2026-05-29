@@ -1059,7 +1059,8 @@ function CompareView({ comparison }) {
     [comparison, filterKinds]
   );
 
-  // No comparison payload at all (e.g., dashboard emitted without --compare).
+  // No comparison payload (e.g., --demo path: demo data is single-day and
+  // has no real events to compare across windows).
   if (!comparison || !aMetrics || !bMetrics) {
     return (
       <div data-compare-view="true" style={{
@@ -1069,10 +1070,10 @@ function CompareView({ comparison }) {
         <div style={{
           fontFamily: CT_TOKENS.sans, fontSize: 13,
           color: CT_TOKENS.textSecondary, fontWeight: 500,
-        }}>No comparison data — emit with <code style={{
+        }}>No comparison data — emit with real events: <code style={{
           fontFamily: CT_TOKENS.mono, padding: '1px 4px',
           background: CT_TOKENS.surfaceAlt, borderRadius: 3,
-        }}>claude-time visualize --compare wow</code></div>
+        }}>claude-time visualize --window 14d</code></div>
       </div>
     );
   }
@@ -2626,7 +2627,7 @@ function WeekTimeline({ data }) {
 //
 // Click a day-cell → onDayClick(iso). The Dashboard wrapper translates
 // that into the toast+clipboard reload-redirect to
-//   claude-time visualize --date YYYY-MM-DD
+//   claude-time visualize --window YYYY-MM-DD:YYYY-MM-DD
 // (P2.5 resolution — the dashboard is a file:// page so a real browser
 // navigation isn't possible; we surface the CLI command via a non-modal
 // toast and auto-copy to clipboard).
