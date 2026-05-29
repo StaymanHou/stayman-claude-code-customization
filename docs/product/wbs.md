@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-28
+updated: 2026-05-29
 cycle: claude-time-visualize-v3
 ---
 
@@ -53,13 +53,13 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 **Dependencies:** —
 **Size:** M
 **Tasks:**
-- [ ] 1.1 Define `build_window_data(start_iso, end_iso, *, events_by_day, cfg, auto_alias_fn) -> dict` signature in `viz_data.py`. Return shape: `{window: {start, end, day_count}, day_payloads_by_iso: {iso: <build_day_data output>}, week_payloads_by_monday: {monday_iso: <build_week_data output>}, month_payloads_by_iso: {month_iso: <build_range_data output>}, compare_payloads_by_preset: {wow: <build_comparison_data output>, today-vs-trailing: <...>, mom: <...>}, metrics: <build_metrics output for the full window>}`
-- [ ] 1.2 Per-day loop: for each ISO day in `[start_iso..end_iso]`, call `build_day_data` with that day's events. Attach to `day_payloads_by_iso`.
-- [ ] 1.3 Per-week loop: for each Monday-anchored week intersecting the window, call `build_week_data`. Attach to `week_payloads_by_monday`.
-- [ ] 1.4 Per-month loop: for each calendar month intersecting the window, call `build_range_data` over that month's days. Attach to `month_payloads_by_iso` keyed by `YYYY-MM`.
-- [ ] 1.5 Compare-preset loop: call `compare_week_over_week(today_monday_iso)`, `compare_day_vs_trailing_window(today_iso, 7)`, `compare_month_over_month(today_month_iso)` — using "today" as the anchor (the most-recent day in the window). Attach to `compare_payloads_by_preset` keyed by preset name.
-- [ ] 1.6 Window-level metrics: `build_metrics(all_events, window_start_dt, window_end_dt)` over the entire 90-day window. Attach as top-level `metrics`. (Per-window-slice metrics for compare presets live inside their `compare_payloads_by_preset[preset].{a,b}.metrics` per v2 WP11 Phase 1.B.)
-- [ ] 1.7 Add `BuildWindowDataTests` to `test_viz_data.py` — at minimum: empty window, single-day window, full 90-day shape sanity (all 4 sub-payload maps populated, key sets correct), compare-preset cross-reference (top-level `metrics.engaged_session.wallclock_ms` should equal sum of `day_payloads_by_iso[*].today_total` modulo merge semantics).
+- [x] 1.1 Define `build_window_data(start_iso, end_iso, *, events_by_day, cfg, auto_alias_fn) -> dict` signature in `viz_data.py`. Return shape: `{window: {start, end, day_count}, day_payloads_by_iso: {iso: <build_day_data output>}, week_payloads_by_monday: {monday_iso: <build_week_data output>}, month_payloads_by_iso: {month_iso: <build_range_data output>}, compare_payloads_by_preset: {wow: <build_comparison_data output>, today-vs-trailing: <...>, mom: <...>}, metrics: <build_metrics output for the full window>}`
+- [x] 1.2 Per-day loop: for each ISO day in `[start_iso..end_iso]`, call `build_day_data` with that day's events. Attach to `day_payloads_by_iso`.
+- [x] 1.3 Per-week loop: for each Monday-anchored week intersecting the window, call `build_week_data`. Attach to `week_payloads_by_monday`.
+- [x] 1.4 Per-month loop: for each calendar month intersecting the window, call `build_range_data` over that month's days. Attach to `month_payloads_by_iso` keyed by `YYYY-MM`.
+- [x] 1.5 Compare-preset loop: call `compare_week_over_week(today_monday_iso)`, `compare_day_vs_trailing_window(today_iso, 7)`, `compare_month_over_month(today_month_iso)` — using "today" as the anchor (the most-recent day in the window). Attach to `compare_payloads_by_preset` keyed by preset name.
+- [x] 1.6 Window-level metrics: `build_metrics(all_events, window_start_dt, window_end_dt)` over the entire 90-day window. Attach as top-level `metrics`. (Per-window-slice metrics for compare presets live inside their `compare_payloads_by_preset[preset].{a,b}.metrics` per v2 WP11 Phase 1.B.)
+- [x] 1.7 Add `BuildWindowDataTests` to `test_viz_data.py` — at minimum: empty window, single-day window, full 90-day shape sanity (all 4 sub-payload maps populated, key sets correct), compare-preset cross-reference (top-level `metrics.engaged_session.wallclock_ms` should equal sum of `day_payloads_by_iso[*].today_total` modulo merge semantics).
 
 ### WP2: Emit-time perf budget + 90-day default ✅ SHIPPED 2026-05-28 (commit `64fb865`)
 **Result:** 90-day default **CONFIRMED**. Measured against `~/.claude-time/events.sqlite`: 90-day window emits in avg 1012ms (target ≤2000ms) at 431KB (target ≤500KB). Cost is approximately flat across 30→120 day windows (dominated by fixed overhead, not per-day work) — window size is approximately free within this range. See `workflow/archive/wp2-emit-perf-probe.md` `## Decision` for full rationale; permanent perf script lives at `tools/claude-time/test/perf_window_data.py` for re-measurement if `viz_data.py` materially changes.
@@ -73,9 +73,9 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 **Timebox:** half-day
 **Success criterion:** Documented timing measurement (5 runs, min/avg/max) + emit-size measurement (bytes) + Go/No-Go decision on the 90-day default OR a counter-proposal (e.g., 60 days).
 **Tasks:**
-- [ ] 2.1 Add a perf script `tools/claude-time/test/perf_window_data.py` that runs `build_window_data` over the user's real DB 5 times with varying window sizes (30, 60, 90, 120 days) and reports wall-clock + output JSON byte count.
-- [ ] 2.2 Run the perf script; record results in a comment block at the top of the script + summarize in the WP retrospect.
-- [ ] 2.3 Decision: confirm 90-day default OR propose alternative + rationale.
+- [x] 2.1 Add a perf script `tools/claude-time/test/perf_window_data.py` that runs `build_window_data` over the user's real DB 5 times with varying window sizes (30, 60, 90, 120 days) and reports wall-clock + output JSON byte count.
+- [x] 2.2 Run the perf script; record results in a comment block at the top of the script + summarize in the WP retrospect.
+- [x] 2.3 Decision: confirm 90-day default OR propose alternative + rationale.
 
 **Phase 0 → Phase 1 rationale:** Once `build_window_data` is shape-locked and perf-validated, every UI WP can rely on the pre-rendered payload existing. Skipping the perf probe risks downstream WPs being built on an emit cost the user later rejects, forcing a Phase-0 rework mid-cycle.
 

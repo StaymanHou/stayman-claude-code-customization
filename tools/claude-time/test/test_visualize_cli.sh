@@ -96,6 +96,24 @@ else
     check "WP5b: --help new flags + demo text" fail "rc=$rc, new_flags=$new_flag_count, demo_text_match=fail"
 fi
 
+# ── 1c. v3 WP3 Phase 1: --help lists --window with all three forms named ──
+# Phase 1 consuming-surface contract: the new `--window` arg appears at column-3
+# in --help; help text names all three accepted forms (MTD-N / Nd /
+# YYYY-MM-DD:YYYY-MM-DD) plus the MTD-2 default. WP3 Phase 3 adds behavioral
+# tests for the flag itself; this assertion only locks the help-text contract
+# established in Phase 1.
+window_flag_present=$(echo "$OUT" | grep -cE '^  --window VALUE\b')
+help_flat=$(echo "$OUT" | tr '\n' ' ' | tr -s ' ')
+if [ $rc -eq 0 ] && [ "$window_flag_present" = "1" ] && \
+   echo "$help_flat" | grep -q 'MTD-N' && \
+   echo "$help_flat" | grep -q 'Nd ' && \
+   echo "$help_flat" | grep -q 'YYYY-MM-DD:YYYY-MM-DD' && \
+   echo "$help_flat" | grep -q 'Default when omitted: MTD-2'; then
+    check "v3 WP3 P1: --help lists --window VALUE with three forms + MTD-2 default" pass
+else
+    check "v3 WP3 P1: --window help-text contract" fail "rc=$rc, flag_at_col3=$window_flag_present, MTD-N=$(echo $help_flat | grep -c 'MTD-N'), default=$(echo $help_flat | grep -c 'Default when omitted: MTD-2')"
+fi
+
 # ── 2. Default visualize against seeded DB writes file + prints path ──
 OUT_HTML="$TMPDIR/visualize.html"
 OUT=$("$CLI" visualize --no-open 2>&1)
@@ -151,33 +169,10 @@ else
     check "default CT_INITIAL_VIEW=\"day\"" fail "value not 'day'"
 fi
 
-# ── 8. --week flag ⇒ CT_INITIAL_VIEW is 'week' ────────────────────────
-"$CLI" visualize --no-open --week --out "$TMPDIR/v-week.html" > /dev/null 2>&1
-if [ -f "$TMPDIR/v-week.html" ] && grep -q 'CT_INITIAL_VIEW = "week"' "$TMPDIR/v-week.html"; then
-    check "--week sets CT_INITIAL_VIEW=\"week\"" pass
-else
-    check "--week sets CT_INITIAL_VIEW=\"week\"" fail "value missing"
-fi
-
-# ── 9. --date flag ⇒ emitted CT_DATA.today.target_iso matches (WP5b) ──
-# Pre-WP5b: assertion checked `"iso": "1970-01-01"` on the single-day shape.
-# WP5b changed the default Day payload to multi-day (prior=14, after=7) where
-# the user-requested day is surfaced as `target_iso` (renderer-centering pointer).
-"$CLI" visualize --no-open --date 1970-01-01 --out "$TMPDIR/v-old.html" > /dev/null 2>&1
-if [ -f "$TMPDIR/v-old.html" ] && grep -q '"target_iso": "1970-01-01"' "$TMPDIR/v-old.html"; then
-    check "--date 1970-01-01 sets CT_DATA.today.target_iso accordingly" pass
-else
-    check "--date 1970-01-01" fail "target_iso field missing or wrong"
-fi
-
-# ── 9b. --date with --context-days-prior=0 --context-days-after=0 keeps single-day shape (back-compat) ──
-"$CLI" visualize --no-open --date 1970-01-01 --context-days-prior 0 --context-days-after 0 \
-       --out "$TMPDIR/v-single.html" > /dev/null 2>&1
-if [ -f "$TMPDIR/v-single.html" ] && grep -q '"iso": "1970-01-01"' "$TMPDIR/v-single.html"; then
-    check "WP5b: --context-days 0/0 keeps single-day back-compat shape (iso present)" pass
-else
-    check "WP5b: --context-days 0/0 keeps single-day shape" fail "iso field missing or wrong"
-fi
+# Sections 8, 9, 9b deleted (v3 WP3 Phase 2 verify-codify, 2026-05-29):
+# v2 flags --week / --date / --context-days-* are silently no-op'd by the v3
+# --window default-to-MTD-2 branch; their CT_INITIAL_VIEW/target_iso effects
+# are intentionally retired. WP4 removes the flags entirely.
 
 # ── 10. --out flag writes to a custom path ────────────────────────────
 CUSTOM_OUT="$TMPDIR/custom-name.html"
@@ -380,13 +375,18 @@ fi
 # Provider. Assert both the Dashboard mount marker AND the ViewportContext
 # presence in the --week-emitted HTML — i.e., wrapper integrity survives
 # regardless of which view is initially selected.
-WEEK_HTML="$TMPDIR/v-week.html"
+# v3 WP3 Phase 2 verify-codify rewrite: was `$TMPDIR/v-week.html` (emitted by
+# the deleted --week section 8). Wrapper-integrity is a source-shape pin on
+# the Dashboard component + ViewportContext provider — agnostic to which
+# initial view is selected. Emit fresh with --window 7d.
+WEEK_HTML="$TMPDIR/v-wrapper.html"
+"$CLI" visualize --no-open --window 7d --out "$WEEK_HTML" > /dev/null 2>&1
 if [ -f "$WEEK_HTML" ] && \
    grep -q 'function Dashboard(' "$WEEK_HTML" && \
    grep -q 'ViewportContext' "$WEEK_HTML"; then
-    check "WP5-P1 codify: --week view emits Dashboard + ViewportContext (wrapper integrity)" pass
+    check "WP5-P1 codify: visualize emit has Dashboard + ViewportContext (wrapper integrity)" pass
 else
-    check "WP5-P1 codify: --week view wrapper integrity" fail "Dashboard or ViewportContext missing in $WEEK_HTML"
+    check "WP5-P1 codify: wrapper integrity" fail "Dashboard or ViewportContext missing in $WEEK_HTML"
 fi
 
 # ── 15c. WP5 Phase 2: pan + zoom gestures + adaptive ruler density ──
@@ -514,10 +514,22 @@ else
     check "re-running overwrites in place" fail "mtime1=$mtime1 mtime2=$mtime2 file_count=$file_count"
 fi
 
-# ── WP5b codify: config-file path exercises viz_context_days_prior/after ──
-WP5B_DIR="$(mktemp -d -t claude-time-wp5b-codify-XXXXXX)"
+# ── WP5b codify block REMOVED (v3 WP3 Phase 2 verify-codify, 2026-05-29) ─
+# The 6 scenarios (config.json applied, --context-days 0/0 overrides config,
+# invalid-config-fallback, --demo forces single-day, week-coexists, target_iso
+# path-divergence) all asserted on viz_context_days_* behavior. The v3 emit
+# model retires those flags: --window defaults to MTD-2 (regardless of config),
+# pre-renders all sub-payloads, and removes the "context-days expansion"
+# concept entirely. WP4 deletes the underlying config keys + CLI flags.
+
+# ── WP5b-P2 codify (renderer multi-day source-shape pins) ──────────────
+# These assertions pin source code inside dashboard.jsx / viz_render.py
+# (function names, prop signatures, scale arrays). They're agnostic to which
+# CLI flag emitted the bundle — any multi-day visualize emit works. v3 WP3
+# Phase 2 verify-codify reroutes the source HTML from a --date-emitted file
+# to a --window-emitted file so the pins still run.
+WP5B_DIR="$(mktemp -d -t claude-time-wp5bp2-XXXXXX)"
 WP5B_DB="$WP5B_DIR/events.sqlite"
-# Seed 5 days (2026-05-20 .. 2026-05-24), one UPS+Stop per day at 12:00 local.
 sqlite3 "$WP5B_DB" <<SQL
 CREATE TABLE events (
   ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL,
@@ -525,127 +537,15 @@ CREATE TABLE events (
 );
 CREATE INDEX idx_session_ts ON events(session_id, ts);
 CREATE INDEX idx_ts ON events(ts);
+INSERT INTO events VALUES
+  ($TODAY_NOON_MS,              'sid-wp5bp2', '/repo/wp5b', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars": 10}'),
+  ($((TODAY_NOON_MS + 60000)),  'sid-wp5bp2', '/repo/wp5b', 'PreToolUse',  'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 120000)), 'sid-wp5bp2', '/repo/wp5b', 'PostToolUse', 'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 180000)), 'sid-wp5bp2', '/repo/wp5b', 'Stop', NULL, NULL, '{}');
 SQL
-for OFF in -2 -1 0 1 2; do
-    DAY_MS=$(python3 -c "
-from datetime import date, datetime, time, timedelta
-d = date(2026, 5, 22) + timedelta(days=$OFF)
-print(int(datetime.combine(d, time(12, 0)).timestamp() * 1000))
-")
-    DAY_ISO=$(python3 -c "
-from datetime import date, timedelta
-print((date(2026, 5, 22) + timedelta(days=$OFF)).isoformat())
-")
-    STOP_MS=$((DAY_MS + 1800000))
-    sqlite3 "$WP5B_DB" "INSERT INTO events VALUES ($DAY_MS, 'sid-$DAY_ISO', '/repo/p', 'UserPromptSubmit', NULL, NULL, '{\"prompt_length_chars\":5}'), ($STOP_MS, 'sid-$DAY_ISO', '/repo/p', 'Stop', NULL, NULL, NULL);"
-done
-
-# WP5b-1: config.json prior=3 after=1 → day_count=5; CLI no-flag uses config.
-printf '{"viz_context_days_prior": 3, "viz_context_days_after": 1}' > "$WP5B_DIR/config.json"
-WP5B_OUT="$WP5B_DIR/cfg.html"
-CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open --date 2026-05-22 --out "$WP5B_OUT" > /dev/null 2>&1
-cfg_rc=$?
-if [ $cfg_rc -eq 0 ] && [ -f "$WP5B_OUT" ] && \
-   grep -q '"day_count": 5' "$WP5B_OUT" && \
-   grep -q '"target_iso": "2026-05-22"' "$WP5B_OUT"; then
-    check "WP5b codify: config.json viz_context_days_prior/after applied (day_count=5)" pass
-else
-    check "WP5b codify: config.json applied" fail "rc=$cfg_rc, day_count or target_iso not found"
-fi
-
-# WP5b-2: CLI flag overrides config (0/0 forces single-day back-compat).
-# Note (WP10-P1, 2026-05-24): the metrics payload now emits its own
-# `day_count: 7`, so `! grep -q '"day_count"'` would spuriously trigger.
-# Scoped check: exactly ONE day_count match (from metrics.window), and the
-# `today` payload is single-day shape (has `iso` + no `target_iso`).
-WP5B_OUT2="$WP5B_DIR/override.html"
-CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open --date 2026-05-22 \
-    --context-days-prior 0 --context-days-after 0 --out "$WP5B_OUT2" > /dev/null 2>&1
-ovr_rc=$?
-day_count_hits=$(grep -c '"day_count"' "$WP5B_OUT2" 2>/dev/null || echo "0")
-if [ $ovr_rc -eq 0 ] && [ -f "$WP5B_OUT2" ] && \
-   grep -q '"iso": "2026-05-22"' "$WP5B_OUT2" && \
-   ! grep -q '"target_iso"' "$WP5B_OUT2" && \
-   [ "$day_count_hits" -eq 1 ]; then
-    check "WP5b codify: --context-days 0/0 overrides config, single-day back-compat" pass
-else
-    check "WP5b codify: flag-overrides-config" fail "rc=$ovr_rc, shape mismatch (day_count hits=$day_count_hits)"
-fi
-
-# WP5b-3: invalid config values silently fall back to defaults (14/7 = day_count 22).
-# Seed all 22 days for a full real-data assertion.
-for OFF in $(seq -14 7); do
-    DAY_MS=$(python3 -c "
-from datetime import date, datetime, time, timedelta
-d = date(2026, 5, 22) + timedelta(days=$OFF)
-print(int(datetime.combine(d, time(12, 0)).timestamp() * 1000))
-")
-    DAY_ISO=$(python3 -c "
-from datetime import date, timedelta
-print((date(2026, 5, 22) + timedelta(days=$OFF)).isoformat())
-")
-    STOP_MS=$((DAY_MS + 1800000))
-    sqlite3 "$WP5B_DB" "INSERT OR IGNORE INTO events VALUES ($DAY_MS, 'sid-full-$DAY_ISO', '/repo/p', 'UserPromptSubmit', NULL, NULL, '{\"prompt_length_chars\":5}'), ($STOP_MS, 'sid-full-$DAY_ISO', '/repo/p', 'Stop', NULL, NULL, NULL);"
-done
-printf '{"viz_context_days_prior": -5, "viz_context_days_after": "seven"}' > "$WP5B_DIR/config.json"
-WP5B_OUT3="$WP5B_DIR/bad.html"
-CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open --date 2026-05-22 --out "$WP5B_OUT3" > /dev/null 2>&1
-bad_rc=$?
-if [ $bad_rc -eq 0 ] && [ -f "$WP5B_OUT3" ] && grep -q '"day_count": 22' "$WP5B_OUT3"; then
-    check "WP5b codify: invalid config values silently fall back to defaults (14/7)" pass
-else
-    check "WP5b codify: invalid-config-fallback" fail "rc=$bad_rc, day_count=22 not found"
-fi
-
-# WP5b-4: --demo path forces single-day even with explicit context-days flags.
-# Note (WP10-P1, 2026-05-24): same metrics.day_count scoping as WP5b-2.
-# Demo path emits metrics with day_count=7; check that's the only day_count
-# present (i.e., the today payload didn't grow a day_count of its own).
-WP5B_OUT4="$WP5B_DIR/demo.html"
-CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open --demo \
-    --context-days-prior 5 --context-days-after 5 --out "$WP5B_OUT4" > /dev/null 2>&1
-demo_rc=$?
-day_count_hits_demo=$(grep -c '"day_count"' "$WP5B_OUT4" 2>/dev/null || echo "0")
-if [ $demo_rc -eq 0 ] && [ -f "$WP5B_OUT4" ] && \
-   ! grep -q '"target_iso"' "$WP5B_OUT4" && \
-   [ "$day_count_hits_demo" -eq 1 ]; then
-    check "WP5b codify: --demo forces single-day even with explicit flags" pass
-else
-    check "WP5b codify: --demo-forces-single-day" fail "rc=$demo_rc, shape mismatch (day_count hits=$day_count_hits_demo)"
-fi
-
-# WP5b-5: integration boundary — Week payload still emitted, independent of Day's context-days.
-# Multi-day Day window should NOT poison the Week payload's shape.
-WP5B_OUT5="$WP5B_DIR/with-week.html"
-CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open --date 2026-05-22 --out "$WP5B_OUT5" > /dev/null 2>&1
-week_rc=$?
-# Week payload has its own "label" field per build_week_data; check both today + week shape coexist.
-if [ $week_rc -eq 0 ] && [ -f "$WP5B_OUT5" ] && \
-   grep -q '"week"' "$WP5B_OUT5" && \
-   grep -q '"today"' "$WP5B_OUT5" && \
-   grep -q '"target_iso"' "$WP5B_OUT5"; then
-    check "WP5b codify: Week payload coexists with multi-day Day payload (no contamination)" pass
-else
-    check "WP5b codify: week-coexists" fail "rc=$week_rc, shape mismatch"
-fi
-
-# WP5b-6: integration boundary regression-pin — _cmd_visualize emits target_iso ONLY
-# on multi-day (build_range_data) path, NOT on the single-day (build_day_data) path.
-# This pins the "0/0 takes single-day code path" plan decision and prevents a future
-# refactor from collapsing both paths into a single build_range_data call (which would
-# emit target_iso even at day_count=1 — a downstream renderer back-compat hazard).
-single_day_emits_target=$(grep -c '"target_iso"' "$WP5B_OUT2" || true)
-multi_day_emits_target=$(grep -c '"target_iso"' "$WP5B_OUT5" || true)
-if [ "$single_day_emits_target" = "0" ] && [ "$multi_day_emits_target" -ge "1" ]; then
-    check "WP5b codify: target_iso emitted on multi-day only, not single-day (path-divergence pin)" pass
-else
-    check "WP5b codify: target_iso path-divergence" fail "single=$single_day_emits_target multi=$multi_day_emits_target"
-fi
-
-# ── Phase 2 codify: renderer multi-day support ───────────────────────
-# These assertions are run against $WP5B_OUT5 (a real multi-day emission)
-# so they exercise the actual end-to-end path: real DB → build_range_data
-# → _cmd_visualize → viz_render.render_html → emitted HTML.
+WP5B_OUT5="$WP5B_DIR/multi-day.html"
+CLAUDE_TIME_DIR="$WP5B_DIR" "$CLI" visualize --no-open \
+    --window 7d --out "$WP5B_OUT5" > /dev/null 2>&1
 
 # WP5b-P2-1: dayOffsetMin helper is in the bundle (Phase 2 P2.1)
 if grep -q 'function dayOffsetMin' "$WP5B_OUT5"; then
@@ -919,10 +819,21 @@ fi
 
 rm -rf "$WP5B_DIR"
 
-# ── WP8 Phase 1 codify: --range flag + range-aware visualize emit ──────
-# Codifies the 10 Phase 1 deliverables for Custom-range view (WP8). Builds
-# its own isolated fixture (5-day multi-day seed + per-test config overrides)
-# so it doesn't depend on $WP5B_DIR which was already cleaned up.
+# ── WP8 Phase 1 codify (v3 WP3 Phase 2 verify-codify rewrite, 2026-05-29) ──
+# v3 retires the --range CLI flag; its view-selecting effects + validation +
+# mutex behaviors are obsolete (10 scenarios removed: --help lists, happy path
+# CT_INITIAL_VIEW="custom", --range meta.start/end/day_count, multi-day shape,
+# opt-in regression-pin, end<start, days>cap, end>today, bad shape,
+# --range+--demo mutex, warning on combined flags, config cap override).
+#
+# KEPT scenarios (rerouted to use --window emit):
+#  - WP8-4: CT_MAX_RANGE_DAYS template injection — RangePicker UI still uses
+#    this template variable (set from cfg.viz_custom_range_max_days) for the
+#    Compare-custom-preset path that survives v3. Pin remains relevant.
+#  - WP8-12: invalid-config-fallback for viz_custom_range_max_days — config
+#    key still exists in v3 (used by Compare-custom-range). Pin remains.
+#  - WP8-13: P1.disc.1 regex hardening — purely about the test file's own
+#    regex shape; unrelated to --range CLI.
 
 WP8_DIR="$(mktemp -d -t claude-time-wp8-codify-XXXXXX)"
 WP8_DB="$WP8_DIR/events.sqlite"
@@ -933,177 +844,38 @@ CREATE TABLE events (
 );
 CREATE INDEX idx_session_ts ON events(session_id, ts);
 CREATE INDEX idx_ts ON events(ts);
+INSERT INTO events VALUES
+  ($TODAY_NOON_MS,              'sid-wp8', '/repo/wp8', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars": 10}'),
+  ($((TODAY_NOON_MS + 60000)),  'sid-wp8', '/repo/wp8', 'PreToolUse',  'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 120000)), 'sid-wp8', '/repo/wp8', 'PostToolUse', 'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 180000)), 'sid-wp8', '/repo/wp8', 'Stop', NULL, NULL, '{}');
 SQL
-# Seed 3 days (2026-05-20 .. 2026-05-22), one UPS+Stop per day at noon.
-# Picked safely in the past so end<=today rule never blocks the happy path.
-for OFF in 0 1 2; do
-    DAY_MS=$(python3 -c "
-from datetime import date, datetime, time, timedelta
-d = date(2026, 5, 20) + timedelta(days=$OFF)
-print(int(datetime.combine(d, time(12, 0)).timestamp() * 1000))
-")
-    DAY_ISO=$(python3 -c "
-from datetime import date, timedelta
-print((date(2026, 5, 20) + timedelta(days=$OFF)).isoformat())
-")
-    STOP_MS=$((DAY_MS + 1800000))
-    sqlite3 "$WP8_DB" "INSERT INTO events VALUES ($DAY_MS, 'sid-$DAY_ISO', '/repo/p', 'UserPromptSubmit', NULL, NULL, '{\"prompt_length_chars\":5}'), ($STOP_MS, 'sid-$DAY_ISO', '/repo/p', 'Stop', NULL, NULL, NULL);"
-done
-
-# WP8-1: --range flag appears in `visualize --help`.
-HELP_OUT=$("$CLI" visualize --help 2>&1)
-if echo "$HELP_OUT" | grep -qE '^  --range START:END'; then
-    check "WP8-P1 codify: --help lists --range START:END flag" pass
-else
-    check "WP8-P1 codify: --range in --help" fail "flag not listed at column-3"
-fi
-
-# WP8-2a: happy path emits CT_INITIAL_VIEW="custom".
 WP8_HAPPY="$WP8_DIR/happy.html"
 CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
-    --range 2026-05-20:2026-05-22 --out "$WP8_HAPPY" > /dev/null 2>&1
-happy_rc=$?
-if [ $happy_rc -eq 0 ] && [ -f "$WP8_HAPPY" ] && \
-   grep -q 'CT_INITIAL_VIEW = "custom"' "$WP8_HAPPY"; then
-    check "WP8-P1 codify: --range emits CT_INITIAL_VIEW=\"custom\"" pass
-else
-    check "WP8-P1 codify: --range emits CT_INITIAL_VIEW=\"custom\"" fail "rc=$happy_rc, value missing"
-fi
+    --window 7d --out "$WP8_HAPPY" > /dev/null 2>&1
 
-# WP8-2b: emitted multi-day shape — meta.start + meta.end + meta.day_count = 3.
-if grep -q '"start": "2026-05-20"' "$WP8_HAPPY" && \
-   grep -q '"end": "2026-05-22"' "$WP8_HAPPY" && \
-   grep -q '"day_count": 3' "$WP8_HAPPY"; then
-    check "WP8-P1 codify: --range payload has meta.start/end/day_count" pass
-else
-    check "WP8-P1 codify: --range meta.start/end/day_count" fail "field(s) missing"
-fi
-
-# WP8-2c: range-shape vs single-day-shape distinction — --range payload uses
-# hour_range_by_day (dict), NOT the single-day flat `hour_range` shape that
-# build_day_data emits for the 0/0 back-compat case.
-if grep -q '"hour_range_by_day"' "$WP8_HAPPY" && \
-   ! grep -qE '"target_iso"' "$WP8_HAPPY"; then
-    check "WP8-P1 codify: --range emits multi-day shape (hour_range_by_day; no target_iso)" pass
-else
-    check "WP8-P1 codify: --range multi-day shape" fail "shape contamination — target_iso must NOT appear in range mode"
-fi
-
-# WP8-3: default invocation (no --range, no --week) still emits CT_INITIAL_VIEW="day".
-# Regression-pin: the --range path is opt-in, not a silent default change.
-WP8_DEFAULT="$WP8_DIR/default.html"
-TODAY_ISO=$(python3 -c "from datetime import date; print(date.today().isoformat())")
-CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
-    --date "$TODAY_ISO" --context-days-prior 0 --context-days-after 0 \
-    --out "$WP8_DEFAULT" > /dev/null 2>&1
-def_rc=$?
-if [ $def_rc -eq 0 ] && [ -f "$WP8_DEFAULT" ] && \
-   grep -q 'CT_INITIAL_VIEW = "day"' "$WP8_DEFAULT" && \
-   ! grep -q 'CT_INITIAL_VIEW = "custom"' "$WP8_DEFAULT"; then
-    check "WP8-P1 codify: --range is opt-in (no --range → CT_INITIAL_VIEW=\"day\")" pass
-else
-    check "WP8-P1 codify: --range opt-in regression-pin" fail "rc=$def_rc, default emit got 'custom'"
-fi
-
-# WP8-4: CT_MAX_RANGE_DAYS template injection — defaults to 90.
+# WP8-4 (kept): CT_MAX_RANGE_DAYS template injection — defaults to 90.
 if grep -qE 'CT_MAX_RANGE_DAYS = 90\b' "$WP8_HAPPY"; then
-    check "WP8-P1 codify: CT_MAX_RANGE_DAYS = 90 default injected" pass
+    check "WP8-P1 codify (v3-rerouted): CT_MAX_RANGE_DAYS = 90 default injected" pass
 else
     check "WP8-P1 codify: CT_MAX_RANGE_DAYS injection" fail "placeholder not replaced or wrong default"
 fi
 
-# WP8-5: validation — end<start fails with rc=2 + rule-named message.
-err1=$("$CLI" visualize --no-open --range 2026-05-22:2026-05-20 --out "$WP8_DIR/v1.html" 2>&1)
-rc1=$?
-if [ $rc1 -eq 2 ] && echo "$err1" | grep -qE 'end >= start'; then
-    check "WP8-P1 codify: validation — end<start exits 2, names rule" pass
-else
-    check "WP8-P1 codify: validation end<start" fail "rc=$rc1, msg=$err1"
-fi
-
-# WP8-6: validation — days>cap fails with rc=2 + names cap.
-# Use a date safely in the past with 100+ days inside the WP8_DB-irrelevant range.
-err2=$("$CLI" visualize --no-open --range 2026-01-01:2026-05-20 --out "$WP8_DIR/v2.html" 2>&1)
-rc2=$?
-if [ $rc2 -eq 2 ] && echo "$err2" | grep -qE 'viz_custom_range_max_days|cap'; then
-    check "WP8-P1 codify: validation — days>cap exits 2, names cap" pass
-else
-    check "WP8-P1 codify: validation days>cap" fail "rc=$rc2, msg=$err2"
-fi
-
-# WP8-7: validation — end>today fails with rc=2 + names "future".
-err3=$("$CLI" visualize --no-open --range 2026-05-20:2030-01-01 --out "$WP8_DIR/v3.html" 2>&1)
-rc3=$?
-if [ $rc3 -eq 2 ] && echo "$err3" | grep -qE 'future'; then
-    check "WP8-P1 codify: validation — end>today exits 2, names 'future'" pass
-else
-    check "WP8-P1 codify: validation end>today" fail "rc=$rc3, msg=$err3"
-fi
-
-# WP8-8: validation — bad shape (no colon) fails with rc=2 + names grammar.
-err4=$("$CLI" visualize --no-open --range 'not-a-range' --out "$WP8_DIR/v4.html" 2>&1)
-rc4=$?
-if [ $rc4 -eq 2 ] && echo "$err4" | grep -qE 'YYYY-MM-DD'; then
-    check "WP8-P1 codify: validation — bad shape exits 2, names grammar" pass
-else
-    check "WP8-P1 codify: validation bad shape" fail "rc=$rc4, msg=$err4"
-fi
-
-# WP8-9: mutual exclusion — --range + --demo fails with rc=2 + names "demo".
-err5=$("$CLI" visualize --no-open --range 2026-05-20:2026-05-22 --demo --out "$WP8_DIR/v5.html" 2>&1)
-rc5=$?
-if [ $rc5 -eq 2 ] && echo "$err5" | grep -qE 'demo'; then
-    check "WP8-P1 codify: --range + --demo mutual exclusion (rc=2)" pass
-else
-    check "WP8-P1 codify: --range+--demo exclusion" fail "rc=$rc5, msg=$err5"
-fi
-
-# WP8-10: warning — --range + --context-days-prior emits stderr warning + exits 0.
-# Subtler than the error cases — the warning is easy to lose silently in a refactor.
-warn_out="$WP8_DIR/warn.html"
-err6=$(CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
-        --range 2026-05-20:2026-05-22 --context-days-prior 3 --out "$warn_out" 2>&1 >/dev/null)
-rc6=$?
-if [ $rc6 -eq 0 ] && [ -f "$warn_out" ] && \
-   echo "$err6" | grep -qE 'warning.*ignored.*range mode'; then
-    check "WP8-P1 codify: --range + --context-days-prior emits warning + exits 0" pass
-else
-    check "WP8-P1 codify: warning on combined flags" fail "rc=$rc6, msg=$err6"
-fi
-
-# WP8-11: config — viz_custom_range_max_days override validated through load_config.
-# Set cap to 2 days; a 3-day range should now fail.
-printf '{"viz_custom_range_max_days": 2}' > "$WP8_DIR/config.json"
-err7=$(CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
-        --range 2026-05-20:2026-05-22 --out "$WP8_DIR/v7.html" 2>&1)
-rc7=$?
-if [ $rc7 -eq 2 ] && echo "$err7" | grep -qE '3 days > 2'; then
-    check "WP8-P1 codify: viz_custom_range_max_days config override applied" pass
-else
-    check "WP8-P1 codify: config cap override" fail "rc=$rc7, msg=$err7"
-fi
-
-# WP8-12: config — invalid value silently falls back to default 90.
+# WP8-12 (kept): config — invalid viz_custom_range_max_days falls back to 90.
 printf '{"viz_custom_range_max_days": "not a number"}' > "$WP8_DIR/config.json"
 WP8_BADCFG="$WP8_DIR/badcfg.html"
 CLAUDE_TIME_DIR="$WP8_DIR" "$CLI" visualize --no-open \
-    --range 2026-05-20:2026-05-22 --out "$WP8_BADCFG" > /dev/null 2>&1
+    --window 7d --out "$WP8_BADCFG" > /dev/null 2>&1
 badcfg_rc=$?
 if [ $badcfg_rc -eq 0 ] && [ -f "$WP8_BADCFG" ] && \
    grep -qE 'CT_MAX_RANGE_DAYS = 90\b' "$WP8_BADCFG"; then
-    check "WP8-P1 codify: invalid config value falls back to default 90" pass
+    check "WP8-P1 codify (v3-rerouted): invalid viz_custom_range_max_days falls back to default 90" pass
 else
     check "WP8-P1 codify: invalid-config fallback" fail "rc=$badcfg_rc, default not preserved"
 fi
 rm -f "$WP8_DIR/config.json"
 
-# WP8-13: P1.disc.1 hardening lock-in — test #1's flag-count regex is
-# anchored at column-3 (2 leading spaces) + space-or-EOL after flag name.
-# This pin asserts the test file itself uses the hardened regex shape; a
-# regression to the permissive `^\s+--(...)\b` form would re-introduce the
-# false-match against wrapped help-text continuation lines. We grep for a
-# byte-stable substring of the hardened pattern (column-3 anchor + non-greedy
-# tail) — fixed-string match (-F) avoids regex-quoting hell on $.
+# WP8-13 (kept): P1.disc.1 hardening lock-in — test file's own regex shape.
 TEST_FILE="$(dirname "$0")/test_visualize_cli.sh"
 if grep -Fq '^  --(date|week|demo|no-open|out)( |$)' "$TEST_FILE"; then
     check "WP8-P1 codify: P1.disc.1 — flag-count regex hardened (column-3 + EOL)" pass
@@ -1231,10 +1003,23 @@ fi
 
 rm -rf "$WP8_DIR"
 
-# ── WP7 Phase 1 codify: --month flag + two-month payload emit ──────────
-# Codifies the 12 Phase 1 deliverables for Month view (WP7). Builds its own
-# isolated fixture (5-event seed across 2026-03 + 2026-04) so it doesn't
-# depend on $WP8_DIR which was already cleaned up.
+# ── WP7 Phase 1 codify (v3 WP3 Phase 2 verify-codify rewrite, 2026-05-29) ──
+# v3 retires the --month CLI flag; its view-selecting effects + validation +
+# mutex behaviors are obsolete (12 scenarios removed: --help lists --month,
+# CT_INITIAL_VIEW="month", months map keys, per-month meta boundaries,
+# default-emit-no-months opt-in pin, bad-shape exit, month-bounds exit,
+# future-month exit, --month+--range mutex, --month+--demo mutex, D6 fallback
+# identity).
+#
+# KEPT scenario (no rerouting needed):
+#  - WP7-P1-13: render_html signature unchanged — purely a Python source-shape
+#    pin against viz_render.py. v3's --window path uses the same render_html
+#    call signature; pin remains relevant.
+#
+# Setup retained: $WP7_DIR + $WP7_HAPPY are consumed by the WP7 Phase 2 codify
+# block below (MonthView UI source-shape pins). Reroute $WP7_HAPPY to a
+# --window 7d emit; the MonthView source code is still embedded in any
+# visualize emit, so the pins survive.
 
 WP7_DIR="$(mktemp -d -t claude-time-wp7-codify-XXXXXX)"
 WP7_DB="$WP7_DIR/events.sqlite"
@@ -1245,160 +1030,17 @@ CREATE TABLE events (
 );
 CREATE INDEX idx_session_ts ON events(session_id, ts);
 CREATE INDEX idx_ts ON events(ts);
+INSERT INTO events VALUES
+  ($TODAY_NOON_MS,              'sid-wp7', '/repo/wp7', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars": 10}'),
+  ($((TODAY_NOON_MS + 60000)),  'sid-wp7', '/repo/wp7', 'PreToolUse',  'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 120000)), 'sid-wp7', '/repo/wp7', 'PostToolUse', 'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 180000)), 'sid-wp7', '/repo/wp7', 'Stop', NULL, NULL, '{}');
 SQL
-# Seed: 3 events in 2026-04 (active month), 2 events in 2026-03 (prev).
-# Picked safely in the past so the not-future rule never blocks the happy path.
-for ISO in 2026-04-05 2026-04-12 2026-04-15 2026-03-08 2026-03-20; do
-    DAY_MS=$(python3 -c "
-from datetime import date, datetime, time
-d = date.fromisoformat('$ISO')
-print(int(datetime.combine(d, time(12, 0)).timestamp() * 1000))
-")
-    STOP_MS=$((DAY_MS + 1800000))
-    sqlite3 "$WP7_DB" "INSERT INTO events VALUES ($DAY_MS, 'sid-$ISO', '/repo/p', 'UserPromptSubmit', NULL, NULL, '{\"prompt_length_chars\":5}'), ($STOP_MS, 'sid-$ISO', '/repo/p', 'Stop', NULL, NULL, NULL);"
-done
-
-# WP7-P1-1: --month flag appears in `visualize --help` at column 3 with
-# YYYY-MM metavar. Anchored against wrapped help-text continuation lines
-# (same pattern as WP8-1).
-HELP_OUT=$("$CLI" visualize --help 2>&1)
-if echo "$HELP_OUT" | grep -qE '^  --month YYYY-MM'; then
-    check "WP7-P1 codify: --help lists --month YYYY-MM flag" pass
-else
-    check "WP7-P1 codify: --month in --help" fail "flag not listed at column-3"
-fi
-
-# WP7-P1-2: happy path emits CT_INITIAL_VIEW="month".
 WP7_HAPPY="$WP7_DIR/happy.html"
 CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
-    --month 2026-04 --out "$WP7_HAPPY" > /dev/null 2>&1
-happy_rc=$?
-if [ $happy_rc -eq 0 ] && [ -f "$WP7_HAPPY" ] && \
-   grep -q 'CT_INITIAL_VIEW = "month"' "$WP7_HAPPY"; then
-    check "WP7-P1 codify: --month emits CT_INITIAL_VIEW=\"month\"" pass
-else
-    check "WP7-P1 codify: --month emits CT_INITIAL_VIEW=\"month\"" fail "rc=$happy_rc, value missing"
-fi
+    --window 7d --out "$WP7_HAPPY" > /dev/null 2>&1
 
-# WP7-P1-3: window.CT_DATA.months map present with active + prev keys.
-# The shape is {"2026-04": {...}, "2026-03": {...}} — both keys must appear.
-if grep -qE '"months": \{"2026-04":' "$WP7_HAPPY" && \
-   grep -q '"2026-03":' "$WP7_HAPPY"; then
-    check "WP7-P1 codify: months map has active (2026-04) + prev (2026-03) keys" pass
-else
-    check "WP7-P1 codify: months map keys" fail "active or prev key missing"
-fi
-
-# WP7-P1-4: per-month meta.start/.end correctness — active month boundaries.
-if grep -q '"start": "2026-04-01"' "$WP7_HAPPY" && \
-   grep -q '"end": "2026-04-30"' "$WP7_HAPPY"; then
-    check "WP7-P1 codify: active-month meta.start=2026-04-01, meta.end=2026-04-30" pass
-else
-    check "WP7-P1 codify: active-month meta boundaries" fail "start or end missing"
-fi
-
-# WP7-P1-5: per-month meta.start/.end correctness — prev month boundaries.
-if grep -q '"start": "2026-03-01"' "$WP7_HAPPY" && \
-   grep -q '"end": "2026-03-31"' "$WP7_HAPPY"; then
-    check "WP7-P1 codify: prev-month meta.start=2026-03-01, meta.end=2026-03-31" pass
-else
-    check "WP7-P1 codify: prev-month meta boundaries" fail "start or end missing"
-fi
-
-# WP7-P1-6: regression-pin — without --month, NO months key is emitted.
-# Catches future drift where someone accidentally adds the months key to
-# the default emit path (would bloat HTML for non-Month users).
-WP7_NOMONTH="$WP7_DIR/nomonth.html"
-CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
-    --date 2026-04-10 --out "$WP7_NOMONTH" > /dev/null 2>&1
-if ! grep -q '"months":' "$WP7_NOMONTH"; then
-    check "WP7-P1 codify: default emit has NO months key (opt-in regression-pin)" pass
-else
-    check "WP7-P1 codify: default-emit no-months" fail "months key found in default emit"
-fi
-
-# WP7-P1-7: validation — bad shape exits 2, names shape rule.
-err1=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
-    --month not-a-date --out /tmp/x.html 2>&1)
-err1_rc=$?
-if [ $err1_rc -eq 2 ] && echo "$err1" | grep -q -- '--month' && \
-   echo "$err1" | grep -qi 'shape'; then
-    check "WP7-P1 codify: validation — bad shape exits 2, names rule" pass
-else
-    check "WP7-P1 codify: bad shape exit" fail "rc=$err1_rc msg=$err1"
-fi
-
-# WP7-P1-8: validation — month bounds (e.g. month=99) exits 2, names rule.
-err2=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
-    --month 2026-99 --out /tmp/x.html 2>&1)
-err2_rc=$?
-if [ $err2_rc -eq 2 ] && echo "$err2" | grep -q -- '--month' && \
-   echo "$err2" | grep -qE 'month=99|01\.\.12'; then
-    check "WP7-P1 codify: validation — out-of-bounds month exits 2, names rule" pass
-else
-    check "WP7-P1 codify: month bounds exit" fail "rc=$err2_rc msg=$err2"
-fi
-
-# WP7-P1-9: validation — future month exits 2, names 'future'.
-err3=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
-    --month 2099-01 --out /tmp/x.html 2>&1)
-err3_rc=$?
-if [ $err3_rc -eq 2 ] && echo "$err3" | grep -q -- '--month' && \
-   echo "$err3" | grep -qi 'future'; then
-    check "WP7-P1 codify: validation — future month exits 2, names 'future'" pass
-else
-    check "WP7-P1 codify: future month exit" fail "rc=$err3_rc msg=$err3"
-fi
-
-# WP7-P1-10: mutex with --range (rc=2).
-err4=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
-    --month 2026-04 --range 2026-05-01:2026-05-07 --out /tmp/x.html 2>&1)
-err4_rc=$?
-if [ $err4_rc -eq 2 ] && echo "$err4" | grep -q -- '--month' && \
-   echo "$err4" | grep -q -- '--range' && \
-   echo "$err4" | grep -qE 'incompatible|mutex|exclusive'; then
-    check "WP7-P1 codify: --month + --range mutual exclusion (rc=2)" pass
-else
-    check "WP7-P1 codify: --month + --range mutex" fail "rc=$err4_rc msg=$err4"
-fi
-
-# WP7-P1-11: mutex with --demo (rc=2).
-err5=$(CLAUDE_TIME_DIR="$WP7_DIR" "$CLI" visualize --no-open \
-    --month 2026-04 --demo --out /tmp/x.html 2>&1)
-err5_rc=$?
-if [ $err5_rc -eq 2 ] && echo "$err5" | grep -q -- '--month' && \
-   echo "$err5" | grep -qE 'incompatible|mutex|exclusive'; then
-    check "WP7-P1 codify: --month + --demo mutual exclusion (rc=2)" pass
-else
-    check "WP7-P1 codify: --month + --demo mutex" fail "rc=$err5_rc msg=$err5"
-fi
-
-# WP7-P1-12: D6 fallback identity — when --month is set, data.today is
-# the active-month payload (so Day/Week tabs in Month-emit mode still
-# have something coherent to render). Identity check: data.today.meta.start
-# equals the active month's first day. This guards against a future change
-# that decouples today from months[active] and accidentally leaves today
-# pointing at default-today instead of the active-month window.
-if python3 -c "
-import json, re, sys
-html = open('$WP7_HAPPY').read()
-m = re.search(r'window\.CT_DATA = (.*?);\n', html, re.DOTALL)
-if not m:
-    print('no window.CT_DATA match', file=sys.stderr); sys.exit(1)
-data = json.loads(m.group(1))
-today = data.get('today', {})
-start = today.get('meta', {}).get('start')
-sys.exit(0 if start == '2026-04-01' else 1)
-" 2>/dev/null; then
-    check "WP7-P1 codify: D6 fallback — data.today.meta.start == active-month start" pass
-else
-    check "WP7-P1 codify: D6 fallback identity" fail "data.today.meta.start != 2026-04-01"
-fi
-
-# WP7-P1-13: integration-boundary — viz_render.render_html signature is
-# unchanged from WP8. The two-month payload flows through data dict's new
-# `months` key, NOT via a new positional arg. Catches a future refactor
-# that thinks "the renderer needs to know about month-mode" — it doesn't.
+# WP7-P1-13 (kept): viz_render.render_html signature unchanged.
 if grep -qE '^def render_html\(template_path: Path, dashboard_jsx_path: Path,' "$REPO_ROOT/tools/claude-time/viz_render.py"; then
     check "WP7-P1 codify: integration-boundary — viz_render.render_html signature unchanged" pass
 else
@@ -1683,7 +1325,10 @@ sqlite3 "$WP10C_DB" "INSERT INTO events VALUES \
   ($STOP_MS, 'sid-wp10c', '/repo/p', 'Stop',             NULL, NULL, NULL);"
 
 WP10C_HAPPY="$WP10C_DIR/wp10c.html"
-CLAUDE_TIME_DIR="$WP10C_DIR" "$CLI" visualize --no-open --out "$WP10C_HAPPY" > /dev/null 2>&1
+# v3 WP3 Phase 2 verify-codify rewrite: was bare `visualize --no-open` (which
+# now defaults to MTD-2/90-day window). Reroute to `--window 7d` so the
+# trailing-7-day window-math assertion in WP10-P1 codify-9 holds.
+CLAUDE_TIME_DIR="$WP10C_DIR" "$CLI" visualize --no-open --window 7d --out "$WP10C_HAPPY" > /dev/null 2>&1
 wp10c_rc=$?
 
 # WP10-P1 codify-8: real-DB path emits metrics that reflect seeded events.
@@ -2233,6 +1878,308 @@ else
 fi
 
 rm -rf "$WP11P2A_DIR"
+
+# ── v3 WP3 Phase 2 codify: --window emits both v3 sub-payload maps AND ──
+# ── legacy alias keys side-by-side (the v2-frontend coexistence contract) ──
+#
+# Phase 2 hits the integration boundary (CLI command behavior + dashboard HTML
+# rendering changed substantively). The boundary contract this whole phase
+# exists to preserve is: the emitted window.CT_DATA contains BOTH the new v3
+# sub-payload keys (day_payloads_by_iso etc.) AND legacy alias keys (today,
+# week, comparison, metrics, meta, months) side-by-side, so the v2 frontend
+# keeps rendering until WP5–WP9 wire the sub-payloads.
+#
+# The verify-self alias-key audit miss (P2.4 initial grep was incomplete —
+# missed `const {today, week} = window.CT_DATA` destructure + `meta.start/end/
+# day_count` reads) was the exact regression this test would catch. Pinning
+# both sets ensures future WPs (WP5–WP9) progressively remove aliases as they
+# wire each consumer to the v3 sub-payloads, without accidentally regressing
+# the others mid-transition.
+#
+# Parser-correctness scenarios (default MTD-2 bounds, --window 30d day_count,
+# --window 2026-04-01:2026-05-26 explicit bounds, --window+--demo mutex,
+# bad-shape error) are owned by Phase 3 per the plan split.
+WP3P2_DIR="$(mktemp -d -t claude-time-wp3p2-XXXXXX)"
+WP3P2_DB="$WP3P2_DIR/events.sqlite"
+sqlite3 "$WP3P2_DB" <<SQL > /dev/null 2>&1
+CREATE TABLE events (
+  ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL,
+  event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT
+);
+CREATE INDEX idx_session_ts ON events(session_id, ts);
+CREATE INDEX idx_ts ON events(ts);
+INSERT INTO events VALUES
+  ($TODAY_NOON_MS,              'sid-wp3', '/repo/wp3', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars": 10}'),
+  ($((TODAY_NOON_MS + 60000)),  'sid-wp3', '/repo/wp3', 'PreToolUse',  'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 120000)), 'sid-wp3', '/repo/wp3', 'PostToolUse', 'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 180000)), 'sid-wp3', '/repo/wp3', 'Stop', NULL, NULL, '{}');
+SQL
+
+WP3P2_EMIT="$WP3P2_DIR/wp3-window.html"
+CLAUDE_TIME_DIR="$WP3P2_DIR" "$CLI" visualize --no-open \
+    --window 30d --out "$WP3P2_EMIT" > /dev/null 2>&1
+wp3p2_rc=$?
+
+if [ $wp3p2_rc -eq 0 ] && [ -f "$WP3P2_EMIT" ]; then
+    check "v3 WP3 P2 codify: --window 30d emits HTML, rc=0" pass
+else
+    check "v3 WP3 P2 codify: --window 30d emits HTML, rc=0" fail "rc=$wp3p2_rc, emit_exists=$([ -f "$WP3P2_EMIT" ] && echo yes || echo no)"
+fi
+
+# Boundary contract — both v3 keys and legacy alias keys present side-by-side.
+# Extract the CT_DATA literal and check key membership via Python (jq would be
+# nice but isn't a project test dep; python3 already is for date math above).
+wp3p2_audit=$(python3 - <<PY
+import re, json, sys
+try:
+    txt = open("$WP3P2_EMIT").read()
+except Exception as e:
+    print(f"FAIL: emit not readable: {e}")
+    sys.exit(0)
+m = re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', txt, re.DOTALL)
+if not m:
+    print("FAIL: window.CT_DATA literal not found in emit")
+    sys.exit(0)
+try:
+    data = json.loads(m.group(1))
+except Exception as e:
+    print(f"FAIL: CT_DATA not valid JSON: {e}")
+    sys.exit(0)
+v3_keys = {"window", "day_payloads_by_iso", "week_payloads_by_monday",
+           "month_payloads_by_iso", "compare_payloads_by_preset"}
+legacy_keys = {"today", "week", "comparison", "metrics", "meta", "months"}
+missing_v3 = v3_keys - set(data.keys())
+missing_legacy = legacy_keys - set(data.keys())
+if missing_v3 or missing_legacy:
+    print(f"FAIL: missing v3={sorted(missing_v3)} missing legacy={sorted(missing_legacy)}")
+    sys.exit(0)
+# Cross-check: meta has the shape v2 frontend reads (start/end/day_count).
+meta_required = {"start", "end", "day_count"}
+missing_meta = meta_required - set(data.get("meta", {}).keys())
+if missing_meta:
+    print(f"FAIL: meta alias shape incomplete; missing={sorted(missing_meta)}")
+    sys.exit(0)
+# Cross-check: today === day_payloads_by_iso[meta.end] (alias derivation contract).
+end_iso = data["meta"]["end"]
+if data["today"] is not data["day_payloads_by_iso"].get(end_iso):
+    # Object identity not preserved across JSON round-trip; check structural equality instead.
+    if data["today"] != data["day_payloads_by_iso"].get(end_iso):
+        print(f"FAIL: today alias != day_payloads_by_iso[{end_iso}]")
+        sys.exit(0)
+print("PASS")
+PY
+)
+if [ "$wp3p2_audit" = "PASS" ]; then
+    check "v3 WP3 P2 codify: --window emit has BOTH v3 sub-payload keys AND legacy alias keys (boundary contract for WP5-WP9 transition)" pass
+else
+    check "v3 WP3 P2 codify: --window emit boundary contract" fail "$wp3p2_audit"
+fi
+
+rm -rf "$WP3P2_DIR"
+
+# ── v3 WP3 Phase 3 codify: --window parser-correctness behavioral pins ──
+#
+# Phase 2 codify added the boundary-contract test (v3 sub-payload keys +
+# legacy alias keys both present in --window emit). Phase 3 adds the
+# per-form parser-correctness pins so a regression on one form doesn't
+# mask the others. Six scenarios:
+#
+#   P3.1: --window MTD-2 default (no flag → MTD-2 = 1st of current_month-2
+#         through today, calendar-anchored)
+#   P3.2: --window 30d → day_payloads_by_iso has exactly 30 keys
+#   P3.3: --window 2026-04-01:2026-05-26 → explicit bounds match
+#   P3.4: bare invocation (no --window) → MTD-2 default (regression-pin)
+#   P3.5: --window + --demo → rc=2 with expected error
+#   P3.6: bad-shape inputs → rc=2 with three-forms error
+#
+# Setup: isolated DB with today-noon events so the metrics payload is
+# non-empty (matches WP10C_DIR shape but smaller).
+WP3P3_DIR="$(mktemp -d -t claude-time-wp3p3-XXXXXX)"
+WP3P3_DB="$WP3P3_DIR/events.sqlite"
+sqlite3 "$WP3P3_DB" <<SQL > /dev/null 2>&1
+CREATE TABLE events (
+  ts INTEGER NOT NULL, session_id TEXT NOT NULL, cwd TEXT NOT NULL,
+  event TEXT NOT NULL, tool_name TEXT, agent_type TEXT, meta TEXT
+);
+CREATE INDEX idx_session_ts ON events(session_id, ts);
+CREATE INDEX idx_ts ON events(ts);
+INSERT INTO events VALUES
+  ($TODAY_NOON_MS,              'sid-wp3p3', '/repo/wp3p3', 'UserPromptSubmit', NULL, NULL, '{"prompt_length_chars": 10}'),
+  ($((TODAY_NOON_MS + 60000)),  'sid-wp3p3', '/repo/wp3p3', 'PreToolUse',  'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 120000)), 'sid-wp3p3', '/repo/wp3p3', 'PostToolUse', 'Edit', NULL, '{"tool_use_id":"t1"}'),
+  ($((TODAY_NOON_MS + 180000)), 'sid-wp3p3', '/repo/wp3p3', 'Stop', NULL, NULL, '{}');
+SQL
+
+# Compute expected MTD-2 window bounds dynamically (today is variable per run).
+EXPECTED_MTD2_START=$(python3 -c "
+from datetime import date
+today = date.today()
+m_idx = today.year * 12 + (today.month - 1) - 2
+start_year, start_month_zero = divmod(m_idx, 12)
+print(date(start_year, start_month_zero + 1, 1).isoformat())
+")
+EXPECTED_MTD2_END=$(python3 -c "from datetime import date; print(date.today().isoformat())")
+EXPECTED_MTD2_DAYS=$(python3 -c "
+from datetime import date
+today = date.today()
+m_idx = today.year * 12 + (today.month - 1) - 2
+start_year, start_month_zero = divmod(m_idx, 12)
+start = date(start_year, start_month_zero + 1, 1)
+print((today - start).days + 1)
+")
+
+# Compute expected 30d window bounds.
+EXPECTED_30D_START=$(python3 -c "
+from datetime import date, timedelta
+print((date.today() - timedelta(days=29)).isoformat())
+")
+
+# ── P3.1: --window MTD-2 default ───────────────────────────────────────
+WP3P3_MTD2="$WP3P3_DIR/mtd2.html"
+CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --window MTD-2 --out "$WP3P3_MTD2" > /dev/null 2>&1
+mtd2_audit=$(python3 - <<PY
+import re, json, sys
+try:
+    data = json.loads(re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', open("$WP3P3_MTD2").read(), re.DOTALL).group(1))
+except Exception as e:
+    print(f"FAIL: {e}"); sys.exit(0)
+w = data.get("window", {})
+if w.get("start") != "$EXPECTED_MTD2_START":
+    print(f"FAIL: window.start={w.get('start')!r} expected={'$EXPECTED_MTD2_START'!r}"); sys.exit(0)
+if w.get("end") != "$EXPECTED_MTD2_END":
+    print(f"FAIL: window.end={w.get('end')!r} expected={'$EXPECTED_MTD2_END'!r}"); sys.exit(0)
+if w.get("day_count") != $EXPECTED_MTD2_DAYS:
+    print(f"FAIL: window.day_count={w.get('day_count')!r} expected=$EXPECTED_MTD2_DAYS"); sys.exit(0)
+print("PASS")
+PY
+)
+if [ "$mtd2_audit" = "PASS" ]; then
+    check "v3 WP3 P3 codify P3.1: --window MTD-2 → calendar-anchored start, end=today, correct day_count" pass
+else
+    check "v3 WP3 P3 codify P3.1: --window MTD-2" fail "$mtd2_audit"
+fi
+
+# ── P3.2: --window 30d → day_payloads_by_iso has exactly 30 keys ───────
+WP3P3_30D="$WP3P3_DIR/30d.html"
+CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --window 30d --out "$WP3P3_30D" > /dev/null 2>&1
+day30_audit=$(python3 - <<PY
+import re, json, sys
+try:
+    data = json.loads(re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', open("$WP3P3_30D").read(), re.DOTALL).group(1))
+except Exception as e:
+    print(f"FAIL: {e}"); sys.exit(0)
+dp = data.get("day_payloads_by_iso", {})
+if len(dp) != 30:
+    print(f"FAIL: day_payloads_by_iso has {len(dp)} keys, expected 30"); sys.exit(0)
+w = data.get("window", {})
+if w.get("start") != "$EXPECTED_30D_START":
+    print(f"FAIL: window.start={w.get('start')!r} expected={'$EXPECTED_30D_START'!r}"); sys.exit(0)
+if w.get("day_count") != 30:
+    print(f"FAIL: window.day_count={w.get('day_count')!r} expected=30"); sys.exit(0)
+print("PASS")
+PY
+)
+if [ "$day30_audit" = "PASS" ]; then
+    check "v3 WP3 P3 codify P3.2: --window 30d → day_payloads_by_iso has exactly 30 keys, window matches" pass
+else
+    check "v3 WP3 P3 codify P3.2: --window 30d" fail "$day30_audit"
+fi
+
+# ── P3.3: --window 2026-04-01:2026-05-26 → explicit bounds match ──────
+WP3P3_RANGE="$WP3P3_DIR/range.html"
+CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --window 2026-04-01:2026-05-26 --out "$WP3P3_RANGE" > /dev/null 2>&1
+range_audit=$(python3 - <<PY
+import re, json, sys
+try:
+    data = json.loads(re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', open("$WP3P3_RANGE").read(), re.DOTALL).group(1))
+except Exception as e:
+    print(f"FAIL: {e}"); sys.exit(0)
+w = data.get("window", {})
+if w.get("start") != "2026-04-01":
+    print(f"FAIL: window.start={w.get('start')!r} expected='2026-04-01'"); sys.exit(0)
+if w.get("end") != "2026-05-26":
+    print(f"FAIL: window.end={w.get('end')!r} expected='2026-05-26'"); sys.exit(0)
+if w.get("day_count") != 56:
+    print(f"FAIL: window.day_count={w.get('day_count')!r} expected=56"); sys.exit(0)
+print("PASS")
+PY
+)
+if [ "$range_audit" = "PASS" ]; then
+    check "v3 WP3 P3 codify P3.3: --window 2026-04-01:2026-05-26 → explicit bounds match (day_count=56)" pass
+else
+    check "v3 WP3 P3 codify P3.3: --window explicit range" fail "$range_audit"
+fi
+
+# ── P3.4: bare visualize (no --window) → MTD-2 default (regression-pin) ─
+WP3P3_DEFAULT="$WP3P3_DIR/default.html"
+CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --out "$WP3P3_DEFAULT" > /dev/null 2>&1
+default_audit=$(python3 - <<PY
+import re, json, sys
+try:
+    data = json.loads(re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', open("$WP3P3_DEFAULT").read(), re.DOTALL).group(1))
+except Exception as e:
+    print(f"FAIL: {e}"); sys.exit(0)
+w = data.get("window", {})
+if w.get("start") != "$EXPECTED_MTD2_START":
+    print(f"FAIL: bare invocation window.start={w.get('start')!r} expected MTD-2 start {'$EXPECTED_MTD2_START'!r}"); sys.exit(0)
+if w.get("end") != "$EXPECTED_MTD2_END":
+    print(f"FAIL: bare invocation window.end={w.get('end')!r} expected today {'$EXPECTED_MTD2_END'!r}"); sys.exit(0)
+print("PASS")
+PY
+)
+if [ "$default_audit" = "PASS" ]; then
+    check "v3 WP3 P3 codify P3.4: bare visualize (no --window) → MTD-2 default (regression-pin against silent default-shift)" pass
+else
+    check "v3 WP3 P3 codify P3.4: default invocation" fail "$default_audit"
+fi
+
+# ── P3.5: --window + --demo → rc=2 with expected error ─────────────────
+mutex_err=$(CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --window 30d --demo --out "$WP3P3_DIR/mutex.html" 2>&1)
+mutex_rc=$?
+if [ "$mutex_rc" = "2" ] && echo "$mutex_err" | grep -qF "incompatible with --demo"; then
+    check "v3 WP3 P3 codify P3.5: --window + --demo → rc=2 with 'incompatible with --demo' error" pass
+else
+    check "v3 WP3 P3 codify P3.5: --window+--demo mutex" fail "rc=$mutex_rc msg=$mutex_err"
+fi
+
+# ── P3.6: bad-shape inputs → rc=2 with three-forms error ───────────────
+# Three sub-cases: garbage shape; inverted range; >365-day range (exceeds cap).
+bad_garbage_err=$(CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --window garbage --out "$WP3P3_DIR/bad1.html" 2>&1)
+bad_garbage_rc=$?
+bad_inverted_err=$(CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --window 2026-05-29:2026-05-01 --out "$WP3P3_DIR/bad2.html" 2>&1)
+bad_inverted_rc=$?
+bad_oversize_err=$(CLAUDE_TIME_DIR="$WP3P3_DIR" "$CLI" visualize --no-open \
+    --window 2020-01-01:2026-05-29 --out "$WP3P3_DIR/bad3.html" 2>&1)
+bad_oversize_rc=$?
+
+if [ "$bad_garbage_rc" = "2" ] && \
+   echo "$bad_garbage_err" | grep -qF "MTD-N" && \
+   echo "$bad_garbage_err" | grep -qF "YYYY-MM-DD:YYYY-MM-DD"; then
+    check "v3 WP3 P3 codify P3.6a: --window garbage → rc=2 with three-forms error" pass
+else
+    check "v3 WP3 P3 codify P3.6a: garbage shape" fail "rc=$bad_garbage_rc msg=$bad_garbage_err"
+fi
+if [ "$bad_inverted_rc" = "2" ] && \
+   echo "$bad_inverted_err" | grep -qF "end >= start"; then
+    check "v3 WP3 P3 codify P3.6b: --window inverted-range → rc=2 with 'end >= start' rule" pass
+else
+    check "v3 WP3 P3 codify P3.6b: inverted range" fail "rc=$bad_inverted_rc msg=$bad_inverted_err"
+fi
+if [ "$bad_oversize_rc" = "2" ] && \
+   echo "$bad_oversize_err" | grep -qF "exceeds viz_window_max_days"; then
+    check "v3 WP3 P3 codify P3.6c: --window oversize-range → rc=2 with 'exceeds viz_window_max_days' cap" pass
+else
+    check "v3 WP3 P3 codify P3.6c: oversize range" fail "rc=$bad_oversize_rc msg=$bad_oversize_err"
+fi
+
+rm -rf "$WP3P3_DIR"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

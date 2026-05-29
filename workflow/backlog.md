@@ -1,5 +1,16 @@
 # Backlog
 
+## SURFACE-2026-05-29-FEATURE-FINALIZE-MISSES-WBS-TASK-CHECKBOXES
+- **Source:** v3 WP3 session-resume (2026-05-29) — user observed that v3 WP1 and WP2 task checkboxes in `docs/product/wbs.md` were still `[ ]` despite both WPs being shipped, finalized, and committed (commits `4dd8d6d`, `8d9fc94`, `64fb865`, `c387829`). `feature-finalize` correctly tagged each WP heading with `✅ SHIPPED <date> (commit <sha>)` at the WP level but did not tick the per-task checkboxes (1.1–1.7, 2.1–2.3) underneath. Resume had to do it manually for both WPs.
+- **Target level:** harness / skill — `skills/feature-finalize/SKILL.md` WBS-update step.
+- **Type:** behavioral gap in close-skill
+- **Summary:** `feature-finalize` updates `docs/product/wbs.md` to mark WP-level shipped status but does not propagate completion down to the WP's task list. This is a deterministic miss — every WP finalize since at least v3 cycle start has produced an inconsistency between heading state (✅ SHIPPED) and task-checkbox state (`[ ]` × N).
+- **Why it matters:** WBS becomes a partially-trustworthy state surface. Future planning skills (`feature-spec` for downstream WPs, `/product-finalize` cycle-close sweep) read WBS to determine what's actually done. Unticked checkboxes under a ✅ SHIPPED heading muddle the source of truth — and visually suggest "in progress" even when the WP is fully shipped.
+- **Proposed fix:** Update `skills/feature-finalize/SKILL.md` WBS-update step: after appending the `✅ SHIPPED <date> (commit <sha>)` tag to the WP heading, ALSO walk the WP's task list and convert each `- [ ]` to `- [x]` (the WP being shipped means by definition all its tasks landed — they're not partial-credit). One-line procedure: "For the WP being finalized, `replace_all` `- [ ]` → `- [x]` *within that WP's section only*." Add a structure-check pin if cheap.
+- **Risk:** Low. Tasks that genuinely didn't ship would be ones the WP was descoped on — in which case the WP should be RE-SCOPED in WBS at finalize time, not silently shipped with hidden gaps. The fix surfaces this discipline.
+- **Priority:** medium — accumulates technical debt across every WP finalize but isn't a blocker.
+- **Status:** pending
+
 ## SURFACE-2026-05-28-VERIFY-HUMAN-AUTO-SKIP-WHEN-NO-INTEGRATION-BOUNDARY
 - **Source:** Repeated friction observed across v3 WP1 Phase 1 + Phase 2 (2026-05-28) — orchestrator paused at verify-human for both phases, presented the integration-boundary affirmation, and waited for the user to type "skip" each time. For phases where the affirmation cleanly holds (no integration boundary, isolated new artifacts only), the user's "skip" is mechanical and predictable; making them type it adds nothing.
 - **Target level:** harness / skill (skills/feature-verify-human + AGENTS.md pause policy)

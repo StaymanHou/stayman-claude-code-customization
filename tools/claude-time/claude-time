@@ -48,6 +48,10 @@ DEFAULT_CONFIG = {
     # tick density + DOM segment count make the timeline unwieldy. Overridable
     # via `viz_custom_range_max_days` in ~/.claude-time/config.json.
     "viz_custom_range_max_days": 90,
+    # v3 WP3: cap for `visualize --window` explicit-range form. Sanity bound to
+    # prevent emitting years of data and OOM-ing the browser. Overridable via
+    # `viz_window_max_days` in ~/.claude-time/config.json.
+    "viz_window_max_days": 365,
 }
 
 
@@ -87,7 +91,7 @@ def load_config(claude_time_dir: Path) -> dict:
                     if k == "project_names":
                         cfg[k] = _validate_project_names(v)
                     elif k in ("viz_context_days_prior", "viz_context_days_after",
-                               "viz_custom_range_max_days"):
+                               "viz_custom_range_max_days", "viz_window_max_days"):
                         validated = _validate_nonneg_int(v)
                         if validated is not None:
                             cfg[k] = validated
@@ -441,6 +445,15 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     viz = sub.add_parser("visualize", help="emit a self-contained dashboard HTML")
+    viz.add_argument("--window", dest="window", default=None, metavar="VALUE",
+                     help="emit a pre-rendered window with all sub-payloads. Accepts three "
+                          "forms: MTD-N (month-to-date plus N prior calendar months, e.g. "
+                          "MTD-2 → current month + 2 priors, ending today); Nd (rolling N "
+                          "days ending today, e.g. 30d); YYYY-MM-DD:YYYY-MM-DD (explicit "
+                          "range, inclusive). Default when omitted: MTD-2. Mutually "
+                          "exclusive with --demo; supersedes --date/--week/--month/--range/"
+                          "--compare/--compare-range/--context-days-* (legacy flags removed "
+                          "in v3 WP4).")
     viz.add_argument("--date", help="single day, YYYY-MM-DD (default: today)")
     viz.add_argument("--week", action="store_true",
                      help="initial view is the week rollup (default: day)")
@@ -609,6 +622,80 @@ def _parse_range_flag(raw: str, max_days: int) -> tuple[date, date] | None:
     return start, end
 
 
+def _parse_window_arg(raw: str, *, today: date, max_days: int) -> tuple[date, date] | tuple[None, None]:
+    """Parse and validate the v3 `--window` arg. Three forms tried in order:
+
+      1. MTD-N         → month-to-date plus N prior calendar months, ending today
+                         (anchored to day=1 of the earliest month; N >= 0)
+      2. Nd            → rolling N calendar days ending today, inclusive (N >= 1)
+      3. START:END     → explicit YYYY-MM-DD:YYYY-MM-DD range, inclusive
+
+    On success returns (start_date, end_date). On any failure prints a stderr
+    message naming the rule that failed and returns (None, None); caller exits
+    with code 2.
+
+    Window-bound validation (all forms):
+      - end >= start (no inverted range)
+      - end <= today (no future bound; events haven't happened yet)
+      - (end - start).days + 1 <= max_days (sanity cap, from viz_window_max_days)
+    """
+    import re as _re
+    start: date | None = None
+    end: date | None = None
+
+    m = _re.match(r"^MTD-(\d+)$", raw)
+    if m:
+        n = int(m.group(1))
+        # Walk back N calendar months from today. Convert (year, month) to a
+        # zero-indexed month-count from year 1, subtract N, convert back.
+        m_idx = today.year * 12 + (today.month - 1) - n
+        start_year, start_month_zero = divmod(m_idx, 12)
+        start = date(start_year, start_month_zero + 1, 1)
+        end = today
+    else:
+        m = _re.match(r"^(\d+)d$", raw)
+        if m:
+            n = int(m.group(1))
+            if n < 1:
+                print(f"error: --window Nd requires N >= 1; got {raw!r}", file=sys.stderr)
+                return None, None
+            end = today
+            start = today - timedelta(days=n - 1)
+        else:
+            m = _re.match(r"^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$", raw)
+            if m:
+                try:
+                    start = date.fromisoformat(m.group(1))
+                    end = date.fromisoformat(m.group(2))
+                except ValueError as e:
+                    print(f"error: --window date parse failed: {e}", file=sys.stderr)
+                    return None, None
+            else:
+                print(
+                    f"error: --window expects MTD-N (e.g. MTD-2), Nd (e.g. 30d), or "
+                    f"YYYY-MM-DD:YYYY-MM-DD (e.g. 2026-04-01:2026-05-26), got {raw!r}",
+                    file=sys.stderr,
+                )
+                return None, None
+
+    # Bound checks — common to all three forms.
+    if end < start:
+        print(f"error: --window requires end >= start; got start={start.isoformat()} "
+              f"end={end.isoformat()}", file=sys.stderr)
+        return None, None
+    if end > today:
+        print(f"error: --window end must not be in the future; got end={end.isoformat()} "
+              f"(today={today.isoformat()})", file=sys.stderr)
+        return None, None
+    days = (end - start).days + 1
+    if days > max_days:
+        print(f"error: --window range spans {days} days, exceeds viz_window_max_days cap "
+              f"({max_days}); reduce range or raise viz_window_max_days in "
+              f"~/.claude-time/config.json", file=sys.stderr)
+        return None, None
+    return start, end
+
+
 def _compare_window_bounds(
     preset: str,
     compare_range_pair: tuple[tuple[date, date], tuple[date, date]] | None,
@@ -741,6 +828,109 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
     if not template_path.exists() or not dashboard_jsx_path.exists():
         print(f"error: viz template assets not found under {viz_dir}", file=sys.stderr)
         return 2
+
+    # ── v3 WP3: --window resolution + pre-rendered window emit ──────────
+    # When --window is set OR no view-selecting flag triggers the default-to-
+    # MTD-2 path, we route through build_window_data and return early. The v2
+    # flag handling below this block becomes unreachable in those cases.
+    # WP4 deletes the v2 handlers entirely.
+    #
+    # Bypass: --demo (alone, no --window) keeps the v2 demo path — `demo` is a
+    # data-source flag, not a view-selecting flag; bare --demo + MTD-2 default
+    # makes no sense (demo data is single-day). Explicit --window + --demo is
+    # the rc=2 error.
+    if args.window is not None or not args.demo:
+        # P2.2: --window + --demo mutex (only fires when --window explicit).
+        if args.window is not None and args.demo:
+            print("error: --window is incompatible with --demo (demo data is single-day)",
+                  file=sys.stderr)
+            return 2
+        # P2.1: parse explicit --window OR default to MTD-2.
+        window_arg = args.window if args.window is not None else "MTD-2"
+        max_days = int(cfg.get("viz_window_max_days", 365))
+        win_start, win_end = _parse_window_arg(
+            window_arg, today=date.today(), max_days=max_days
+        )
+        if win_start is None:
+            return 2  # _parse_window_arg already printed the error
+        # P2.3: load events for every day in the window, then call
+        # build_window_data to produce the v3 pre-rendered payload.
+        events_by_day: dict[str, list[dict]] = {}
+        current = win_start
+        while current <= win_end:
+            events_by_day[current.isoformat()] = _load_window_events(db_path, current)
+            current = current + timedelta(days=1)
+        if not db_path.exists() and not args.demo:
+            # Match the existing "no DB + no --demo" UX (rc=1 helpful error).
+            # Phrasing must contain "does not exist" — the v2 test contract
+            # at test_visualize_cli.sh:226 greps for that exact phrase.
+            print(f"error: database at {db_path} does not exist; create it via the "
+                  f"claude-time hook or use --demo to render with mock data.",
+                  file=sys.stderr)
+            return 1
+        import viz_data  # noqa — siblings via sys.path insert at top of file
+        payload = viz_data.build_window_data(
+            win_start.isoformat(), win_end.isoformat(),
+            events_by_day=events_by_day, cfg=cfg, auto_alias_fn=_auto_alias_for_cwd,
+        )
+        # P2.4: legacy alias keys for v2-frontend coexistence. The v2 frontend
+        # (viz_render.py::_interactive_dashboard + viz/dashboard.jsx) reads
+        # `today`, `week`, `comparison`, `metrics`, `meta`, `months` directly
+        # off window.CT_DATA. Until WP5–WP9 wire it to consume the new sub-
+        # payload maps, populate these top-level keys from the sub-payloads so
+        # the existing renderer keeps working. WP9 verify-codify removes them.
+        # Audited from viz_render.py + dashboard.jsx grep on (CT_DATA\.|today|
+        # week|meta) 2026-05-29 (initial audit missed `week` destructure and
+        # `meta.{start,end,day_count}` reads — caught at verify-self, fixed
+        # before re-running verify-self).
+        end_iso = win_end.isoformat()
+        payload["today"] = payload["day_payloads_by_iso"][end_iso]
+        # `week`: the v2 frontend destructures `{today, week}` from CT_DATA.
+        # The "current" week is the Monday-anchored week containing end_iso.
+        end_monday = win_end - timedelta(days=win_end.weekday())
+        end_monday_iso = end_monday.isoformat()
+        if end_monday_iso in payload["week_payloads_by_monday"]:
+            payload["week"] = payload["week_payloads_by_monday"][end_monday_iso]
+        else:
+            # Window doesn't span back to this Monday (e.g. user passed --window
+            # 2026-05-26:2026-05-29 — Monday 2026-05-25 not in window). Pick the
+            # closest Monday that IS in the window — the largest monday_iso <= end.
+            mondays = sorted(payload["week_payloads_by_monday"].keys())
+            if mondays:
+                payload["week"] = payload["week_payloads_by_monday"][mondays[-1]]
+            else:
+                payload["week"] = {"projects": [], "label": "", "meta": {}}
+        payload["comparison"] = payload["compare_payloads_by_preset"]["wow"]
+        # `metrics` is already top-level in build_window_data's output.
+        # `meta`: the v2 frontend reads meta.start, meta.end, meta.day_count
+        # (dashboard.jsx 2317/2346/2955) AND meta.snapshot (header strip).
+        # Synthesize a meta object covering both shapes.
+        payload["meta"] = {
+            "snapshot": datetime.now().isoformat(timespec="seconds"),
+            "start": win_start.isoformat(),
+            "end": win_end.isoformat(),
+            "day_count": (win_end - win_start).days + 1,
+        }
+        # `months`: v2 emitted {active_iso: payload, prev_iso: payload}. The v3
+        # month_payloads_by_iso map already covers the full window; just alias.
+        payload["months"] = payload["month_payloads_by_iso"]
+        # Initial view for the v2 renderer: keep "day" — the legacy frontend's
+        # default. v3 frontend WPs (WP5–WP9) will override via URL hash.
+        import viz_render  # noqa
+        max_range_days = int(cfg.get("viz_custom_range_max_days", 90))
+        html = viz_render.render_html(
+            template_path, dashboard_jsx_path, payload,
+            "day", max_range_days=max_range_days, initial_preset=None,
+        )
+        out_path = Path(args.out).expanduser() if args.out else (claude_time_dir / "visualize.html")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(html)
+        print(out_path)
+        if not args.no_open:
+            import webbrowser
+            webbrowser.open(f"file://{out_path}")
+        return 0
+    # ── End v3 WP3 branch. Below: legacy v2 flag handling (deleted in WP4). ──
 
     # WP11: cross-flag mutex check fires FIRST so the error message names the
     # right pair of flags. Without this, --compare + --range would hit the
