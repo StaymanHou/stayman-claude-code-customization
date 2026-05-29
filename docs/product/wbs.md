@@ -3,6 +3,7 @@ stage: wbs
 state: in-progress
 updated: 2026-05-29
 cycle: claude-time-visualize-v3
+last_wp_shipped: WP4 (2026-05-29)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -99,15 +100,17 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [x] 3.4 Default behavior: when `--window` is not set, default to the 90-day window (or whatever WP2 confirms). Legacy flags are removed in WP4 — WP3 does not need to preserve them.
 - [x] 3.5 `test_visualize_cli.sh` pins: `--window 30d` produces a payload with `day_payloads_by_iso` keys covering 30 days; `--window 2026-04-01:2026-05-26` matches explicit bounds; default invocation produces the WP2-confirmed default; mutex with `--demo` (demo data is single-day).
 
-### WP4: Legacy flag removal
+### WP4: Legacy flag removal ✅ SHIPPED 2026-05-29 (commit `04386d9`)
+**Result:** v2 flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`, `--context-days-prior`, `--context-days-after`) deleted from `viz` subparser; ~600 LOC of legacy handler branch + helper functions removed; `--demo` absorbed into v3 branch. Net commit: -360 LOC. Two mid-flight discoveries auto-fixed: (a) bulk-delete by line-range accidentally caught a WP3 helper `_parse_window_arg`, recovered from git HEAD; (b) Phase 1 silently dropped `comparison.{a,b}.metrics` on real-DB emit (v2's CLI-layer attachment was deleted; `build_window_data` didn't replace it), caught at Phase 3 codify and fixed by attaching metrics at the data-layer (right architectural home). Final test baseline: CLI 178/0, Python 131/0, interactive 46/0, structure 125/0. Backlog discoveries `SURFACE-2026-05-29-BULK-DELETE-MISSED-HELPER-IN-CLUSTER` (filed at Phase 1 build) + Test Triage entries in archived WIP.
+
 **Description:** Existing v2 flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`) are removed from the `viz` subparser entirely. The unified `--window` flag (WP3) plus URL-hash dispatch (Phase 2) cover every use case. Single-user tool, no external consumers — clean removal is preferable to a deprecation-alias surface.
 **Phase:** 1
 **Dependencies:** WP3
 **Size:** S
 **Tasks:**
-- [ ] 4.1 Delete the legacy flag definitions from the `viz` subparser. Remove their handler branches in `_cmd_visualize`.
-- [ ] 4.2 Update `--help` text and any in-tree usage docs (README sections, comments) to reference only `--window`.
-- [ ] 4.3 `test_visualize_cli.sh`: delete the legacy-flag scenarios; replace with `--window`-based equivalents where the underlying behavior is still in scope. Removed flags should produce an argparse error (rc=2) — pin one such case to confirm.
+- [x] 4.1 Delete the legacy flag definitions from the `viz` subparser. Remove their handler branches in `_cmd_visualize`.
+- [x] 4.2 Update `--help` text and any in-tree usage docs (README sections, comments) to reference only `--window`.
+- [x] 4.3 `test_visualize_cli.sh`: delete the legacy-flag scenarios; replace with `--window`-based equivalents where the underlying behavior is still in scope. Removed flags should produce an argparse error (rc=2) — pin one such case to confirm.
 
 **Phase 1 → Phase 2 rationale:** Once the CLI surface stably produces the new payload shape via `--window`, the frontend can be refactored to consume it. Doing the frontend refactor in Phase 1 would force the CLI surface to be designed against an unstable consumer.
 
