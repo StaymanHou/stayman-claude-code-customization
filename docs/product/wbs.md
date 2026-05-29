@@ -85,17 +85,19 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 
 **Phase rationale:** The CLI surface change is downstream of the data layer (the new flag has to produce a `build_window_data` payload to be testable) but upstream of the frontend refactor (the frontend needs the new payload structure to consume). Doing it second isolates the CLI change from frontend state-routing complexity.
 
-### WP3: Unified `--window` flag (or chosen name)
+### WP3: Unified `--window` flag ✅ SHIPPED 2026-05-29 (commit `b7718ae`)
+**Result:** `--window` flag landed with three forms — `MTD-N`, `Nd`, `YYYY-MM-DD:YYYY-MM-DD`. Default is `MTD-2` (current calendar month + 2 priors, calendar-anchored, not rolling-90 — chosen at spec time so Month-view payloads contain full prior months). New config key `viz_window_max_days` default 365 caps explicit ranges. `--window` + `--demo` is rc=2; bare `--demo` preserved. Legacy v2 flags silently no-op'd (WP4 deletes them). `build_window_data` populates legacy alias keys (`today`, `week`, `comparison`, `metrics`, `meta`, `months`) so the v2 frontend keeps rendering until WP5–WP9 wire the sub-payload maps. Final test baseline: `test_visualize_cli.sh` 175/0, Python 130/0, structure pins 125/0.
+
 **Description:** New CLI flag that takes a time-range arg (e.g., `--window 90d`, `--window MTD-2`, `--window 2026-04-01:2026-05-26`) and produces a single-emit pre-rendered 90-day-default dashboard. WP3 introduces `--window` only; WP4 removes the legacy flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`).
 **Phase:** 1
 **Dependencies:** WP1
 **Size:** M
 **Tasks:**
-- [ ] 3.1 Spec the unified time-range arg syntax at feature-spec time. Candidates: `--window 90d` (rolling N days back from today), `--window MTD-2` (month-to-date plus 2 prior months), `--window 2026-04-01:2026-05-26` (explicit range), or a combination. Decision recorded in the feature spec.
-- [ ] 3.2 Add the new flag to the `viz` subparser. Validation: must produce a `(start_iso, end_iso)` pair with `end >= start` and `end <= today` and `day_count <= viz_window_max_days` (new config key, default 365).
-- [ ] 3.3 In `_cmd_visualize`, when the new flag is set: load events for the window, call `build_window_data`, emit. The output becomes `window.CT_DATA` with the new shape (sub-payload maps).
-- [ ] 3.4 Default behavior: when `--window` is not set, default to the 90-day window (or whatever WP2 confirms). Legacy flags are removed in WP4 — WP3 does not need to preserve them.
-- [ ] 3.5 `test_visualize_cli.sh` pins: `--window 30d` produces a payload with `day_payloads_by_iso` keys covering 30 days; `--window 2026-04-01:2026-05-26` matches explicit bounds; default invocation produces the WP2-confirmed default; mutex with `--demo` (demo data is single-day).
+- [x] 3.1 Spec the unified time-range arg syntax at feature-spec time. Candidates: `--window 90d` (rolling N days back from today), `--window MTD-2` (month-to-date plus 2 prior months), `--window 2026-04-01:2026-05-26` (explicit range), or a combination. Decision recorded in the feature spec.
+- [x] 3.2 Add the new flag to the `viz` subparser. Validation: must produce a `(start_iso, end_iso)` pair with `end >= start` and `end <= today` and `day_count <= viz_window_max_days` (new config key, default 365).
+- [x] 3.3 In `_cmd_visualize`, when the new flag is set: load events for the window, call `build_window_data`, emit. The output becomes `window.CT_DATA` with the new shape (sub-payload maps).
+- [x] 3.4 Default behavior: when `--window` is not set, default to the 90-day window (or whatever WP2 confirms). Legacy flags are removed in WP4 — WP3 does not need to preserve them.
+- [x] 3.5 `test_visualize_cli.sh` pins: `--window 30d` produces a payload with `day_payloads_by_iso` keys covering 30 days; `--window 2026-04-01:2026-05-26` matches explicit bounds; default invocation produces the WP2-confirmed default; mutex with `--demo` (demo data is single-day).
 
 ### WP4: Legacy flag removal
 **Description:** Existing v2 flags (`--date`, `--week`, `--month`, `--range`, `--compare`, `--compare-range`) are removed from the `viz` subparser entirely. The unified `--window` flag (WP3) plus URL-hash dispatch (Phase 2) cover every use case. Single-user tool, no external consumers — clean removal is preferable to a deprecation-alias surface.
