@@ -329,6 +329,23 @@ function Dashboard() {
     return monthsMap ? monthsMap[monthIso] : null;
   }, [monthIso, monthsMap]);
 
+  // WP8 (v3): comparePayload — the active preset's compare payload, derived
+  // from `preset`. Primary source is `compare_payloads_by_preset[preset]`;
+  // falls back to the v2-alias `comparison` (which always equals
+  // `compare_payloads_by_preset.wow`) for the wow preset, and to null
+  // otherwise. Per the WP5–WP9 sub-payload routing convention in CLAUDE.md.
+  // Resolves v2 WP11 P2A.verify-human.3 PARTIAL — clicking a preset sub-tab
+  // now produces an instant *content* swap, not just a hash + active-attr
+  // swap. The `custom` preset has no pre-rendered sub-payload (its ranges are
+  // user-picked); the fallback returns null, and PresetSelector + the v2
+  // reload-redirect-toast path handle re-emit. May be null — CompareView
+  // already guards with `if (!comparison || ...)`.
+  const comparePayloadsByPreset = window.CT_DATA.compare_payloads_by_preset || {};
+  const comparePayload = React.useMemo(() => {
+    if (comparePayloadsByPreset[preset]) return comparePayloadsByPreset[preset];
+    return window.CT_DATA.comparison || null;
+  }, [preset]);
+
   // WP7: nav-toast state — the most recent reload-redirect prompt (or null).
   // Replaces on every new trigger (no stacking).
   const [navToast, setNavToast] = React.useState(null);
@@ -866,7 +883,7 @@ function Dashboard() {
       )}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {isCompare ? (
-          <CompareView comparison={window.CT_DATA.comparison} />
+          <CompareView comparison={comparePayload} />
         ) : isMonth ? (
           monthPayload ? (
             <MonthView

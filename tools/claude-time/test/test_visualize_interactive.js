@@ -1223,6 +1223,114 @@ async function runTests() {
       await page.close();
     }
 
+    // ── v3 WP8 behavioral: Compare view sub-payload routing — preset click → content swap ──
+    // Resolves v2 WP11 P2A.verify-human.3 PARTIAL (preset content-not-refreshing).
+    // The existing WP11-P2A behavioral 1a-1e block (above) asserts preset-click → hash
+    // update + data-active attr swap, but NOT that the rendered CONTENT differs between
+    // presets. That's the WP8 acceptance criterion: mouse-click on a preset sub-tab now
+    // produces an instant *content* swap because CompareView reads
+    // compare_payloads_by_preset[preset] (via the comparePayload useMemo with v2-alias
+    // fallback) instead of the v2-alias `window.CT_DATA.comparison` (which always
+    // equals wow). Uses the real-seeded compare_real.html fixture (the --demo path
+    // emits empty compare_payloads_by_preset so bothEmpty fires before any row text
+    // renders). Each preset's A-side window is distinct so the `engaged-session`
+    // row's text content (composite: wallclock + effort + multiplier + session
+    // count) must differ between wow / today-vs-trailing / mom.
+    {
+      const page = await browser.newPage();
+      const errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+      page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+      await page.goto(URL_BASE + '/compare_real.html#view=compare;preset=wow');
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(500);
+
+      // Helper to read the engaged-session row's A-column text content. This
+      // row is kind='absolute-engaged' → renders a 3-line cell containing
+      // wallclock minutes + effort + multiplier + session_count. Picked over
+      // earlier candidates because:
+      //   - `parallelism-multiplier` (1st attempt) collapses to "1.00×" on
+      //     low-density fixtures where each window has at most one session
+      //     per day — making wow and today-vs-trailing A-windows
+      //     indistinguishable on that row.
+      //   - `human` (2nd attempt) reads human.wallclock_ms, which is 0 across
+      //     all presets in this fixture (the seeded sessions classify as
+      //     ai_agent, not human).
+      // The engaged-session row includes session_count + total wallclock,
+      // both of which differ by construction across the three A-windows
+      // (wow A = 3 sessions / 270 min; tvt A = 3 sessions / 195 min;
+      //  mom A = 6 sessions / 465 min — all distinct). The composite cell
+      // text (e.g. "4h30m\neff: 4h30m · 1.00×\n3 sessions") is mechanically
+      // distinct between presets. Caught at verify-auto on first run
+      // (2026-06-03) — two corrections before the right metric.
+      const readParaMultA = () => page.evaluate(() => {
+        const el = document.querySelector('[data-compare-row="engaged-session"] [data-compare-col="a"]');
+        return el ? el.textContent.trim() : null;
+      });
+
+      // (1a) wow baseline: A-col text content is non-empty.
+      const wowAText = await readParaMultA();
+      check('v3 WP8 behavioral 1a: wow preset — engaged-session A-col renders non-empty content',
+        wowAText && wowAText.length > 0,
+        `wowAText=${JSON.stringify(wowAText)}`);
+
+      // (1b) Click mom → A-col text content DIFFERS from wow (content actually refreshed,
+      // not just hash + active-attr). This is the WP8 acceptance criterion.
+      await page.locator(`button[data-compare-preset='mom']`).click();
+      await page.waitForTimeout(300);
+      const momAText = await readParaMultA();
+      check('v3 WP8 behavioral 1b: mom preset click → engaged-session A-col content DIFFERS from wow',
+        momAText !== wowAText,
+        `wow=${JSON.stringify(wowAText)} mom=${JSON.stringify(momAText)}`);
+
+      // (1c) Click today-vs-trailing → A-col text DIFFERS from BOTH wow and mom.
+      // Confirms 3-preset distinct content invariant (not just a 2-preset toggle).
+      await page.locator(`button[data-compare-preset='today-vs-trailing']`).click();
+      await page.waitForTimeout(300);
+      const tvtAText = await readParaMultA();
+      check('v3 WP8 behavioral 1c: today-vs-trailing preset click → A-col content distinct from wow AND mom',
+        tvtAText !== wowAText && tvtAText !== momAText,
+        `wow=${JSON.stringify(wowAText)} mom=${JSON.stringify(momAText)} tvt=${JSON.stringify(tvtAText)}`);
+
+      // (1d) Round-trip click back to wow → text matches the wow baseline.
+      // Confirms the routing is reactive on every click, not just first-click.
+      await page.locator(`button[data-compare-preset='wow']`).click();
+      await page.waitForTimeout(300);
+      const wowAText2 = await readParaMultA();
+      check('v3 WP8 behavioral 1d: round-trip click back to wow → A-col content matches wow baseline',
+        wowAText2 === wowAText,
+        `baseline=${JSON.stringify(wowAText)} round-trip=${JSON.stringify(wowAText2)}`);
+
+      // (1e) Click custom preset → RangePicker pair mounts. CompareView's
+      // comparePayload useMemo falls back to `window.CT_DATA.comparison` for the
+      // `custom` preset (which has no pre-rendered sub-payload — custom ranges
+      // are user-picked and trigger re-emit via reload-redirect). The v2
+      // behavior is preserved; this WP8 pin asserts the RangePicker UI is
+      // present, not that content swap is instant (that's the WP9 concern).
+      await page.locator(`button[data-compare-preset='custom']`).click();
+      await page.waitForTimeout(300);
+      const customState = await page.evaluate(() => {
+        const active = document.querySelector('[data-compare-preset][data-active="true"]')?.getAttribute('data-compare-preset');
+        // RangePicker presence: PresetSelector renders a RangePicker pair when preset==='custom'.
+        // We don't have a data-range-picker selector; check for the visible "A:" / "B:" labels
+        // unique to the custom-preset row (the labels live in the PresetSelector body).
+        const allText = document.querySelector('[data-compare-view="true"]') ? '' : 'no compare view';
+        // Check for two date inputs (one per range picker) — RangePicker renders inputs.
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        return { active, dateInputCount: dateInputs.length, debug: allText };
+      });
+      check('v3 WP8 behavioral 1e: custom preset click → active="custom" + RangePicker pair mounts (2+ date inputs)',
+        customState.active === 'custom' && customState.dateInputCount >= 2,
+        JSON.stringify(customState));
+
+      // (1f) No JS console errors during the full wow → mom → tvt → wow → custom sequence.
+      const jsErrors = errors.filter(e => !/favicon|Babel/i.test(e));
+      check('v3 WP8 behavioral 1f: no JS console errors during full preset-switch sequence',
+        jsErrors.length === 0,
+        jsErrors.length ? jsErrors.join(' | ') : '');
+      await page.close();
+    }
+
     // ── WP5 behavioral: Day-view sub-payload routing — arrow nav + date= hash ──
     // Re-uses MONTH_DASH_HTML (--window 2026-03-01:2026-04-30, 61 pre-rendered
     // days). Default landing is Day view at dayIso=2026-04-30 (window end).

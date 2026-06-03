@@ -2416,6 +2416,58 @@ fi
 
 rm -f "$WP7_HTML"
 
+# ── v3 WP8: Compare view sub-payload routing — source-shape pins ──
+# Per WIP at workflow/wip/wp8-compare-view-sub-payload-routing.md (2026-06-03).
+# WP8 routes CompareView through compare_payloads_by_preset[preset] via a new
+# `comparePayload` useMemo with v2-alias fallback (`comparison`). Per the
+# WP5–WP9 sub-payload routing convention in CLAUDE.md. Resolves v2 WP11
+# P2A.verify-human.3 PARTIAL (preset content-not-refreshing).
+# NOTE: WP8 adds ZERO new hash keys (`preset` + `ranges` already in compare
+# branch from v2 WP11), so the hash-write five-branch dispatch pin at
+# lines ~988-996 needs no update.
+WP8_HTML="$TMPDIR/wp8.html"
+"$CLI" visualize --no-open --window 30d --out "$WP8_HTML" > /dev/null 2>&1
+
+# WP8-P1.6a: comparePayloadsByPreset sibling var defined (the v3
+# source-of-truth lookup).
+if grep -qF 'const comparePayloadsByPreset = window.CT_DATA.compare_payloads_by_preset' "$WP8_HTML"; then
+    check "v3 WP8 codify: comparePayloadsByPreset sibling var defined" pass
+else
+    check "v3 WP8 codify: comparePayloadsByPreset sibling var" fail "missing from emitted HTML"
+fi
+
+# WP8-P1.6b: comparePayload useMemo with v2-alias fallback (per CLAUDE.md v3
+# sub-payload routing convention — primary comparePayloadsByPreset[preset],
+# fallback `window.CT_DATA.comparison`).
+if grep -qF 'const comparePayload = React.useMemo' "$WP8_HTML" && \
+   grep -qF 'comparePayloadsByPreset[preset]' "$WP8_HTML" && \
+   grep -qF 'window.CT_DATA.comparison' "$WP8_HTML"; then
+    check "v3 WP8 codify: comparePayload useMemo with v2-alias fallback" pass
+else
+    check "v3 WP8 codify: comparePayload useMemo with v2-alias fallback" fail "primary + fallback not both present"
+fi
+
+# WP8-P1.6c: JSX consumer routes via comparePayload (NOT window.CT_DATA.comparison).
+# The single CompareView call site must pass the routed sub-payload — this is
+# the WP8 ship signal (a search for `<CompareView` with the v2 alias must
+# return zero matches in the emitted HTML).
+if grep -qF '<CompareView comparison={comparePayload}' "$WP8_HTML"; then
+    check "v3 WP8 codify: CompareView consumer routed via comparePayload" pass
+else
+    check "v3 WP8 codify: CompareView consumer routed via comparePayload" fail "JSX call site not routed"
+fi
+
+# WP8-P1.6d: legacy direct read of window.CT_DATA.comparison at the JSX site
+# is GONE (regression-pin). The literal `<CompareView comparison={window.CT_DATA.comparison}`
+# is the v2 form WP8 replaces.
+if grep -qF '<CompareView comparison={window.CT_DATA.comparison}' "$WP8_HTML"; then
+    check "v3 WP8 codify: legacy direct CompareView read removed (regression-pin)" fail "v2 direct-read form still present"
+else
+    check "v3 WP8 codify: legacy direct CompareView read removed (regression-pin)" pass
+fi
+
+rm -f "$WP8_HTML"
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== claude-time visualize CLI test summary ==="
