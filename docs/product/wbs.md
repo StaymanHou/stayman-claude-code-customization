@@ -3,7 +3,7 @@ stage: wbs
 state: in-progress
 updated: 2026-06-03
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP8 (2026-06-03)
+last_wp_shipped: WP9 (2026-06-03)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -169,15 +169,19 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [x] 8.4 v2 archive annotation updated in `docs/product/archive/claude-time-visualize-v2/wbs.md` — see "WP8 archive annotation" section in retrospect for the exact edit location.
 - [x] 8.5 Test pins added: CLI test_visualize_cli.sh +4 source-shape (sibling-var, useMemo+fallback, routed consumer, legacy regression-pin); test_visualize_interactive.js +6 behavioral (WP8 1a-1f covering content-differs-on-preset-click via the `[data-compare-row="engaged-session"] [data-compare-col="a"]` selector — switched from `parallelism-multiplier` after verify-auto discovered it collapses to 1.00× on low-density fixtures).
 
-### WP9: Custom-range view sub-payload routing
+### WP9: Custom-range view sub-payload routing ✅ SHIPPED 2026-06-03 (commit `98546b2`)
+**Result:** Two-phase Size-S→M feature. **Phase 1** (Custom-view routing): new `_aggregateDayPayloads` JS helper does cross-day union over `day_payloads_by_iso` for `[range.start..range.end]`, tagging sessions with `day_iso`; new `customPayload` useMemo with `dayLikePayload = isCustom ? customPayload : dayPayload` routing slot substituted at all 6 `isDayLike` consumer surfaces; `onRangeChange` out-of-window detection triggers `setNavToast` with the reload command; `data-custom-range` selector added. **Phase 2** (v2 alias-key strip): removed `today`/`week`/`comparison`/`months`/`meta` from CLI emit (`_cmd_visualize` + demo path), kept `snapshot` as top-level 1-field replacement; pruned all 4 useMemo v2-alias fallbacks in `_interactive_dashboard`; migrated 7 init paths (`_initView`, `_initCompareRanges`, `_initMonthIso`, `range`, `expandedProjects`, `_defaultViewport`, `onPrev/NextMonth`) off `today.meta`/`window.CT_DATA.comparison`/`monthsMap` onto canonical sub-payload maps; `dashboard.jsx::_initialViewport` migrated from `window.CT_DATA.today` reads to `day_payloads_by_iso[window.end]` (dead v2 `target_iso` multi-day branch pruned); Toolbar `snapshot` prop sourced from `window.CT_DATA.snapshot`. **Closes the WP5–WP9 sub-payload routing convention** at v3 cycle close — applied to 5/5 sub-payload views (Day/Week/Month/Compare/Custom); CLAUDE.md convention note retired as HISTORICAL. Final test baselines: `test_visualize_cli.sh` 199 → 205 (+6 P2 source-shape pins, 9 obsolete-test flips), container interactive 78 → 89 (+11 net: 5 WP9-P1 + 6 WP9-P2), Python 89/0 unchanged, structure 92/0 clean. Single Test Triage entry: 9 obsolete-test flips at Phase 2 build as single contract-migration triage (high confidence, handled in-phase).
+
 **Description:** Custom-range view (v2 WP8) currently reads `window.CT_DATA.today` (the multi-day Day-view-like payload). v3 routes it through `day_payloads_by_iso[*]` for ranges inside the pre-rendered window. For ranges OUTSIDE the pre-rendered window, the RangePicker still triggers a reload-redirect.
 **Phase:** 2
 **Dependencies:** WP1, WP3, WP5
 **Size:** S
 **Tasks:**
-- [ ] 9.1 Custom-range render path: when `[range.start..range.end]` ⊆ pre-rendered window, render directly from `day_payloads_by_iso` union. Otherwise, reload-redirect toast.
-- [ ] 9.2 RangePicker onChange detects in-window vs out-of-window and swaps between instant-render and reload-redirect.
-- [ ] 9.3 Test pins.
+- [x] 9.1 Custom-range render path: when `[range.start..range.end]` ⊆ pre-rendered window, render directly from `day_payloads_by_iso` union. Otherwise, reload-redirect toast.
+- [x] 9.2 RangePicker onChange detects in-window vs out-of-window and swaps between instant-render and reload-redirect.
+- [x] 9.3 Test pins.
+- [x] 9.4 v2 alias-key strip + useMemo fallback cleanup (Phase 2; folded into WP9 per plan-time decision B — see WIP plan): CLI emit + frontend useMemos + 7 init paths migrated.
+- [x] 9.5 CLAUDE.md "v3 sub-payload routing pattern" convention retired as HISTORICAL.
 
 **Phase 2 → Phase 3 rationale:** Once the frontend state-routing refactor is done, ALL the v2 view-mode infrastructure is intact AND consuming pre-rendered sub-payloads. The remaining v2-deferred UX work (overlap viz, collapsible rows, row density) can now build on the stable v3 substrate without worrying about emit-model surprises.
 
