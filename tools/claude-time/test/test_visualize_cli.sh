@@ -2361,6 +2361,61 @@ fi
 
 rm -f "$WP6_HTML"
 
+# ── v3 WP7 codify: Month view sub-payload routing source-shape pins ────
+# WP7 wires the Month view's render path to read window.CT_DATA.month_payloads_by_iso
+# [monthIso] instead of window.CT_DATA.months (the v2 alias). The v2 Toolbar
+# Month-nav UI (`data-month-nav`, `data-month-iso`) and the in-window/out-of-window
+# dispatch in onPrevMonth/onNextMonth already exist from v2 — WP7 only swaps the
+# in-window-presence check from monthsMap[X] to monthPayloadsByIso[X] (with v2
+# fallback). The legacy `months` alias key remains populated by the CLI for
+# v2-frontend coexistence (WP9 removes it). These pins assert WP7's four new
+# emit-shape contracts: (1) monthPayloadsByIso sibling var defined;
+# (2) monthIsoKeys + currentMonthIso defined; (3) monthPayload useMemo with
+# v2-alias fallback; (4) onPrevMonth/onNextMonth route via monthPayloadsByIso.
+# NOTE: WP7 does NOT add a new hash key — `month:` was already in the dispatcher
+# from v2/WP6, so the existing hash-write pin at lines ~988-996 needs no update.
+
+WP7_HTML="$TMPDIR/wp7.html"
+"$CLI" visualize --no-open --window 30d --out "$WP7_HTML" > /dev/null 2>&1
+
+# P1.11a: monthPayloadsByIso sibling var defined (the v3 source-of-truth lookup).
+if grep -qF 'const monthPayloadsByIso = window.CT_DATA.month_payloads_by_iso' "$WP7_HTML"; then
+    check "v3 WP7 codify: monthPayloadsByIso sibling var defined" pass
+else
+    check "v3 WP7 codify: monthPayloadsByIso sibling var" fail "missing from emitted HTML"
+fi
+
+# P1.11b: monthIsoKeys + currentMonthIso defined (sorted-keys helper +
+# default-landing iso derived from windowEndIso).
+if grep -qF 'const monthIsoKeys =' "$WP7_HTML" && grep -qF 'const currentMonthIso =' "$WP7_HTML"; then
+    check "v3 WP7 codify: monthIsoKeys + currentMonthIso defined" pass
+else
+    check "v3 WP7 codify: monthIsoKeys + currentMonthIso" fail "one or both missing from emitted HTML"
+fi
+
+# P1.11c: monthPayload useMemo with v2-alias fallback (per CLAUDE.md v3
+# sub-payload routing convention — primary monthPayloadsByIso, fallback monthsMap).
+if grep -qF 'const monthPayload = React.useMemo' "$WP7_HTML" && \
+   grep -qF 'monthPayloadsByIso[monthIso]' "$WP7_HTML" && \
+   grep -qF 'monthsMap ? monthsMap[monthIso]' "$WP7_HTML"; then
+    check "v3 WP7 codify: monthPayload useMemo with v2-alias fallback" pass
+else
+    check "v3 WP7 codify: monthPayload useMemo with v2-alias fallback" fail "primary + fallback not both present"
+fi
+
+# P1.11d: onPrevMonth + onNextMonth dispatch routes through monthPayloadsByIso
+# (the in-window-presence check that gates client-side swap vs reload-redirect
+# toast). Both handlers must check monthPayloadsByIso first; v2 alias OR'd as
+# fallback.
+if grep -qF 'monthPayloadsByIso[prevIso] || (monthsMap && monthsMap[prevIso])' "$WP7_HTML" && \
+   grep -qF 'monthPayloadsByIso[nextIso] || (monthsMap && monthsMap[nextIso])' "$WP7_HTML"; then
+    check "v3 WP7 codify: onPrevMonth/onNextMonth route via monthPayloadsByIso" pass
+else
+    check "v3 WP7 codify: onPrev/NextMonth dispatch via monthPayloadsByIso" fail "one or both handlers not routed"
+fi
+
+rm -f "$WP7_HTML"
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== claude-time visualize CLI test summary ==="

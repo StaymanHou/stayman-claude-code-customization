@@ -99,22 +99,35 @@ function Dashboard() {
   // WP7: months map. Pre v3, populated only on --month emits; in v3 the
   // `--window` flag's pre-rendered window always emits month_payloads_by_iso
   // covering the full window (aliased to top-level `months` for v2-frontend
-  // coexistence). Maps ISO month strings ("YYYY-MM") to range_data payloads.
-  // Prev-arrow nav is a pure client-side state swap when target month is in
-  // the map; any other nav triggers reload-redirect via MonthNavToast.
+  // coexistence — WP9 removes the alias at v3 cycle close). Maps ISO month
+  // strings ("YYYY-MM") to range_data payloads. Prev-arrow nav is a pure
+  // client-side state swap when target month is in the map; any other nav
+  // triggers reload-redirect via MonthNavToast.
   const monthsMap = window.CT_DATA.months || null;
+  // WP7 (v3): Month-view sub-payload routing. The interactive Dashboard reads
+  // the active month's payload from `month_payloads_by_iso[monthIso]`. The
+  // `months` alias above is still populated by the CLI for v2-frontend
+  // coexistence (WP9 removes the alias at v3 cycle close). For the Month-view
+  // *render path* below, `monthPayload` (a useMemo derived from monthIso) is
+  // the single source of truth. `currentMonthIso` = the YYYY-MM of
+  // windowEndIso, the default-landing month.
+  const monthPayloadsByIso = window.CT_DATA.month_payloads_by_iso || {};
+  const monthIsoKeys = Object.keys(monthPayloadsByIso).sort();
+  const currentMonthIso = windowEndIso ? windowEndIso.slice(0, 7) : null;
   // WP8: hash.view (if present) wins over CT_INITIAL_VIEW so a shareable
   // URL like #view=custom;range=2026-05-20:2026-05-22 restores correctly.
   // Recognized values: 'day', 'week', 'custom', 'month'. Malformed → fall
   // through to CT_INITIAL_VIEW (which itself defaults to 'day' for unknown
   // values). The 'custom' view requires a valid hash.range OR a
   // CT_INITIAL_VIEW emit-time 'custom'. The 'month' view requires a valid
-  // hash.month (or CT_INITIAL_VIEW='month') AND the monthsMap to be present
-  // (otherwise there's no data to render).
+  // hash.month (or CT_INITIAL_VIEW='month') AND month data to be present
+  // (monthPayloadsByIso OR the v2-alias monthsMap — either source satisfies
+  // the data-present precondition).
+  const _hasMonthData = monthIsoKeys.length > 0 || (monthsMap && Object.keys(monthsMap).length > 0);
   const _initView = (() => {
     const hash = parseHash();
     if (hash.view === 'compare') return 'compare';
-    if (hash.view === 'month' && /^\d{4}-\d{2}$/.test(hash.month || '') && monthsMap) {
+    if (hash.view === 'month' && /^\d{4}-\d{2}$/.test(hash.month || '') && _hasMonthData) {
       return 'month';
     }
     if (hash.view === 'custom' && /^\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(hash.range || '')) {
@@ -124,12 +137,12 @@ function Dashboard() {
     // Fallthrough: emit-time default. CT_INITIAL_VIEW is 'day'|'week'|'custom'|'month'|'compare'
     // (WP7 added 'month'; WP8 added 'custom'; WP11 added 'compare'). For
     // 'custom' emit-time, we require today.meta.start to be present; for
-    // 'month', we require monthsMap to be present; for 'compare', we require
-    // window.CT_DATA.comparison to be present.
+    // 'month', we require month data (monthPayloadsByIso or monthsMap); for
+    // 'compare', we require window.CT_DATA.comparison to be present.
     if (window.CT_INITIAL_VIEW === 'compare' && window.CT_DATA.comparison) {
       return 'compare';
     }
-    if (window.CT_INITIAL_VIEW === 'month' && monthsMap) {
+    if (window.CT_INITIAL_VIEW === 'month' && _hasMonthData) {
       return 'month';
     }
     if (window.CT_INITIAL_VIEW === 'custom' && today.meta && today.meta.start && today.meta.end) {
@@ -190,16 +203,24 @@ function Dashboard() {
   const [compareRanges, setCompareRanges] = React.useState(_initCompareRanges);
 
   // WP7: monthIso state — which month's grid is currently rendered. Hash
-  // takes precedence on init; falls back to active-month emit (today.meta.start
-  // → "YYYY-MM"); falls back to current calendar month if nothing else.
+  // takes precedence on init; falls back to currentMonthIso (the month of
+  // windowEndIso — the default landing); falls back to first sorted key of
+  // monthPayloadsByIso; final fallback to monthsMap (v2 alias, kept until
+  // WP9 strips it). WP7 (v3): reads from monthPayloadsByIso first (primary
+  // source), monthsMap second (v2 coexistence). Hash-restore validates
+  // against monthPayloadsByIso keys first, then monthsMap.
   const _initMonthIso = (() => {
     const hash = parseHash();
-    if (hash.month && /^\d{4}-\d{2}$/.test(hash.month) && monthsMap && monthsMap[hash.month]) {
-      return hash.month;
+    if (hash.month && /^\d{4}-\d{2}$/.test(hash.month)) {
+      if (monthPayloadsByIso[hash.month]) return hash.month;
+      if (monthsMap && monthsMap[hash.month]) return hash.month;
     }
+    if (currentMonthIso && monthPayloadsByIso[currentMonthIso]) return currentMonthIso;
+    if (monthIsoKeys.length > 0) return monthIsoKeys[0];
     if (monthsMap) {
-      // Pick the active month — the one matching today.meta.start. If that
-      // doesn't match a months[] key, fall back to the first key.
+      // v2-alias fallback path. Pick the active month — the one matching
+      // today.meta.start. If that doesn't match a months[] key, fall back
+      // to the first key.
       if (today.meta && today.meta.start) {
         const iso = today.meta.start.slice(0, 7);
         if (monthsMap[iso]) return iso;
@@ -296,6 +317,17 @@ function Dashboard() {
     if (dayPayloadsByIso[dayIso]) return dayPayloadsByIso[dayIso];
     return today;
   }, [dayIso, today]);
+
+  // WP7 (v3): monthPayload — the active month's payload, derived from monthIso.
+  // Primary source is monthPayloadsByIso[monthIso]; falls back to monthsMap
+  // (v2 alias) so during the WP7→WP9 transition window the dashboard works
+  // whether the CLI is emitting v3-only or v3+v2-alias shape. Per the WP5–WP9
+  // sub-payload routing convention in CLAUDE.md. May be null if neither
+  // source has the key — consumer sites guard with truthy check.
+  const monthPayload = React.useMemo(() => {
+    if (monthPayloadsByIso[monthIso]) return monthPayloadsByIso[monthIso];
+    return monthsMap ? monthsMap[monthIso] : null;
+  }, [monthIso, monthsMap]);
 
   // WP7: nav-toast state — the most recent reload-redirect prompt (or null).
   // Replaces on every new trigger (no stacking).
@@ -589,10 +621,14 @@ function Dashboard() {
       command: _navCmdForDay(iso),
     });
   }, [_navCmdForDay]);
+  // WP7 (v3): in-window check routes through monthPayloadsByIso first
+  // (primary source), monthsMap second (v2 alias fallback for the
+  // WP7→WP9 transition window). Either source's presence triggers
+  // client-side swap; absence in both triggers the reload-redirect toast.
   const onPrevMonth = React.useCallback(() => {
     const prevIso = _prevMonthIso(monthIso);
     if (!prevIso) return;
-    if (monthsMap && monthsMap[prevIso]) {
+    if (monthPayloadsByIso[prevIso] || (monthsMap && monthsMap[prevIso])) {
       setMonthIso(prevIso);
     } else {
       setNavToast({
@@ -604,7 +640,7 @@ function Dashboard() {
   const onNextMonth = React.useCallback(() => {
     const nextIso = _nextMonthIso(monthIso);
     if (!nextIso) return;
-    if (monthsMap && monthsMap[nextIso]) {
+    if (monthPayloadsByIso[nextIso] || (monthsMap && monthsMap[nextIso])) {
       setMonthIso(nextIso);
     } else {
       setNavToast({
@@ -788,8 +824,8 @@ function Dashboard() {
           fontFamily: CT_TOKENS.sans, fontSize: 11,
           color: CT_TOKENS.textTertiary,
         }}>{isMonth
-          ? (monthsMap && monthsMap[monthIso] && monthsMap[monthIso].projects
-              ? `${monthsMap[monthIso].projects.length} projects \u00b7 ${monthsMap[monthIso].meta?.day_count || '\u2014'} days`
+          ? (monthPayload && monthPayload.projects
+              ? `${monthPayload.projects.length} projects \u00b7 ${monthPayload.meta?.day_count || '\u2014'} days`
               : '\u2014')
           : (isDayLike
               ? `${(dayPayload.projects || []).length} projects \u00b7 ${(dayPayload.projects || []).reduce((a,p)=>a+p.sessions.length,0)} sessions`
@@ -806,7 +842,7 @@ function Dashboard() {
             chips are visible-but-inert per D4 — the popover stays mounted
             (uses dayPayload.projects as the project source for consistency)
             but Month view ignores filter state. */}
-        <ProjectFilterPopover projects={isMonth ? (monthsMap && monthsMap[monthIso] ? monthsMap[monthIso].projects : (dayPayload.projects || [])) : (isDayLike ? (dayPayload.projects || []) : weekPayload.projects)} />
+        <ProjectFilterPopover projects={isMonth ? (monthPayload ? monthPayload.projects : (dayPayload.projects || [])) : (isDayLike ? (dayPayload.projects || []) : weekPayload.projects)} />
       </div>
 
       {/* Body — timeline OR month grid (+ optional side panel).
@@ -832,10 +868,10 @@ function Dashboard() {
         {isCompare ? (
           <CompareView comparison={window.CT_DATA.comparison} />
         ) : isMonth ? (
-          (monthsMap && monthsMap[monthIso]) ? (
+          monthPayload ? (
             <MonthView
               monthIso={monthIso}
-              payload={monthsMap[monthIso]}
+              payload={monthPayload}
               onDayClick={onDayClick}
             />
           ) : (

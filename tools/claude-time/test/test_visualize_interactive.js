@@ -1410,6 +1410,119 @@ async function runTests() {
       await page.close();
     }
 
+    // ── WP7 behavioral: Month-view sub-payload routing — verifies prev-month
+    // arrow swap is reading from window.CT_DATA.month_payloads_by_iso. The
+    // existing v2 WP7-P2 behavioral 4/5 pins (lines ~721-769) already cover
+    // the in-window-swap and out-of-window-toast outcomes via the v2 alias
+    // `months` map; this v3 pin asserts the same swap is now sourced from
+    // month_payloads_by_iso so the migration is *live*, not just the v2
+    // alias still serving. Two assertions: (a) month_payloads_by_iso has the
+    // expected 2-month coverage (2026-03 + 2026-04); (b) prev-month swap
+    // transitions monthIso to 2026-03 AND that ISO is a key in
+    // month_payloads_by_iso. The v2 alias being absent is NOT asserted here
+    // (it's still populated for the WP7→WP9 transition window; WP9 strips it).
+    // Same fixture, same boundary semantics as WP5/WP6: window 2026-03-01..04-30,
+    // currentMonthIso = 2026-04, prev-month 2026-03 is in-window.
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/month.html#view=month;month=2026-04');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+
+      // (a) month_payloads_by_iso emit shape: has 2026-03 + 2026-04.
+      const emit = await page.evaluate(() => {
+        const m = window.CT_DATA && window.CT_DATA.month_payloads_by_iso;
+        return {
+          present: !!m,
+          keys: m ? Object.keys(m).sort() : [],
+          monthIso: (() => { const el = document.querySelector('[data-month-iso]'); return el ? el.getAttribute('data-month-iso') : null; })(),
+        };
+      });
+      check('WP7 behavioral 1a: window.CT_DATA.month_payloads_by_iso emitted with 2-month coverage (2026-03 + 2026-04)',
+        emit.present && emit.keys.includes('2026-03') && emit.keys.includes('2026-04'),
+        JSON.stringify(emit));
+      check('WP7 behavioral 1b: initial month-view landing → monthIso === 2026-04 (window.end month)',
+        emit.monthIso === '2026-04',
+        JSON.stringify(emit));
+
+      // (b) prev-month click → swap to 2026-03, hash gains month=2026-03,
+      // no toast (because 2026-03 IS in month_payloads_by_iso keys).
+      await page.evaluate(() => {
+        const btn = document.querySelector('button[data-month-nav="prev"]');
+        const key = Object.keys(btn).find(k => k.startsWith('__reactProps'));
+        btn[key].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(300);  // debounced hash write is 100ms
+      const afterPrev = await page.evaluate(() => {
+        const grid = document.querySelector('[data-month-grid]');
+        const span = document.querySelector('[data-month-iso]');
+        const m = window.CT_DATA && window.CT_DATA.month_payloads_by_iso;
+        return {
+          gridIso: grid ? grid.getAttribute('data-month-grid') : null,
+          spanIso: span ? span.getAttribute('data-month-iso') : null,
+          hash: window.location.hash,
+          toastPresent: !!document.querySelector('[data-month-nav-toast]'),
+          prevMonthInV3Map: !!(m && m['2026-03']),
+        };
+      });
+      check('WP7 behavioral 2a: prev-month click in-window → grid swaps to 2026-03 (no toast)',
+        afterPrev.gridIso === '2026-03' && afterPrev.spanIso === '2026-03' && !afterPrev.toastPresent,
+        JSON.stringify(afterPrev));
+      check('WP7 behavioral 2b: prev-month click → URL hash carries month=2026-03',
+        afterPrev.hash.includes('month=2026-03'),
+        `hash=${JSON.stringify(afterPrev.hash)}`);
+      check('WP7 behavioral 2c: prev-month iso (2026-03) is a key in window.CT_DATA.month_payloads_by_iso (v3 source verified live)',
+        afterPrev.prevMonthInV3Map === true,
+        JSON.stringify(afterPrev));
+
+      await page.close();
+    }
+
+    // ── WP7 behavioral 3: hash-restore with OUT-OF-WINDOW iso → graceful
+    // fallback. Locks in the human-confirmed P1.verify-human.4 outcome:
+    // when the URL hash carries a month iso that is NOT in the pre-rendered
+    // window (e.g. #month=2099-01), the _initMonthIso IIFE's fallback chain
+    // routes to a valid month from monthIsoKeys (specifically the first
+    // sorted key in the v3 map). The Dashboard must mount cleanly — no
+    // crash, no blank grid, no JS console errors. Without this pin a
+    // regression in the _initMonthIso fallback chain could ship silently.
+    {
+      const page = await browser.newPage();
+      const consoleErrors = [];
+      page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+      page.on('pageerror', err => consoleErrors.push(String(err)));
+
+      await page.goto(URL_BASE + '/month.html#view=month;month=2099-01');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+
+      const fallback = await page.evaluate(() => {
+        const grid = document.querySelector('[data-month-grid]');
+        const span = document.querySelector('[data-month-iso]');
+        const m = window.CT_DATA && window.CT_DATA.month_payloads_by_iso;
+        const keys = m ? Object.keys(m).sort() : [];
+        return {
+          gridIso: grid ? grid.getAttribute('data-month-grid') : null,
+          spanIso: span ? span.getAttribute('data-month-iso') : null,
+          fallbackTargetIsoIsValidKey: !!(grid && keys.includes(grid.getAttribute('data-month-grid'))),
+          gridHasDayCells: grid ? grid.querySelectorAll('[data-month-day]').length > 0 : false,
+        };
+      });
+      check('WP7 behavioral 3a: out-of-window hash (#month=2099-01) → grid mounts to a valid in-window month (graceful fallback)',
+        fallback.fallbackTargetIsoIsValidKey === true,
+        JSON.stringify(fallback));
+      check('WP7 behavioral 3b: out-of-window hash → grid renders day cells (no blank grid)',
+        fallback.gridHasDayCells === true,
+        JSON.stringify(fallback));
+      check('WP7 behavioral 3c: out-of-window hash → zero JS console errors on mount',
+        consoleErrors.length === 0,
+        `errors=${JSON.stringify(consoleErrors)}`);
+
+      await page.close();
+    }
+
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) {
