@@ -3,7 +3,7 @@ stage: wbs
 state: in-progress
 updated: 2026-06-03
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP7 (2026-06-03)
+last_wp_shipped: WP8 (2026-06-03)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -157,17 +157,17 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [x] 7.2 Month-arrow ←/→: instant swap when target month is in the pre-rendered window; reload-redirect toast otherwise (v2 WP7 behavior preserved for the edge case).
 - [x] 7.3 Test pins for both paths.
 
-### WP8: Compare view sub-payload routing (resolves v2 WP11 known limitation)
+### WP8: Compare view sub-payload routing (resolves v2 WP11 known limitation) ✅ SHIPPED 2026-06-03 (commit ab65a26)
 **Description:** `CompareView` reads `window.CT_DATA.compare_payloads_by_preset[currentPreset]` instead of `window.CT_DATA.comparison`. Preset sub-tab click becomes an instant content swap (NOT just a hash + label swap as in v2). **Resolves the v2 Phase 2.A verify-human PARTIAL finding** (preset content-not-refreshing).
 **Phase:** 2
 **Dependencies:** WP1, WP3
 **Size:** S
 **Tasks:**
-- [ ] 8.1 Replace `_computeMetricsView(comparison?.a?.metrics, ...)` with `_computeMetricsView(compare_payloads_by_preset[preset]?.a?.metrics, ...)`. Same for `b.metrics`.
-- [ ] 8.2 PresetSelector onClick now actually refreshes content because the sub-payload swap is reactive.
-- [ ] 8.3 Custom preset (preset === 'custom') still requires re-emit since user-picked ranges aren't pre-rendered — preserve v2's behavior (RangePicker pair + reload-redirect-toast).
-- [ ] 8.4 Update v2 WP11 P2A.verify-human.3 PARTIAL annotation in the v2 archive: link to v3 WP8 ship as the resolution.
-- [ ] 8.5 Test pins: preset switch via real mouse-click → content (not just hash) changes; `test_visualize_interactive.js` adds a behavioral pin asserting `[data-compare-row="parallelism-multiplier"] [data-compare-col="a"]` text content differs between WoW and MoM preset selections.
+- [x] 8.1 `comparePayload` useMemo with v2-alias fallback added at viz_render.py:343; JSX consumer swapped from `window.CT_DATA.comparison` to `comparePayload` at viz_render.py:886. Internal CompareView prop name `comparison` kept (still receives same shape).
+- [x] 8.2 PresetSelector onClick refreshes content reactively via the useMemo's `preset`-keyed lookup.
+- [x] 8.3 Custom preset preserved as-is — useMemo's fallback to `window.CT_DATA.comparison` (= wow alias) keeps CompareView rendering current preset content while RangePicker pair handles the user-picked-range case (v2 reload-redirect-toast flow unchanged).
+- [x] 8.4 v2 archive annotation updated in `docs/product/archive/claude-time-visualize-v2/wbs.md` — see "WP8 archive annotation" section in retrospect for the exact edit location.
+- [x] 8.5 Test pins added: CLI test_visualize_cli.sh +4 source-shape (sibling-var, useMemo+fallback, routed consumer, legacy regression-pin); test_visualize_interactive.js +6 behavioral (WP8 1a-1f covering content-differs-on-preset-click via the `[data-compare-row="engaged-session"] [data-compare-col="a"]` selector — switched from `parallelism-multiplier` after verify-auto discovered it collapses to 1.00× on low-density fixtures).
 
 ### WP9: Custom-range view sub-payload routing
 **Description:** Custom-range view (v2 WP8) currently reads `window.CT_DATA.today` (the multi-day Day-view-like payload). v3 routes it through `day_payloads_by_iso[*]` for ranges inside the pre-rendered window. For ranges OUTSIDE the pre-rendered window, the RangePicker still triggers a reload-redirect.
