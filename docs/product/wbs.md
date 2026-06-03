@@ -3,7 +3,7 @@ stage: wbs
 state: in-progress
 updated: 2026-06-03
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP5 (2026-06-03)
+last_wp_shipped: WP6 (2026-06-03)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -134,16 +134,18 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [x] 5.4 `test_visualize_cli.sh` source-shape pins: `day_payloads_by_iso` consumer wiring; day-arrow nav buttons; `date=` hash dispatcher.
 - [x] 5.5 `test_visualize_interactive.js` behavioral: Day-arrow click → DayTimeline re-renders with new day's segments; URL hash updates; data-day-iso selector reflects current day.
 
-### WP6: Week view sub-payload routing + Week-arrow nav
+### WP6: Week view sub-payload routing + Week-arrow nav ✅ SHIPPED 2026-06-03 (commit `36ad7a6`)
+**Result:** Week view migrated off the v2 `week` alias key onto `week_payloads_by_monday[mondayIso]`. New ‹/› buttons in the toolbar's date strip drive client-side swaps between pre-rendered weeks, disabled at window boundaries. New `week=YYYY-MM-DD` URL hash key (Monday-anchored) with default-elision when `mondayIso === current_week_monday` (the Monday of the ISO-week containing `window.CT_DATA.window.end`). The `week` alias key stays populated by the CLI for v2-frontend coexistence through WP9. Second frontend WP of v3 Phase 2 — mechanical analog of WP5. Test baselines at ship: CLI 182 → 186 (+4 source-shape pins; the existing five-branch hash-dispatch pin updated in-place to the new seven-key shape per the plan-time literal-payload-object grep pre-empt), container interactive 55 → 64 (+9 behavioral pins, all PASS on first run — `page.reload()` workaround baked in via the WP5 verify-codify lesson), Python 131/0, structure 125/0. **Zero Test Triage entries** — both plan-time conventions persisted by WP5 (literal-payload-object grep + useMemo v2-alias fallback) held cleanly through WP6.
+
 **Description:** `WeekTimeline` reads `window.CT_DATA.week_payloads_by_monday[currentMondayIso]`. Same pattern as WP5 for Day. Week-arrow ←/→ nav between pre-rendered weeks.
 **Phase:** 2
 **Dependencies:** WP1, WP3
 **Size:** S
 **Tasks:**
-- [ ] 6.1 Week-iso state + memoized lookup into `week_payloads_by_monday`.
-- [ ] 6.2 Week-arrow nav UI in the date header strip.
-- [ ] 6.3 URL hash: add `week=YYYY-MM-DD` key (Monday-anchored). Default-elision when `mondayIso === current_week_monday`.
-- [ ] 6.4 Test pins.
+- [x] 6.1 Week-iso state + memoized lookup into `week_payloads_by_monday`.
+- [x] 6.2 Week-arrow nav UI in the date header strip.
+- [x] 6.3 URL hash: add `week=YYYY-MM-DD` key (Monday-anchored). Default-elision when `mondayIso === current_week_monday`.
+- [x] 6.4 Test pins.
 
 ### WP7: Month view sub-payload routing
 **Description:** `MonthView` reads `window.CT_DATA.month_payloads_by_iso[currentMonthIso]`. The existing `MonthNavToast` reload-redirect (v2 WP7) becomes obsolete for months *inside* the pre-rendered window — instant client-side swap. For months *outside* the window, the toast remains.
