@@ -600,12 +600,12 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
         return 2
 
     if args.demo:
-        # Demo path: single-day mock from viz/data.js, no DB access. Synthesize
-        # the v3 sub-payload skeleton so the consumer contract (window,
-        # day_payloads_by_iso, week_payloads_by_monday, month_payloads_by_iso,
-        # compare_payloads_by_preset, metrics) is uniform; the demo's actual
-        # segments live under the legacy `today` / `week` aliases that the
-        # current frontend reads. WP5–WP9 will route these through the v3 maps.
+        # Demo path: single-day mock from viz/data.js, no DB access. Emits the
+        # v3 sub-payload skeleton (window, day_payloads_by_iso,
+        # week_payloads_by_monday, month_payloads_by_iso,
+        # compare_payloads_by_preset, metrics, snapshot). v2 alias keys
+        # removed at WP9 Phase 2 (2026-06-03) — frontend reads sub-payload
+        # maps directly.
         demo_data = _load_demo_data(viz_dir)
         today_iso = date.today().isoformat()
         monday = date.today() - timedelta(days=date.today().weekday())
@@ -619,17 +619,7 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
             "month_payloads_by_iso": {},
             "compare_payloads_by_preset": {},
             "metrics": viz_data.build_metrics([], empty_metrics_start, snapshot_dt),
-            "today": demo_data.get("today", {}),
-            "week": demo_data.get("week", {}),
-            "comparison": {},
-            "months": {},
-            "meta": {
-                "snapshot": snapshot_dt.strftime("%H:%M"),
-                "snapshot_iso": snapshot_dt.isoformat(timespec="seconds"),
-                "start": today_iso,
-                "end": today_iso,
-                "day_count": 1,
-            },
+            "snapshot": snapshot_dt.strftime("%H:%M"),
         }
     else:
         # Parse explicit --window OR default to MTD-2.
@@ -656,39 +646,15 @@ def _cmd_visualize(args, cfg, db_path, claude_time_dir):
             win_start.isoformat(), win_end.isoformat(),
             events_by_day=events_by_day, cfg=cfg, auto_alias_fn=_auto_alias_for_cwd,
         )
-        # Legacy alias keys for v2-frontend coexistence. The current frontend
-        # (viz_render.py::_interactive_dashboard + viz/dashboard.jsx) reads
-        # `today`, `week`, `comparison`, `metrics`, `meta`, `months` directly
-        # off window.CT_DATA. WP5–WP9 will wire the frontend to consume the
-        # v3 sub-payload maps; WP9 verify-codify removes these aliases.
-        end_iso = win_end.isoformat()
-        payload["today"] = payload["day_payloads_by_iso"][end_iso]
-        # `week`: the frontend destructures `{today, week}` from CT_DATA.
-        # The "current" week is the Monday-anchored week containing end_iso.
-        end_monday = win_end - timedelta(days=win_end.weekday())
-        end_monday_iso = end_monday.isoformat()
-        if end_monday_iso in payload["week_payloads_by_monday"]:
-            payload["week"] = payload["week_payloads_by_monday"][end_monday_iso]
-        else:
-            # Window doesn't span back to this Monday (e.g. user passed --window
-            # 2026-05-26:2026-05-29 — Monday 2026-05-25 not in window). Pick the
-            # closest Monday that IS in the window — the largest monday_iso <= end.
-            mondays = sorted(payload["week_payloads_by_monday"].keys())
-            if mondays:
-                payload["week"] = payload["week_payloads_by_monday"][mondays[-1]]
-            else:
-                payload["week"] = {"projects": [], "label": "", "meta": {}}
-        payload["comparison"] = payload["compare_payloads_by_preset"]["wow"]
-        # `metrics` is already top-level in build_window_data's output.
-        payload["meta"] = {
-            "snapshot": datetime.now().isoformat(timespec="seconds"),
-            "start": win_start.isoformat(),
-            "end": win_end.isoformat(),
-            "day_count": (win_end - win_start).days + 1,
-        }
-        # `months`: v2 emitted {active_iso: payload, prev_iso: payload}. The v3
-        # month_payloads_by_iso map already covers the full window; just alias.
-        payload["months"] = payload["month_payloads_by_iso"]
+        # v3 cycle close (WP9 Phase 2, 2026-06-03): v2 alias keys
+        # (`today`, `week`, `comparison`, `months`, `meta`) removed. The
+        # frontend reads sub-payload maps (`day_payloads_by_iso`,
+        # `week_payloads_by_monday`, `month_payloads_by_iso`,
+        # `compare_payloads_by_preset`) directly. The `snapshot` field
+        # (point-in-time render timestamp) stays at the top level — it's a
+        # 1-field replacement for `meta.snapshot` since `meta.{start,end,day_count}`
+        # are duplicates of `window.{start,end,day_count}`.
+        payload["snapshot"] = datetime.now().isoformat(timespec="seconds")
 
     # Initial view: "day" — frontend's default. v3 frontend WPs (WP5–WP9) will
     # override via URL hash.

@@ -673,16 +673,16 @@ else
     check "WP6 codify: no legacy Today tabBtn in shipped toolbar (regression-pin)" pass
 fi
 
-# Rename-scope decision pin: data-layer key window.CT_DATA.today preserved.
-# WP6 chose to rename only UI-visible surfaces; the data-layer key stays
-# as the stable contract WP5b's six consumers depend on. This is partially
-# redundant with WP5b's existing "today"/"target_iso" assertions but pins
-# the WP6 decision itself — if a future WP renames the data-layer key,
-# this test fails as a deliberate forcing function to update WP6's WBS row.
-if grep -q '"today"' "$WP5B_OUT5" && grep -q 'window.CT_DATA.today' "$WP5B_OUT5"; then
-    check "WP6 codify: data-layer .today key preserved (rename-scope decision pin)" pass
+# v3 (WP9 P2, 2026-06-03): data-layer `today` alias key REMOVED. The v2
+# rename-scope pin (which asserted `"today"` + `window.CT_DATA.today` were
+# present) flipped at WP9 verify-codify per Test Triage (obsolete-test,
+# high confidence): the alias-key strip was the WP9 P2 contract. Pin now
+# asserts the absence — both the JSON `"today"` key and the JS literal
+# `window.CT_DATA.today` access must be GONE from a real-DB emit.
+if ! grep -q '"today":' "$WP5B_OUT5" && ! grep -q 'window\.CT_DATA\.today\b' "$WP5B_OUT5"; then
+    check "WP6→WP9 P2 codify: data-layer .today alias removed (regression-pin for v3 cycle close)" pass
 else
-    check "WP6 codify: data-layer .today key" fail "window.CT_DATA.today or \"today\": missing"
+    check "WP6→WP9 P2 codify: data-layer .today alias removed" fail "v2 alias still present in emit"
 fi
 
 # ── WP9 Phase 1 codify: Toolbar duality collapsed ────────────────────
@@ -1606,24 +1606,19 @@ else
     check "WP11-P1 codify (v3): wow preset shape" fail "missing or wrong keys"
 fi
 
-# WP11-P1-3 (rerouted): the legacy top-level `comparison` alias key on real-DB
-# emit equals compare_payloads_by_preset.wow (alias for v2-frontend
-# coexistence; WP9 verify-codify will remove this).
+# WP11-P1-3 → flipped at WP9 P2 (2026-06-03): the legacy `comparison`
+# alias is REMOVED in v3 cycle close. Pin now asserts the absence.
 python3 -c "
 import re, json, sys
 h = open('$WP11_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
-if 'comparison' not in d: sys.exit('top-level comparison alias missing')
-if d['comparison'] is not d['compare_payloads_by_preset']['wow']:
-    # JSON round-trip breaks identity; compare by value instead.
-    if d['comparison'] != d['compare_payloads_by_preset']['wow']:
-        sys.exit('comparison alias does not equal compare_payloads_by_preset.wow')
+if 'comparison' in d: sys.exit('top-level comparison alias still present (should be removed at WP9 P2)')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1 codify (v3): top-level comparison alias === compare_payloads_by_preset.wow" pass
+    check "WP11-P1 → WP9 P2 codify: top-level comparison alias removed (regression-pin for v3 cycle close)" pass
 else
-    check "WP11-P1 codify (v3): comparison alias" fail "alias missing or diverged"
+    check "WP11-P1 → WP9 P2 codify: comparison alias removed" fail "v2 alias still present"
 fi
 
 # WP11-P1-4 (rerouted): the wow preset's meta has the {a_start,a_end,b_start,
@@ -1682,39 +1677,40 @@ WP11P1B_30D="$TMPDIR/wp11p1b-30d.html"
 "$CLI" visualize --no-open --window 30d --out "$WP11P1B_30D" > /dev/null 2>&1
 
 # WP11-P1B-1 (rerouted): comparison.a.metrics is a dict on real-DB emit.
+# v3 (WP9 P2, 2026-06-03): comparison.a/b.metrics → compare_payloads_by_preset.wow.a/b.metrics
+# (the v2-alias `comparison` was stripped at v3 cycle close; the data still
+# exists at its canonical sub-payload path).
 python3 -c "
 import re, json, sys
 h = open('$WP11P1B_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
-am = d.get('comparison', {}).get('a', {}).get('metrics')
-if not isinstance(am, dict): sys.exit(f'a.metrics is not a dict: {type(am)}')
+am = d.get('compare_payloads_by_preset', {}).get('wow', {}).get('a', {}).get('metrics')
+if not isinstance(am, dict): sys.exit(f'wow.a.metrics is not a dict: {type(am)}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1B codify (v3): comparison.a.metrics is a dict on real-DB emit" pass
+    check "WP11-P1B → WP9 P2 codify: compare_payloads_by_preset.wow.a.metrics is a dict on real-DB emit" pass
 else
-    check "WP11-P1B codify (v3): a.metrics shape" fail "missing or wrong type"
+    check "WP11-P1B → WP9 P2 codify: wow.a.metrics shape" fail "missing or wrong type"
 fi
 
-# WP11-P1B-2 (rerouted): comparison.b.metrics is a dict.
+# WP11-P1B-2 (post-WP9 P2): wow.b.metrics is a dict.
 python3 -c "
 import re, json, sys
 h = open('$WP11P1B_30D').read()
 m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
-bm = d.get('comparison', {}).get('b', {}).get('metrics')
-if not isinstance(bm, dict): sys.exit(f'b.metrics is not a dict: {type(bm)}')
+bm = d.get('compare_payloads_by_preset', {}).get('wow', {}).get('b', {}).get('metrics')
+if not isinstance(bm, dict): sys.exit(f'wow.b.metrics is not a dict: {type(bm)}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1B codify (v3): comparison.b.metrics is a dict on real-DB emit" pass
+    check "WP11-P1B → WP9 P2 codify: compare_payloads_by_preset.wow.b.metrics is a dict on real-DB emit" pass
 else
-    check "WP11-P1B codify (v3): b.metrics shape" fail "missing or wrong type"
+    check "WP11-P1B → WP9 P2 codify: wow.b.metrics shape" fail "missing or wrong type"
 fi
 
-# WP11-P1B-3 (rerouted): both a.metrics and b.metrics have the 6 canonical
-# top-level keys (engaged_session, ai_agent, tool_call, human, concurrency,
-# blocking) — the shape contract matches the existing data.metrics tree, so
-# CompareView can reuse _computeMetricsView (WP10) over both windows.
+# WP11-P1B-3 (post-WP9 P2): both wow.a.metrics and wow.b.metrics have the 6
+# canonical top-level keys.
 python3 -c "
 import re, json, sys
 h = open('$WP11P1B_30D').read()
@@ -1722,14 +1718,14 @@ m = re.search(r'window\.CT_DATA = ({.*?});', h, re.DOTALL)
 d = json.loads(m.group(1))
 EXPECTED = {'engaged_session', 'ai_agent', 'tool_call', 'human', 'concurrency', 'blocking'}
 for side in ('a', 'b'):
-    keys = set(d['comparison'][side]['metrics'].keys())
+    keys = set(d['compare_payloads_by_preset']['wow'][side]['metrics'].keys())
     missing = EXPECTED - keys
-    if missing: sys.exit(f'{side}.metrics missing keys: {missing}')
+    if missing: sys.exit(f'wow.{side}.metrics missing keys: {missing}')
 " 2>/dev/null
 if [ $? -eq 0 ]; then
-    check "WP11-P1B codify (v3): a.metrics and b.metrics both have the 6 canonical keys" pass
+    check "WP11-P1B → WP9 P2 codify: wow.a.metrics and wow.b.metrics both have the 6 canonical keys" pass
 else
-    check "WP11-P1B codify (v3): a.metrics + b.metrics key set" fail "missing canonical keys"
+    check "WP11-P1B → WP9 P2 codify: wow.a.metrics + wow.b.metrics key set" fail "missing canonical keys"
 fi
 
 # WP11-P1B-4 (rerouted): the cross-preset shape uniformity — every preset in
@@ -1897,9 +1893,9 @@ else
     check "v3 WP3 P2 codify: --window 30d emits HTML, rc=0" fail "rc=$wp3p2_rc, emit_exists=$([ -f "$WP3P2_EMIT" ] && echo yes || echo no)"
 fi
 
-# Boundary contract — both v3 keys and legacy alias keys present side-by-side.
-# Extract the CT_DATA literal and check key membership via Python (jq would be
-# nice but isn't a project test dep; python3 already is for date math above).
+# v3 cycle close (WP9 P2, 2026-06-03): the WP3 P2 boundary contract was
+# coexistence-only. WP9 P2 strips the v2 alias keys; pin now asserts the
+# v3-only shape — sub-payload maps present AND alias keys ABSENT.
 wp3p2_audit=$(python3 - <<PY
 import re, json, sys
 try:
@@ -1917,33 +1913,27 @@ except Exception as e:
     print(f"FAIL: CT_DATA not valid JSON: {e}")
     sys.exit(0)
 v3_keys = {"window", "day_payloads_by_iso", "week_payloads_by_monday",
-           "month_payloads_by_iso", "compare_payloads_by_preset"}
-legacy_keys = {"today", "week", "comparison", "metrics", "meta", "months"}
+           "month_payloads_by_iso", "compare_payloads_by_preset", "metrics"}
+legacy_keys = {"today", "week", "comparison", "meta", "months"}
 missing_v3 = v3_keys - set(data.keys())
-missing_legacy = legacy_keys - set(data.keys())
-if missing_v3 or missing_legacy:
-    print(f"FAIL: missing v3={sorted(missing_v3)} missing legacy={sorted(missing_legacy)}")
+present_legacy = legacy_keys & set(data.keys())
+if missing_v3:
+    print(f"FAIL: missing v3 sub-payload keys: {sorted(missing_v3)}")
     sys.exit(0)
-# Cross-check: meta has the shape v2 frontend reads (start/end/day_count).
-meta_required = {"start", "end", "day_count"}
-missing_meta = meta_required - set(data.get("meta", {}).keys())
-if missing_meta:
-    print(f"FAIL: meta alias shape incomplete; missing={sorted(missing_meta)}")
+if present_legacy:
+    print(f"FAIL: v2 alias keys still present (should be stripped at WP9 P2): {sorted(present_legacy)}")
     sys.exit(0)
-# Cross-check: today === day_payloads_by_iso[meta.end] (alias derivation contract).
-end_iso = data["meta"]["end"]
-if data["today"] is not data["day_payloads_by_iso"].get(end_iso):
-    # Object identity not preserved across JSON round-trip; check structural equality instead.
-    if data["today"] != data["day_payloads_by_iso"].get(end_iso):
-        print(f"FAIL: today alias != day_payloads_by_iso[{end_iso}]")
-        sys.exit(0)
+# Cross-check: snapshot is a top-level string field (1-key replacement for meta.snapshot).
+if not isinstance(data.get("snapshot"), str):
+    print(f"FAIL: top-level snapshot field missing or wrong type: {type(data.get('snapshot'))}")
+    sys.exit(0)
 print("PASS")
 PY
 )
 if [ "$wp3p2_audit" = "PASS" ]; then
-    check "v3 WP3 P2 codify: --window emit has BOTH v3 sub-payload keys AND legacy alias keys (boundary contract for WP5-WP9 transition)" pass
+    check "v3 WP3 P2 → WP9 P2 codify: --window emit has ONLY v3 sub-payload keys (v2 aliases stripped at cycle close)" pass
 else
-    check "v3 WP3 P2 codify: --window emit boundary contract" fail "$wp3p2_audit"
+    check "v3 WP3 P2 → WP9 P2 codify: --window emit v3-only contract" fail "$wp3p2_audit"
 fi
 
 rm -rf "$WP3P2_DIR"
@@ -2393,25 +2383,25 @@ else
     check "v3 WP7 codify: monthIsoKeys + currentMonthIso" fail "one or both missing from emitted HTML"
 fi
 
-# P1.11c: monthPayload useMemo with v2-alias fallback (per CLAUDE.md v3
-# sub-payload routing convention — primary monthPayloadsByIso, fallback monthsMap).
+# P1.11c → WP9 P2 flip (2026-06-03): monthPayload useMemo is now
+# primary-only (v2-alias monthsMap fallback removed at v3 cycle close).
 if grep -qF 'const monthPayload = React.useMemo' "$WP7_HTML" && \
    grep -qF 'monthPayloadsByIso[monthIso]' "$WP7_HTML" && \
-   grep -qF 'monthsMap ? monthsMap[monthIso]' "$WP7_HTML"; then
-    check "v3 WP7 codify: monthPayload useMemo with v2-alias fallback" pass
+   ! grep -qF 'monthsMap ? monthsMap[monthIso]' "$WP7_HTML"; then
+    check "v3 WP7 → WP9 P2 codify: monthPayload useMemo primary-only (monthsMap fallback removed)" pass
 else
-    check "v3 WP7 codify: monthPayload useMemo with v2-alias fallback" fail "primary + fallback not both present"
+    check "v3 WP7 → WP9 P2 codify: monthPayload useMemo primary-only" fail "useMemo absent OR v2-alias fallback still present"
 fi
 
-# P1.11d: onPrevMonth + onNextMonth dispatch routes through monthPayloadsByIso
-# (the in-window-presence check that gates client-side swap vs reload-redirect
-# toast). Both handlers must check monthPayloadsByIso first; v2 alias OR'd as
-# fallback.
-if grep -qF 'monthPayloadsByIso[prevIso] || (monthsMap && monthsMap[prevIso])' "$WP7_HTML" && \
-   grep -qF 'monthPayloadsByIso[nextIso] || (monthsMap && monthsMap[nextIso])' "$WP7_HTML"; then
-    check "v3 WP7 codify: onPrevMonth/onNextMonth route via monthPayloadsByIso" pass
+# P1.11d → WP9 P2 flip: onPrev/NextMonth dispatch routes through
+# monthPayloadsByIso only (v2-alias `monthsMap` OR clause removed).
+if grep -qF 'if (monthPayloadsByIso[prevIso]) {' "$WP7_HTML" && \
+   grep -qF 'if (monthPayloadsByIso[nextIso]) {' "$WP7_HTML" && \
+   ! grep -qF 'monthPayloadsByIso[prevIso] || (monthsMap' "$WP7_HTML" && \
+   ! grep -qF 'monthPayloadsByIso[nextIso] || (monthsMap' "$WP7_HTML"; then
+    check "v3 WP7 → WP9 P2 codify: onPrev/NextMonth dispatch primary-only (monthsMap fallback removed)" pass
 else
-    check "v3 WP7 codify: onPrev/NextMonth dispatch via monthPayloadsByIso" fail "one or both handlers not routed"
+    check "v3 WP7 → WP9 P2 codify: onPrev/NextMonth dispatch primary-only" fail "primary check absent OR v2-alias OR clause still present"
 fi
 
 rm -f "$WP7_HTML"
@@ -2467,6 +2457,156 @@ else
 fi
 
 rm -f "$WP8_HTML"
+
+# ── v3 WP9 Phase 1 codify: Custom-range view sub-payload routing source-shape pins ──
+# Per WIP at workflow/wip/wp9-custom-range-sub-payload-routing.md (2026-06-03).
+# WP9 routes Custom view through customPayload — a useMemo that calls
+# _aggregateDayPayloads (cross-day JS union over day_payloads_by_iso) for the
+# active [range.start..range.end], with v2-alias fallback to `today` when the
+# range is outside the pre-rendered window. The six `isDayLike ? dayPayload : ...`
+# consumer surfaces (date-header label, date-header projects/sessions count,
+# ProjectFilterPopover, body branch DayTimeline data + EmptyState date, Minimap
+# data + render-gate, SummaryStrip dayStats) all route through `dayLikePayload`
+# (= isCustom ? customPayload : dayPayload). Also adds `data-custom-range`
+# selector on the date-header strip for behavioral tests. The legacy `today`
+# alias key remains populated by the CLI for v2-frontend coexistence (Phase 2
+# removes it; useMemo fallback becomes dead code).
+WP9_HTML="$TMPDIR/wp9.html"
+"$CLI" visualize --no-open --window 30d --out "$WP9_HTML" > /dev/null 2>&1
+
+# WP9-P1.6a: _aggregateDayPayloads helper function emitted.
+if grep -qF 'function _aggregateDayPayloads' "$WP9_HTML"; then
+    check "v3 WP9 codify: _aggregateDayPayloads helper function emitted" pass
+else
+    check "v3 WP9 codify: _aggregateDayPayloads helper function" fail "missing from emitted HTML"
+fi
+
+# WP9-P1.6b → WP9 P2 flip (2026-06-03): customPayload useMemo is now
+# primary-only (v2-alias `today` fallback removed at v3 cycle close).
+# Out-of-window returns an empty Day-like payload; onRangeChange surfaces
+# the reload-redirect toast.
+if grep -qF 'const customPayload = React.useMemo' "$WP9_HTML" && \
+   grep -qF '_aggregateDayPayloads(range.start, range.end, dayPayloadsByIso)' "$WP9_HTML" && \
+   ! grep -qF 'return today;' "$WP9_HTML"; then
+    check "v3 WP9 codify: customPayload useMemo primary-only (v2-alias today fallback removed)" pass
+else
+    check "v3 WP9 codify: customPayload useMemo primary-only" fail "useMemo absent OR 'return today;' fallback still present"
+fi
+
+# WP9-P1.6c: dayLikePayload binding (= isCustom ? customPayload : dayPayload)
+# — the routing slot all six isDayLike consumer surfaces read through.
+if grep -qF 'const dayLikePayload = isCustom ? customPayload : dayPayload' "$WP9_HTML"; then
+    check "v3 WP9 codify: dayLikePayload routing binding present" pass
+else
+    check "v3 WP9 codify: dayLikePayload routing binding" fail "missing from emitted HTML"
+fi
+
+# WP9-P1.6d: data-custom-range selector emitted on the date-header strip.
+# Format: data-custom-range={isCustom ? `${range.start}:${range.end}` : undefined}
+if grep -qF 'data-custom-range={isCustom' "$WP9_HTML"; then
+    check "v3 WP9 codify: data-custom-range selector emitted" pass
+else
+    check "v3 WP9 codify: data-custom-range selector" fail "missing from emitted HTML"
+fi
+
+# WP9-P1.6e: onRangeChange out-of-window detection — _aggregateDayPayloads
+# called inside the callback to test in-window-ness, setNavToast triggered
+# when the new range is outside the pre-rendered window.
+if grep -qF '_aggregateDayPayloads(nextRange.start, nextRange.end, dayPayloadsByIso)' "$WP9_HTML" && \
+   grep -qF "claude-time visualize --window ' + nextRange.start" "$WP9_HTML"; then
+    check "v3 WP9 codify: onRangeChange out-of-window setNavToast trigger" pass
+else
+    check "v3 WP9 codify: onRangeChange out-of-window detection" fail "missing _aggregate-in-callback or setNavToast trigger"
+fi
+
+rm -f "$WP9_HTML"
+
+# ── v3 WP9 Phase 2 codify: v2 alias-key strip + useMemo fallback removal ──
+# Phase 2 (2026-06-03) strips the v2 alias keys (`today`, `week`,
+# `comparison`, `months`, `meta`) from the CLI emit at v3 cycle close, and
+# prunes the useMemo fallbacks + state-initializer references to those keys
+# in the frontend Dashboard wrapper. These pins assert the v3-only contract
+# is observable in the emitted HTML — both the JSON payload (no alias keys)
+# and the JS code (no || alias fallback expressions, no destructure, no
+# initializer references). The 9 cross-WP obsolete-test flips above
+# (WP6→P2, WP11-P1, WP11-P1B×3, WP3-P2, WP7×2, WP9-P1.6b) already pin
+# specific call sites — these 6 add a holistic "the v2 contract is gone"
+# regression-pin layer.
+WP9P2_HTML="$TMPDIR/wp9p2.html"
+"$CLI" visualize --no-open --window 30d --out "$WP9P2_HTML" > /dev/null 2>&1
+
+# WP9-P2.7a: top-level v2 alias keys absent from window.CT_DATA payload.
+wp9p2_audit=$(python3 - <<PY
+import re, json, sys
+txt = open("$WP9P2_HTML").read()
+m = re.search(r'window\.CT_DATA\s*=\s*(\{.*?\});', txt, re.DOTALL)
+if not m: print("FAIL: no CT_DATA"); sys.exit(0)
+try:
+    data = json.loads(m.group(1))
+except Exception as e: print(f"FAIL: {e}"); sys.exit(0)
+present = {k for k in ('today','week','comparison','months','meta') if k in data}
+if present: print(f"FAIL: {sorted(present)}"); sys.exit(0)
+print("PASS")
+PY
+)
+if [ "$wp9p2_audit" = "PASS" ]; then
+    check "v3 WP9 P2 codify: top-level v2 alias keys absent from emit (today/week/comparison/months/meta)" pass
+else
+    check "v3 WP9 P2 codify: top-level v2 alias keys absent" fail "$wp9p2_audit"
+fi
+
+# WP9-P2.7b: top-level `snapshot` field present (1-key replacement for meta.snapshot).
+if grep -qF '"snapshot":' "$WP9P2_HTML"; then
+    check "v3 WP9 P2 codify: top-level snapshot field present (replaces meta.snapshot)" pass
+else
+    check "v3 WP9 P2 codify: top-level snapshot field" fail "missing from emit"
+fi
+
+# WP9-P2.7c: `const { today, week } = window.CT_DATA` destructure removed
+# from the interactive Dashboard wrapper. The design-canvas wrapper at
+# dashboard.jsx:3312 still has it but is stripped at emit by
+# _strip_design_wrapper, so the shipped HTML must contain zero matches.
+destructure_count=$(grep -c 'const { today, week } = window.CT_DATA' "$WP9P2_HTML" || true)
+if [ "$destructure_count" = "0" ]; then
+    check "v3 WP9 P2 codify: today/week destructure removed from Dashboard wrapper (design-canvas wrapper stripped at emit)" pass
+else
+    check "v3 WP9 P2 codify: today/week destructure removed" fail "$destructure_count destructures still in emitted HTML"
+fi
+
+# WP9-P2.7d: useMemo `|| <v2-alias>` fallback patterns absent. Five patterns
+# to check: `|| today`, `|| week`, `|| window.CT_DATA.today`,
+# `|| window.CT_DATA.comparison`, `monthsMap[`. All must be absent (the
+# `|| week` boundary checks like `weekMondayKeys.length === 0 || ...` are
+# matched by `|| week` substring — guard against false-positive by checking
+# the more specific `return week;` and `return today;` patterns).
+if ! grep -qF 'return today;' "$WP9P2_HTML" && \
+   ! grep -qF 'return week;' "$WP9P2_HTML" && \
+   ! grep -qF '|| window.CT_DATA.today' "$WP9P2_HTML" && \
+   ! grep -qF '|| window.CT_DATA.comparison' "$WP9P2_HTML" && \
+   ! grep -qF 'monthsMap[' "$WP9P2_HTML"; then
+    check "v3 WP9 P2 codify: useMemo v2-alias fallback expressions all removed (5 patterns)" pass
+else
+    check "v3 WP9 P2 codify: useMemo v2-alias fallback removal" fail "one or more 'return today/week;' or '|| CT_DATA.{today,comparison}' or 'monthsMap[' patterns still present"
+fi
+
+# WP9-P2.7e: `_initView` IIFE migrated off `today.meta` and onto
+# window.{start,end}. The new code reads `windowStartIso && windowEndIso`
+# in the `custom` emit-time fallback branch.
+if grep -qE "CT_INITIAL_VIEW === ['\"]custom['\"] && windowStartIso && windowEndIso" "$WP9P2_HTML"; then
+    check "v3 WP9 P2 codify: _initView custom branch migrated off today.meta onto window.{start,end}" pass
+else
+    check "v3 WP9 P2 codify: _initView custom branch migration" fail "windowStartIso && windowEndIso guard missing"
+fi
+
+# WP9-P2.7f: Toolbar snapshot prop sources from window.CT_DATA.snapshot
+# (the new top-level field) instead of window.CT_DATA.meta.snapshot.
+if grep -qF 'snapshot={window.CT_DATA.snapshot || null}' "$WP9P2_HTML"; then
+    check "v3 WP9 P2 codify: Toolbar snapshot prop sourced from window.CT_DATA.snapshot" pass
+else
+    check "v3 WP9 P2 codify: Toolbar snapshot prop source" fail "snapshot prop not sourced from window.CT_DATA.snapshot"
+fi
+
+rm -f "$WP9P2_HTML"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

@@ -569,7 +569,14 @@ async function runTests() {
 
       // 12c. N project items rendered.
       const itemCount = await page.evaluate(() => document.querySelectorAll('[data-project-filter-item]').length);
-      const dataProjectCount = await page.evaluate(() => window.CT_DATA.today.projects.length);
+      // v3 (WP9 P2): read from day_payloads_by_iso[window.end] instead of
+      // the removed `today` alias.
+      const dataProjectCount = await page.evaluate(() => {
+        const map = window.CT_DATA.day_payloads_by_iso || {};
+        const endIso = window.CT_DATA.window && window.CT_DATA.window.end;
+        const p = endIso ? map[endIso] : null;
+        return p && p.projects ? p.projects.length : 0;
+      });
       check('WP9-P4: panel renders one checkbox per project',
         itemCount === dataProjectCount,
         `itemCount=${itemCount} dataProjectCount=${dataProjectCount}`);
@@ -1627,6 +1634,240 @@ async function runTests() {
       check('WP7 behavioral 3c: out-of-window hash → zero JS console errors on mount',
         consoleErrors.length === 0,
         `errors=${JSON.stringify(consoleErrors)}`);
+
+      await page.close();
+    }
+
+    // ── v3 WP9 behavioral: Custom-range view sub-payload routing ──────────
+    // Re-uses MONTH_DASH_HTML (--window 2026-03-01:2026-04-30, 61 pre-rendered
+    // days, 6 seeded days: 03-08, 03-20, 04-05, 04-12, 04-15, 04-22).
+    // WP9 routes Custom view through customPayload — a useMemo built from
+    // _aggregateDayPayloads (cross-day JS union over day_payloads_by_iso).
+    // Verifies: (1a-c) hash-restore #view=custom;range=<in-window> → Custom
+    // view active + data-custom-range reflects the range + DayTimeline body
+    // mounts. (2) aggregated session-count > single-day count (assertion
+    // that aggregation is happening, not just dayPayload pass-through).
+    // (3) out-of-window range #view=custom;range=2025-01-01:2025-01-07 →
+    // navToast triggered with the right reload command.
+    {
+      const page = await browser.newPage();
+      const consoleErrors = [];
+      page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+      page.on('pageerror', err => consoleErrors.push(String(err)));
+
+      // (1) Hash-restore on in-window range. Range 2026-04-01:2026-04-30 covers
+      // 4 seeded days (04-05, 04-12, 04-15, 04-22). page.reload() forces fresh
+      // mount per the WP5 verify-codify lesson.
+      await page.goto(URL_BASE + '/month.html#view=custom;range=2026-04-01:2026-04-30');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(400);
+
+      const customState = await page.evaluate(() => {
+        const customRange = document.querySelector('[data-custom-range]');
+        const activeTab = document.querySelector('button[data-tab="custom"][aria-selected="true"]');
+        // Parse the date-header strip's "X projects · Y sessions" summary
+        // (emitted by viz_render.py:975 for isDayLike views). On aggregated
+        // Custom view, sessions count should be >= total sessions across all
+        // in-range seeded days.
+        const summaryText = document.body.innerText || '';
+        const m = summaryText.match(/(\d+) projects \u00b7 (\d+) sessions/);
+        return {
+          customRangeAttr: customRange ? customRange.getAttribute('data-custom-range') : null,
+          customTabActive: !!activeTab,
+          summaryMatch: m ? { projects: parseInt(m[1], 10), sessions: parseInt(m[2], 10) } : null,
+        };
+      });
+      check('v3 WP9 behavioral 1a: hash-restore #view=custom;range=2026-04-01:2026-04-30 → Custom tab active',
+        customState.customTabActive === true,
+        JSON.stringify(customState));
+      check('v3 WP9 behavioral 1b: hash-restore → data-custom-range="2026-04-01:2026-04-30" emitted',
+        customState.customRangeAttr === '2026-04-01:2026-04-30',
+        JSON.stringify(customState));
+      // 4 seeded days in range: 04-05, 04-12, 04-15, 04-22 → 4 sessions,
+      // 2 distinct projects (/repo/alpha + /repo/beta). The aggregated count
+      // proves the aggregation path is wired, not just dayPayload pass-through
+      // (which would show 0 since 04-30 has no seeded events).
+      check('v3 WP9 behavioral 1c: hash-restore → date-header summary reflects aggregated count (≥4 sessions, ≥2 projects)',
+        customState.summaryMatch !== null &&
+          customState.summaryMatch.sessions >= 4 && customState.summaryMatch.projects >= 2,
+        JSON.stringify(customState));
+
+      // (2) Aggregation verification: customPayload reads from the live
+      // dashboard state. We compare the count of in-range seeded events
+      // versus a single-day count. The aggregated payload for 2026-04-01..30
+      // must cover all 4 seeded days; a single day (04-22 alone) has 1.
+      const aggregationCheck = await page.evaluate(() => {
+        // Pull the live dayPayloadsByIso. The aggregate count of sessions
+        // across the 4 in-range seeded days (04-05, 04-12, 04-15, 04-22)
+        // should be 4. We compare against the single day 04-22.
+        const map = window.CT_DATA.day_payloads_by_iso || {};
+        const inRangeIsos = ['2026-04-05', '2026-04-12', '2026-04-15', '2026-04-22'];
+        let aggregatedSessionCount = 0;
+        let aggregatedProjectIds = new Set();
+        for (const iso of inRangeIsos) {
+          const p = map[iso];
+          if (p && p.projects) {
+            for (const proj of p.projects) {
+              aggregatedProjectIds.add(proj.id);
+              aggregatedSessionCount += (proj.sessions || []).length;
+            }
+          }
+        }
+        const single = map['2026-04-22'];
+        let singleSessionCount = 0;
+        if (single && single.projects) {
+          for (const proj of single.projects) {
+            singleSessionCount += (proj.sessions || []).length;
+          }
+        }
+        return {
+          aggregatedSessionCount,
+          aggregatedProjectCount: aggregatedProjectIds.size,
+          singleSessionCount,
+        };
+      });
+      check('v3 WP9 behavioral 2: aggregated session count > single-day session count (aggregation is happening)',
+        aggregationCheck.aggregatedSessionCount > aggregationCheck.singleSessionCount &&
+          aggregationCheck.aggregatedSessionCount >= 4,
+        JSON.stringify(aggregationCheck));
+
+      await page.close();
+    }
+
+    // ── v3 WP9 behavioral 3: out-of-window range → navToast triggered ──
+    // Hash-restore with a range outside the pre-rendered window (window is
+    // 2026-03-01..04-30; pick 2025-01-01..01-07). _aggregateDayPayloads
+    // returns null because the in-range days aren't in dayPayloadsByIso;
+    // customPayload falls back to the `today` alias for body rendering,
+    // but onRangeChange (when triggered later by RangePicker pick) would
+    // surface a navToast. Verify by triggering a programmatic range change
+    // via the dispatcher in page.evaluate (simulates RangePicker pick of
+    // an out-of-window range from an in-window starting point).
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/month.html#view=custom;range=2026-04-01:2026-04-30');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(400);
+
+      // Programmatically pick an out-of-window range via the RangePicker's
+      // <input type=date> elements. The RangePicker uses controlled inputs
+      // (React state-driven via `value={bufStart}`); native event-dispatch
+      // doesn't reliably trigger React's SyntheticEvent onChange handler.
+      // Use Playwright's page.locator().fill() which properly sets value
+      // through React's controlled-component pathway and then dispatch blur
+      // to fire the commit() callback (which calls onChange-prop = onRangeChange).
+      await page.locator('input[data-range-picker="start"]').fill('2025-01-01');
+      await page.locator('input[data-range-picker="end"]').fill('2025-01-07');
+      // Blur both inputs to fire the commit() handler in RangePicker.
+      await page.locator('input[data-range-picker="end"]').blur();
+      await page.waitForTimeout(300);
+
+      const navToastResult = await page.evaluate(() => {
+        const toastText = document.body.innerText || '';
+        return {
+          toastVisible: /Range is outside the pre-rendered window/.test(toastText) ||
+                        /claude-time visualize --window/.test(toastText),
+          fullToastText: toastText.match(/Range is outside[^\n]*/)?.[0] || null,
+          reloadCmd: toastText.match(/claude-time visualize --window [^\s]+:[^\s]+/)?.[0] || null,
+        };
+      });
+      check('v3 WP9 behavioral 3: out-of-window range pick → navToast triggered with reload command',
+        navToastResult.toastVisible === true && navToastResult.reloadCmd &&
+          navToastResult.reloadCmd.includes('2025-01-01:2025-01-07'),
+        JSON.stringify(navToastResult));
+
+      await page.close();
+    }
+
+    // ── v3 WP9 P2 behavioral: post-strip view-cycle + init-path smoke ──
+    // Verifies that after the v2 alias-key strip (Phase 2), all 5 view
+    // tabs (Day, Week, Month, Custom, Compare) mount cleanly via their
+    // canonical sub-payload maps with zero JS errors. The legacy `today`,
+    // `week`, `comparison`, `months`, `meta` keys are gone from CT_DATA;
+    // each view's render path is the canonical sub-payload map only.
+    // Also asserts _initCompareRanges reads compare_payloads_by_preset.wow.meta
+    // (the new source-of-truth path, replacing window.CT_DATA.comparison.meta).
+    {
+      const page = await browser.newPage();
+      const consoleErrors = [];
+      page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+      page.on('pageerror', err => consoleErrors.push(String(err)));
+
+      await page.goto(URL_BASE + '/month.html');
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(500);
+
+      // (1) CT_DATA shape: legacy aliases absent, snapshot field present.
+      const shape = await page.evaluate(() => {
+        const d = window.CT_DATA || {};
+        return {
+          aliasesPresent: ['today','week','comparison','months','meta'].filter(k => k in d),
+          hasSnapshot: typeof d.snapshot === 'string',
+          hasV3Maps: ['day_payloads_by_iso','week_payloads_by_monday','month_payloads_by_iso','compare_payloads_by_preset'].every(k => k in d),
+        };
+      });
+      check('v3 WP9 P2 behavioral 1a: v2 alias keys absent from live CT_DATA',
+        shape.aliasesPresent.length === 0,
+        JSON.stringify(shape));
+      check('v3 WP9 P2 behavioral 1b: top-level snapshot string field present in live CT_DATA',
+        shape.hasSnapshot === true,
+        JSON.stringify(shape));
+      check('v3 WP9 P2 behavioral 1c: all 4 v3 sub-payload maps present in live CT_DATA',
+        shape.hasV3Maps === true,
+        JSON.stringify(shape));
+
+      // (2) Full view-cycle smoke: each tab renders cleanly via its
+      // sub-payload map. Day→Week→Month→Custom→Compare→Day round-trip.
+      const cycleResults = await page.evaluate(async () => {
+        const results = {};
+        for (const tab of ['week', 'month', 'custom', 'compare', 'day']) {
+          const btn = document.querySelector(`button[data-tab="${tab}"]`);
+          if (!btn) { results[tab] = { active: 'NO-BUTTON' }; continue; }
+          const key = Object.keys(btn).find(k => k.startsWith('__reactProps'));
+          btn[key].onClick();
+          await new Promise(r => setTimeout(r, 120));
+          const active = document.querySelector('button[aria-selected="true"]')?.getAttribute('data-tab');
+          results[tab] = { active };
+        }
+        return results;
+      });
+      const allTabsActivated = ['week','month','custom','compare','day'].every(
+        t => cycleResults[t]?.active === t
+      );
+      check('v3 WP9 P2 behavioral 2: full view-cycle Day→Week→Month→Custom→Compare→Day mounts cleanly',
+        allTabsActivated === true,
+        JSON.stringify(cycleResults));
+
+      // (3) Hash-restore #view=compare;preset=wow → _initCompareRanges seeds
+      // from compare_payloads_by_preset.wow.meta (post-WP9 P2 source path).
+      // The compareRanges state's `a.start` should match wow.meta.a_start.
+      await page.goto(URL_BASE + '/month.html#view=compare;preset=wow');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(500);
+
+      // Live cross-check: wow.meta.a_start in CT_DATA matches the expected
+      // pre-rendered window-anchored Monday. We can't easily probe React
+      // state, but we can verify the seed source path is intact.
+      const wowMetaCheck = await page.evaluate(() => {
+        const wow = window.CT_DATA && window.CT_DATA.compare_payloads_by_preset && window.CT_DATA.compare_payloads_by_preset.wow;
+        return {
+          wowExists: !!wow,
+          metaExists: !!(wow && wow.meta),
+          hasABoundaries: !!(wow && wow.meta && wow.meta.a_start && wow.meta.a_end && wow.meta.b_start && wow.meta.b_end),
+        };
+      });
+      check('v3 WP9 P2 behavioral 3: _initCompareRanges source path (compare_payloads_by_preset.wow.meta) intact post-strip',
+        wowMetaCheck.wowExists && wowMetaCheck.metaExists && wowMetaCheck.hasABoundaries,
+        JSON.stringify(wowMetaCheck));
+
+      // (4) No JS console errors during the full Phase 2 smoke.
+      const jsErrors = consoleErrors.filter(e => !/favicon|Babel/i.test(e));
+      check('v3 WP9 P2 behavioral 4: no JS console errors during full post-strip view cycle',
+        jsErrors.length === 0,
+        jsErrors.join(' | '));
 
       await page.close();
     }

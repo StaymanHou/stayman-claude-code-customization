@@ -277,7 +277,7 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
 
       <div style={{ width: 1, height: 22, background: CT_TOKENS.border, margin: '0 4px' }} />
 
-      {/* Toolbar label is 'Day' (WP6); data-layer key remains window.CT_DATA.today (stable contract for WP5b consumers). */}
+      {/* Toolbar label is 'Day' (WP6); v3 (WP9 P2) reads window.CT_DATA.day_payloads_by_iso[<iso>] instead of the v2 `today` alias. */}
       {/* View tabs (Day/Week/Month/Custom — all functional as of WP7).
           WP7 enabled Month — its body is the calendar-grid MonthView; the
           dateLabel slot becomes month name + prev/next arrows (D1).
@@ -1790,33 +1790,29 @@ function dayOffsetMin(day_iso, window_start_iso) {
   return Math.round((d - start) / 60_000);
 }
 
-// Initial viewport derives from `window.CT_DATA.today`. Three modes:
-//   1. Multi-day (WP5b): `target_iso` + `meta.start` + `hour_range_by_day`
-//      all present → center on the target day's adaptive hour-range, with
-//      day-offset applied so segments from other days are visible on either
-//      side via pan.
-//   2. Single-day (back-compat, --context-days 0/0): flat `hour_range`
-//      present → use it directly (the pre-WP5b path).
-//   3. Defensive fallback (standalone design-canvas, no CT_DATA): [6, 23].
+// Initial viewport derives from the window-end day's payload in
+// `day_payloads_by_iso` (v3 routing; was the `today` alias pre-WP9). Two
+// modes: (1) day payload with `hour_range` present → use that; (2) defensive
+// fallback (standalone design-canvas, no CT_DATA): [6, 23].
 function _initialViewport() {
-  if (typeof window === 'undefined' || !window.CT_DATA || !window.CT_DATA.today) {
+  // v3 (WP9 P2): reads the window-end day's payload from
+  // day_payloads_by_iso (formerly the `today` alias). The v2 multi-day
+  // target_iso branch was dead in v3 (build_window_data never sets
+  // target_iso on per-day payloads), so only the single-day hour_range
+  // path is preserved.
+  if (typeof window === 'undefined' || !window.CT_DATA) {
     return { visible_start_min: 6 * 60, visible_end_min: 23 * 60 };
   }
-  const today = window.CT_DATA.today;
-  // Multi-day path: center on target_iso's per-day hour_range.
-  if (today.target_iso && today.meta && today.meta.start) {
-    const target_iso = today.target_iso;
-    const hr_by_day = today.hour_range_by_day || {};
-    const hr = hr_by_day[target_iso] || today.day_window || [6, 23];
-    const offset = dayOffsetMin(target_iso, today.meta.start);
-    return {
-      visible_start_min: offset + hr[0] * 60,
-      visible_end_min:   offset + hr[1] * 60,
-    };
-  }
-  // Single-day back-compat path.
-  if (today.hour_range) {
-    return { visible_start_min: today.hour_range[0] * 60, visible_end_min: today.hour_range[1] * 60 };
+  const win = window.CT_DATA.window;
+  const map = window.CT_DATA.day_payloads_by_iso;
+  if (win && map && win.end) {
+    const endPayload = map[win.end];
+    if (endPayload && endPayload.hour_range) {
+      return {
+        visible_start_min: endPayload.hour_range[0] * 60,
+        visible_end_min:   endPayload.hour_range[1] * 60,
+      };
+    }
   }
   return { visible_start_min: 6 * 60, visible_end_min: 23 * 60 };
 }

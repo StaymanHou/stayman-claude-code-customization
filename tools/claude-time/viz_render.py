@@ -64,27 +64,106 @@ def _interactive_dashboard() -> str:
     (for side panel), and track which projects are expanded.
     """
     return r"""
+/* ── WP9 (v3): _aggregateDayPayloads — cross-day union of per-day Day payloads
+   for the Custom-range view. JS-side analog of build_range_data's aggregation:
+   unions projects[] across days keyed by project.id, concatenates sessions
+   tagged with day_iso (so multi-day renderers can place each session on the
+   correct row), merges hour_range_by_day, and computes the day_window union.
+   Returns a multi-day Day-like payload with the same shape DayTimeline +
+   Minimap expect. Empty days (no projects) contribute nothing; if every day
+   in range is empty, returns `{empty: true, meta: {...}, projects: []}`.
+
+   Inputs:
+     rangeStart, rangeEnd  — ISO "YYYY-MM-DD" inclusive bounds
+     dayPayloadsByIso      — {iso: <build_day_data output>}
+   Returns:
+     {label, projects: [{id, alias, path, sessions: [...with day_iso]}],
+      meta: {start, end, day_count}, hour_range_by_day: {iso: [s_h, e_h]},
+      day_window: [global_start_hour, global_end_hour], empty: <bool>}
+   Returns null when rangeStart/rangeEnd are absent or any day in range is
+   missing from dayPayloadsByIso (the out-of-window case the caller must
+   handle via setNavToast). */
+function _aggregateDayPayloads(rangeStart, rangeEnd, dayPayloadsByIso) {
+  if (!rangeStart || !rangeEnd || !dayPayloadsByIso) return null;
+  // Enumerate days in [rangeStart..rangeEnd] inclusive.
+  const start = new Date(rangeStart + 'T00:00:00Z');
+  const end = new Date(rangeEnd + 'T00:00:00Z');
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return null;
+  const days = [];
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    days.push(d.toISOString().slice(0, 10));
+  }
+  // Bail to null if ANY day in the range is missing — caller decides
+  // whether to fall back or trigger an out-of-window reload-redirect.
+  for (const iso of days) {
+    if (!dayPayloadsByIso[iso]) return null;
+  }
+  // Cross-day project aggregation: keyed by project.id (alias).
+  const projectsById = {};
+  const hourRangeByDay = {};
+  let dayWindowStart = null;
+  let dayWindowEnd = null;
+  let anyNonEmpty = false;
+  for (const iso of days) {
+    const dayPayload = dayPayloadsByIso[iso];
+    if (dayPayload.hour_range) {
+      hourRangeByDay[iso] = dayPayload.hour_range;
+    } else if (dayPayload.hour_range_by_day && dayPayload.hour_range_by_day[iso]) {
+      hourRangeByDay[iso] = dayPayload.hour_range_by_day[iso];
+    }
+    if (dayPayload.day_window) {
+      const [ds, de] = dayPayload.day_window;
+      if (dayWindowStart === null || ds < dayWindowStart) dayWindowStart = ds;
+      if (dayWindowEnd === null || de > dayWindowEnd) dayWindowEnd = de;
+    }
+    const projects = dayPayload.projects || [];
+    if (projects.length > 0) anyNonEmpty = true;
+    for (const p of projects) {
+      const key = p.id;
+      if (!projectsById[key]) {
+        projectsById[key] = {
+          id: p.id,
+          alias: p.alias,
+          path: p.path,
+          sessions: [],
+        };
+      }
+      // Tag each session with its day_iso so multi-day renderers place it.
+      for (const s of (p.sessions || [])) {
+        projectsById[key].sessions.push(Object.assign({}, s, { day_iso: iso }));
+      }
+    }
+  }
+  const projects = Object.values(projectsById);
+  const dayCount = days.length;
+  const label = (rangeStart === rangeEnd) ? rangeStart : (rangeStart + ' \u2014 ' + rangeEnd);
+  return {
+    label,
+    projects,
+    meta: { start: rangeStart, end: rangeEnd, day_count: dayCount },
+    hour_range_by_day: hourRangeByDay,
+    day_window: (dayWindowStart !== null && dayWindowEnd !== null)
+      ? [dayWindowStart, dayWindowEnd]
+      : [6, 22],
+    empty: !anyNonEmpty,
+  };
+}
+
 /* ── Dashboard wrapper (interactive, shipped variant) ───────── */
 function Dashboard() {
-  const { today, week } = window.CT_DATA;
-  // WP5 (v3): Day-view sub-payload routing. The interactive Dashboard reads
-  // the active day's payload from `day_payloads_by_iso[dayIso]`. The `today`
-  // alias above is still populated by the CLI for v2-frontend coexistence
-  // (Custom view's `today.meta.{start,end}` reads, the `_initView` IIFE's
-  // 'custom' fallback) — WP9 removes the alias at v3 cycle close. For the
-  // Day-view *render path* below, `dayPayload` is the single source of truth.
+  // v3 cycle close (WP9 Phase 2, 2026-06-03): the interactive Dashboard now
+  // reads sub-payload maps directly from window.CT_DATA. The v2 alias keys
+  // `today`, `week`, `comparison`, `months`, `meta` are no longer emitted
+  // by the CLI. Each view's render path reads through its own useMemo:
+  //   - Day:     dayPayload    = day_payloads_by_iso[dayIso]
+  //   - Week:    weekPayload   = week_payloads_by_monday[mondayIso]
+  //   - Month:   monthPayload  = month_payloads_by_iso[monthIso]
+  //   - Compare: comparePayload = compare_payloads_by_preset[preset]
+  //   - Custom:  customPayload = _aggregateDayPayloads(range.start, range.end, day_payloads_by_iso)
   const dayPayloadsByIso = window.CT_DATA.day_payloads_by_iso || {};
   const dayIsoKeys = Object.keys(dayPayloadsByIso).sort();
   const windowEndIso = (window.CT_DATA.window && window.CT_DATA.window.end) || null;
-  // WP6 (v3): Week-view sub-payload routing. The interactive Dashboard reads
-  // the active week's payload from `week_payloads_by_monday[mondayIso]`. The
-  // `week` alias above is still populated by the CLI for v2-frontend
-  // coexistence (WP9 removes the alias at v3 cycle close). For the Week-view
-  // *render path* below, `weekPayload` is the single source of truth.
-  // `currentWeekMondayIso` = the Monday of the ISO-week containing windowEndIso
-  // (always a valid key in week_payloads_by_monday — build_window_data emits a
-  // payload for every Monday-anchored week intersecting the window). Computed
-  // in UTC to avoid timezone surprises.
+  const windowStartIso = (window.CT_DATA.window && window.CT_DATA.window.start) || null;
   const weekPayloadsByMonday = window.CT_DATA.week_payloads_by_monday || {};
   const weekMondayKeys = Object.keys(weekPayloadsByMonday).sort();
   const currentWeekMondayIso = (() => {
@@ -96,34 +175,21 @@ function Dashboard() {
     d.setUTCDate(d.getUTCDate() - offset);
     return d.toISOString().slice(0, 10);
   })();
-  // WP7: months map. Pre v3, populated only on --month emits; in v3 the
-  // `--window` flag's pre-rendered window always emits month_payloads_by_iso
-  // covering the full window (aliased to top-level `months` for v2-frontend
-  // coexistence — WP9 removes the alias at v3 cycle close). Maps ISO month
-  // strings ("YYYY-MM") to range_data payloads. Prev-arrow nav is a pure
-  // client-side state swap when target month is in the map; any other nav
-  // triggers reload-redirect via MonthNavToast.
-  const monthsMap = window.CT_DATA.months || null;
-  // WP7 (v3): Month-view sub-payload routing. The interactive Dashboard reads
-  // the active month's payload from `month_payloads_by_iso[monthIso]`. The
-  // `months` alias above is still populated by the CLI for v2-frontend
-  // coexistence (WP9 removes the alias at v3 cycle close). For the Month-view
-  // *render path* below, `monthPayload` (a useMemo derived from monthIso) is
-  // the single source of truth. `currentMonthIso` = the YYYY-MM of
-  // windowEndIso, the default-landing month.
   const monthPayloadsByIso = window.CT_DATA.month_payloads_by_iso || {};
   const monthIsoKeys = Object.keys(monthPayloadsByIso).sort();
   const currentMonthIso = windowEndIso ? windowEndIso.slice(0, 7) : null;
-  // WP8: hash.view (if present) wins over CT_INITIAL_VIEW so a shareable
-  // URL like #view=custom;range=2026-05-20:2026-05-22 restores correctly.
-  // Recognized values: 'day', 'week', 'custom', 'month'. Malformed → fall
+  const comparePayloadsByPreset = window.CT_DATA.compare_payloads_by_preset || {};
+  // hash.view (if present) wins over CT_INITIAL_VIEW so a shareable URL like
+  // #view=custom;range=2026-05-20:2026-05-22 restores correctly. Recognized
+  // values: 'day', 'week', 'custom', 'month', 'compare'. Malformed → fall
   // through to CT_INITIAL_VIEW (which itself defaults to 'day' for unknown
   // values). The 'custom' view requires a valid hash.range OR a
   // CT_INITIAL_VIEW emit-time 'custom'. The 'month' view requires a valid
   // hash.month (or CT_INITIAL_VIEW='month') AND month data to be present
-  // (monthPayloadsByIso OR the v2-alias monthsMap — either source satisfies
-  // the data-present precondition).
-  const _hasMonthData = monthIsoKeys.length > 0 || (monthsMap && Object.keys(monthsMap).length > 0);
+  // (monthPayloadsByIso). 'compare' requires compare_payloads_by_preset
+  // to be non-empty.
+  const _hasMonthData = monthIsoKeys.length > 0;
+  const _hasCompareData = Object.keys(comparePayloadsByPreset).length > 0;
   const _initView = (() => {
     const hash = parseHash();
     if (hash.view === 'compare') return 'compare';
@@ -134,18 +200,18 @@ function Dashboard() {
       return 'custom';
     }
     if (hash.view === 'week' || hash.view === 'day') return hash.view;
-    // Fallthrough: emit-time default. CT_INITIAL_VIEW is 'day'|'week'|'custom'|'month'|'compare'
-    // (WP7 added 'month'; WP8 added 'custom'; WP11 added 'compare'). For
-    // 'custom' emit-time, we require today.meta.start to be present; for
-    // 'month', we require month data (monthPayloadsByIso or monthsMap); for
-    // 'compare', we require window.CT_DATA.comparison to be present.
-    if (window.CT_INITIAL_VIEW === 'compare' && window.CT_DATA.comparison) {
+    // Fallthrough: emit-time default. CT_INITIAL_VIEW is
+    // 'day'|'week'|'custom'|'month'|'compare'. For 'custom' emit-time, we
+    // require window.{start,end} to be present (was today.meta.{start,end}
+    // pre-WP9); for 'month', require monthPayloadsByIso non-empty; for
+    // 'compare', require compare_payloads_by_preset non-empty.
+    if (window.CT_INITIAL_VIEW === 'compare' && _hasCompareData) {
       return 'compare';
     }
     if (window.CT_INITIAL_VIEW === 'month' && _hasMonthData) {
       return 'month';
     }
-    if (window.CT_INITIAL_VIEW === 'custom' && today.meta && today.meta.start && today.meta.end) {
+    if (window.CT_INITIAL_VIEW === 'custom' && windowStartIso && windowEndIso) {
       return 'custom';
     }
     if (window.CT_INITIAL_VIEW === 'week') return 'week';
@@ -174,9 +240,8 @@ function Dashboard() {
 
   // WP11: compareRanges state — for `preset === 'custom'`, the user-picked
   // {a: {start, end}, b: {start, end}} pair. Hash key is `ranges=A_s:A_e,B_s:B_e`.
-  // On init, restore from hash if present + valid; otherwise seed from
-  // comparison.meta (the wow-preset payload aliased as `comparison` always
-  // ships meta.{a_start,a_end,b_start,b_end} for label rendering).
+  // On init, restore from hash if present + valid; otherwise seed from the
+  // wow preset's meta (always ships meta.{a_start,a_end,b_start,b_end}).
   const _initCompareRanges = (() => {
     const hash = parseHash();
     if (hash.ranges) {
@@ -188,8 +253,12 @@ function Dashboard() {
         };
       }
     }
-    if (window.CT_DATA.comparison && window.CT_DATA.comparison.meta) {
-      const meta = window.CT_DATA.comparison.meta;
+    // v3 (WP9 P2): emit-time default seed from the wow preset's meta.
+    // Pre-WP9 this used the v2-alias `window.CT_DATA.comparison.meta`
+    // (which always equaled compare_payloads_by_preset.wow.meta).
+    const wowPayload = comparePayloadsByPreset.wow;
+    if (wowPayload && wowPayload.meta) {
+      const meta = wowPayload.meta;
       return {
         a: { start: meta.a_start, end: meta.a_end },
         b: { start: meta.b_start, end: meta.b_end },
@@ -202,32 +271,19 @@ function Dashboard() {
   })();
   const [compareRanges, setCompareRanges] = React.useState(_initCompareRanges);
 
-  // WP7: monthIso state — which month's grid is currently rendered. Hash
-  // takes precedence on init; falls back to currentMonthIso (the month of
+  // monthIso state — which month's grid is currently rendered. Hash takes
+  // precedence on init; falls back to currentMonthIso (the month of
   // windowEndIso — the default landing); falls back to first sorted key of
-  // monthPayloadsByIso; final fallback to monthsMap (v2 alias, kept until
-  // WP9 strips it). WP7 (v3): reads from monthPayloadsByIso first (primary
-  // source), monthsMap second (v2 coexistence). Hash-restore validates
-  // against monthPayloadsByIso keys first, then monthsMap.
+  // monthPayloadsByIso. v3 (WP9 P2): monthsMap fallback removed — primary
+  // source is the only path.
   const _initMonthIso = (() => {
     const hash = parseHash();
-    if (hash.month && /^\d{4}-\d{2}$/.test(hash.month)) {
-      if (monthPayloadsByIso[hash.month]) return hash.month;
-      if (monthsMap && monthsMap[hash.month]) return hash.month;
+    if (hash.month && /^\d{4}-\d{2}$/.test(hash.month)
+        && monthPayloadsByIso[hash.month]) {
+      return hash.month;
     }
     if (currentMonthIso && monthPayloadsByIso[currentMonthIso]) return currentMonthIso;
     if (monthIsoKeys.length > 0) return monthIsoKeys[0];
-    if (monthsMap) {
-      // v2-alias fallback path. Pick the active month — the one matching
-      // today.meta.start. If that doesn't match a months[] key, fall back
-      // to the first key.
-      if (today.meta && today.meta.start) {
-        const iso = today.meta.start.slice(0, 7);
-        if (monthsMap[iso]) return iso;
-      }
-      const keys = Object.keys(monthsMap);
-      if (keys.length > 0) return keys[0];
-    }
     // No emit-time month data — derive from today's calendar month.
     const d = new Date();
     return `${String(d.getFullYear()).padStart(4, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -244,8 +300,8 @@ function Dashboard() {
       return hash.date;
     }
     if (windowEndIso && dayPayloadsByIso[windowEndIso]) return windowEndIso;
-    // No window data — fall back to whatever the alias is keyed at.
-    return windowEndIso || (today.meta && today.meta.start) || '';
+    // No window data — last-resort fallback to whatever the window claims.
+    return windowEndIso || windowStartIso || '';
   })();
   const [dayIso, setDayIso] = React.useState(_initDayIso);
 
@@ -262,8 +318,7 @@ function Dashboard() {
     if (currentWeekMondayIso && weekPayloadsByMonday[currentWeekMondayIso]) {
       return currentWeekMondayIso;
     }
-    // No window data — fall back to the latest sorted Monday key (the CLI
-    // alias attachment uses the same fallback at claude-time:676-678).
+    // No window data — fall back to the latest sorted Monday key.
     if (weekMondayKeys.length > 0) return weekMondayKeys[weekMondayKeys.length - 1];
     return currentWeekMondayIso || '';
   })();
@@ -284,14 +339,12 @@ function Dashboard() {
   const prevWeekDisabled = weekMondayKeys.length === 0 || weekMondayKeys.indexOf(mondayIso) <= 0;
   const nextWeekDisabled = weekMondayKeys.length === 0 || weekMondayKeys.indexOf(mondayIso) >= weekMondayKeys.length - 1;
 
-  // WP6: weekPayload — the active week's payload, derived from mondayIso.
-  // For non-Week views, weekPayload defaults to the v2 `week` alias so the
-  // non-WP6 code paths keep their existing behavior (per the WP5–WP9
-  // transition convention in CLAUDE.md).
+  // weekPayload — the active week's payload, derived from mondayIso.
+  // v3 (WP9 P2): v2-alias `week` fallback removed; primary source is the
+  // only path. Defensive fallback to an empty week shape for safety.
   const weekPayload = React.useMemo(() => {
-    if (weekPayloadsByMonday[mondayIso]) return weekPayloadsByMonday[mondayIso];
-    return week;
-  }, [mondayIso, week]);
+    return weekPayloadsByMonday[mondayIso] || { projects: [], label: '', meta: {} };
+  }, [mondayIso]);
 
   // WP5: stepDay swaps to the prior/next ISO key in sorted dayPayloadsByIso.
   // Returns silently if at boundary (caller's button is disabled too).
@@ -308,42 +361,28 @@ function Dashboard() {
   const prevDayDisabled = dayIsoKeys.length === 0 || dayIsoKeys.indexOf(dayIso) <= 0;
   const nextDayDisabled = dayIsoKeys.length === 0 || dayIsoKeys.indexOf(dayIso) >= dayIsoKeys.length - 1;
 
-  // WP5: dayPayload — the active day's payload, derived from dayIso.
-  // For non-Day views (Custom, Week, Month, Compare), dayPayload defaults to
-  // the v2 `today` alias so the non-WP5 code paths keep their existing
-  // behavior. WP9 will route Custom through the v3 map; WP6/WP7/WP8 each
-  // wire their own consumers.
+  // dayPayload — the active day's payload, derived from dayIso.
+  // v3 (WP9 P2): v2-alias `today` fallback removed; primary source is the
+  // only path. Defensive fallback to an empty day shape for safety.
   const dayPayload = React.useMemo(() => {
-    if (dayPayloadsByIso[dayIso]) return dayPayloadsByIso[dayIso];
-    return today;
-  }, [dayIso, today]);
+    return dayPayloadsByIso[dayIso] || { projects: [], label: '', iso: dayIso || '', empty: true };
+  }, [dayIso]);
 
-  // WP7 (v3): monthPayload — the active month's payload, derived from monthIso.
-  // Primary source is monthPayloadsByIso[monthIso]; falls back to monthsMap
-  // (v2 alias) so during the WP7→WP9 transition window the dashboard works
-  // whether the CLI is emitting v3-only or v3+v2-alias shape. Per the WP5–WP9
-  // sub-payload routing convention in CLAUDE.md. May be null if neither
-  // source has the key — consumer sites guard with truthy check.
+  // monthPayload — the active month's payload, derived from monthIso. v3
+  // (WP9 P2): v2-alias `monthsMap` fallback removed; primary source is the
+  // only path. May be null if the key is absent — consumer sites guard with
+  // truthy check.
   const monthPayload = React.useMemo(() => {
-    if (monthPayloadsByIso[monthIso]) return monthPayloadsByIso[monthIso];
-    return monthsMap ? monthsMap[monthIso] : null;
-  }, [monthIso, monthsMap]);
+    return monthPayloadsByIso[monthIso] || null;
+  }, [monthIso]);
 
-  // WP8 (v3): comparePayload — the active preset's compare payload, derived
-  // from `preset`. Primary source is `compare_payloads_by_preset[preset]`;
-  // falls back to the v2-alias `comparison` (which always equals
-  // `compare_payloads_by_preset.wow`) for the wow preset, and to null
-  // otherwise. Per the WP5–WP9 sub-payload routing convention in CLAUDE.md.
-  // Resolves v2 WP11 P2A.verify-human.3 PARTIAL — clicking a preset sub-tab
-  // now produces an instant *content* swap, not just a hash + active-attr
-  // swap. The `custom` preset has no pre-rendered sub-payload (its ranges are
-  // user-picked); the fallback returns null, and PresetSelector + the v2
-  // reload-redirect-toast path handle re-emit. May be null — CompareView
-  // already guards with `if (!comparison || ...)`.
-  const comparePayloadsByPreset = window.CT_DATA.compare_payloads_by_preset || {};
+  // comparePayload — the active preset's compare payload, derived from
+  // `preset`. v3 (WP9 P2): v2-alias `window.CT_DATA.comparison` fallback
+  // removed; primary source is the only path. May be null (for example, the
+  // `custom` preset has no pre-rendered sub-payload — its ranges are
+  // user-picked); CompareView guards with `if (!comparison || ...)`.
   const comparePayload = React.useMemo(() => {
-    if (comparePayloadsByPreset[preset]) return comparePayloadsByPreset[preset];
-    return window.CT_DATA.comparison || null;
+    return comparePayloadsByPreset[preset] || null;
   }, [preset]);
 
   // WP7: nav-toast state — the most recent reload-redirect prompt (or null).
@@ -352,9 +391,8 @@ function Dashboard() {
 
   // WP8: range state (start/end ISO date strings). Identity of the Custom
   // view — without a range the view is empty. Hash-restore on init if
-  // present + valid; otherwise seed from data.today.meta (the `--window`
-  // explicit-range form persists its picked range here via the legacy
-  // alias keys).
+  // present + valid; otherwise seed from the emit's window bounds.
+  // v3 (WP9 P2): seed source migrated from today.meta to window.{start,end}.
   const [range, setRange] = React.useState(() => {
     const hash = parseHash();
     if (hash.range && /^\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(hash.range)) {
@@ -364,8 +402,8 @@ function Dashboard() {
         return { start: s, end: e };
       }
     }
-    if (today.meta && today.meta.start && today.meta.end) {
-      return { start: today.meta.start, end: today.meta.end };
+    if (windowStartIso && windowEndIso) {
+      return { start: windowStartIso, end: windowEndIso };
     }
     // No range available — Custom view will fall back to 'day' via _initView.
     const todayIso = new Date().toISOString().slice(0, 10);
@@ -398,7 +436,7 @@ function Dashboard() {
   //   - view === 'day' AND dayIso !== windowEndIso → write date=<iso>, drop others
   //   - view === 'week' → write view=week, drop range/month/date
   //   - view === 'custom' → write view=custom AND range (load-bearing —
-  //     don't elide even if it matches today.meta; the data's emitted
+  //     don't elide even if it matches window.{start,end}; the emitted
   //     range would be ambiguous on a non-custom-emit URL)
   //   - view === 'month' → write view=month AND month=YYYY-MM (load-bearing
   //     — month grid identity is the month key)
@@ -435,24 +473,59 @@ function Dashboard() {
     return () => clearTimeout(t);
   }, [view, range, monthIso, preset, compareRanges, dayIso, windowEndIso, mondayIso, currentWeekMondayIso]);
 
-  // WP8: when the user picks a different range via the date-range picker,
-  // we don't re-fetch data (would require a CLI round-trip). Instead, the
-  // hash updates, and the next claude-time visualize invocation can read
-  // the hash via shareable URL to bring up the right window. The picker
-  // gives immediate visual feedback (hash updates, picker values reflect),
-  // but the timeline body keeps showing the emit-time data. This is the
-  // honest MVP behavior the WBS calls out — "mostly UI" — and avoids the
-  // complexity of dynamic data-fetch from the browser. A future WP can
-  // add a "rerun" button that calls back to the CLI.
+  // WP9 (v3): customPayload — the active range's payload for Custom view.
+  // Computed by _aggregateDayPayloads from day_payloads_by_iso. Returns null
+  // when the range is outside the pre-rendered window (any in-range day
+  // missing from dayPayloadsByIso); v3 (WP9 P2): v2-alias `today` fallback
+  // removed — out-of-window returns an empty Day-like payload, and
+  // onRangeChange surfaces a reload-redirect toast.
+  const customPayload = React.useMemo(() => {
+    const aggregated = _aggregateDayPayloads(range.start, range.end, dayPayloadsByIso);
+    if (aggregated) return aggregated;
+    // Out-of-window: empty payload. The body renders an EmptyState; the
+    // reload-redirect toast is the actionable path (set by onRangeChange).
+    return {
+      label: (range.start && range.end) ? (range.start + ' \u2014 ' + range.end) : '',
+      projects: [],
+      meta: { start: range.start, end: range.end, day_count: 0 },
+      hour_range_by_day: {},
+      day_window: [6, 22],
+      empty: true,
+    };
+  }, [range, dayPayloadsByIso]);
+
+  // WP9 (v3): when the user picks a different range via the RangePicker, the
+  // customPayload useMemo re-derives — if the new range is fully inside the
+  // pre-rendered window, the timeline body re-renders instantly with the
+  // aggregated multi-day payload. If the new range is OUTSIDE the window,
+  // _aggregateDayPayloads returns null and the useMemo emits an empty
+  // Day-like payload (showing EmptyState in the body); onRangeChange
+  // surfaces a setNavToast reload-redirect so the user can rerun claude-time
+  // with the picked range to load fresh data.
   const onRangeChange = React.useCallback((nextRange) => {
     setRange(nextRange);
-  }, []);
+    // Out-of-window detection: any day in the new range missing from
+    // dayPayloadsByIso ⇒ trigger reload-redirect toast.
+    const inWindow = _aggregateDayPayloads(nextRange.start, nextRange.end, dayPayloadsByIso) !== null;
+    if (!inWindow) {
+      setNavToast({
+        message: 'Range is outside the pre-rendered window. Run this in your terminal to re-emit:',
+        command: 'claude-time visualize --window ' + nextRange.start + ':' + nextRange.end,
+      });
+    } else {
+      // Clear any stale out-of-window toast from a prior pick.
+      setNavToast(null);
+    }
+  }, [dayPayloadsByIso]);
   // selectedSegId is "<sessionId>:<segIndex>" or null.
   const [selectedSegId, setSelectedSegId] = React.useState(null);
-  // expandedProjects: array of project ids; default expanded all on first load.
-  const [expandedProjects, setExpandedProjects] = React.useState(
-    (today.projects || []).map(p => p.id)
-  );
+  // expandedProjects: array of project ids; default expanded all on first
+  // load. v3 (WP9 P2): seed source migrated from today.projects to the
+  // window-end day's payload (was the same single-day payload via the alias).
+  const [expandedProjects, setExpandedProjects] = React.useState(() => {
+    const seedPayload = (windowEndIso && dayPayloadsByIso[windowEndIso]) || null;
+    return ((seedPayload && seedPayload.projects) || []).map(p => p.id);
+  });
   // WP9 Phase 2: filter state. `filterKinds` is {active, reading, thinking,
   // subagent, away}; entries set to false hide the corresponding segment
   // kind across all consumers (SegmentBar render-or-null, Legend chip
@@ -502,15 +575,10 @@ function Dashboard() {
   // the URL hash and apply it; on viewport change, write back to hash
   // (debounced, replaceState). Hash convention: see CLAUDE.md →
   // "Claude-time visualize URL-hash state".
-  // WP5b (2026-05-23, F9b re-entry): consolidated to call
-  // `_initialViewport()` from dashboard.jsx — single source of truth for
-  // viewport defaulting (multi-day target-day centering OR single-day
-  // back-compat flat hour_range OR [6, 23] fallback). Previously this
-  // wrapper had its own single-day-only implementation that drifted from
-  // the JSX source and produced [360, 1380] for multi-day payloads.
-  // _initialViewport reads from window.CT_DATA.today directly, so no
-  // arguments needed.
-  const _defaultViewport = React.useMemo(() => _initialViewport(), [today]);
+  // v3 (WP9 P2): `_initialViewport()` reads the window-end day's payload
+  // (formerly the `today` alias) — single source of truth for viewport
+  // defaulting (single-day hour_range OR [6, 23] fallback).
+  const _defaultViewport = React.useMemo(() => _initialViewport(), [windowEndIso]);
 
   const [viewport, setViewport] = React.useState(() => {
     // Phase 3: read initial viewport from URL hash if present, else default.
@@ -611,9 +679,9 @@ function Dashboard() {
 
   // WP7: nav handlers for MonthView. Click-day always triggers reload-redirect
   // toast (D3 + D7 — click-day always means "drill into this day"). Prev-month
-  // is a pure client-side swap when the prev-month payload is in monthsMap;
-  // otherwise reload-redirect. Next-month is always reload-redirect (no future
-  // month is pre-loaded).
+  // is a pure client-side swap when the prev-month payload is in
+  // monthPayloadsByIso; otherwise reload-redirect. Next-month is similarly a
+  // pure client-side swap when the target is pre-loaded; otherwise toast.
   //
   // v3 WP4: nav toasts emit `--window` commands instead of the removed
   // `--date`/`--month` flags. Single-day window is `YYYY-MM-DD:YYYY-MM-DD`;
@@ -638,14 +706,13 @@ function Dashboard() {
       command: _navCmdForDay(iso),
     });
   }, [_navCmdForDay]);
-  // WP7 (v3): in-window check routes through monthPayloadsByIso first
-  // (primary source), monthsMap second (v2 alias fallback for the
-  // WP7→WP9 transition window). Either source's presence triggers
-  // client-side swap; absence in both triggers the reload-redirect toast.
+  // v3 (WP9 P2): in-window check routes through monthPayloadsByIso only —
+  // the v2-alias `monthsMap` fallback was removed. Presence triggers
+  // client-side swap; absence triggers the reload-redirect toast.
   const onPrevMonth = React.useCallback(() => {
     const prevIso = _prevMonthIso(monthIso);
     if (!prevIso) return;
-    if (monthPayloadsByIso[prevIso] || (monthsMap && monthsMap[prevIso])) {
+    if (monthPayloadsByIso[prevIso]) {
       setMonthIso(prevIso);
     } else {
       setNavToast({
@@ -653,11 +720,11 @@ function Dashboard() {
         command: _navCmdForMonth(prevIso),
       });
     }
-  }, [monthIso, monthsMap, _navCmdForMonth]);
+  }, [monthIso, _navCmdForMonth]);
   const onNextMonth = React.useCallback(() => {
     const nextIso = _nextMonthIso(monthIso);
     if (!nextIso) return;
-    if (monthPayloadsByIso[nextIso] || (monthsMap && monthsMap[nextIso])) {
+    if (monthPayloadsByIso[nextIso]) {
       setMonthIso(nextIso);
     } else {
       setNavToast({
@@ -665,10 +732,22 @@ function Dashboard() {
         command: _navCmdForMonth(nextIso),
       });
     }
-  }, [monthIso, monthsMap, _navCmdForMonth]);
+  }, [monthIso, _navCmdForMonth]);
+
+  // WP9 (v3): dayLikePayload — the Day-like payload for the active view's
+  // body. For Custom view, this is the cross-day-aggregated customPayload
+  // (or its v2-alias fallback when out-of-window). For Day view, this is
+  // dayPayload (= day_payloads_by_iso[dayIso]). For non-day-like views
+  // (Week, Month, Compare), this slot is unused — those views consume their
+  // own payloads (weekPayload, monthPayload, comparePayload). All six
+  // "isDayLike ? dayPayload : ..." consumer surfaces route through
+  // dayLikePayload after WP9.
+  const dayLikePayload = isCustom ? customPayload : dayPayload;
 
   // Resolve the selected session + project for the side panel.
   // WP5: uses dayPayload (= day_payloads_by_iso[dayIso]) for Day view.
+  // WP9: side panel is Day-view only (selection comes from DayTimeline click),
+  // so dayPayload is correct here — not dayLikePayload.
   let selSession = null;
   let selProject = null;
   if (selectedSegId && isDay) {
@@ -679,24 +758,25 @@ function Dashboard() {
     }
   }
 
-  // Day-view summary stats. WP5: read from dayPayload, not today.
+  // Day-like view summary stats. WP5: read from dayPayload (Day view).
+  // WP9: extended to read dayLikePayload (Day OR Custom view).
   const dayTotals = (() => {
-    if (dayPayload.empty || !(dayPayload.projects && dayPayload.projects.length)) {
+    if (dayLikePayload.empty || !(dayLikePayload.projects && dayLikePayload.projects.length)) {
       return { active: 0, reading: 0, thinking: 0,
                longest: { active: 0, project: '\u2014', start: 0, end: 0 },
                topTool: ['\u2014', 0] };
     }
-    const allSegs = dayPayload.projects.flatMap(p => p.sessions.flatMap(s => s.segs));
+    const allSegs = dayLikePayload.projects.flatMap(p => p.sessions.flatMap(s => s.segs));
     const active = sumActive(allSegs);
     const reading = sumKind(allSegs, 'reading');
     const thinking = sumKind(allSegs, 'thinking');
     let longest = { active: 0, project: '\u2014', start: 0, end: 0 };
-    for (const p of dayPayload.projects) for (const s of p.sessions) {
+    for (const p of dayLikePayload.projects) for (const s of p.sessions) {
       const a = sumActive(s.segs);
       if (a > longest.active) longest = { active: a, project: p.alias, start: s.start, end: s.end };
     }
     const tools = {};
-    for (const p of dayPayload.projects) for (const s of p.sessions) {
+    for (const p of dayLikePayload.projects) for (const s of p.sessions) {
       for (const [k,v] of Object.entries(s.tools || {})) tools[k] = (tools[k] || 0) + v;
     }
     const sortedTools = Object.entries(tools).sort((a,b) => b[1] - a[1]);
@@ -782,7 +862,7 @@ function Dashboard() {
         view={view}
         onViewChange={setView}
         dateLabel={isCustom ? `${range.start} → ${range.end}` : (isDay ? dayPayload.label : weekPayload.label)}
-        snapshot={(window.CT_DATA.meta && window.CT_DATA.meta.snapshot) || null}
+        snapshot={window.CT_DATA.snapshot || null}
         rangeStart={range.start}
         rangeEnd={range.end}
         onRangeChange={onRangeChange}
@@ -820,8 +900,13 @@ function Dashboard() {
       />
 
       {/* Date header strip.
-          WP7: Month view shows the month name + day-count summary. */}
-      <div style={{
+          WP7: Month view shows the month name + day-count summary.
+          WP9: data-custom-range attribute exposes the active Custom-view
+          range as a stable selector for behavioral tests (only present
+          when view === 'custom'). */}
+      <div
+        data-custom-range={isCustom ? `${range.start}:${range.end}` : undefined}
+        style={{
         height: 34, flexShrink: 0,
         display: 'flex', alignItems: 'center',
         padding: '0 20px',
@@ -835,7 +920,7 @@ function Dashboard() {
           textTransform: 'uppercase', fontWeight: 500,
         }}>{isMonth
           ? _monthIsoToLabel(monthIso)
-          : (isDayLike ? dayPayload.label : weekPayload.label)}</span>
+          : (isDayLike ? dayLikePayload.label : weekPayload.label)}</span>
         <span style={{ width: 1, height: 14, background: CT_TOKENS.border }} />
         <span style={{
           fontFamily: CT_TOKENS.sans, fontSize: 11,
@@ -845,21 +930,19 @@ function Dashboard() {
               ? `${monthPayload.projects.length} projects \u00b7 ${monthPayload.meta?.day_count || '\u2014'} days`
               : '\u2014')
           : (isDayLike
-              ? `${(dayPayload.projects || []).length} projects \u00b7 ${(dayPayload.projects || []).reduce((a,p)=>a+p.sessions.length,0)} sessions`
+              ? `${(dayLikePayload.projects || []).length} projects \u00b7 ${(dayLikePayload.projects || []).reduce((a,p)=>a+p.sessions.length,0)} sessions`
               : `${weekPayload.projects.length} projects \u00b7 7 days`)}</span>
         <span style={{ flex: 1 }} />
         <Legend />
-        {/* WP9 Phase 4 + WP8: per-project filter popover. Day/Custom views:
-            dayPayload.projects (Custom is multi-day Day-like; WP5 routes Day
-            via dayPayload, Custom still reads the `today` alias key which
-            useMemo aliases to dayPayload by identity). Week view:
-            weekPayload.projects (WP6 routes Week via weekPayload; shares
-            .id + .alias with the v2 `week` alias which is the useMemo
-            fallback). WP7: Month view: filter
-            chips are visible-but-inert per D4 — the popover stays mounted
-            (uses dayPayload.projects as the project source for consistency)
-            but Month view ignores filter state. */}
-        <ProjectFilterPopover projects={isMonth ? (monthPayload ? monthPayload.projects : (dayPayload.projects || [])) : (isDayLike ? (dayPayload.projects || []) : weekPayload.projects)} />
+        {/* WP9 Phase 4 + WP8: per-project filter popover. Day view:
+            dayPayload.projects (Day-only — single day). Custom view:
+            customPayload.projects (cross-day aggregated union, or v2-alias
+            fallback when out-of-window). Both resolve via dayLikePayload.
+            Week view: weekPayload.projects (WP6 routes Week via weekPayload).
+            WP7: Month view: filter chips are visible-but-inert per D4 —
+            the popover stays mounted (uses dayLikePayload.projects for
+            consistency) but Month view ignores filter state. */}
+        <ProjectFilterPopover projects={isMonth ? (monthPayload ? monthPayload.projects : (dayLikePayload.projects || [])) : (isDayLike ? (dayLikePayload.projects || []) : weekPayload.projects)} />
       </div>
 
       {/* Body — timeline OR month grid (+ optional side panel).
@@ -895,13 +978,13 @@ function Dashboard() {
             <EmptyState date={`${_monthIsoToLabel(monthIso)} — no data loaded`} />
           )
         ) : isDayLike ? (
-          dayPayload.empty ? (
+          dayLikePayload.empty ? (
             <EmptyState date={isCustom
               ? `${range.start} to ${range.end}`
-              : (dayPayload.iso || dayPayload.meta?.start || '\u2014')} />
+              : (dayLikePayload.iso || dayLikePayload.meta?.start || '\u2014')} />
           ) : (
             <DayTimeline
-              data={dayPayload}
+              data={dayLikePayload}
               expandedProjects={expandedProjects}
               selectedSegId={selectedSegId}
               onSelectSeg={setSelectedSegId}
@@ -924,8 +1007,8 @@ function Dashboard() {
           so Minimap works identically. WP7: Month view skips the minimap —
           the calendar grid IS the navigation surface. WP11: Compare view
           also skips (it's an aggregate-bars view, not a timeline). */}
-      {isDayLike && !isCompare && !dayPayload.empty && (
-        <Minimap data={dayPayload} />
+      {isDayLike && !isCompare && !dayLikePayload.empty && (
+        <Minimap data={dayLikePayload} />
       )}
       {/* WP7: nav toast (renders only when a click/nav requires reload-redirect). */}
       {navToast && (
