@@ -986,11 +986,11 @@ fi
 # updated for WP11 compare branch + preset/ranges threading.
 # The effect body contains the five view-conditional updateHash calls.
 if grep -qF "if (view === 'month') {" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null, date: null })" "$WP8_HAPPY" && \
    grep -qF "updateHash({ view: 'custom', range:" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null })" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: null, range: null, month: null, preset: null, ranges: null })" "$WP8_HAPPY"; then
-    check "WP8-P2+WP7-P2+WP11-P2 codify: view+range+month+preset+ranges hash-write five-branch dispatch (compare/month/custom/week/day)" pass
+   grep -qF "updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null, date: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: null, range: null, month: null, preset: null, ranges: null, date:" "$WP8_HAPPY"; then
+    check "WP8-P2+WP7-P2+WP11-P2 codify: view+range+month+preset+ranges+date hash-write five-branch dispatch (compare/month/custom/week/day)" pass
 else
     check "WP8-P2+WP7-P2+WP11-P2 codify: hash-write five-branch dispatch" fail "one or more dispatch branches missing"
 fi
@@ -2252,6 +2252,58 @@ else
 fi
 
 rm -f "$WP4P2_HTML"
+
+# ── v3 WP5 codify: Day view sub-payload routing source-shape pins ──────
+# WP5 wires the Day view's render path to read window.CT_DATA.day_payloads_by_iso
+# [dayIso] instead of window.CT_DATA.today, adds ‹/› Day-nav buttons to the
+# Toolbar, and introduces the `date=YYYY-MM-DD` URL hash key. The legacy
+# `today` alias key remains populated by the CLI for v2-frontend coexistence
+# (WP9 removes it). These pins assert WP5's three new emit-shape contracts:
+# (1) day_payloads_by_iso[] consumer wiring present; (2) data-day-nav="prev"/
+# "next" buttons emitted; (3) `date:` key threaded through the hash-write
+# patch dispatcher. Single emit → all assertions against the same artifact.
+
+WP5_HTML="$TMPDIR/wp5.html"
+"$CLI" visualize --no-open --window 30d --out "$WP5_HTML" > /dev/null 2>&1
+
+# P1.9a: Day-nav buttons emitted — both prev and next, exactly one each.
+WP5_PREV_COUNT=$(grep -c 'data-day-nav="prev"' "$WP5_HTML" 2>/dev/null || echo 0)
+WP5_NEXT_COUNT=$(grep -c 'data-day-nav="next"' "$WP5_HTML" 2>/dev/null || echo 0)
+if [ "$WP5_PREV_COUNT" -ge 1 ] && [ "$WP5_NEXT_COUNT" -ge 1 ]; then
+    check "v3 WP5 codify: Day-nav buttons (data-day-nav=prev|next) emitted" pass
+else
+    check "v3 WP5 codify: Day-nav buttons emitted" fail "prev=$WP5_PREV_COUNT next=$WP5_NEXT_COUNT (expected ≥1 each)"
+fi
+
+# P1.9b: day_payloads_by_iso[] consumer wiring present in emitted HTML.
+# The new dayPayloadsByIso lookup variable and at least one [dayIso] indexing
+# expression must both appear.
+if grep -qF 'day_payloads_by_iso' "$WP5_HTML" && grep -qF 'dayPayloadsByIso[' "$WP5_HTML"; then
+    check "v3 WP5 codify: day_payloads_by_iso[] consumer wiring present in emitted dashboard" pass
+else
+    check "v3 WP5 codify: day_payloads_by_iso consumer wiring" fail "missing from emitted HTML"
+fi
+
+# P1.9c: `date:` key threaded through the hash-write patch dispatcher.
+# At least one updateHash patch carries the `date` key (the `view === 'day'`
+# branch threads `date: dateForHash`; the other branches thread `date: null`
+# to ensure cross-view navigation clears the key).
+if grep -qE 'date: (dateForHash|null)' "$WP5_HTML"; then
+    check "v3 WP5 codify: date: key in updateHash patch dispatcher" pass
+else
+    check "v3 WP5 codify: date key in hash dispatcher" fail "missing from updateHash patches"
+fi
+
+# P1.9d: data-day-iso attribute emitted on the toolbar's Day-nav container.
+# This is the stable selector the behavioral test reads to assert which day
+# is currently rendered.
+if grep -qF 'data-day-iso=' "$WP5_HTML"; then
+    check "v3 WP5 codify: data-day-iso selector emitted" pass
+else
+    check "v3 WP5 codify: data-day-iso selector" fail "missing from emitted HTML"
+fi
+
+rm -f "$WP5_HTML"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

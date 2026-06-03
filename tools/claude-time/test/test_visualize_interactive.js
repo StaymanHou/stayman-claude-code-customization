@@ -1223,6 +1223,101 @@ async function runTests() {
       await page.close();
     }
 
+    // ── WP5 behavioral: Day-view sub-payload routing — arrow nav + date= hash ──
+    // Re-uses MONTH_DASH_HTML (--window 2026-03-01:2026-04-30, 61 pre-rendered
+    // days). Default landing is Day view at dayIso=2026-04-30 (window end).
+    // Verifies: (a) default landing has empty hash + data-day-iso=end; next-arrow
+    // disabled. (b) prev-arrow click → dayIso swaps, hash gains date=, segment
+    // tree changes. (c) hash-restore: navigate with #date=2026-03-01 (earliest)
+    // → prev disabled, data-day-iso reflects the hash.
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/month.html');
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+
+      // (a) Default landing: dayIso === window.end, hash empty, next disabled.
+      const initial = await page.evaluate(() => {
+        const el = document.querySelector('[data-day-iso]');
+        const next = document.querySelector('[data-day-nav="next"]');
+        const prev = document.querySelector('[data-day-nav="prev"]');
+        return {
+          iso: el ? el.getAttribute('data-day-iso') : null,
+          windowEnd: (window.CT_DATA && window.CT_DATA.window) ? window.CT_DATA.window.end : null,
+          hash: window.location.hash,
+          nextDisabled: next ? next.disabled : null,
+          prevDisabled: prev ? prev.disabled : null,
+        };
+      });
+      check('WP5 behavioral 1a: default landing dayIso === window.end',
+        initial.iso === initial.windowEnd && initial.iso === '2026-04-30',
+        JSON.stringify(initial));
+      check('WP5 behavioral 1b: default landing — URL hash is empty (default-elision)',
+        initial.hash === '' || initial.hash === '#',
+        `hash=${JSON.stringify(initial.hash)}`);
+      check('WP5 behavioral 1c: default landing — next-day arrow is disabled at window-end boundary',
+        initial.nextDisabled === true,
+        JSON.stringify(initial));
+      check('WP5 behavioral 1d: default landing — prev-day arrow is ENABLED (window has multiple days)',
+        initial.prevDisabled === false,
+        JSON.stringify(initial));
+
+      // (b) Click prev-day → dayIso swaps to 2026-04-29, hash gains date=2026-04-29.
+      // Capture project/session count before & after to assert segment tree change.
+      const beforeProjects = await page.evaluate(() => {
+        return document.querySelectorAll('[data-project-id]').length;
+      });
+      await page.click('[data-day-nav="prev"]');
+      await page.waitForTimeout(300);  // debounced hash write is 100ms
+      const afterPrev = await page.evaluate(() => {
+        const el = document.querySelector('[data-day-iso]');
+        return {
+          iso: el ? el.getAttribute('data-day-iso') : null,
+          hash: window.location.hash,
+        };
+      });
+      check('WP5 behavioral 2a: prev-day click → data-day-iso updates to prior day',
+        afterPrev.iso === '2026-04-29',
+        JSON.stringify(afterPrev));
+      check('WP5 behavioral 2b: prev-day click → URL hash gains date=2026-04-29',
+        afterPrev.hash.includes('date=2026-04-29'),
+        `hash=${JSON.stringify(afterPrev.hash)}`);
+
+      // (c) Hash-restore: navigate to #date=2026-03-01 (earliest day in window).
+      // Prev-arrow should be disabled (boundary); data-day-iso should match.
+      // IMPORTANT: must reload after hash-only navigation. `page.goto(<sameurl>#hash)`
+      // is treated as same-document navigation by Chromium — no full page load,
+      // and the `useState` initializer that reads the hash does NOT re-execute.
+      // To exercise the "user pastes URL with #date=... in a fresh tab" flow,
+      // either open a new page or follow goto with reload(). Use reload here.
+      await page.goto(URL_BASE + '/month.html#date=2026-03-01');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const restored = await page.evaluate(() => {
+        const el = document.querySelector('[data-day-iso]');
+        const prev = document.querySelector('[data-day-nav="prev"]');
+        const next = document.querySelector('[data-day-nav="next"]');
+        return {
+          iso: el ? el.getAttribute('data-day-iso') : null,
+          prevDisabled: prev ? prev.disabled : null,
+          nextDisabled: next ? next.disabled : null,
+        };
+      });
+      check('WP5 behavioral 3a: hash-restore #date=2026-03-01 → data-day-iso reflects hash',
+        restored.iso === '2026-03-01',
+        JSON.stringify(restored));
+      check('WP5 behavioral 3b: hash-restore at window-start → prev-day arrow is disabled (boundary)',
+        restored.prevDisabled === true,
+        JSON.stringify(restored));
+      check('WP5 behavioral 3c: hash-restore at window-start → next-day arrow is ENABLED',
+        restored.nextDisabled === false,
+        JSON.stringify(restored));
+
+      void beforeProjects;  // reserved for future segment-diff assertion
+      await page.close();
+    }
+
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) {

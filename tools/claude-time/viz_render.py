@@ -67,6 +67,15 @@ def _interactive_dashboard() -> str:
 /* ── Dashboard wrapper (interactive, shipped variant) ───────── */
 function Dashboard() {
   const { today, week } = window.CT_DATA;
+  // WP5 (v3): Day-view sub-payload routing. The interactive Dashboard reads
+  // the active day's payload from `day_payloads_by_iso[dayIso]`. The `today`
+  // alias above is still populated by the CLI for v2-frontend coexistence
+  // (Custom view's `today.meta.{start,end}` reads, the `_initView` IIFE's
+  // 'custom' fallback) — WP9 removes the alias at v3 cycle close. For the
+  // Day-view *render path* below, `dayPayload` is the single source of truth.
+  const dayPayloadsByIso = window.CT_DATA.day_payloads_by_iso || {};
+  const dayIsoKeys = Object.keys(dayPayloadsByIso).sort();
+  const windowEndIso = (window.CT_DATA.window && window.CT_DATA.window.end) || null;
   // WP7: months map. Pre v3, populated only on --month emits; in v3 the
   // `--window` flag's pre-rendered window always emits month_payloads_by_iso
   // covering the full window (aliased to top-level `months` for v2-frontend
@@ -184,6 +193,46 @@ function Dashboard() {
   })();
   const [monthIso, setMonthIso] = React.useState(_initMonthIso);
 
+  // WP5 (v3): dayIso state — which day's payload is currently rendered in
+  // Day view. Hash takes precedence on init (`date=YYYY-MM-DD`); falls back
+  // to window.end (the most-recent pre-rendered day). Default-elision in the
+  // hash-write effect drops the key when dayIso === windowEndIso.
+  const _initDayIso = (() => {
+    const hash = parseHash();
+    if (hash.date && /^\d{4}-\d{2}-\d{2}$/.test(hash.date) && dayPayloadsByIso[hash.date]) {
+      return hash.date;
+    }
+    if (windowEndIso && dayPayloadsByIso[windowEndIso]) return windowEndIso;
+    // No window data — fall back to whatever the alias is keyed at.
+    return windowEndIso || (today.meta && today.meta.start) || '';
+  })();
+  const [dayIso, setDayIso] = React.useState(_initDayIso);
+
+  // WP5: stepDay swaps to the prior/next ISO key in sorted dayPayloadsByIso.
+  // Returns silently if at boundary (caller's button is disabled too).
+  const stepDay = React.useCallback((delta) => {
+    if (dayIsoKeys.length === 0) return;
+    const idx = dayIsoKeys.indexOf(dayIso);
+    if (idx < 0) return;
+    const nextIdx = idx + delta;
+    if (nextIdx < 0 || nextIdx >= dayIsoKeys.length) return;
+    setDayIso(dayIsoKeys[nextIdx]);
+  }, [dayIso, dayIsoKeys]);
+  const onPrevDay = React.useCallback(() => stepDay(-1), [stepDay]);
+  const onNextDay = React.useCallback(() => stepDay(+1), [stepDay]);
+  const prevDayDisabled = dayIsoKeys.length === 0 || dayIsoKeys.indexOf(dayIso) <= 0;
+  const nextDayDisabled = dayIsoKeys.length === 0 || dayIsoKeys.indexOf(dayIso) >= dayIsoKeys.length - 1;
+
+  // WP5: dayPayload — the active day's payload, derived from dayIso.
+  // For non-Day views (Custom, Week, Month, Compare), dayPayload defaults to
+  // the v2 `today` alias so the non-WP5 code paths keep their existing
+  // behavior. WP9 will route Custom through the v3 map; WP6/WP7/WP8 each
+  // wire their own consumers.
+  const dayPayload = React.useMemo(() => {
+    if (dayPayloadsByIso[dayIso]) return dayPayloadsByIso[dayIso];
+    return today;
+  }, [dayIso, today]);
+
   // WP7: nav-toast state — the most recent reload-redirect prompt (or null).
   // Replaces on every new trigger (no stacking).
   const [navToast, setNavToast] = React.useState(null);
@@ -228,9 +277,13 @@ function Dashboard() {
   }, [metricsExpanded]);
 
   // WP7/WP8: debounced URL-hash write on view + range + monthIso change.
+  // WP5 (v3): adds the `date` key for Day-view sub-payload routing. Day-view
+  // hash carries `date=YYYY-MM-DD` when the active day is not the default
+  // landing (windowEndIso, the most-recent pre-rendered day in the window).
   // Default-elision:
-  //   - view === 'day' (project-wide default) → drop view, range, month keys
-  //   - view === 'week' → write view=week, drop range/month
+  //   - view === 'day' AND dayIso === windowEndIso → drop all keys (default landing)
+  //   - view === 'day' AND dayIso !== windowEndIso → write date=<iso>, drop others
+  //   - view === 'week' → write view=week, drop range/month/date
   //   - view === 'custom' → write view=custom AND range (load-bearing —
   //     don't elide even if it matches today.meta; the data's emitted
   //     range would be ambiguous on a non-custom-emit URL)
@@ -244,7 +297,7 @@ function Dashboard() {
         const patch = {
           view: 'compare',
           preset,
-          range: null, month: null,
+          range: null, month: null, date: null,
         };
         if (preset === 'custom') {
           patch.ranges = `${compareRanges.a.start}:${compareRanges.a.end},${compareRanges.b.start}:${compareRanges.b.end}`;
@@ -253,18 +306,19 @@ function Dashboard() {
         }
         updateHash(patch);
       } else if (view === 'month') {
-        updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null });
+        updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null, date: null });
       } else if (view === 'custom') {
-        updateHash({ view: 'custom', range: `${range.start}:${range.end}`, month: null, preset: null, ranges: null });
+        updateHash({ view: 'custom', range: `${range.start}:${range.end}`, month: null, preset: null, ranges: null, date: null });
       } else if (view === 'week') {
-        updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null });
+        updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null, date: null });
       } else {
-        // 'day' is the default — drop all keys.
-        updateHash({ view: null, range: null, month: null, preset: null, ranges: null });
+        // 'day' is the default view. WP5: emit `date` when dayIso != windowEndIso.
+        const dateForHash = (dayIso && windowEndIso && dayIso !== windowEndIso) ? dayIso : null;
+        updateHash({ view: null, range: null, month: null, preset: null, ranges: null, date: dateForHash });
       }
     }, 100);
     return () => clearTimeout(t);
-  }, [view, range, monthIso, preset, compareRanges]);
+  }, [view, range, monthIso, preset, compareRanges, dayIso, windowEndIso]);
 
   // WP8: when the user picks a different range via the date-range picker,
   // we don't re-fetch data (would require a CLI round-trip). Instead, the
@@ -495,34 +549,35 @@ function Dashboard() {
   }, [monthIso, monthsMap, _navCmdForMonth]);
 
   // Resolve the selected session + project for the side panel.
+  // WP5: uses dayPayload (= day_payloads_by_iso[dayIso]) for Day view.
   let selSession = null;
   let selProject = null;
   if (selectedSegId && isDay) {
     const [sid] = selectedSegId.split(':');
-    for (const p of today.projects) {
+    for (const p of (dayPayload.projects || [])) {
       const s = p.sessions.find(x => x.id === sid);
       if (s) { selProject = p; selSession = s; break; }
     }
   }
 
-  // Day-view summary stats.
+  // Day-view summary stats. WP5: read from dayPayload, not today.
   const dayTotals = (() => {
-    if (today.empty || !today.projects.length) {
+    if (dayPayload.empty || !(dayPayload.projects && dayPayload.projects.length)) {
       return { active: 0, reading: 0, thinking: 0,
                longest: { active: 0, project: '\u2014', start: 0, end: 0 },
                topTool: ['\u2014', 0] };
     }
-    const allSegs = today.projects.flatMap(p => p.sessions.flatMap(s => s.segs));
+    const allSegs = dayPayload.projects.flatMap(p => p.sessions.flatMap(s => s.segs));
     const active = sumActive(allSegs);
     const reading = sumKind(allSegs, 'reading');
     const thinking = sumKind(allSegs, 'thinking');
     let longest = { active: 0, project: '\u2014', start: 0, end: 0 };
-    for (const p of today.projects) for (const s of p.sessions) {
+    for (const p of dayPayload.projects) for (const s of p.sessions) {
       const a = sumActive(s.segs);
       if (a > longest.active) longest = { active: a, project: p.alias, start: s.start, end: s.end };
     }
     const tools = {};
-    for (const p of today.projects) for (const s of p.sessions) {
+    for (const p of dayPayload.projects) for (const s of p.sessions) {
       for (const [k,v] of Object.entries(s.tools || {})) tools[k] = (tools[k] || 0) + v;
     }
     const sortedTools = Object.entries(tools).sort((a,b) => b[1] - a[1]);
@@ -603,7 +658,7 @@ function Dashboard() {
       <Toolbar
         view={view}
         onViewChange={setView}
-        dateLabel={isCustom ? `${range.start} → ${range.end}` : (isDay ? today.label : week.label)}
+        dateLabel={isCustom ? `${range.start} → ${range.end}` : (isDay ? dayPayload.label : week.label)}
         snapshot={(window.CT_DATA.meta && window.CT_DATA.meta.snapshot) || null}
         rangeStart={range.start}
         rangeEnd={range.end}
@@ -612,6 +667,11 @@ function Dashboard() {
         monthIso={monthIso}
         onPrevMonth={onPrevMonth}
         onNextMonth={onNextMonth}
+        dayIso={dayIso}
+        onPrevDay={onPrevDay}
+        onNextDay={onNextDay}
+        prevDayDisabled={prevDayDisabled}
+        nextDayDisabled={nextDayDisabled}
       />
       {/* WP10: HeadlineCard — three numbers above the timeline; chevron
           expands to MetricsPanel. View-mode-independent (window is always
@@ -647,7 +707,7 @@ function Dashboard() {
           textTransform: 'uppercase', fontWeight: 500,
         }}>{isMonth
           ? _monthIsoToLabel(monthIso)
-          : (isDayLike ? today.label : week.label)}</span>
+          : (isDayLike ? dayPayload.label : week.label)}</span>
         <span style={{ width: 1, height: 14, background: CT_TOKENS.border }} />
         <span style={{
           fontFamily: CT_TOKENS.sans, fontSize: 11,
@@ -657,17 +717,19 @@ function Dashboard() {
               ? `${monthsMap[monthIso].projects.length} projects \u00b7 ${monthsMap[monthIso].meta?.day_count || '\u2014'} days`
               : '\u2014')
           : (isDayLike
-              ? `${today.projects.length} projects \u00b7 ${today.projects.reduce((a,p)=>a+p.sessions.length,0)} sessions`
+              ? `${(dayPayload.projects || []).length} projects \u00b7 ${(dayPayload.projects || []).reduce((a,p)=>a+p.sessions.length,0)} sessions`
               : `${week.projects.length} projects \u00b7 7 days`)}</span>
         <span style={{ flex: 1 }} />
         <Legend />
         {/* WP9 Phase 4 + WP8: per-project filter popover. Day/Custom views:
-            today.projects (Custom is multi-day Day-like); Week view:
+            dayPayload.projects (Custom is multi-day Day-like; WP5 routes Day
+            via dayPayload, Custom still reads the `today` alias key which
+            useMemo aliases to dayPayload by identity). Week view:
             week.projects (shares .id + .alias). WP7: Month view: filter
             chips are visible-but-inert per D4 — the popover stays mounted
-            (uses today.projects as the project source for consistency)
+            (uses dayPayload.projects as the project source for consistency)
             but Month view ignores filter state. */}
-        <ProjectFilterPopover projects={isMonth ? (monthsMap && monthsMap[monthIso] ? monthsMap[monthIso].projects : today.projects) : (isDayLike ? today.projects : week.projects)} />
+        <ProjectFilterPopover projects={isMonth ? (monthsMap && monthsMap[monthIso] ? monthsMap[monthIso].projects : (dayPayload.projects || [])) : (isDayLike ? (dayPayload.projects || []) : week.projects)} />
       </div>
 
       {/* Body — timeline OR month grid (+ optional side panel).
@@ -703,13 +765,13 @@ function Dashboard() {
             <EmptyState date={`${_monthIsoToLabel(monthIso)} — no data loaded`} />
           )
         ) : isDayLike ? (
-          today.empty ? (
+          dayPayload.empty ? (
             <EmptyState date={isCustom
               ? `${range.start} to ${range.end}`
-              : (today.iso || today.meta?.start || '\u2014')} />
+              : (dayPayload.iso || dayPayload.meta?.start || '\u2014')} />
           ) : (
             <DayTimeline
-              data={today}
+              data={dayPayload}
               expandedProjects={expandedProjects}
               selectedSegId={selectedSegId}
               onSelectSeg={setSelectedSegId}
@@ -732,8 +794,8 @@ function Dashboard() {
           so Minimap works identically. WP7: Month view skips the minimap —
           the calendar grid IS the navigation surface. WP11: Compare view
           also skips (it's an aggregate-bars view, not a timeline). */}
-      {isDayLike && !isCompare && !today.empty && (
-        <Minimap data={today} />
+      {isDayLike && !isCompare && !dayPayload.empty && (
+        <Minimap data={dayPayload} />
       )}
       {/* WP7: nav toast (renders only when a click/nav requires reload-redirect). */}
       {navToast && (

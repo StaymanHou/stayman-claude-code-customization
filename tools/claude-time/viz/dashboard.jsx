@@ -212,7 +212,9 @@ function validateRange(startIso, endIso, maxDays) {
 function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
                    rangeStart = null, rangeEnd = null, onRangeChange = () => {},
                    maxRangeDays = 90,
-                   monthIso = null, onPrevMonth = () => {}, onNextMonth = () => {} }) {
+                   monthIso = null, onPrevMonth = () => {}, onNextMonth = () => {},
+                   dayIso = null, onPrevDay = () => {}, onNextDay = () => {},
+                   prevDayDisabled = false, nextDayDisabled = false }) {
   // WP8: when view === 'custom', the read-only dateLabel slot is replaced by
   // a RangePicker — two <input type=date> controls with client-side validation
   // matching the CLI's _parse_range_flag rules. Local state buffers in-progress
@@ -297,7 +299,61 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
           (toast + clipboard, P2.5 resolution).
           WP8: when view === 'custom', the slot becomes a date-range picker.
           Otherwise the slot stays read-only. */}
-      {view === 'month' ? (
+      {view === 'day' ? (
+        /* WP5 (v3): Day-nav ‹/› buttons flank the date label for client-side
+           swaps between pre-rendered days in day_payloads_by_iso. Buttons are
+           disabled at window boundaries (earliest day → prev disabled; most-
+           recent day → next disabled). Mirrors the month-nav pattern below. */
+        <div
+          data-day-iso={dayIso || ''}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: CT_TOKENS.surfaceDim, borderRadius: 8,
+            border: `1px solid ${CT_TOKENS.border}`,
+            padding: 2,
+          }}
+        >
+          <button
+            data-day-nav="prev"
+            onClick={prevDayDisabled ? undefined : onPrevDay}
+            disabled={prevDayDisabled}
+            title="Previous day"
+            style={{
+              height: 28, width: 28, border: 'none', background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 5,
+              cursor: prevDayDisabled ? 'not-allowed' : 'pointer',
+              color: CT_TOKENS.textSecondary,
+              opacity: prevDayDisabled ? 0.4 : 1,
+              fontSize: 14, fontFamily: CT_TOKENS.mono,
+            }}
+          >{'\u2039'}</button>
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 8px',
+            fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textPrimary,
+            minWidth: 100, textAlign: 'center', justifyContent: 'center',
+          }}>
+            <IconCalendar size={12} />
+            {dateLabel}
+          </span>
+          <button
+            data-day-nav="next"
+            onClick={nextDayDisabled ? undefined : onNextDay}
+            disabled={nextDayDisabled}
+            title="Next day"
+            style={{
+              height: 28, width: 28, border: 'none', background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 5,
+              cursor: nextDayDisabled ? 'not-allowed' : 'pointer',
+              color: CT_TOKENS.textSecondary,
+              opacity: nextDayDisabled ? 0.4 : 1,
+              fontSize: 14, fontFamily: CT_TOKENS.mono,
+            }}
+          >{'\u203A'}</button>
+        </div>
+      ) : view === 'month' ? (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 4,
           background: CT_TOKENS.surfaceDim, borderRadius: 8,
