@@ -3,7 +3,7 @@ stage: wbs
 state: in-progress
 updated: 2026-06-03
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP6 (2026-06-03)
+last_wp_shipped: WP7 (2026-06-03)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -147,15 +147,15 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [x] 6.3 URL hash: add `week=YYYY-MM-DD` key (Monday-anchored). Default-elision when `mondayIso === current_week_monday`.
 - [x] 6.4 Test pins.
 
-### WP7: Month view sub-payload routing
+### WP7: Month view sub-payload routing ✅ SHIPPED 2026-06-03 (commit 51d2393)
 **Description:** `MonthView` reads `window.CT_DATA.month_payloads_by_iso[currentMonthIso]`. The existing `MonthNavToast` reload-redirect (v2 WP7) becomes obsolete for months *inside* the pre-rendered window — instant client-side swap. For months *outside* the window, the toast remains.
 **Phase:** 2
 **Dependencies:** WP1, WP3
 **Size:** S
 **Tasks:**
-- [ ] 7.1 Month-iso state + memoized lookup into `month_payloads_by_iso`.
-- [ ] 7.2 Month-arrow ←/→: instant swap when target month is in the pre-rendered window; reload-redirect toast otherwise (v2 WP7 behavior preserved for the edge case).
-- [ ] 7.3 Test pins for both paths.
+- [x] 7.1 Month-iso state + memoized lookup into `month_payloads_by_iso`.
+- [x] 7.2 Month-arrow ←/→: instant swap when target month is in the pre-rendered window; reload-redirect toast otherwise (v2 WP7 behavior preserved for the edge case).
+- [x] 7.3 Test pins for both paths.
 
 ### WP8: Compare view sub-payload routing (resolves v2 WP11 known limitation)
 **Description:** `CompareView` reads `window.CT_DATA.compare_payloads_by_preset[currentPreset]` instead of `window.CT_DATA.comparison`. Preset sub-tab click becomes an instant content swap (NOT just a hash + label swap as in v2). **Resolves the v2 Phase 2.A verify-human PARTIAL finding** (preset content-not-refreshing).
