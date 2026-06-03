@@ -76,6 +76,26 @@ function Dashboard() {
   const dayPayloadsByIso = window.CT_DATA.day_payloads_by_iso || {};
   const dayIsoKeys = Object.keys(dayPayloadsByIso).sort();
   const windowEndIso = (window.CT_DATA.window && window.CT_DATA.window.end) || null;
+  // WP6 (v3): Week-view sub-payload routing. The interactive Dashboard reads
+  // the active week's payload from `week_payloads_by_monday[mondayIso]`. The
+  // `week` alias above is still populated by the CLI for v2-frontend
+  // coexistence (WP9 removes the alias at v3 cycle close). For the Week-view
+  // *render path* below, `weekPayload` is the single source of truth.
+  // `currentWeekMondayIso` = the Monday of the ISO-week containing windowEndIso
+  // (always a valid key in week_payloads_by_monday — build_window_data emits a
+  // payload for every Monday-anchored week intersecting the window). Computed
+  // in UTC to avoid timezone surprises.
+  const weekPayloadsByMonday = window.CT_DATA.week_payloads_by_monday || {};
+  const weekMondayKeys = Object.keys(weekPayloadsByMonday).sort();
+  const currentWeekMondayIso = (() => {
+    if (!windowEndIso) return null;
+    const d = new Date(windowEndIso + 'T00:00:00Z');
+    // getUTCDay(): Sunday=0..Saturday=6. ISO-week Monday: subtract (day===0 ? 6 : day-1).
+    const dow = d.getUTCDay();
+    const offset = (dow === 0) ? 6 : (dow - 1);
+    d.setUTCDate(d.getUTCDate() - offset);
+    return d.toISOString().slice(0, 10);
+  })();
   // WP7: months map. Pre v3, populated only on --month emits; in v3 the
   // `--window` flag's pre-rendered window always emits month_payloads_by_iso
   // covering the full window (aliased to top-level `months` for v2-frontend
@@ -208,6 +228,50 @@ function Dashboard() {
   })();
   const [dayIso, setDayIso] = React.useState(_initDayIso);
 
+  // WP6 (v3): mondayIso state — which week's payload is currently rendered
+  // in Week view. Hash takes precedence on init (`week=YYYY-MM-DD`,
+  // Monday-anchored); falls back to currentWeekMondayIso (the Monday of the
+  // ISO-week containing window.end). Default-elision in the hash-write
+  // effect drops the key when mondayIso === currentWeekMondayIso.
+  const _initMondayIso = (() => {
+    const hash = parseHash();
+    if (hash.week && /^\d{4}-\d{2}-\d{2}$/.test(hash.week) && weekPayloadsByMonday[hash.week]) {
+      return hash.week;
+    }
+    if (currentWeekMondayIso && weekPayloadsByMonday[currentWeekMondayIso]) {
+      return currentWeekMondayIso;
+    }
+    // No window data — fall back to the latest sorted Monday key (the CLI
+    // alias attachment uses the same fallback at claude-time:676-678).
+    if (weekMondayKeys.length > 0) return weekMondayKeys[weekMondayKeys.length - 1];
+    return currentWeekMondayIso || '';
+  })();
+  const [mondayIso, setMondayIso] = React.useState(_initMondayIso);
+
+  // WP6: stepWeek swaps to the prior/next Monday key in sorted weekMondayKeys.
+  // Returns silently if at boundary (caller's button is disabled too).
+  const stepWeek = React.useCallback((delta) => {
+    if (weekMondayKeys.length === 0) return;
+    const idx = weekMondayKeys.indexOf(mondayIso);
+    if (idx < 0) return;
+    const nextIdx = idx + delta;
+    if (nextIdx < 0 || nextIdx >= weekMondayKeys.length) return;
+    setMondayIso(weekMondayKeys[nextIdx]);
+  }, [mondayIso, weekMondayKeys]);
+  const onPrevWeek = React.useCallback(() => stepWeek(-1), [stepWeek]);
+  const onNextWeek = React.useCallback(() => stepWeek(+1), [stepWeek]);
+  const prevWeekDisabled = weekMondayKeys.length === 0 || weekMondayKeys.indexOf(mondayIso) <= 0;
+  const nextWeekDisabled = weekMondayKeys.length === 0 || weekMondayKeys.indexOf(mondayIso) >= weekMondayKeys.length - 1;
+
+  // WP6: weekPayload — the active week's payload, derived from mondayIso.
+  // For non-Week views, weekPayload defaults to the v2 `week` alias so the
+  // non-WP6 code paths keep their existing behavior (per the WP5–WP9
+  // transition convention in CLAUDE.md).
+  const weekPayload = React.useMemo(() => {
+    if (weekPayloadsByMonday[mondayIso]) return weekPayloadsByMonday[mondayIso];
+    return week;
+  }, [mondayIso, week]);
+
   // WP5: stepDay swaps to the prior/next ISO key in sorted dayPayloadsByIso.
   // Returns silently if at boundary (caller's button is disabled too).
   const stepDay = React.useCallback((delta) => {
@@ -297,7 +361,7 @@ function Dashboard() {
         const patch = {
           view: 'compare',
           preset,
-          range: null, month: null, date: null,
+          range: null, month: null, date: null, week: null,
         };
         if (preset === 'custom') {
           patch.ranges = `${compareRanges.a.start}:${compareRanges.a.end},${compareRanges.b.start}:${compareRanges.b.end}`;
@@ -306,19 +370,21 @@ function Dashboard() {
         }
         updateHash(patch);
       } else if (view === 'month') {
-        updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null, date: null });
+        updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null, date: null, week: null });
       } else if (view === 'custom') {
-        updateHash({ view: 'custom', range: `${range.start}:${range.end}`, month: null, preset: null, ranges: null, date: null });
+        updateHash({ view: 'custom', range: `${range.start}:${range.end}`, month: null, preset: null, ranges: null, date: null, week: null });
       } else if (view === 'week') {
-        updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null, date: null });
+        // WP6: emit `week` when mondayIso != currentWeekMondayIso.
+        const weekForHash = (mondayIso && currentWeekMondayIso && mondayIso !== currentWeekMondayIso) ? mondayIso : null;
+        updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null, date: null, week: weekForHash });
       } else {
         // 'day' is the default view. WP5: emit `date` when dayIso != windowEndIso.
         const dateForHash = (dayIso && windowEndIso && dayIso !== windowEndIso) ? dayIso : null;
-        updateHash({ view: null, range: null, month: null, preset: null, ranges: null, date: dateForHash });
+        updateHash({ view: null, range: null, month: null, preset: null, ranges: null, date: dateForHash, week: null });
       }
     }, 100);
     return () => clearTimeout(t);
-  }, [view, range, monthIso, preset, compareRanges, dayIso, windowEndIso]);
+  }, [view, range, monthIso, preset, compareRanges, dayIso, windowEndIso, mondayIso, currentWeekMondayIso]);
 
   // WP8: when the user picks a different range via the date-range picker,
   // we don't re-fetch data (would require a CLI round-trip). Instead, the
@@ -597,14 +663,18 @@ function Dashboard() {
       sub: dayTotals.topTool[1] > 0 ? `${dayTotals.topTool[1]} calls` : '' },
   ];
 
-  const weekActiveTotal = week.projects.reduce(
+  // WP6: Week-view aggregates derive from weekPayload (the active week's
+  // payload). For non-Week views, weekPayload === week (the alias) via the
+  // useMemo fallback — these reads remain valid because they're only consumed
+  // when isDayLike === false (Week view) anyway, where mondayIso is in scope.
+  const weekActiveTotal = weekPayload.projects.reduce(
     (a, p) => a + p.rollup.reduce((b, d) => b + d.active + d.subagent, 0), 0);
-  const weekProjectActive = week.projects
+  const weekProjectActive = weekPayload.projects
     .map(p => ({ alias: p.alias, total: p.rollup.reduce((a, d) => a + d.active + d.subagent, 0) }))
     .sort((a,b) => b.total - a.total);
-  const weekActiveDays = week.projects.length
+  const weekActiveDays = weekPayload.projects.length
     ? new Set(
-        week.projects.flatMap(p => p.rollup.map((d, i) => (d.active + d.subagent > 0) ? i : -1).filter(x => x >= 0))
+        weekPayload.projects.flatMap(p => p.rollup.map((d, i) => (d.active + d.subagent > 0) ? i : -1).filter(x => x >= 0))
       ).size
     : 0;
   const weekStats = [
@@ -658,7 +728,7 @@ function Dashboard() {
       <Toolbar
         view={view}
         onViewChange={setView}
-        dateLabel={isCustom ? `${range.start} → ${range.end}` : (isDay ? dayPayload.label : week.label)}
+        dateLabel={isCustom ? `${range.start} → ${range.end}` : (isDay ? dayPayload.label : weekPayload.label)}
         snapshot={(window.CT_DATA.meta && window.CT_DATA.meta.snapshot) || null}
         rangeStart={range.start}
         rangeEnd={range.end}
@@ -672,6 +742,11 @@ function Dashboard() {
         onNextDay={onNextDay}
         prevDayDisabled={prevDayDisabled}
         nextDayDisabled={nextDayDisabled}
+        mondayIso={mondayIso}
+        onPrevWeek={onPrevWeek}
+        onNextWeek={onNextWeek}
+        prevWeekDisabled={prevWeekDisabled}
+        nextWeekDisabled={nextWeekDisabled}
       />
       {/* WP10: HeadlineCard — three numbers above the timeline; chevron
           expands to MetricsPanel. View-mode-independent (window is always
@@ -707,7 +782,7 @@ function Dashboard() {
           textTransform: 'uppercase', fontWeight: 500,
         }}>{isMonth
           ? _monthIsoToLabel(monthIso)
-          : (isDayLike ? dayPayload.label : week.label)}</span>
+          : (isDayLike ? dayPayload.label : weekPayload.label)}</span>
         <span style={{ width: 1, height: 14, background: CT_TOKENS.border }} />
         <span style={{
           fontFamily: CT_TOKENS.sans, fontSize: 11,
@@ -718,18 +793,20 @@ function Dashboard() {
               : '\u2014')
           : (isDayLike
               ? `${(dayPayload.projects || []).length} projects \u00b7 ${(dayPayload.projects || []).reduce((a,p)=>a+p.sessions.length,0)} sessions`
-              : `${week.projects.length} projects \u00b7 7 days`)}</span>
+              : `${weekPayload.projects.length} projects \u00b7 7 days`)}</span>
         <span style={{ flex: 1 }} />
         <Legend />
         {/* WP9 Phase 4 + WP8: per-project filter popover. Day/Custom views:
             dayPayload.projects (Custom is multi-day Day-like; WP5 routes Day
             via dayPayload, Custom still reads the `today` alias key which
             useMemo aliases to dayPayload by identity). Week view:
-            week.projects (shares .id + .alias). WP7: Month view: filter
+            weekPayload.projects (WP6 routes Week via weekPayload; shares
+            .id + .alias with the v2 `week` alias which is the useMemo
+            fallback). WP7: Month view: filter
             chips are visible-but-inert per D4 — the popover stays mounted
             (uses dayPayload.projects as the project source for consistency)
             but Month view ignores filter state. */}
-        <ProjectFilterPopover projects={isMonth ? (monthsMap && monthsMap[monthIso] ? monthsMap[monthIso].projects : (dayPayload.projects || [])) : (isDayLike ? (dayPayload.projects || []) : week.projects)} />
+        <ProjectFilterPopover projects={isMonth ? (monthsMap && monthsMap[monthIso] ? monthsMap[monthIso].projects : (dayPayload.projects || [])) : (isDayLike ? (dayPayload.projects || []) : weekPayload.projects)} />
       </div>
 
       {/* Body — timeline OR month grid (+ optional side panel).
@@ -778,7 +855,7 @@ function Dashboard() {
             />
           )
         ) : (
-          <WeekTimeline data={week} />
+          <WeekTimeline data={weekPayload} />
         )}
         {!isMonth && !isCompare && selSession && (
           <SidePanel

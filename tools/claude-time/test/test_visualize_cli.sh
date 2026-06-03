@@ -984,15 +984,18 @@ fi
 # Triaged 2026-05-24 as obsolete-test (high-confidence): updated for WP7
 # month branch. Triaged 2026-05-26 again as obsolete-test (high-confidence):
 # updated for WP11 compare branch + preset/ranges threading.
+# Updated 2026-06-03 (WP5 P1.10): added `date` key (six-key shape).
+# Updated 2026-06-03 (WP6 P1.10, plan-time pre-empt per CLAUDE.md
+# literal-payload-object grep convention): added `week` key (seven-key shape).
 # The effect body contains the five view-conditional updateHash calls.
 if grep -qF "if (view === 'month') {" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null, date: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: 'month', month: monthIso, range: null, preset: null, ranges: null, date: null, week: null })" "$WP8_HAPPY" && \
    grep -qF "updateHash({ view: 'custom', range:" "$WP8_HAPPY" && \
-   grep -qF "updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null, date: null })" "$WP8_HAPPY" && \
+   grep -qF "updateHash({ view: 'week', range: null, month: null, preset: null, ranges: null, date: null, week:" "$WP8_HAPPY" && \
    grep -qF "updateHash({ view: null, range: null, month: null, preset: null, ranges: null, date:" "$WP8_HAPPY"; then
-    check "WP8-P2+WP7-P2+WP11-P2 codify: view+range+month+preset+ranges+date hash-write five-branch dispatch (compare/month/custom/week/day)" pass
+    check "WP8-P2+WP7-P2+WP11-P2+WP5+WP6 codify: view+range+month+preset+ranges+date+week hash-write five-branch dispatch (compare/month/custom/week/day)" pass
 else
-    check "WP8-P2+WP7-P2+WP11-P2 codify: hash-write five-branch dispatch" fail "one or more dispatch branches missing"
+    check "WP8-P2+WP7-P2+WP11-P2+WP5+WP6 codify: hash-write five-branch dispatch" fail "one or more dispatch branches missing"
 fi
 
 # WP8-P2-9: isDayLike used at all 6 consumer surfaces. Count must be >= 6.
@@ -2304,6 +2307,59 @@ else
 fi
 
 rm -f "$WP5_HTML"
+
+# ── v3 WP6 codify: Week view sub-payload routing source-shape pins ─────
+# WP6 wires the Week view's render path to read window.CT_DATA.week_payloads_by_monday
+# [mondayIso] instead of window.CT_DATA.week, adds ‹/› Week-nav buttons to the
+# Toolbar, and introduces the `week=YYYY-MM-DD` URL hash key (Monday-anchored).
+# The legacy `week` alias key remains populated by the CLI for v2-frontend
+# coexistence (WP9 removes it). These pins assert WP6's four new emit-shape
+# contracts: (1) week_payloads_by_monday[] consumer wiring + weekPayloadsByMonday
+# lookup variable; (2) data-week-nav="prev"/"next" buttons emitted; (3) `week:`
+# key threaded through the hash-write patch dispatcher; (4) data-week-monday
+# selector emitted. Single emit → all assertions against the same artifact.
+
+WP6_HTML="$TMPDIR/wp6.html"
+"$CLI" visualize --no-open --window 30d --out "$WP6_HTML" > /dev/null 2>&1
+
+# P1.10a: Week-nav buttons emitted — both prev and next, exactly one each.
+WP6_PREV_COUNT=$(grep -c 'data-week-nav="prev"' "$WP6_HTML" 2>/dev/null || echo 0)
+WP6_NEXT_COUNT=$(grep -c 'data-week-nav="next"' "$WP6_HTML" 2>/dev/null || echo 0)
+if [ "$WP6_PREV_COUNT" -ge 1 ] && [ "$WP6_NEXT_COUNT" -ge 1 ]; then
+    check "v3 WP6 codify: Week-nav buttons (data-week-nav=prev|next) emitted" pass
+else
+    check "v3 WP6 codify: Week-nav buttons emitted" fail "prev=$WP6_PREV_COUNT next=$WP6_NEXT_COUNT (expected ≥1 each)"
+fi
+
+# P1.10b: week_payloads_by_monday[] consumer wiring present in emitted HTML.
+# The new weekPayloadsByMonday lookup variable and at least one [mondayIso]
+# indexing expression must both appear.
+if grep -qF 'week_payloads_by_monday' "$WP6_HTML" && grep -qF 'weekPayloadsByMonday[' "$WP6_HTML"; then
+    check "v3 WP6 codify: week_payloads_by_monday[] consumer wiring present in emitted dashboard" pass
+else
+    check "v3 WP6 codify: week_payloads_by_monday consumer wiring" fail "missing from emitted HTML"
+fi
+
+# P1.10c: `week:` key threaded through the hash-write patch dispatcher.
+# At least one updateHash patch carries the `week` key (the `view === 'week'`
+# branch threads `week: weekForHash`; the other branches thread `week: null`
+# to ensure cross-view navigation clears the key).
+if grep -qE 'week: (weekForHash|null)' "$WP6_HTML"; then
+    check "v3 WP6 codify: week: key in updateHash patch dispatcher" pass
+else
+    check "v3 WP6 codify: week key in hash dispatcher" fail "missing from updateHash patches"
+fi
+
+# P1.10d: data-week-monday attribute emitted on the toolbar's Week-nav container.
+# This is the stable selector the behavioral test reads to assert which week
+# is currently rendered.
+if grep -qF 'data-week-monday=' "$WP6_HTML"; then
+    check "v3 WP6 codify: data-week-monday selector emitted" pass
+else
+    check "v3 WP6 codify: data-week-monday selector" fail "missing from emitted HTML"
+fi
+
+rm -f "$WP6_HTML"
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

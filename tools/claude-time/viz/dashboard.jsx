@@ -214,7 +214,9 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
                    maxRangeDays = 90,
                    monthIso = null, onPrevMonth = () => {}, onNextMonth = () => {},
                    dayIso = null, onPrevDay = () => {}, onNextDay = () => {},
-                   prevDayDisabled = false, nextDayDisabled = false }) {
+                   prevDayDisabled = false, nextDayDisabled = false,
+                   mondayIso = null, onPrevWeek = () => {}, onNextWeek = () => {},
+                   prevWeekDisabled = false, nextWeekDisabled = false }) {
   // WP8: when view === 'custom', the read-only dateLabel slot is replaced by
   // a RangePicker — two <input type=date> controls with client-side validation
   // matching the CLI's _parse_range_flag rules. Local state buffers in-progress
@@ -349,6 +351,61 @@ function Toolbar({ view = 'day', onViewChange = () => {}, dateLabel, snapshot,
               cursor: nextDayDisabled ? 'not-allowed' : 'pointer',
               color: CT_TOKENS.textSecondary,
               opacity: nextDayDisabled ? 0.4 : 1,
+              fontSize: 14, fontFamily: CT_TOKENS.mono,
+            }}
+          >{'\u203A'}</button>
+        </div>
+      ) : view === 'week' ? (
+        /* WP6 (v3): Week-nav ‹/› buttons flank the week label for client-side
+           swaps between pre-rendered weeks in week_payloads_by_monday. Buttons
+           are disabled at window boundaries (earliest Monday → prev disabled;
+           most-recent Monday → next disabled). Mirrors the day-nav pattern
+           above. */
+        <div
+          data-week-monday={mondayIso || ''}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: CT_TOKENS.surfaceDim, borderRadius: 8,
+            border: `1px solid ${CT_TOKENS.border}`,
+            padding: 2,
+          }}
+        >
+          <button
+            data-week-nav="prev"
+            onClick={prevWeekDisabled ? undefined : onPrevWeek}
+            disabled={prevWeekDisabled}
+            title="Previous week"
+            style={{
+              height: 28, width: 28, border: 'none', background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 5,
+              cursor: prevWeekDisabled ? 'not-allowed' : 'pointer',
+              color: CT_TOKENS.textSecondary,
+              opacity: prevWeekDisabled ? 0.4 : 1,
+              fontSize: 14, fontFamily: CT_TOKENS.mono,
+            }}
+          >{'\u2039'}</button>
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 8px',
+            fontFamily: CT_TOKENS.mono, fontSize: 12, color: CT_TOKENS.textPrimary,
+            minWidth: 100, textAlign: 'center', justifyContent: 'center',
+          }}>
+            <IconCalendar size={12} />
+            {dateLabel}
+          </span>
+          <button
+            data-week-nav="next"
+            onClick={nextWeekDisabled ? undefined : onNextWeek}
+            disabled={nextWeekDisabled}
+            title="Next week"
+            style={{
+              height: 28, width: 28, border: 'none', background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 5,
+              cursor: nextWeekDisabled ? 'not-allowed' : 'pointer',
+              color: CT_TOKENS.textSecondary,
+              opacity: nextWeekDisabled ? 0.4 : 1,
               fontSize: 14, fontFamily: CT_TOKENS.mono,
             }}
           >{'\u203A'}</button>

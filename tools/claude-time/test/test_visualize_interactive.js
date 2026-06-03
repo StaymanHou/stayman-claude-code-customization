@@ -1318,6 +1318,98 @@ async function runTests() {
       await page.close();
     }
 
+    // ── WP6 behavioral: Week-view sub-payload routing — arrow nav + week= hash ──
+    // Re-uses MONTH_DASH_HTML (--window 2026-03-01:2026-04-30, 10 pre-rendered
+    // Mondays: 2026-02-23 .. 2026-04-27). currentWeekMondayIso = 2026-04-27
+    // (Monday of ISO-week containing window.end 2026-04-30).
+    // Verifies: (a) #view=week landing → mondayIso=2026-04-27, hash drops `week`
+    // (default-elision), next-arrow disabled at boundary, prev-arrow enabled.
+    // (b) prev-arrow click → mondayIso swaps to 2026-04-20, hash gains
+    // week=2026-04-20. (c) hash-restore #view=week;week=2026-02-23 → mondayIso
+    // reflects, prev disabled (boundary), next enabled.
+    // IMPORTANT: page.goto(<sameurl>#hash) is same-document nav in Chromium —
+    // no re-mount of useState hash-reader. Always follow with page.reload()
+    // to force a fresh mount (lesson from WP5 verify-codify, 2026-06-03).
+    {
+      const page = await browser.newPage();
+      await page.goto(URL_BASE + '/month.html#view=week');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+
+      // (a) Default Week-view landing: mondayIso === current_week_monday,
+      // hash drops the `week` key (default-elision), next disabled.
+      const initial = await page.evaluate(() => {
+        const el = document.querySelector('[data-week-monday]');
+        const next = document.querySelector('[data-week-nav="next"]');
+        const prev = document.querySelector('[data-week-nav="prev"]');
+        return {
+          monday: el ? el.getAttribute('data-week-monday') : null,
+          hash: window.location.hash,
+          nextDisabled: next ? next.disabled : null,
+          prevDisabled: prev ? prev.disabled : null,
+        };
+      });
+      check('WP6 behavioral 1a: #view=week landing → mondayIso === current_week_monday (2026-04-27)',
+        initial.monday === '2026-04-27',
+        JSON.stringify(initial));
+      check('WP6 behavioral 1b: #view=week landing — URL hash omits `week` key (default-elision)',
+        initial.hash.includes('view=week') && !initial.hash.includes('week=2026'),
+        `hash=${JSON.stringify(initial.hash)}`);
+      check('WP6 behavioral 1c: #view=week landing — next-week arrow is disabled at window-end boundary',
+        initial.nextDisabled === true,
+        JSON.stringify(initial));
+      check('WP6 behavioral 1d: #view=week landing — prev-week arrow is ENABLED (window has multiple weeks)',
+        initial.prevDisabled === false,
+        JSON.stringify(initial));
+
+      // (b) Click prev-week → mondayIso swaps to 2026-04-20, hash gains week=2026-04-20.
+      await page.click('[data-week-nav="prev"]');
+      await page.waitForTimeout(300);  // debounced hash write is 100ms
+      const afterPrev = await page.evaluate(() => {
+        const el = document.querySelector('[data-week-monday]');
+        return {
+          monday: el ? el.getAttribute('data-week-monday') : null,
+          hash: window.location.hash,
+        };
+      });
+      check('WP6 behavioral 2a: prev-week click → data-week-monday updates to prior Monday (2026-04-20)',
+        afterPrev.monday === '2026-04-20',
+        JSON.stringify(afterPrev));
+      check('WP6 behavioral 2b: prev-week click → URL hash gains week=2026-04-20',
+        afterPrev.hash.includes('week=2026-04-20'),
+        `hash=${JSON.stringify(afterPrev.hash)}`);
+
+      // (c) Hash-restore: navigate to #view=week;week=2026-02-23 (earliest
+      // Monday). Prev-arrow should be disabled (boundary); data-week-monday
+      // should match. Same-document hash-only nav doesn't re-mount, so reload.
+      await page.goto(URL_BASE + '/month.html#view=week;week=2026-02-23');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const restored = await page.evaluate(() => {
+        const el = document.querySelector('[data-week-monday]');
+        const prev = document.querySelector('[data-week-nav="prev"]');
+        const next = document.querySelector('[data-week-nav="next"]');
+        return {
+          monday: el ? el.getAttribute('data-week-monday') : null,
+          prevDisabled: prev ? prev.disabled : null,
+          nextDisabled: next ? next.disabled : null,
+        };
+      });
+      check('WP6 behavioral 3a: hash-restore #view=week;week=2026-02-23 → data-week-monday reflects hash',
+        restored.monday === '2026-02-23',
+        JSON.stringify(restored));
+      check('WP6 behavioral 3b: hash-restore at window-start Monday → prev-week arrow is disabled (boundary)',
+        restored.prevDisabled === true,
+        JSON.stringify(restored));
+      check('WP6 behavioral 3c: hash-restore at window-start Monday → next-week arrow is ENABLED',
+        restored.nextDisabled === false,
+        JSON.stringify(restored));
+
+      await page.close();
+    }
+
   } finally {
     if (browser) await browser.close().catch(() => {});
     if (server) {
