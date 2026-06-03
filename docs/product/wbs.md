@@ -1,9 +1,9 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-05-29
+updated: 2026-06-03
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP4 (2026-05-29)
+last_wp_shipped: WP5 (2026-06-03)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -120,17 +120,19 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 
 **Phase rationale:** The dashboard currently dispatches on `window.CT_INITIAL_VIEW` + `window.CT_INITIAL_PRESET` to pick a single view from a single payload. v3 changes this to: hash dispatches to a view + sub-view-state, and each view reads the appropriate pre-rendered sub-payload from `window.CT_DATA.<sub_payload_map>[<key>]`. This phase touches every view component (Day, Week, Month, Custom, Compare) but leaves their internal rendering largely unchanged — only the **data-source plumbing** changes.
 
-### WP5: Day view sub-payload routing
+### WP5: Day view sub-payload routing ✅ SHIPPED 2026-06-03 (commit `820cba7`)
+**Result:** Day view migrated off the v2 `today` alias key onto `day_payloads_by_iso[dayIso]`. New ‹/› buttons in the toolbar's date strip drive client-side swaps between pre-rendered days, disabled at window boundaries. New `date=YYYY-MM-DD` URL hash key with default-elision when `dayIso === window.end`. The `today` alias key stays populated by the CLI for v2-frontend coexistence through WP9. Test baselines at ship: CLI 178 → 182 (+4 source-shape pins), interactive container 46 → 55 (+9 behavioral pins), Python 131/0, structure 125/0. Two Test Triage entries handled in-phase: (a) existing five-branch hash-dispatch pin obsolete due to new `date:` key — updated to six-key shape; (b) WP5 behavioral 3a/3b initially failed because `page.goto(#hash)` is same-document nav — added `page.reload()` to force re-mount of the hash-reading `useState` initializer. First frontend WP of v3 Phase 2 — establishes the routing pattern WP6–WP9 will copy.
+
 **Description:** `DayTimeline` reads `window.CT_DATA.day_payloads_by_iso[currentDayIso]` instead of `window.CT_DATA.today`. Day-iso state lives in `useState` initialized from URL hash (`date=2026-05-26` key). Day-arrow ←/→ nav becomes a client-side state swap (pre-rendered payloads available for every iso in the window).
 **Phase:** 2
 **Dependencies:** WP1, WP3
 **Size:** M
 **Tasks:**
-- [ ] 5.1 In the interactive Dashboard wrapper (`viz_render.py::_interactive_dashboard`): replace direct `today` reads with a `dayIso` state + memoized lookup into `day_payloads_by_iso`.
-- [ ] 5.2 Add Day-arrow nav UI (`‹` / `›` buttons in the date header strip, adjacent to the date label). Disable when at window boundary.
-- [ ] 5.3 URL hash: add `date=YYYY-MM-DD` key under the consumer-reservation table. Default-elision when `dayIso === todayIso` (the most-recent day in the window).
-- [ ] 5.4 `test_visualize_cli.sh` source-shape pins: `day_payloads_by_iso` consumer wiring; day-arrow nav buttons; `date=` hash dispatcher.
-- [ ] 5.5 `test_visualize_interactive.js` behavioral: Day-arrow click → DayTimeline re-renders with new day's segments; URL hash updates; data-day-iso selector reflects current day.
+- [x] 5.1 In the interactive Dashboard wrapper (`viz_render.py::_interactive_dashboard`): replace direct `today` reads with a `dayIso` state + memoized lookup into `day_payloads_by_iso`.
+- [x] 5.2 Add Day-arrow nav UI (`‹` / `›` buttons in the date header strip, adjacent to the date label). Disable when at window boundary.
+- [x] 5.3 URL hash: add `date=YYYY-MM-DD` key under the consumer-reservation table. Default-elision when `dayIso === todayIso` (the most-recent day in the window).
+- [x] 5.4 `test_visualize_cli.sh` source-shape pins: `day_payloads_by_iso` consumer wiring; day-arrow nav buttons; `date=` hash dispatcher.
+- [x] 5.5 `test_visualize_interactive.js` behavioral: Day-arrow click → DayTimeline re-renders with new day's segments; URL hash updates; data-day-iso selector reflects current day.
 
 ### WP6: Week view sub-payload routing + Week-arrow nav
 **Description:** `WeekTimeline` reads `window.CT_DATA.week_payloads_by_monday[currentMondayIso]`. Same pattern as WP5 for Day. Week-arrow ←/→ nav between pre-rendered weeks.
