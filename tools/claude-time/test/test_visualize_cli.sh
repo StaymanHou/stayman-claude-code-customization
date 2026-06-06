@@ -2682,6 +2682,201 @@ fi
 
 rm -f "$WP10V3_HTML"
 
+# ── v3 WP11 P1: Collapsible rows + per-project pills + hash persistence ─
+# Pins assert the WP11 Phase 1 source-shape markers are present in the emit.
+# Behavioral pins (chevron toggle, hash round-trip, filter-aware pill) live
+# in test_visualize_interactive.js.
+WP11V3_DIR="$(mktemp -d -t claude-time-wp11v3-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10V3_DIR" "$WP11V3_DIR"' EXIT
+WP11V3_HTML="$WP11V3_DIR/wp11v3-demo.html"
+CLAUDE_TIME_DIR="$WP11V3_DIR" "$CLI" visualize --no-open --demo --out "$WP11V3_HTML" > /dev/null 2>&1
+if [ ! -f "$WP11V3_HTML" ]; then
+    check "v3 WP11 P1 codify: --demo emit landed" fail "html missing"
+fi
+
+# v3 WP11-P1-1: CollapsedTrackRow component definition present in the emit.
+if grep -qF 'function CollapsedTrackRow(' "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: CollapsedTrackRow component present" pass
+else
+    check "v3 WP11 P1 codify: CollapsedTrackRow" fail "function definition missing"
+fi
+
+# v3 WP11-P1-2: merge-by-kind helper _mergeProjectIntervalsByKind present.
+if grep -qF 'function _mergeProjectIntervalsByKind(' "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: _mergeProjectIntervalsByKind helper present" pass
+else
+    check "v3 WP11 P1 codify: _mergeProjectIntervalsByKind" fail "function missing"
+fi
+
+# v3 WP11-P1-3: setExpandedProjects toggle handler — guards against accidental
+# replacement with a setter that overwrites instead of toggling.
+if grep -qF 'setExpandedProjects(prev =>' "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: setExpandedProjects toggle handler emits" pass
+else
+    check "v3 WP11 P1 codify: setExpandedProjects toggle handler" fail "toggle pattern missing"
+fi
+
+# v3 WP11-P1-4: DayTimeline signature carries onToggleExpand after the WP10
+# transform's onSelectSeg append. The cross-file edit-time-transform anchor
+# in viz_render.py::_wire_bar_click extends the signature; if that anchor is
+# bypassed or the order changes, this assert catches it.
+if grep -qF "view = 'day', onSelectSeg, onToggleExpand" "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: DayTimeline signature carries onSelectSeg + onToggleExpand" pass
+else
+    check "v3 WP11 P1 codify: DayTimeline signature" fail "onSelectSeg + onToggleExpand pair not in emit"
+fi
+
+# v3 WP11-P1-5: data-collapsed-track + data-collapsed-seg + data-chevron-toggle
+# selectors emitted (required for behavioral test pinning AND for the human
+# verify-self/verify-human checklist's [data-*] grep).
+if grep -qF 'data-collapsed-track' "$WP11V3_HTML" && \
+   grep -qF 'data-collapsed-seg' "$WP11V3_HTML" && \
+   grep -qF 'data-chevron-toggle' "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: collapsed-track selectors (track, seg, chevron-toggle) present" pass
+else
+    check "v3 WP11 P1 codify: collapsed-track selectors" fail "one or more selectors missing"
+fi
+
+# v3 WP11-P1-6: data-session-row + data-session-id selectors emitted on
+# SessionRow root. Caught at F9b verify-self back-loop (2026-06-06) — the
+# original P1.4 source-side emission was missing this selector, breaking the
+# observable-outcome contract. Pin against accidental removal.
+if grep -qF 'data-session-row' "$WP11V3_HTML" && \
+   grep -qF 'data-session-id' "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: session-row selectors (data-session-row, data-session-id) present" pass
+else
+    check "v3 WP11 P1 codify: session-row selectors" fail "data-session-row or data-session-id missing"
+fi
+
+# v3 WP11-P1-7: data-active-pill emitted on both ProjectHeaderRow AND
+# CollapsedTrackRow. Count should be ≥2 (one per component definition; runtime
+# may render more).
+WP11V3_PILL_COUNT=$(grep -c 'data-active-pill' "$WP11V3_HTML")
+if [ "$WP11V3_PILL_COUNT" -ge 2 ]; then
+    check "v3 WP11 P1 codify: data-active-pill emitted on both row variants (count ≥2)" pass
+else
+    check "v3 WP11 P1 codify: data-active-pill" fail "expected ≥2 emits, got $WP11V3_PILL_COUNT"
+fi
+
+# v3 WP11-P1-8: expanded-branch wrapper uses React.Fragment (no duplicate
+# data-project-row on a wrapping div). Caught at F9b verify-self back-loop
+# (2026-06-06) — the original P1.7 wrapper carried `data-project-row` +
+# `data-expanded="true"` AND the inner ProjectHeaderRow ALSO emitted them,
+# inflating document-wide querySelectorAll counts. Pin against regression.
+if grep -qF '<React.Fragment key={p.id}>' "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: expanded-branch wrapper is React.Fragment (no duplicate data-project-row)" pass
+else
+    check "v3 WP11 P1 codify: expanded-branch wrapper" fail "React.Fragment key={p.id} not present in emit"
+fi
+
+# v3 WP11-P1-9: <DayTimeline> call site carries onToggleExpand prop (regression
+# pin against the prop being silently dropped from _interactive_dashboard).
+if grep -qF 'onToggleExpand={onToggleExpand}' "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: DayTimeline call site forwards onToggleExpand" pass
+else
+    check "v3 WP11 P1 codify: DayTimeline onToggleExpand wiring" fail "prop not forwarded at call site"
+fi
+
+# v3 WP11-P1-10: hash-write effect default-elision — emit contains the null
+# branch for `expanded` (drop key when set is empty), matching the URL-hash
+# state convention in CLAUDE.md.
+if grep -qF "updateHash({ expanded: expandedProjects.length > 0 ? expandedProjects.join(',') : null })" "$WP11V3_HTML"; then
+    check "v3 WP11 P1 codify: hash-write effect default-elides expanded key when empty" pass
+else
+    check "v3 WP11 P1 codify: hash-write effect default-elision" fail "default-elision pattern not in emit"
+fi
+
+rm -f "$WP11V3_HTML"
+
+# ── v3 WP11 P2: Away-total surface (HeadlineCard 4th tile + per-row pill) ─
+# Pins assert WP11 Phase 2 source-shape markers. Behavioral pins (4 tiles
+# rendered, away-pill per row, chip-toggle plumbing) live in
+# test_visualize_interactive.js.
+WP11P2_DIR="$(mktemp -d -t claude-time-wp11p2-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10V3_DIR" "$WP11V3_DIR" "$WP11P2_DIR"' EXIT
+WP11P2_HTML="$WP11P2_DIR/wp11p2-demo.html"
+CLAUDE_TIME_DIR="$WP11P2_DIR" "$CLI" visualize --no-open --demo --out "$WP11P2_HTML" > /dev/null 2>&1
+if [ ! -f "$WP11P2_HTML" ]; then
+    check "v3 WP11 P2 codify: --demo emit landed" fail "html missing"
+fi
+
+# v3 WP11-P2-1: _computeAwayMsForWindow helper definition emitted (full-window
+# headline-tile aggregator that sums kind=='away' segs across day_payloads in
+# the metrics window, returns milliseconds).
+if grep -qF 'function _computeAwayMsForWindow(' "$WP11P2_HTML"; then
+    check "v3 WP11 P2 codify: _computeAwayMsForWindow helper present" pass
+else
+    check "v3 WP11 P2 codify: _computeAwayMsForWindow" fail "helper missing"
+fi
+
+# v3 WP11-P2-2: _computeProjectAwayMin helper definition emitted (per-project
+# row-pill aggregator, returns minutes).
+if grep -qF 'function _computeProjectAwayMin(' "$WP11P2_HTML"; then
+    check "v3 WP11 P2 codify: _computeProjectAwayMin helper present" pass
+else
+    check "v3 WP11 P2 codify: _computeProjectAwayMin" fail "helper missing"
+fi
+
+# v3 WP11-P2-3: HeadlineCard tiles array contains the 4th 'away' entry.
+# Runtime renders data-metric-tile="away" via `data-metric-tile={t.id}` —
+# pin the SOURCE entry (id: 'away') because behavioral pins verify runtime.
+if grep -qF "id: 'away'" "$WP11P2_HTML" && \
+   grep -qF "label: 'Away'" "$WP11P2_HTML"; then
+    check "v3 WP11 P2 codify: HeadlineCard tiles array carries id:'away' + label:'Away'" pass
+else
+    check "v3 WP11 P2 codify: HeadlineCard tiles 'away' entry" fail "tile array entry missing"
+fi
+
+# v3 WP11-P2-4: HeadlineCard signature accepts awayMs prop (regression pin
+# against the prop being dropped from the destructure).
+if grep -qF "function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 })" "$WP11P2_HTML"; then
+    check "v3 WP11 P2 codify: HeadlineCard signature accepts awayMs prop" pass
+else
+    check "v3 WP11 P2 codify: HeadlineCard signature" fail "awayMs prop not in destructure"
+fi
+
+# v3 WP11-P2-5: _interactive_dashboard plumbs awayMs to HeadlineCard via
+# _computeAwayMsForWindow(dayPayloadsByIso, view.window.start, end, filterKinds).
+# This is the cross-window source-of-truth wiring; if broken, the 4th tile
+# would always read 0 even with real data.
+if grep -qF 'awayMs={_computeAwayMsForWindow(' "$WP11P2_HTML"; then
+    check "v3 WP11 P2 codify: HeadlineCard call site plumbs awayMs via _computeAwayMsForWindow" pass
+else
+    check "v3 WP11 P2 codify: awayMs plumbing" fail "wiring not in emit"
+fi
+
+# v3 WP11-P2-6: data-away-pill selector emitted on both ProjectHeaderRow
+# (expanded row) AND CollapsedTrackRow (collapsed row). Count should be ≥2
+# in source (one per component); runtime renders N per visible row.
+WP11P2_AWAY_PILL_COUNT=$(grep -c 'data-away-pill' "$WP11P2_HTML")
+if [ "$WP11P2_AWAY_PILL_COUNT" -ge 2 ]; then
+    check "v3 WP11 P2 codify: data-away-pill emitted on both row variants (count ≥2)" pass
+else
+    check "v3 WP11 P2 codify: data-away-pill" fail "expected ≥2 emits, got $WP11P2_AWAY_PILL_COUNT"
+fi
+
+# v3 WP11-P2-7: away-pill uses CT_TOKENS.awayBase background (regression pin
+# against visual-style drift — the human verified the muted background reads
+# as a distinct metric, not a disabled active pill).
+if grep -qF 'background: CT_TOKENS.awayBase' "$WP11P2_HTML"; then
+    check "v3 WP11 P2 codify: away-pill uses CT_TOKENS.awayBase background (distinct from active)" pass
+else
+    check "v3 WP11 P2 codify: away-pill background token" fail "awayBase token not in emit"
+fi
+
+# v3 WP11-P2-8: _computeAwayMsForWindow + _computeProjectAwayMin both gate on
+# filterKinds.away !== false. The single-source-of-truth filter projection
+# means toggling `away` chip OFF zeros all three away surfaces (headline tile,
+# per-project pill on expanded row, per-project pill on collapsed row).
+# Pin against accidental removal of the gate.
+if grep -qF 'filterKinds && filterKinds.away === false' "$WP11P2_HTML"; then
+    check "v3 WP11 P2 codify: away helpers gate on filterKinds.away !== false" pass
+else
+    check "v3 WP11 P2 codify: away filter gate" fail "filterKinds.away gate not in emit"
+fi
+
+rm -f "$WP11P2_HTML"
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== claude-time visualize CLI test summary ==="

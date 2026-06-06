@@ -519,13 +519,35 @@ function Dashboard() {
   }, [dayPayloadsByIso]);
   // selectedSegId is "<sessionId>:<segIndex>" or null.
   const [selectedSegId, setSelectedSegId] = React.useState(null);
-  // expandedProjects: array of project ids; default expanded all on first
-  // load. v3 (WP9 P2): seed source migrated from today.projects to the
-  // window-end day's payload (was the same single-day payload via the alias).
+  // WP11 P1: expandedProjects is the set of project IDs the user has
+  // CHOSEN to expand (default empty = all collapsed). Hash key `expanded`
+  // restores on mount; default-elision drops the key when the set is empty.
+  // Aliases not present in the current window-end day payload are filtered
+  // (stale hash from a deleted project — silently ignored, not an error).
   const [expandedProjects, setExpandedProjects] = React.useState(() => {
+    const hash = parseHash();
+    const raw = (hash.expanded || '').split(',').filter(Boolean);
+    if (raw.length === 0) return [];
     const seedPayload = (windowEndIso && dayPayloadsByIso[windowEndIso]) || null;
-    return ((seedPayload && seedPayload.projects) || []).map(p => p.id);
+    const validIds = new Set(((seedPayload && seedPayload.projects) || []).map(p => p.id));
+    return raw.filter(id => validIds.has(id));
   });
+  // WP11 P1: debounced URL-hash write on expandedProjects change. Mirrors
+  // the filters effect: replaceState (no history pollution), default-elision
+  // (drop the key when the set is empty), comma-joined alias list.
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      updateHash({ expanded: expandedProjects.length > 0 ? expandedProjects.join(',') : null });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [expandedProjects]);
+  // WP11 P1: chevron-click handler — toggle a single project's expansion.
+  // Forwarded to DayTimeline via `onToggleExpand`.
+  const onToggleExpand = React.useCallback((projectId) => {
+    setExpandedProjects(prev => prev.includes(projectId)
+      ? prev.filter(id => id !== projectId)
+      : [...prev, projectId]);
+  }, []);
   // WP9 Phase 2: filter state. `filterKinds` is {active, reading, thinking,
   // subagent, away}; entries set to false hide the corresponding segment
   // kind across all consumers (SegmentBar render-or-null, Legend chip
@@ -889,6 +911,12 @@ function Dashboard() {
           metrics={window.CT_DATA.metrics}
           expanded={metricsExpanded}
           onToggleExpanded={() => setMetricsExpanded(v => !v)}
+          awayMs={_computeAwayMsForWindow(
+            dayPayloadsByIso,
+            window.CT_DATA.metrics.window.start,
+            window.CT_DATA.metrics.window.end,
+            filterKinds
+          )}
         />
       )}
       {window.CT_DATA.metrics && metricsExpanded && (
@@ -986,6 +1014,7 @@ function Dashboard() {
             <DayTimeline
               data={dayLikePayload}
               expandedProjects={expandedProjects}
+              onToggleExpand={onToggleExpand}
               selectedSegId={selectedSegId}
               onSelectSeg={setSelectedSegId}
               view={isCustom ? 'custom' : 'day'}
@@ -1118,13 +1147,18 @@ def _wire_bar_click(jsx: str) -> str:
         raise ValueError("SessionRow's SegmentBar map not found — has dashboard.jsx changed?")
     jsx = jsx.replace(old_segbar_render, new_segbar_render)
 
-    # 3. DayTimeline — accept onSelectSeg and forward to SessionRow.
-    # WP10: source signature now carries `view = 'day'` (Day-only mitigation gate);
-    # transform appends onSelectSeg after it.
+    # 3. DayTimeline — accept onSelectSeg + onToggleExpand (WP11) and forward.
+    # WP10: source signature carries `view = 'day'` (Day-only mitigation gate).
+    # WP11: source signature unchanged; transform appends onSelectSeg AND
+    # onToggleExpand so both are available inside DayTimeline's render block
+    # (the chevron-onToggle handler in the mitigatedProjects.map references
+    # onToggleExpand). Adding both at the same transform step keeps the
+    # cross-file edit-time anchor minimal (one signature, two appended props).
     old_daytimeline_sig = ("function DayTimeline({ data, expandedProjects, "
                            "selectedSegId, showNow = true, view = 'day' }) {")
     new_daytimeline_sig = ("function DayTimeline({ data, expandedProjects, "
-                           "selectedSegId, showNow = true, view = 'day', onSelectSeg }) {")
+                           "selectedSegId, showNow = true, view = 'day', "
+                           "onSelectSeg, onToggleExpand }) {")
     if old_daytimeline_sig not in jsx:
         raise ValueError("DayTimeline signature not found — has dashboard.jsx changed?")
     jsx = jsx.replace(old_daytimeline_sig, new_daytimeline_sig)

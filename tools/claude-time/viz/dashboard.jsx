@@ -53,6 +53,32 @@ const fmtClock = (mins) => {
 const sumActive = (segs) => segs.filter(s => s.kind === 'active' || s.kind === 'subagent').reduce((a,s) => a + (s.end - s.start), 0);
 const sumKind = (segs, k) => segs.filter(s => s.kind === k).reduce((a,s) => a + (s.end - s.start), 0);
 
+// WP11 P2.1: away-total helpers (Q2=A — full-window away from kind=='away' segs).
+// Two variants for the two consumers + their unit conventions:
+//   * `_computeProjectAwayMin(project, filterKinds)` → minutes (the row pill
+//     consumes minutes via `fmtDur`); per-project scope.
+//   * `_computeAwayMsForWindow(dayPayloadsByIso, startIso, endIso, filterKinds)`
+//     → MILLISECONDS (the HeadlineCard tile consumes ms via `_fmtDurMs`);
+//     sums across all day_payloads within [startIso, endIso] inclusive.
+// Both return 0 when filterKinds.away === false (gate at the helper, not the
+// consumer — single source of truth so all three away surfaces stay in sync).
+function _computeProjectAwayMin(project, filterKinds) {
+  if (filterKinds && filterKinds.away === false) return 0;
+  return sumKind((project.sessions || []).flatMap(s => s.segs || []), 'away');
+}
+function _computeAwayMsForWindow(dayPayloadsByIso, startIso, endIso, filterKinds) {
+  if (filterKinds && filterKinds.away === false) return 0;
+  if (!dayPayloadsByIso || !startIso || !endIso) return 0;
+  let mins = 0;
+  for (const [iso, payload] of Object.entries(dayPayloadsByIso)) {
+    if (iso < startIso || iso > endIso) continue;
+    for (const p of (payload.projects || [])) {
+      mins += sumKind((p.sessions || []).flatMap(s => s.segs || []), 'away');
+    }
+  }
+  return mins * 60 * 1000;  // minutes → ms
+}
+
 // minutes-since-midnight from a Date (local-tz)
 const _nowMinFromDate = (d) => d.getHours() * 60 + d.getMinutes();
 // ISO YYYY-MM-DD in local-tz (matches how viz_data emits today's `iso`)
@@ -1308,7 +1334,7 @@ function CompareView({ comparison }) {
 
 // HeadlineCard — three primary numbers (collapsed default) + chevron toggle.
 // Click chevron → expanded prop true → MetricsPanel renders below.
-function HeadlineCard({ metrics, expanded, onToggleExpanded }) {
+function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 }) {
   const { kinds: filterKinds } = useFilter();
   const view = React.useMemo(
     () => _computeMetricsView(metrics, filterKinds),
@@ -1316,10 +1342,14 @@ function HeadlineCard({ metrics, expanded, onToggleExpanded }) {
   );
   if (!view) return null;
 
-  // The three headline numbers per Q1 of the spec:
+  // The headline numbers per Q1 of the spec + WP11 P2 away counterweight:
   //   1. active session wall-clock (engaged-session wall-clock — away-gaps excluded)
   //   2. human activity wall-clock (typing + reading + thinking)
   //   3. AI effort hours (agent burst effort-time only — no double counting)
+  //   4. (WP11 P2 / Q3=A) away total across the same trailing-7-day window;
+  //      computed frontend-side from kind=='away' segs in dayPayloadsByIso
+  //      (single source of truth via _computeAwayMsForWindow). The `awayMs`
+  //      prop is computed by _interactive_dashboard against view.window.{start,end}.
   const tiles = [
     { id: 'engaged-session', label: 'Active session',  value_ms: view.engaged_session.wallclock_ms,
       sub: 'wall-clock' },
@@ -1327,6 +1357,8 @@ function HeadlineCard({ metrics, expanded, onToggleExpanded }) {
       sub: 'wall-clock' },
     { id: 'ai-effort',       label: 'AI effort',       value_ms: view.ai_agent.effort_ms,
       sub: 'effort-time' },
+    { id: 'away',            label: 'Away',            value_ms: awayMs,
+      sub: 'wall-clock' },
   ];
 
   // Empty-window check: post-filter zeros across all three headline numbers.
@@ -2194,21 +2226,179 @@ function SegmentBar({ seg, selected = false, dayOffset = 0 }) {
   );
 }
 
-function ProjectHeaderRow({ project, totals, expanded = true, alt = false }) {
+// WP11 P1.6: merge-by-kind union for the collapsed track. Returns an object
+// mapping kind → array of [start, end] intervals (absolute minute-of-window
+// when dayOffsetForSession is provided; otherwise minute-of-day for single-day).
+// Q4=B rule: for each kind, union all that kind's segs across all sessions
+// of the project, sorted + merged into non-overlapping intervals.
+function _mergeProjectIntervalsByKind(project, dayOffsetForSession) {
+  const byKind = { active: [], subagent: [], reading: [], thinking: [], away: [] };
+  for (const s of (project.sessions || [])) {
+    const off = dayOffsetForSession ? dayOffsetForSession(s) : 0;
+    for (const seg of (s.segs || [])) {
+      if (byKind[seg.kind] === undefined) continue; // unknown kind — skip
+      byKind[seg.kind].push([seg.start + off, seg.end + off]);
+    }
+  }
+  // Merge each kind's intervals.
+  const out = {};
+  for (const k of Object.keys(byKind)) {
+    const sorted = byKind[k].slice().sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const iv of sorted) {
+      if (merged.length === 0 || iv[0] > merged[merged.length - 1][1]) {
+        merged.push([iv[0], iv[1]]);
+      } else {
+        merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], iv[1]);
+      }
+    }
+    out[k] = merged;
+  }
+  return out;
+}
+
+// WP11 P1.6: CollapsedTrackRow renders one merged-by-kind timeline row for a
+// project whose chevron is collapsed. Kind colors preserved per `segStyle`;
+// active/subagent rendered at the same band height as SegmentBar's active
+// (taller band). reading/thinking/away rendered as their normal style. The
+// row label area mirrors ProjectHeaderRow's gutter so collapsed + expanded
+// rows align visually.
+function CollapsedTrackRow({ project, totals, alt = false, onToggle, dayOffsetForSession = null }) {
+  const viewport = useViewport();
+  const { kinds: filterKinds } = useFilter();
+  const intervalsByKind = React.useMemo(
+    () => _mergeProjectIntervalsByKind(project, dayOffsetForSession),
+    [project, dayOffsetForSession]
+  );
+  // Render order: away (background-ish stripe) under active/subagent so the
+  // active bursts visually dominate the collapsed band.
+  const renderOrder = ['away', 'reading', 'thinking', 'active', 'subagent'];
   return (
-    <div style={{
-      display: 'flex',
-      height: PROJECT_HEADER_HEIGHT,
-      borderBottom: `1px solid ${CT_TOKENS.border}`,
-      background: alt ? CT_TOKENS.surfaceAlt : CT_TOKENS.surface,
-    }}>
+    <div
+      data-project-row
+      data-project-alias={project.alias}
+      data-expanded="false"
+      data-collapsed-track
+      style={{
+        display: 'flex',
+        height: PROJECT_HEADER_HEIGHT,
+        borderBottom: `1px solid ${CT_TOKENS.border}`,
+        background: alt ? CT_TOKENS.surfaceAlt : CT_TOKENS.surface,
+      }}>
       <div style={{
         width: ROW_LEFT_WIDTH, flexShrink: 0,
         borderRight: `1px solid ${CT_TOKENS.border}`,
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '0 12px',
       }}>
-        <span style={{ color: CT_TOKENS.textTertiary, display: 'flex' }}>
+        <span
+          data-chevron-toggle
+          role="button"
+          aria-label="expand project"
+          onClick={onToggle ? (e) => { e.stopPropagation(); onToggle(); } : undefined}
+          style={{
+            color: CT_TOKENS.textTertiary, display: 'flex',
+            cursor: onToggle ? 'pointer' : 'default',
+            userSelect: 'none',
+          }}>
+          <IconChevRight size={12} />
+        </span>
+        <span style={{
+          fontFamily: CT_TOKENS.mono, fontSize: 13,
+          color: CT_TOKENS.textPrimary, fontWeight: 500,
+          letterSpacing: '-0.01em',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{project.alias}</span>
+        <span style={{ flex: 1 }} />
+        <span
+          data-active-pill
+          style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11,
+            padding: '2px 7px', borderRadius: 999,
+            background: CT_TOKENS.active, color: '#fff',
+            fontWeight: 500,
+          }}>{fmtDur(totals.activePlusSub)}</span>
+        {/* WP11 P2.4: away pill — peer to active pill (Q5=A). Renders the
+            per-project away wall-clock total in minutes. The awayBase token
+            gives it a muted background; when filterKinds.away === false the
+            value is already 0 (gated at totals computation in DayTimeline). */}
+        <span
+          data-away-pill
+          title="Away time (idle/stripe segs)"
+          style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11,
+            padding: '2px 7px', borderRadius: 999,
+            marginLeft: 6,
+            background: CT_TOKENS.awayBase, color: CT_TOKENS.textSecondary,
+            fontWeight: 500,
+          }}>{fmtDur(totals.away)}</span>
+      </div>
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <HourGridBackground />
+        {renderOrder.map(kind => {
+          if (filterKinds[kind] === false) return null;
+          const isSubagent = kind === 'subagent';
+          const height = isSubagent ? 14 : ROW_HEIGHT - 12;
+          const top = isSubagent ? (ROW_HEIGHT - 14) / 2 + 4 : 6;
+          return intervalsByKind[kind].map(([s, e], i) => {
+            const { left, width } = viewportPct(s, e, viewport);
+            return (
+              <div
+                key={`${kind}-${s}-${e}`}
+                data-collapsed-seg
+                data-kind={kind}
+                title={`${kind} (collapsed) · ${fmtClock(s % 1440)}\u2013${fmtClock(e % 1440)}`}
+                style={{
+                  position: 'absolute',
+                  left, width, top, height,
+                  borderRadius: 3,
+                  ...segStyle(kind),
+                  overflow: 'hidden', minWidth: 2,
+                  boxShadow: isSubagent ? `0 0 0 1px ${CT_TOKENS.surface}` : 'none',
+                }}
+              />
+            );
+          });
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProjectHeaderRow({ project, totals, expanded = true, alt = false, onToggle }) {
+  // WP11 P1.4/P1.5: chevron is now an interactive control via onToggle.
+  // P1.5: pill renders active+subagent total (filter-aware totals passed in
+  // from DayTimeline). The legacy single-kind `totals.active` was replaced
+  // with the pre-computed `totals.activePlusSub` to keep the contract clean.
+  // P2 (next phase) will add an away-pill beside the active pill — its prop
+  // arrives via `totals.away` (also filter-aware).
+  return (
+    <div
+      data-project-row
+      data-project-alias={project.alias}
+      data-expanded={expanded ? 'true' : 'false'}
+      style={{
+        display: 'flex',
+        height: PROJECT_HEADER_HEIGHT,
+        borderBottom: `1px solid ${CT_TOKENS.border}`,
+        background: alt ? CT_TOKENS.surfaceAlt : CT_TOKENS.surface,
+      }}>
+      <div style={{
+        width: ROW_LEFT_WIDTH, flexShrink: 0,
+        borderRight: `1px solid ${CT_TOKENS.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '0 12px',
+      }}>
+        <span
+          data-chevron-toggle
+          role="button"
+          aria-label={expanded ? 'collapse project' : 'expand project'}
+          onClick={onToggle ? (e) => { e.stopPropagation(); onToggle(); } : undefined}
+          style={{
+            color: CT_TOKENS.textTertiary, display: 'flex',
+            cursor: onToggle ? 'pointer' : 'default',
+            userSelect: 'none',
+          }}>
           {expanded ? <IconChevDown size={12} /> : <IconChevRight size={12} />}
         </span>
         <span style={{
@@ -2218,12 +2408,27 @@ function ProjectHeaderRow({ project, totals, expanded = true, alt = false }) {
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{project.alias}</span>
         <span style={{ flex: 1 }} />
-        <span style={{
-          fontFamily: CT_TOKENS.mono, fontSize: 11,
-          padding: '2px 7px', borderRadius: 999,
-          background: CT_TOKENS.active, color: '#fff',
-          fontWeight: 500,
-        }}>{fmtDur(totals.active)}</span>
+        <span
+          data-active-pill
+          style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11,
+            padding: '2px 7px', borderRadius: 999,
+            background: CT_TOKENS.active, color: '#fff',
+            fontWeight: 500,
+          }}>{fmtDur(totals.activePlusSub)}</span>
+        {/* WP11 P2.3: away pill — peer to active pill on expanded row label
+            (Q5=A). Same component contract as CollapsedTrackRow's pill so
+            both row states render the away counter identically. */}
+        <span
+          data-away-pill
+          title="Away time (idle/stripe segs)"
+          style={{
+            fontFamily: CT_TOKENS.mono, fontSize: 11,
+            padding: '2px 7px', borderRadius: 999,
+            marginLeft: 6,
+            background: CT_TOKENS.awayBase, color: CT_TOKENS.textSecondary,
+            fontWeight: 500,
+          }}>{fmtDur(totals.away)}</span>
       </div>
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <HourGridBackground />
@@ -2251,12 +2456,15 @@ function SessionRow({ session, alt = false, selectedSegId = null, onSelect, last
     ? dayOffsetMin(session.day_iso, dw.windowStartIso)
     : 0;
   return (
-    <div style={{
-      display: 'flex',
-      height: ROW_HEIGHT,
-      borderBottom: lastInGroup ? `1px solid ${CT_TOKENS.border}` : `1px solid ${CT_TOKENS.gridHour}`,
-      background: alt ? CT_TOKENS.rowAlt : CT_TOKENS.surface,
-    }}>
+    <div
+      data-session-row
+      data-session-id={session.id}
+      style={{
+        display: 'flex',
+        height: ROW_HEIGHT,
+        borderBottom: lastInGroup ? `1px solid ${CT_TOKENS.border}` : `1px solid ${CT_TOKENS.gridHour}`,
+        background: alt ? CT_TOKENS.rowAlt : CT_TOKENS.surface,
+      }}>
       <div style={{
         width: ROW_LEFT_WIDTH, flexShrink: 0,
         borderRight: `1px solid ${CT_TOKENS.border}`,
@@ -2513,16 +2721,37 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true, vi
     : null;
   const nowLabel = `${String(Math.floor(nowMin / 60)).padStart(2, '0')}:${String(nowMin % 60).padStart(2, '0')}`;
 
-  // Compute project totals
+  // WP11 P1.5: per-project filter-aware totals. `activePlusSub` is the sum
+  // shown by the row-label pill — gated by the user's filterKinds chips
+  // (toggling `active` or `subagent` OFF shrinks the pill correspondingly).
+  // `away` is the per-project away total used by Phase 2's away-pill (the
+  // prop is plumbed here so Phase 2 only needs to render).
+  const { kinds: hdrFilterKinds } = useFilter();
   const totalsByProject = {};
   for (const p of data.projects) {
     const allSegs = p.sessions.flatMap(s => s.segs);
+    const activeOn = hdrFilterKinds.active !== false;
+    const subagentOn = hdrFilterKinds.subagent !== false;
+    const awayOn = hdrFilterKinds.away !== false;
+    const activePart = activeOn ? sumKind(allSegs, 'active') : 0;
+    const subagentPart = subagentOn ? sumKind(allSegs, 'subagent') : 0;
     totalsByProject[p.id] = {
-      active: sumActive(allSegs),
+      activePlusSub: activePart + subagentPart,
       reading: sumKind(allSegs, 'reading'),
       thinking: sumKind(allSegs, 'thinking'),
+      away: awayOn ? sumKind(allSegs, 'away') : 0,
     };
   }
+  // WP11 P1.7: dayOffset helper for collapsed-track rendering. Multi-day
+  // sessions carry a `day_iso` tag; convert to minute-of-window offset using
+  // the same dayOffsetMin helper SessionRow uses (preserves alignment
+  // between collapsed and expanded views).
+  const dayOffsetForSession = React.useCallback((s) => {
+    if (s.day_iso && dwCtx.windowStartIso) {
+      return dayOffsetMin(s.day_iso, dwCtx.windowStartIso);
+    }
+    return 0;
+  }, [dwCtx.windowStartIso]);
 
   return (
    <DataWindowContext.Provider value={dwCtx}>
@@ -2629,14 +2858,42 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true, vi
         )}
         {mitigatedProjects.map((p, pi) => {
           const expanded = expandedProjects.includes(p.id);
+          const handleToggle = () => onToggleExpand && onToggleExpand(p.id);
+          if (!expanded) {
+            // WP11 P1.7: collapsed → render single merged-by-kind track row.
+            // The data-project-row / data-project-alias selectors are on the
+            // CollapsedTrackRow itself (no wrapper div) — matches the
+            // expanded-row pattern below where wrapping <div> carries those
+            // attributes.
+            return (
+              <CollapsedTrackRow
+                key={p.id}
+                project={p}
+                totals={totalsByProject[p.id]}
+                alt={pi % 2 === 1}
+                onToggle={handleToggle}
+                dayOffsetForSession={dayOffsetForSession}
+              />
+            );
+          }
+          // WP11 P1.7: expanded → ProjectHeaderRow + per-session SessionRows.
+          // The wrapper is a layout-only React.Fragment — `data-project-row` +
+          // `data-project-alias` + `data-expanded` live on the inner
+          // ProjectHeaderRow (mirrors the CollapsedTrackRow pattern: attrs on
+          // the row element itself, never on a surrounding wrapper).
+          // P1.4-extension fix (2026-06-06 verify-self back-loop): a previous
+          // wrapping <div> with `data-project-row` produced nested-duplicate
+          // selectors that inflated document.querySelectorAll counts.
           return (
-            <div
-              key={p.id}
-              data-project-row
-              data-project-alias={p.alias}
-            >
-              <ProjectHeaderRow project={p} totals={totalsByProject[p.id]} expanded={expanded} alt={pi % 2 === 1} />
-              {expanded && p.sessions.map((s, si) => (
+            <React.Fragment key={p.id}>
+              <ProjectHeaderRow
+                project={p}
+                totals={totalsByProject[p.id]}
+                expanded={true}
+                alt={pi % 2 === 1}
+                onToggle={handleToggle}
+              />
+              {p.sessions.map((s, si) => (
                 <SessionRow
                   key={s.day_iso ? `${s.day_iso}:${s.id}` : s.id}
                   session={s}
@@ -2645,7 +2902,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true, vi
                   lastInGroup={si === p.sessions.length - 1}
                 />
               ))}
-            </div>
+            </React.Fragment>
           );
         })}
       </div>

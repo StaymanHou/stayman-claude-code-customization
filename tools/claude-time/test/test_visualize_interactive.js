@@ -642,13 +642,37 @@ async function runTests() {
       // changes which project is first in DOM order — relying on
       // `[data-seg-id]:first` is fragile because the first matched seg may
       // now sit on the right half of the timeline directly under the panel.
+      // Post-WP11 (2026-06-06 codify triage): default-load is COLLAPSED →
+      // [data-seg-id] is empty until a row expands. CollapsedTrackRow emits
+      // [data-collapsed-seg] in the collapsed state — equally valid as an
+      // outside-the-panel target. Use the union selector so the test works
+      // regardless of the row's expanded/collapsed state.
       await page.evaluate(() => {
-        const segs = Array.from(document.querySelectorAll('[data-seg-id]'));
-        // Pick a left-half segment: data-seg-id format is "<kind>-<start>-<end>"
-        // where <start> is minute-of-day. Any seg with start < 720 (noon) is safe.
+        const segs = Array.from(document.querySelectorAll('[data-seg-id], [data-collapsed-seg]'));
+        // Pick a left-half segment: seg-id format is "<kind>-<start>-<end>"
+        // where <start> is minute-of-day. data-collapsed-seg uses the same
+        // key pattern via React's key={`${kind}-${s}-${e}`} but doesn't expose
+        // it as an attribute — fall back to bounding-rect midpoint for the
+        // collapsed-seg variant (its position is set via inline `left` style
+        // computed from viewportPct, so the geometric left-half check works).
+        const containerLeft = (() => {
+          // Pick the timeline container's clientWidth midpoint
+          const c = document.querySelector('[data-row-density-mitigation]')
+                    || document.querySelector('[data-project-row]');
+          return c ? c.getBoundingClientRect().left + c.getBoundingClientRect().width / 2 : null;
+        })();
         const safe = segs.find(el => {
-          const m = /-(\d+)-(\d+)$/.exec(el.getAttribute('data-seg-id') || '');
-          return m && parseInt(m[1], 10) < 720;
+          // Prefer the data-seg-id format extraction when present (deterministic).
+          const sid = el.getAttribute('data-seg-id');
+          if (sid) {
+            const m = /-(\d+)-(\d+)$/.exec(sid);
+            if (m) return parseInt(m[1], 10) < 720;
+          }
+          // Fallback for collapsed-seg: geometric left-half check.
+          if (containerLeft !== null) {
+            return el.getBoundingClientRect().left < containerLeft;
+          }
+          return true;
         }) || segs[0];
         if (safe) safe.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
       });
@@ -874,9 +898,15 @@ async function runTests() {
           togglePresent: !!toggle,
         };
       });
-      check('WP10-P2 behavioral: HeadlineCard renders w/ 3 tiles (engaged-session, human, ai-effort) + chevron',
+      // Updated 2026-06-06 (WP11 P2 codify): originally asserted 3 tiles
+      // (engaged-session/human/ai-effort). WP11 P2 added a 4th `away` tile
+      // per spec Q3=A; the assertion now allows 3 OR 4 tiles AND requires
+      // the original three are still present. This keeps the test as a
+      // structural pin on the original metrics card without re-failing
+      // every time a new peer tile is added.
+      check('WP10-P2 behavioral: HeadlineCard renders w/ original 3 tiles (engaged-session, human, ai-effort) + chevron',
         shape.cardPresent && shape.expanded === 'false' &&
-        shape.tileIds.length === 3 &&
+        shape.tileIds.length >= 3 &&
         shape.tileIds.includes('engaged-session') &&
         shape.tileIds.includes('human') &&
         shape.tileIds.includes('ai-effort') &&
@@ -2010,6 +2040,284 @@ async function runTests() {
         JSON.stringify(orderNarrow) !== JSON.stringify(orderEvening) &&
           orderNarrow.length >= 1 && orderEvening.length >= 1,
         `narrow=${JSON.stringify(orderNarrow)} evening=${JSON.stringify(orderEvening)}`);
+
+      await page.close();
+    }
+
+    // ── v3 WP11 P1: Collapsible rows + per-project pills + URL hash (behavioral) ──
+    //
+    // Pins: (1) Default-load is fully collapsed (chevrons RIGHT, no data-session-row);
+    // (2) chevron click expands + writes URL hash + renders data-session-row;
+    // (3) second click collapses + default-elides hash (drops `expanded` key);
+    // (4) direct hash navigation #expanded=A,B restores those two rows expanded
+    //     on initial mount (hash-restore initializer path);
+    // (5) filter chip toggle (active OFF) shrinks the per-project pill;
+    // (6) no duplicate [data-project-row] selector under expansion (regression
+    //     pin from the F9b back-loop fix at 2026-06-06 — the original P1.7
+    //     wrapper carried duplicate data-project-row attrs).
+    //
+    // Page-reload pattern: WP9 P4 established that `goto(URL + '#hash')` does
+    // not always force the initializer to re-evaluate (Babel-JIT timing); use
+    // `goto()` + `reload()` and wait on a known late-mounting marker (here,
+    // [data-collapsed-track] for the rendered-CollapsedTrackRow body).
+    {
+      const page = await browser.newPage();
+
+      // (1) Default-load: no hash → all rows collapsed, no per-session rows.
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-collapsed-track]').length >= 1, { timeout: 5000 });
+      await page.waitForTimeout(200);
+      const defaultLoad = await page.evaluate(() => {
+        const allRows = document.querySelectorAll('[data-project-row]');
+        const expandedTrue = document.querySelectorAll('[data-project-row][data-expanded="true"]');
+        const collapsedTracks = document.querySelectorAll('[data-collapsed-track]');
+        const sessionRows = document.querySelectorAll('[data-session-row]');
+        return {
+          hash: window.location.hash,
+          allRowsCount: allRows.length,
+          expandedTrueCount: expandedTrue.length,
+          collapsedTracksCount: collapsedTracks.length,
+          sessionRowsCount: sessionRows.length,
+        };
+      });
+      check('v3 WP11 P1 behavioral 1: default-load is fully collapsed (no #expanded; 0 expanded rows; 0 data-session-row)',
+        defaultLoad.hash === '' &&
+          defaultLoad.allRowsCount >= 1 &&
+          defaultLoad.expandedTrueCount === 0 &&
+          defaultLoad.collapsedTracksCount === defaultLoad.allRowsCount &&
+          defaultLoad.sessionRowsCount === 0,
+        JSON.stringify(defaultLoad));
+
+      // (2) Chevron click → expands one row + writes URL hash + emits data-session-row.
+      // Use React-fiber dispatch to bypass Babel-JIT synthetic-click flakiness.
+      const firstAlias = await page.evaluate(() => {
+        const r = document.querySelector('[data-project-row]');
+        return r && r.getAttribute('data-project-alias');
+      });
+      await page.evaluate(() => {
+        const chev = document.querySelector('[data-chevron-toggle]');
+        const propsKey = Object.keys(chev).find(k => k.startsWith('__reactProps'));
+        chev[propsKey].onClick({ stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);  // debounced hash-write effect (100ms)
+      const afterClick = await page.evaluate(() => {
+        const expandedTrue = document.querySelectorAll('[data-project-row][data-expanded="true"]');
+        const expandedAlias = Array.from(expandedTrue).map(r => r.getAttribute('data-project-alias'));
+        const sessionRows = document.querySelectorAll('[data-session-row]');
+        return {
+          hash: window.location.hash,
+          expandedAlias,
+          sessionRowsCount: sessionRows.length,
+        };
+      });
+      check('v3 WP11 P1 behavioral 2: chevron click → expands row + writes hash + renders data-session-row',
+        afterClick.expandedAlias.length === 1 &&
+          afterClick.expandedAlias[0] === firstAlias &&
+          afterClick.sessionRowsCount >= 1 &&
+          afterClick.hash.includes('expanded=' + firstAlias),
+        JSON.stringify({afterClick, firstAlias}));
+
+      // (3) Second click → collapses + default-elides the hash key.
+      await page.evaluate(() => {
+        const chev = document.querySelector('[data-chevron-toggle]');
+        const propsKey = Object.keys(chev).find(k => k.startsWith('__reactProps'));
+        chev[propsKey].onClick({ stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);  // debounce
+      const afterCollapse = await page.evaluate(() => ({
+        hash: window.location.hash,
+        expandedTrueCount: document.querySelectorAll('[data-project-row][data-expanded="true"]').length,
+        sessionRowsCount: document.querySelectorAll('[data-session-row]').length,
+      }));
+      check('v3 WP11 P1 behavioral 3: second click → collapses + default-elides hash (drops expanded key)',
+        !afterCollapse.hash.includes('expanded=') &&
+          afterCollapse.expandedTrueCount === 0 &&
+          afterCollapse.sessionRowsCount === 0,
+        JSON.stringify(afterCollapse));
+
+      // (4) Direct hash nav: #expanded=A,B restores those two rows expanded
+      // on initial mount (hash-restore initializer path).
+      // Grab 2 valid aliases first to construct the hash.
+      const aliases = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-project-row]'))
+          .map(r => r.getAttribute('data-project-alias')));
+      const twoAliases = aliases.slice(0, 2);
+      await page.goto(URL_BASE + '/dash.html#expanded=' + twoAliases.join(','));
+      await page.reload();
+      await page.waitForFunction(() => document.querySelectorAll('[data-project-row]').length >= 1, { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const restored = await page.evaluate(() => {
+        const expandedTrue = document.querySelectorAll('[data-project-row][data-expanded="true"]');
+        return Array.from(expandedTrue).map(r => r.getAttribute('data-project-alias'));
+      });
+      check('v3 WP11 P1 behavioral 4: direct hash nav #expanded=A,B restores those two rows expanded on initial mount',
+        restored.length === 2 &&
+          restored.includes(twoAliases[0]) &&
+          restored.includes(twoAliases[1]),
+        JSON.stringify({restored, twoAliases}));
+
+      // (5) Filter-aware pill: toggling `active` chip OFF shrinks the
+      // active+subagent pill. Capture pill text before + after toggle.
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-active-pill]').length >= 1, { timeout: 5000 });
+      await page.waitForTimeout(200);
+      const pillBefore = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-active-pill]')).map(p => p.textContent));
+      // Click the `active` filter chip via React-fiber dispatch. The selector
+      // convention is [data-filter-kind="<kind>"] (established by WP9 Legend
+      // component; documented in dashboard.jsx::Legend at line 1622).
+      await page.evaluate(() => {
+        const chip = document.querySelector('[data-filter-kind="active"]');
+        if (!chip) throw new Error('no [data-filter-kind="active"] selector');
+        const propsKey = Object.keys(chip).find(k => k.startsWith('__reactProps'));
+        chip[propsKey].onClick({ stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);
+      const pillAfter = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-active-pill]')).map(p => p.textContent));
+      // The pill values should differ (shrink) when active is toggled off.
+      // (If the chip selector doesn't exist or click fails, before==after and we still report.)
+      const pillsChanged = JSON.stringify(pillBefore) !== JSON.stringify(pillAfter);
+      check('v3 WP11 P1 behavioral 5: toggling `active` filter chip OFF shrinks per-project pill values',
+        pillsChanged,
+        JSON.stringify({pillBefore, pillAfter}));
+
+      // (6) Regression pin: no duplicate [data-project-row] under expansion
+      // (F9b back-loop fix from 2026-06-06). Expand one row, count selectors,
+      // confirm count equals project count (no nested-wrapper inflation).
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-collapsed-track]').length >= 1, { timeout: 5000 });
+      await page.waitForTimeout(200);
+      const beforeExpand = await page.evaluate(() =>
+        document.querySelectorAll('[data-project-row]').length);
+      await page.evaluate(() => {
+        const chev = document.querySelector('[data-chevron-toggle]');
+        const propsKey = Object.keys(chev).find(k => k.startsWith('__reactProps'));
+        chev[propsKey].onClick({ stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);
+      const afterExpand = await page.evaluate(() => {
+        const allRows = document.querySelectorAll('[data-project-row]');
+        const nestedDuplicates = Array.from(allRows).filter(r => r.parentElement && r.parentElement.closest('[data-project-row]')).length;
+        return { rowCount: allRows.length, nestedDuplicates };
+      });
+      check('v3 WP11 P1 behavioral 6: expansion preserves [data-project-row] count (no nested-wrapper duplicates)',
+        afterExpand.rowCount === beforeExpand && afterExpand.nestedDuplicates === 0,
+        JSON.stringify({beforeExpand, afterExpand}));
+
+      await page.close();
+    }
+
+    // ── v3 WP11 P2: Away-total surface (behavioral) ──
+    //
+    // Pins: (1) HeadlineCard renders 4 tiles in order [engaged-session,
+    // human, ai-effort, away]; (2) data-away-pill renders on every
+    // [data-project-row] (collapsed default-load); (3) away pill on EXPANDED
+    // row (P2 verify-human covered explicitly); (4) `away` filter chip
+    // toggle zeros all three surfaces in lockstep (single-source-of-truth
+    // filter projection gate at the helpers); (5) the away-pill visual
+    // distinguishes from the active-pill (different computed background).
+    //
+    // Note: --demo fixture has NO away segs → all away values render as 0m.
+    // The behavioral checks here assert STRUCTURE + plumbing, not numeric
+    // values. Real-data away-total semantics were covered at P2 verify-human.
+    {
+      const page = await browser.newPage();
+
+      // (1) Four-tile HeadlineCard in correct order with 'away' as 4th.
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-metric-tile]').length === 4, { timeout: 5000 });
+      const tilesOrder = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-metric-tile]')).map(t => t.getAttribute('data-metric-tile')));
+      check('v3 WP11 P2 behavioral 1: HeadlineCard renders 4 tiles in canonical order ending with `away`',
+        JSON.stringify(tilesOrder) === JSON.stringify(['engaged-session', 'human', 'ai-effort', 'away']),
+        JSON.stringify(tilesOrder));
+
+      // (2) Every [data-project-row] has one [data-away-pill] (default
+      // collapsed state — pill renders on CollapsedTrackRow).
+      const collapsedPills = await page.evaluate(() => ({
+        rowCount: document.querySelectorAll('[data-project-row]').length,
+        awayPillCount: document.querySelectorAll('[data-away-pill]').length,
+      }));
+      check('v3 WP11 P2 behavioral 2: every [data-project-row] has a [data-away-pill] in collapsed state',
+        collapsedPills.rowCount >= 1 && collapsedPills.awayPillCount === collapsedPills.rowCount,
+        JSON.stringify(collapsedPills));
+
+      // (3) Expand a row; confirm the expanded ProjectHeaderRow ALSO renders
+      // the away pill (P2 verify-human leaf 2 — the pill must render on
+      // BOTH collapsed and expanded variants).
+      await page.evaluate(() => {
+        const chev = document.querySelector('[data-chevron-toggle]');
+        const propsKey = Object.keys(chev).find(k => k.startsWith('__reactProps'));
+        chev[propsKey].onClick({ stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);
+      const expandedPills = await page.evaluate(() => {
+        // Count pills in the EXPANDED row's header. Walk from a
+        // [data-project-row][data-expanded="true"] and find [data-away-pill]
+        // inside its subtree (limited to the row header — exclude any
+        // descendants of [data-session-row]).
+        const expanded = document.querySelector('[data-project-row][data-expanded="true"]');
+        if (!expanded) return { found: false };
+        const pill = expanded.querySelector('[data-away-pill]');
+        return {
+          found: true,
+          hasAwayPill: !!pill,
+          pillText: pill ? pill.textContent : null,
+          rowCount: document.querySelectorAll('[data-project-row]').length,
+          awayPillCount: document.querySelectorAll('[data-away-pill]').length,
+        };
+      });
+      check('v3 WP11 P2 behavioral 3: expanded row also renders [data-away-pill] in its header',
+        expandedPills.found && expandedPills.hasAwayPill &&
+          expandedPills.awayPillCount === expandedPills.rowCount,
+        JSON.stringify(expandedPills));
+
+      // (4) `away` filter chip toggle: away surfaces respond in lockstep.
+      // Toggle away OFF; data-filter-on should flip + all away pill values
+      // should be `0m`/empty (filter-gate at the helpers zeros all surfaces).
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-filter-kind]').length >= 5, { timeout: 5000 });
+      await page.evaluate(() => {
+        const chip = document.querySelector('[data-filter-kind="away"]');
+        const propsKey = Object.keys(chip).find(k => k.startsWith('__reactProps'));
+        chip[propsKey].onClick({ stopPropagation: () => {} });
+      });
+      await page.waitForTimeout(200);
+      const afterAwayOff = await page.evaluate(() => {
+        const chip = document.querySelector('[data-filter-kind="away"]');
+        const pills = Array.from(document.querySelectorAll('[data-away-pill]')).map(p => p.textContent);
+        return {
+          chipState: chip && chip.getAttribute('data-filter-on'),
+          pillTexts: pills,
+          hash: window.location.hash,
+        };
+      });
+      check('v3 WP11 P2 behavioral 4: `away` filter chip OFF → data-filter-on=false, hash updates, away pills zeroed',
+        afterAwayOff.chipState === 'false' &&
+          afterAwayOff.pillTexts.every(t => t === '0m' || t === '0s') &&
+          !afterAwayOff.hash.includes('away') === false ||
+          afterAwayOff.hash.includes('filters='),
+        JSON.stringify(afterAwayOff));
+
+      // (5) Visual distinguishability: away-pill background ≠ active-pill
+      // background (regression pin against accidental token reuse).
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-away-pill]').length >= 1, { timeout: 5000 });
+      const styles = await page.evaluate(() => {
+        const away = document.querySelector('[data-away-pill]');
+        const active = document.querySelector('[data-active-pill]');
+        if (!away || !active) return { found: false };
+        return {
+          found: true,
+          awayBg: getComputedStyle(away).backgroundColor,
+          activeBg: getComputedStyle(active).backgroundColor,
+          distinct: getComputedStyle(away).backgroundColor !== getComputedStyle(active).backgroundColor,
+        };
+      });
+      check('v3 WP11 P2 behavioral 5: away-pill background visually distinct from active-pill (different computed bg)',
+        styles.found && styles.distinct,
+        JSON.stringify(styles));
 
       await page.close();
     }
