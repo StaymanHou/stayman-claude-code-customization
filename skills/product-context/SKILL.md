@@ -63,6 +63,8 @@ This generated `CLAUDE.md` is the **primary enforcement mechanism** for the Dev 
 
 **First-run bootstrap:** `<e.g., docker compose build && docker compose up -d>`
 
+**Randomize host ports.** In `docker-compose.yml`, randomize every `host:container` left-hand port from the ephemeral range (49152-65535) rather than using the service's well-known default. The container-internal (right-hand) port stays canonical (postgres 5432, redis 6379, vite 5173, etc.); only the host side is randomized. Pick with `python3 -c "import random; print(random.randint(49152, 65535))"`; confirm free with `lsof -nP -iTCP:<port> -sTCP:LISTEN`. Add a one-line comment next to each mapping so future readers don't "fix" it back: `- "58329:5173"  # host port randomized to avoid collisions`. Rationale: well-known defaults collide when multiple project checkouts share one host — a `5173:5173` mapping will land on whichever Vite-like project booted first, and tests against `http://localhost:5173` may silently hit the wrong app. Applies to dev compose only; prod compose files can keep defaults.
+
 **Rule for agents and humans alike:** if you catch yourself about to run `pytest`, `npm test`, `pip install`, `python manage.py …`, `cargo …`, etc. directly on the host, STOP and prefix it with the command above. Running on the host bypasses the project environment and the results are not trustworthy. There is no "just this once" exception.
 
 If the Docker daemon is unreachable, STOP and ask the user to start it. Do not fall back to the host OS.

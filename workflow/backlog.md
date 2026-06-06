@@ -1,5 +1,14 @@
 # Backlog
 
+## SURFACE-2026-06-06-SETTINGS-FIXTURE-MODEL-DRIFT
+- **Source:** feature:verify-self (docker-init-randomize-host-ports, 2026-06-06) — pre-existing failure surfaced during structural sweep, not introduced by this feature.
+- **Target level:** task:plan (small/simple — one-line fixture update or `INTENTIONAL_DIFFS` entry).
+- **Type:** test-infra / fixture drift
+- **Summary:** `tests/check-structure.sh` reports 1 FAIL: `settings fixture in sync with live (modulo documented diffs): drift detected — model: live=<missing> fixture="opus[1m]"`. The live `~/.claude/settings.json` no longer has a `model` field (or it's been removed/renamed), but the fixture at `tests/fixtures/settings.json` still asserts `model: "opus[1m]"`. Net effect: structural sweep always shows 124/125, masking real future fixture regressions.
+- **Suggested action:** Two options: (a) update `tests/fixtures/settings.json` to drop the `model` field (match live); (b) add the field to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` if the difference is intentionally tolerated. Lean: (a) — the fixture should track live unless there's a reason to pin a specific model harness fingerprint.
+- **Priority:** low — masks no real signal today, but every additional drifted field weakens the fixture's value as a regression net.
+- **Status:** open
+
 ## SURFACE-2026-06-06-DOCKER-INIT-RANDOMIZE-HOST-PORTS
 - **Source:** Cross-project learning persisted from `replicator-1-0` WP13-operator-review-ui Phase 1 verify-self (2026-06-06). Full learning doc at `/Users/stayman/Personal/projects/replicator-1-0/.claude/learnings/2026-06-06-docker-init-randomize-host-ports.md` (scope: global).
 - **Target level:** harness / global CLAUDE.md (`~/.claude/CLAUDE.md`) — proposed new "Docker / dev environment" section, OR addition to an existing dev-environment block.
