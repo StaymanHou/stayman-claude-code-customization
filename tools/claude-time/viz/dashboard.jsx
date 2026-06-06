@@ -1790,6 +1790,42 @@ function dayOffsetMin(day_iso, window_start_iso) {
   return Math.round((d - start) / 60_000);
 }
 
+// WP10: Day-view row-density mitigation.
+// Auto-hide projects with zero segment activity inside the current viewport;
+// sort surviving projects by latest viewport-overlapping segment end-time
+// descending, alias-alphabetical tiebreak. Multi-day mode applies per-session
+// day_iso offset before viewport-intersection (matches minimap pattern at
+// dashboard.jsx allSegs flatMap below).
+// Returns { survivors: Project[], droppedCount: number }.
+function _applyRowDensityMitigation(projects, viewport, dwCtx) {
+  const vStart = viewport.visible_start_min;
+  const vEnd = viewport.visible_end_min;
+  const windowStart = dwCtx && dwCtx.windowStartIso;
+  const ranked = [];
+  for (const p of projects) {
+    let latestEnd = -Infinity;
+    for (const s of (p.sessions || [])) {
+      const off = (s.day_iso && windowStart) ? dayOffsetMin(s.day_iso, windowStart) : 0;
+      for (const seg of (s.segs || [])) {
+        const segStart = seg.start + off;
+        const segEnd = seg.end + off;
+        if (segEnd <= vStart || segStart >= vEnd) continue; // no viewport overlap
+        const effectiveEnd = Math.min(segEnd, vEnd);
+        if (effectiveEnd > latestEnd) latestEnd = effectiveEnd;
+      }
+    }
+    if (latestEnd > -Infinity) ranked.push({ p, latestEnd });
+  }
+  ranked.sort((x, y) => {
+    if (x.latestEnd !== y.latestEnd) return y.latestEnd - x.latestEnd;
+    return (x.p.alias || '').localeCompare(y.p.alias || '');
+  });
+  return {
+    survivors: ranked.map(r => r.p),
+    droppedCount: projects.length - ranked.length,
+  };
+}
+
 // Initial viewport derives from the window-end day's payload in
 // `day_payloads_by_iso` (v3 routing; was the `today` alias pre-WP9). Two
 // modes: (1) day payload with `hour_range` present → use that; (2) defensive
@@ -2414,7 +2450,7 @@ function useTimelineGestures(viewport, setViewport, dataWindow) {
 }
 
 /* ── Day view (project list + sessions) ─────────────────────── */
-function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) {
+function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true, view = 'day' }) {
   const { nowMin, todayISO } = useNowMin();
   const viewport = useViewport();
   const setViewport = useViewportSetter();
@@ -2442,6 +2478,19 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
     () => data.projects.filter(p => projectFilter[p.id] !== false),
     [data.projects, projectFilter]
   );
+
+  // WP10: session-local auto-hide toggle. Defaults on (mitigation active).
+  // Day-view only — Custom view (also rendered via DayTimeline) bypasses.
+  const [autoHideOn, setAutoHideOn] = React.useState(true);
+  const mitigation = React.useMemo(() => {
+    if (view !== 'day' || !autoHideOn) {
+      return { survivors: visibleProjects, droppedCount: 0 };
+    }
+    return _applyRowDensityMitigation(visibleProjects, viewport, dwCtx);
+  }, [view, autoHideOn, visibleProjects, viewport, dwCtx]);
+  const mitigatedProjects = mitigation.survivors;
+  const droppedCount = mitigation.droppedCount;
+  const mitigationActive = view === 'day' && autoHideOn;
 
   const gestures = useTimelineGestures(viewport, setViewport, dataWindow);
 
@@ -2518,7 +2567,55 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
       </div>
 
       {/* Body rows */}
-      <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+      <div
+        style={{ flex: 1, overflow: 'auto', position: 'relative' }}
+        data-row-density-mitigation={mitigationActive ? 'on' : 'off'}
+        data-row-density-dropped={String(droppedCount)}
+      >
+        {/* WP10: escape-hatch chip for Day-view row-density mitigation. */}
+        {view === 'day' && (droppedCount > 0 || !autoHideOn) && (
+          <div
+            data-row-density-chip
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '4px 12px',
+              fontSize: 11, fontFamily: CT_TOKENS.sans,
+              color: CT_TOKENS.textTertiary,
+              background: CT_TOKENS.surfaceAlt,
+              borderBottom: `1px solid ${CT_TOKENS.border}`,
+            }}
+          >
+            {autoHideOn ? (
+              <>
+                <span>{droppedCount} {droppedCount === 1 ? 'project' : 'projects'} hidden</span>
+                <span style={{ color: CT_TOKENS.textTertiary }}>—</span>
+                <button
+                  data-show-all
+                  onClick={() => setAutoHideOn(false)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0,
+                    cursor: 'pointer', font: 'inherit',
+                    color: CT_TOKENS.active, textDecoration: 'underline',
+                  }}
+                >show all</button>
+              </>
+            ) : (
+              <>
+                <span>Showing all projects</span>
+                <span style={{ color: CT_TOKENS.textTertiary }}>—</span>
+                <button
+                  data-show-all-off
+                  onClick={() => setAutoHideOn(true)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0,
+                    cursor: 'pointer', font: 'inherit',
+                    color: CT_TOKENS.active, textDecoration: 'underline',
+                  }}
+                >re-enable auto-hide</button>
+              </>
+            )}
+          </div>
+        )}
         {/* Full-height now line */}
         {nowFrac != null && (
           <div style={{
@@ -2530,10 +2627,14 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
             pointerEvents: 'none', zIndex: 1,
           }} />
         )}
-        {visibleProjects.map((p, pi) => {
+        {mitigatedProjects.map((p, pi) => {
           const expanded = expandedProjects.includes(p.id);
           return (
-            <React.Fragment key={p.id}>
+            <div
+              key={p.id}
+              data-project-row
+              data-project-alias={p.alias}
+            >
               <ProjectHeaderRow project={p} totals={totalsByProject[p.id]} expanded={expanded} alt={pi % 2 === 1} />
               {expanded && p.sessions.map((s, si) => (
                 <SessionRow
@@ -2544,7 +2645,7 @@ function DayTimeline({ data, expandedProjects, selectedSegId, showNow = true }) 
                   lastInGroup={si === p.sessions.length - 1}
                 />
               ))}
-            </React.Fragment>
+            </div>
           );
         })}
       </div>
@@ -3421,6 +3522,7 @@ function Dashboard({ variant }) {
                 : ['claude-time', 'agent-handoff-protocol']
             }
             selectedSegId={selectedSegId}
+            view="day"
           />
         ) : (
           <WeekTimeline data={week} />

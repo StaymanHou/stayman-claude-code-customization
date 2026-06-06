@@ -988,6 +988,7 @@ function Dashboard() {
               expandedProjects={expandedProjects}
               selectedSegId={selectedSegId}
               onSelectSeg={setSelectedSegId}
+              view={isCustom ? 'custom' : 'day'}
             />
           )
         ) : (
@@ -1118,10 +1119,12 @@ def _wire_bar_click(jsx: str) -> str:
     jsx = jsx.replace(old_segbar_render, new_segbar_render)
 
     # 3. DayTimeline — accept onSelectSeg and forward to SessionRow.
+    # WP10: source signature now carries `view = 'day'` (Day-only mitigation gate);
+    # transform appends onSelectSeg after it.
     old_daytimeline_sig = ("function DayTimeline({ data, expandedProjects, "
-                           "selectedSegId, showNow = true }) {")
+                           "selectedSegId, showNow = true, view = 'day' }) {")
     new_daytimeline_sig = ("function DayTimeline({ data, expandedProjects, "
-                           "selectedSegId, showNow = true, onSelectSeg }) {")
+                           "selectedSegId, showNow = true, view = 'day', onSelectSeg }) {")
     if old_daytimeline_sig not in jsx:
         raise ValueError("DayTimeline signature not found — has dashboard.jsx changed?")
     jsx = jsx.replace(old_daytimeline_sig, new_daytimeline_sig)

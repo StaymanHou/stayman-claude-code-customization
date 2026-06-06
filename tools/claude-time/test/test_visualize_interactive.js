@@ -635,8 +635,23 @@ async function runTests() {
         return t ? t.getAttribute('data-project-filter-open') : null;
       });
 
-      // Click on an element clearly outside the popover root — first segment bar.
-      await page.click('[data-seg-id]');
+      // Click on an element clearly outside the popover root.
+      // Pick an early-morning active segment (before the noon mark) to ensure
+      // it lands on the left half of the timeline, geographically clear of
+      // the popover panel which renders `right: 0`. Post-WP10, recency-sort
+      // changes which project is first in DOM order — relying on
+      // `[data-seg-id]:first` is fragile because the first matched seg may
+      // now sit on the right half of the timeline directly under the panel.
+      await page.evaluate(() => {
+        const segs = Array.from(document.querySelectorAll('[data-seg-id]'));
+        // Pick a left-half segment: data-seg-id format is "<kind>-<start>-<end>"
+        // where <start> is minute-of-day. Any seg with start < 720 (noon) is safe.
+        const safe = segs.find(el => {
+          const m = /-(\d+)-(\d+)$/.exec(el.getAttribute('data-seg-id') || '');
+          return m && parseInt(m[1], 10) < 720;
+        }) || segs[0];
+        if (safe) safe.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      });
       await page.waitForTimeout(100);
       const openAfter = await page.evaluate(() => {
         const t = document.querySelector('[data-project-filter-trigger]');
@@ -1868,6 +1883,133 @@ async function runTests() {
       check('v3 WP9 P2 behavioral 4: no JS console errors during full post-strip view cycle',
         jsErrors.length === 0,
         jsErrors.join(' | '));
+
+      await page.close();
+    }
+
+    // ── v3 WP10: Day-view row-density mitigation (behavioral codify) ──
+    //
+    // Resolves SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY.
+    // Pins: (1) Day view emits mitigation marker + data-project-row markers;
+    // (2) narrow viewport drops rows + chip appears with correct text;
+    // (3) [data-show-all] click toggles auto-hide off; (4) [data-show-all-off]
+    // click toggles auto-hide back on; (5) Day-only scope — Week view has no
+    // mitigation marker; (6) recency-sort fires (project order differs from
+    // CLI emit order at narrow viewport).
+    {
+      const page = await browser.newPage();
+
+      // (1) Day view: mitigation marker present, data-project-row markers present.
+      await page.goto(URL_BASE + '/dash.html');
+      await page.waitForFunction(() => document.querySelectorAll('[data-row-density-mitigation]').length === 1);
+      const dayInitial = await page.evaluate(() => {
+        const c = document.querySelector('[data-row-density-mitigation]');
+        const rows = Array.from(document.querySelectorAll('[data-project-row]'));
+        return {
+          mitigation: c && c.getAttribute('data-row-density-mitigation'),
+          rowCount: rows.length,
+          aliases: rows.map(r => r.getAttribute('data-project-alias')),
+        };
+      });
+      check('v3 WP10 behavioral 1: Day view emits data-row-density-mitigation="on" + data-project-row markers',
+        dayInitial.mitigation === 'on' && dayInitial.rowCount >= 1,
+        JSON.stringify(dayInitial));
+
+      // (2) Narrow viewport (10:00-12:00 = #viewport=600:720): auto-hide drops
+      // projects with no activity in the visible slice; chip renders.
+      // Wait on window.__dashboardViewport (post-hash-restore state) — not the
+      // marker's mere presence, which is set at first render BEFORE hash-restore.
+      await page.goto(URL_BASE + '/dash.html#viewport=600:720');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const narrow = await page.evaluate(() => {
+        const c = document.querySelector('[data-row-density-mitigation]');
+        const chip = document.querySelector('[data-row-density-chip]');
+        return {
+          mitigation: c && c.getAttribute('data-row-density-mitigation'),
+          dropped: c && c.getAttribute('data-row-density-dropped'),
+          chipText: chip && chip.textContent,
+          visibleRows: document.querySelectorAll('[data-project-row]').length,
+        };
+      });
+      check('v3 WP10 behavioral 2: narrow viewport drops ≥1 project + chip text matches N-projects-hidden pattern',
+        narrow.mitigation === 'on' &&
+          parseInt(narrow.dropped, 10) >= 1 &&
+          /\d+ projects? hidden/.test(narrow.chipText || ''),
+        JSON.stringify(narrow));
+
+      // (3) Click [data-show-all]: auto-hide toggles off, all rows visible,
+      // chip text changes.
+      await page.click('[data-show-all]');
+      await page.waitForTimeout(150);
+      const afterShowAll = await page.evaluate(() => {
+        const c = document.querySelector('[data-row-density-mitigation]');
+        const chip = document.querySelector('[data-row-density-chip]');
+        return {
+          mitigation: c && c.getAttribute('data-row-density-mitigation'),
+          dropped: c && c.getAttribute('data-row-density-dropped'),
+          chipText: chip && chip.textContent,
+          visibleRows: document.querySelectorAll('[data-project-row]').length,
+        };
+      });
+      check('v3 WP10 behavioral 3: [data-show-all] click → mitigation="off", dropped=0, chip="Showing all projects"',
+        afterShowAll.mitigation === 'off' &&
+          afterShowAll.dropped === '0' &&
+          /Showing all projects/.test(afterShowAll.chipText || ''),
+        JSON.stringify(afterShowAll));
+
+      // (4) Click [data-show-all-off]: auto-hide toggles back on.
+      await page.click('[data-show-all-off]');
+      await page.waitForTimeout(150);
+      const afterReEnable = await page.evaluate(() => {
+        const c = document.querySelector('[data-row-density-mitigation]');
+        return {
+          mitigation: c && c.getAttribute('data-row-density-mitigation'),
+          dropped: c && c.getAttribute('data-row-density-dropped'),
+        };
+      });
+      check('v3 WP10 behavioral 4: [data-show-all-off] click → mitigation="on", dropped restored',
+        afterReEnable.mitigation === 'on' && parseInt(afterReEnable.dropped, 10) >= 1,
+        JSON.stringify(afterReEnable));
+
+      // (5) Day-only scope: switch to Week, no mitigation marker.
+      await page.goto(URL_BASE + '/dash.html#view=week');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const weekScope = await page.evaluate(() => ({
+        mitigationPresent: document.querySelectorAll('[data-row-density-mitigation]').length,
+        chipPresent: document.querySelectorAll('[data-row-density-chip]').length,
+        projectRowPresent: document.querySelectorAll('[data-project-row]').length,
+      }));
+      check('v3 WP10 behavioral 5: Week view has no mitigation marker, no chip, no data-project-row (Day-only scope)',
+        weekScope.mitigationPresent === 0 &&
+          weekScope.chipPresent === 0 &&
+          weekScope.projectRowPresent === 0,
+        JSON.stringify(weekScope));
+
+      // (6) Recency-sort fires: at narrow viewport, project order differs from
+      // CLI emit order. The wider-viewport order is the recency order over the
+      // full window; the narrow-viewport order is recency over the narrow slice.
+      // Capture both and assert they differ when activity distribution differs
+      // between the slices (demo data has segments across morning + evening).
+      await page.goto(URL_BASE + '/dash.html#viewport=600:720');
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const orderNarrow = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-project-row]')).map(r => r.getAttribute('data-project-alias')));
+      await page.goto(URL_BASE + '/dash.html#viewport=1140:1380');  // 19:00-23:00
+      await page.reload();
+      await page.waitForFunction(() => typeof window.__dashboardViewport !== 'undefined', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const orderEvening = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-project-row]')).map(r => r.getAttribute('data-project-alias')));
+      check('v3 WP10 behavioral 6: recency-sort reacts to viewport (morning vs evening slices yield different project orders)',
+        JSON.stringify(orderNarrow) !== JSON.stringify(orderEvening) &&
+          orderNarrow.length >= 1 && orderEvening.length >= 1,
+        `narrow=${JSON.stringify(orderNarrow)} evening=${JSON.stringify(orderEvening)}`);
 
       await page.close();
     }

@@ -2608,6 +2608,80 @@ fi
 
 rm -f "$WP9P2_HTML"
 
+# ── v3 WP10: Day-view row-density mitigation (codify, source-shape) ────
+# Pins assert that the emitted HTML contains the WP10 source markers so
+# accidental deletion or transform-bypass surfaces in CI. Behavioral pins
+# (chip text, click-toggle, Day-only scope) live in test_visualize_interactive.js.
+WP10V3_DIR="$(mktemp -d -t claude-time-wp10v3-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10V3_DIR"' EXIT
+WP10V3_HTML="$WP10V3_DIR/wp10v3-demo.html"
+CLAUDE_TIME_DIR="$WP10V3_DIR" "$CLI" visualize --no-open --demo --out "$WP10V3_HTML" > /dev/null 2>&1
+if [ ! -f "$WP10V3_HTML" ]; then
+    check "v3 WP10 codify: --demo emit landed" fail "html missing"
+fi
+
+# v3 WP10-1: _applyRowDensityMitigation helper function present in emitted HTML.
+if grep -qF 'function _applyRowDensityMitigation(' "$WP10V3_HTML"; then
+    check "v3 WP10 codify: _applyRowDensityMitigation helper present" pass
+else
+    check "v3 WP10 codify: _applyRowDensityMitigation helper" fail "function missing"
+fi
+
+# v3 WP10-2: DayTimeline signature carries the new view='day' default prop
+# (emit-shape — the transform appends onSelectSeg, so the emitted form is
+# `view = 'day', onSelectSeg`).
+if grep -qF "view = 'day', onSelectSeg" "$WP10V3_HTML"; then
+    check "v3 WP10 codify: DayTimeline signature carries view='day' default + onSelectSeg" pass
+else
+    check "v3 WP10 codify: DayTimeline signature" fail "view='day' default not present in emit"
+fi
+
+# v3 WP10-3: data-row-density-mitigation + data-row-density-dropped attrs
+# rendered on the project-rows container.
+if grep -qF 'data-row-density-mitigation=' "$WP10V3_HTML" && \
+   grep -qF 'data-row-density-dropped=' "$WP10V3_HTML"; then
+    check "v3 WP10 codify: data-row-density-{mitigation,dropped} container attrs present" pass
+else
+    check "v3 WP10 codify: data-row-density container attrs" fail "missing"
+fi
+
+# v3 WP10-4: escape-hatch chip selectors present (data-row-density-chip + both toggle buttons).
+if grep -qF 'data-row-density-chip' "$WP10V3_HTML" && \
+   grep -qF 'data-show-all' "$WP10V3_HTML" && \
+   grep -qF 'data-show-all-off' "$WP10V3_HTML"; then
+    check "v3 WP10 codify: chip selectors (data-row-density-chip, data-show-all, data-show-all-off) present" pass
+else
+    check "v3 WP10 codify: chip selectors" fail "one or more chip selectors missing"
+fi
+
+# v3 WP10-5: data-project-row + data-project-alias markers on each rendered row.
+if grep -qF 'data-project-row' "$WP10V3_HTML" && \
+   grep -qF 'data-project-alias=' "$WP10V3_HTML"; then
+    check "v3 WP10 codify: per-row data-project-{row,alias} markers present" pass
+else
+    check "v3 WP10 codify: per-row data-project markers" fail "missing"
+fi
+
+# v3 WP10-6: _interactive_dashboard wires view={isCustom ? 'custom' : 'day'}
+# at the DayTimeline call site. This is the Day-only scope mechanism — if it
+# regresses to view='day' or view='custom' unconditionally, Custom view will
+# either erroneously inherit the mitigation or Day will lose it.
+if grep -qF "view={isCustom ? 'custom' : 'day'}" "$WP10V3_HTML"; then
+    check "v3 WP10 codify: DayTimeline call site routes view by isCustom (Day-only scope gate)" pass
+else
+    check "v3 WP10 codify: DayTimeline view routing" fail "view={isCustom ? 'custom' : 'day'} not present at call site"
+fi
+
+# v3 WP10-7: mitigatedProjects useMemo wires through view + autoHideOn gate
+# (regression-pin against accidentally bypassing the gate).
+if grep -qF "_applyRowDensityMitigation(visibleProjects, viewport, dwCtx)" "$WP10V3_HTML"; then
+    check "v3 WP10 codify: mitigation useMemo invokes helper with viewport + dwCtx" pass
+else
+    check "v3 WP10 codify: mitigation useMemo wiring" fail "helper invocation pattern not in emit"
+fi
+
+rm -f "$WP10V3_HTML"
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo
 echo "=== claude-time visualize CLI test summary ==="
