@@ -16,10 +16,13 @@ window.CT_DATA = (() => {
   // subagent — teal nested inside its parent
 
   // ── Today (Wed May 13, 2026) ──────────────────────────────────
+  // WP12 P2.4: hour_range extended from [6, 23] to [6, 24] to fit the new
+  // s8/s9 overlap pair at 22:00–23:30. Adds 1 hour of headroom — does not
+  // change any existing session's render position.
   const today = {
     label: 'WED · MAY 13',
     iso: '2026-05-13',
-    hour_range: [6, 23],  // [start, end_exclusive] — matches viz_data.build_day_data shape
+    hour_range: [6, 24],  // [start, end_exclusive] — matches viz_data.build_day_data shape
     projects: [
       {
         id: 'claude-time',
@@ -63,6 +66,36 @@ window.CT_DATA = (() => {
               { kind: 'active',   start: t('17:18'), end: t('17:32') },
             ],
           },
+          // WP12 P2.4: late-night session that overlaps with agent-handoff-protocol's
+          // s9 from 22:30 to 23:00 — exercises the overlap detector + overlay layer
+          // + side-panel "Overlaps with" section + HeadlineCard Parallel tile.
+          // Cross-project overlap; does NOT trigger a collapsed-row marker (markers
+          // are within-project only — see P2.verify-human.2). Distinct session-id
+          // prefix (`s8`, not colliding with `s1`–`s7`) per the
+          // SURFACE-2026-05-22-VIZ-DATA-SESSION-ID-TRUNCATION-CAN-COLLIDE mitigation.
+          {
+            id: 's8',
+            start: t('22:00'), end: t('23:00'),
+            prompts: 5,
+            tools: { Edit: 6, Bash: 3, Read: 4 },
+            segs: [
+              { kind: 'active', start: t('22:00'), end: t('23:00') },
+            ],
+          },
+          // WP12 P2.verify-human.2: within-project overlap pair — s10 overlaps
+          // with s8 (both in claude-time) from 22:15 to 22:45 (30 min). This is
+          // the scenario the collapsed-row marker is FOR: two terminals open in
+          // the same cwd / same project. Triggers a marker on the claude-time
+          // collapsed row.
+          {
+            id: 's10',
+            start: t('22:15'), end: t('22:45'),
+            prompts: 2,
+            tools: { Edit: 3, Read: 2 },
+            segs: [
+              { kind: 'active', start: t('22:15'), end: t('22:45') },
+            ],
+          },
         ],
       },
       {
@@ -91,6 +124,17 @@ window.CT_DATA = (() => {
               { kind: 'active',   start: t('14:52'), end: t('15:20') },
               { kind: 'subagent', start: t('15:20'), end: t('15:32'), label: 'Plan' },
               { kind: 'active',   start: t('15:32'), end: t('15:38') },
+            ],
+          },
+          // WP12 P2.4: late-night peer session overlapping with claude-time's s8
+          // from 22:30 to 23:00. See s8 for the overlap-pair purpose.
+          {
+            id: 's9',
+            start: t('22:30'), end: t('23:30'),
+            prompts: 4,
+            tools: { Edit: 5, Bash: 2, Read: 3 },
+            segs: [
+              { kind: 'active', start: t('22:30'), end: t('23:30') },
             ],
           },
         ],

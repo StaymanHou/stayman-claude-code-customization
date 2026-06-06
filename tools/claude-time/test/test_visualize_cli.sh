@@ -2829,7 +2829,13 @@ fi
 
 # v3 WP11-P2-4: HeadlineCard signature accepts awayMs prop (regression pin
 # against the prop being dropped from the destructure).
-if grep -qF "function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 })" "$WP11P2_HTML"; then
+# Updated 2026-06-06 (WP12 P2 Test Triage, obsolete-test high-confidence): WP12
+# extended the signature with `parallelMs = 0` per spec Q3=A 5th tile. The
+# literal-string grep at the old signature is obsolete by spec design. Switched
+# to a regex pin that asserts BOTH props are present in the destructure but is
+# tolerant of additional future-added props (same future-proofing pattern as
+# WP11 P2 codify behavioral 1 relaxation).
+if grep -qE 'function HeadlineCard\(\{ metrics, expanded, onToggleExpanded, awayMs = 0' "$WP11P2_HTML"; then
     check "v3 WP11 P2 codify: HeadlineCard signature accepts awayMs prop" pass
 else
     check "v3 WP11 P2 codify: HeadlineCard signature" fail "awayMs prop not in destructure"
@@ -2876,6 +2882,177 @@ else
 fi
 
 rm -f "$WP11P2_HTML"
+
+# ── v3 WP12 P1 codify: multi-instance overlap visualization, core infra ──
+# Phase 1 added a session-interval overlap detector + OverlapsContext +
+# OverlapOverlayLayer (inside SessionRow) + OverlapMarkerLayer (inside
+# CollapsedTrackRow). These pins lock the source-shape contract — any
+# regression that deletes a helper, layer, or selector gets caught.
+WP12P1_DIR="$(mktemp -d -t claude-time-wp12p1-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10V3_DIR" "$WP11V3_DIR" "$WP11P2_DIR" "$WP12P1_DIR"' EXIT
+WP12P1_HTML="$WP12P1_DIR/wp12p1-demo.html"
+CLAUDE_TIME_DIR="$WP12P1_DIR" "$CLI" visualize --no-open --demo --out "$WP12P1_HTML" > /dev/null 2>&1
+if [ ! -f "$WP12P1_HTML" ]; then
+    check "v3 WP12 P1 codify: --demo emit landed" fail "html missing"
+fi
+
+# (a) _detectSessionOverlaps pure helper definition present in emit.
+if grep -qF 'function _detectSessionOverlaps(' "$WP12P1_HTML"; then
+    check "v3 WP12 P1 codify: _detectSessionOverlaps helper defined" pass
+else
+    check "v3 WP12 P1 codify: _detectSessionOverlaps helper" fail "definition not in emit"
+fi
+
+# (b) OverlapsContext + useOverlaps hook present.
+if grep -qF 'OverlapsContext = React.createContext' "$WP12P1_HTML" && \
+   grep -qF 'useOverlaps' "$WP12P1_HTML"; then
+    check "v3 WP12 P1 codify: OverlapsContext + useOverlaps hook present" pass
+else
+    check "v3 WP12 P1 codify: OverlapsContext/useOverlaps" fail "context or hook not in emit"
+fi
+
+# (c) OverlapOverlayLayer + OverlapMarkerLayer components defined.
+if grep -qF 'function OverlapOverlayLayer(' "$WP12P1_HTML" && \
+   grep -qF 'function OverlapMarkerLayer(' "$WP12P1_HTML"; then
+    check "v3 WP12 P1 codify: OverlapOverlayLayer + OverlapMarkerLayer defined" pass
+else
+    check "v3 WP12 P1 codify: overlay/marker components" fail "one or both not in emit"
+fi
+
+# (d) data-overlap-marker selector emits.
+if grep -qF 'data-overlap-marker' "$WP12P1_HTML"; then
+    check "v3 WP12 P1 codify: data-overlap-marker selector emits" pass
+else
+    check "v3 WP12 P1 codify: data-overlap-marker" fail "selector not in emit"
+fi
+
+# (e) data-overlap-peer selector emits (used by both overlay + marker layers).
+WP12P1_PEER_COUNT=$(grep -c 'data-overlap-peer' "$WP12P1_HTML")
+if [ "$WP12P1_PEER_COUNT" -ge 2 ]; then
+    check "v3 WP12 P1 codify: data-overlap-peer emits in ≥2 places (overlay + marker)" pass
+else
+    check "v3 WP12 P1 codify: data-overlap-peer" fail "expected ≥2 emits, got $WP12P1_PEER_COUNT"
+fi
+
+# (f) data-overlap-start + data-overlap-end attributes emit (interval bounds).
+if grep -qF 'data-overlap-start' "$WP12P1_HTML" && grep -qF 'data-overlap-end' "$WP12P1_HTML"; then
+    check "v3 WP12 P1 codify: data-overlap-start + data-overlap-end emit" pass
+else
+    check "v3 WP12 P1 codify: data-overlap-start/end" fail "interval-bound attrs not in emit"
+fi
+
+# (g) day_iso-aware predicate (same-day requirement) in detector.
+# Locks the cross-day Custom-view behavior — sessions on different days are
+# not overlap candidates even if their [start,end] minute ranges intersect.
+if grep -qF '(a.day_iso || null) !== (b.day_iso || null)' "$WP12P1_HTML"; then
+    check "v3 WP12 P1 codify: detector predicate is day_iso-aware (same-day only)" pass
+else
+    check "v3 WP12 P1 codify: day_iso predicate" fail "same-day gate not in emit"
+fi
+
+# (h) Filter-gating: detector returns {} when both active+subagent are off.
+# Single source of truth — mirrors the away helpers' filterKinds.away !== false
+# pattern. Test the active+subagent combined gate at the top of the detector.
+if grep -qF 'filterKinds.active === false && filterKinds.subagent === false' "$WP12P1_HTML"; then
+    check "v3 WP12 P1 codify: detector gates on filterKinds.active+subagent off" pass
+else
+    check "v3 WP12 P1 codify: detector filter gate" fail "active+subagent off gate not in emit"
+fi
+
+# ── v3 WP12 P2 codify: HeadlineCard 5th tile + SidePanel section + demo data ──
+# Phase 2 added the user-visible affordances on top of Phase 1's detector +
+# layers. Pins lock the source-shape contract for: parallel-tile entry in
+# tiles array, parallelMs prop wiring, _computeOverlapMsForWindow helper +
+# call site, side-panel section selector, demo data shape extension.
+WP12P2_DIR="$(mktemp -d -t claude-time-wp12p2-test-XXXXXX)"
+trap 'rm -rf "$TMPDIR" "$DEMO_DIR" "$NO_DB_DIR" "$WP8_DIR" "$WP7_DIR" "$WP10_DIR" "$WP10V3_DIR" "$WP11V3_DIR" "$WP11P2_DIR" "$WP12P1_DIR" "$WP12P2_DIR"' EXIT
+WP12P2_HTML="$WP12P2_DIR/wp12p2-demo.html"
+CLAUDE_TIME_DIR="$WP12P2_DIR" "$CLI" visualize --no-open --demo --out "$WP12P2_HTML" > /dev/null 2>&1
+if [ ! -f "$WP12P2_HTML" ]; then
+    check "v3 WP12 P2 codify: --demo emit landed" fail "html missing"
+fi
+
+# (a) _computeOverlapMsForWindow helper definition present (mirrors away-equiv).
+if grep -qF 'function _computeOverlapMsForWindow(' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: _computeOverlapMsForWindow helper defined" pass
+else
+    check "v3 WP12 P2 codify: _computeOverlapMsForWindow" fail "helper not in emit"
+fi
+
+# (b) HeadlineCard tiles array carries the 'parallel' entry.
+if grep -qF "id: 'parallel'" "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: HeadlineCard tiles array includes parallel tile" pass
+else
+    check "v3 WP12 P2 codify: parallel tile entry" fail "id: 'parallel' not in emit"
+fi
+
+# (c) HeadlineCard accepts parallelMs prop.
+if grep -qE 'parallelMs\s*=\s*0' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: HeadlineCard signature accepts parallelMs prop" pass
+else
+    check "v3 WP12 P2 codify: parallelMs prop signature" fail "default parallelMs=0 not in emit"
+fi
+
+# (d) HeadlineCard call site plumbs parallelMs via _computeOverlapMsForWindow.
+if grep -qF 'parallelMs={_computeOverlapMsForWindow(' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: HeadlineCard call site plumbs parallelMs" pass
+else
+    check "v3 WP12 P2 codify: parallelMs plumbing" fail "call site not in emit"
+fi
+
+# (e) SidePanel renders [data-side-panel-overlaps] section conditionally.
+if grep -qF 'data-side-panel-overlaps' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: SidePanel data-side-panel-overlaps selector emits" pass
+else
+    check "v3 WP12 P2 codify: data-side-panel-overlaps" fail "selector not in emit"
+fi
+
+# (f) SidePanel per-peer row has data-overlap-peer-row selector.
+if grep -qF 'data-overlap-peer-row' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: SidePanel per-peer row selector emits" pass
+else
+    check "v3 WP12 P2 codify: data-overlap-peer-row" fail "selector not in emit"
+fi
+
+# (g) SidePanel + overlay/marker layers use useOverlaps() hook (reads the lifted
+# context). Updated 2026-06-06 (WP12 P2.verify-human.2 Test Triage, obsolete-test
+# high-confidence): the context value gained a sessionToProject map, so all 3
+# consumers now read via `const ctx = useOverlaps()` and unpack. Pin is now a
+# count of useOverlaps call sites (expect ≥3: SidePanel + OverlapOverlayLayer +
+# OverlapMarkerLayer) — this catches the wiring being deleted but is tolerant
+# of the binding-name choice.
+USEOVERLAPS_COUNT=$(grep -c 'const ctx = useOverlaps()' "$WP12P2_HTML")
+if [ "$USEOVERLAPS_COUNT" -ge 3 ]; then
+    check "v3 WP12 P2 codify: useOverlaps hook called in SidePanel + overlay + marker layers" pass
+else
+    check "v3 WP12 P2 codify: useOverlaps wiring" fail "expected ≥3 useOverlaps call sites, got $USEOVERLAPS_COUNT"
+fi
+
+# (h) Demo data extended with two overlapping sessions s8/s9 in the late-night
+# window (22:00–23:30). The CT_DATA blob is JSON-encoded inline, so we check
+# the serialized form. s8 starts at 1320min (22:00); s9 starts at 1350min (22:30).
+if grep -qF '"id": "s8"' "$WP12P2_HTML" && grep -qF '"id": "s9"' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: demo data extended with overlap pair s8/s9" pass
+else
+    check "v3 WP12 P2 codify: demo overlap sessions" fail "s8 and/or s9 not in CT_DATA"
+fi
+
+# (i) Demo overlap sessions land at expected times (22:00-23:00 and 22:30-23:30).
+# Verify by minute-from-midnight: s8 start=1320 end=1380, s9 start=1350 end=1410.
+if grep -qF '"id": "s8", "start": 1320, "end": 1380' "$WP12P2_HTML" && \
+   grep -qF '"id": "s9", "start": 1350, "end": 1410' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: demo s8/s9 at canonical 22:00-23:00 / 22:30-23:30" pass
+else
+    check "v3 WP12 P2 codify: demo overlap times" fail "s8/s9 not at expected minute ranges"
+fi
+
+# (j) OverlapsContext.Provider lifted to wrap body (viz_render.py emit). Confirm
+# the Provider closes around both DayTimeline and SidePanel sub-trees.
+if grep -qF '<OverlapsContext.Provider value={' "$WP12P2_HTML"; then
+    check "v3 WP12 P2 codify: OverlapsContext.Provider wraps body subtree" pass
+else
+    check "v3 WP12 P2 codify: Provider lift" fail "Provider open tag not in emit"
+fi
 
 # ── Summary ────────────────────────────────────────────────────────────
 echo

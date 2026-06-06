@@ -79,6 +79,87 @@ function _computeAwayMsForWindow(dayPayloadsByIso, startIso, endIso, filterKinds
   return mins * 60 * 1000;  // minutes → ms
 }
 
+// WP12 P1.1: session-interval overlap detector. Pure function — no React.
+// Returns a map { sessionId → {overlapMs, peers: [{id, overlapStartMin, overlapEndMin}]} }
+// for every session that has at least one overlap with another session.
+// Sessions with no overlap are omitted from the map (consumer can check
+// `overlaps[s.id]?.peers || []`).
+//
+// Predicate: two sessions overlap when (a.day_iso || null) === (b.day_iso || null)
+// AND their [start, end] intervals intersect (strict — touching endpoints don't
+// count). The day_iso match handles Custom-view cross-day aggregation: only
+// same-day sessions are overlap candidates.
+//
+// Filter-gating: when filterKinds is provided AND both filterKinds.active and
+// filterKinds.subagent are explicitly false, returns {} (no visible overlap
+// can exist — both kinds whose presence implies "user was working" are off).
+// Finer per-segment gating is left to render-time consumers.
+//
+// Complexity: O(N²) pairwise across N sessions across all projects. Acceptable
+// for realistic session counts (≤50 per day). No interval-tree needed.
+function _detectSessionOverlaps(projects, filterKinds) {
+  if (filterKinds && filterKinds.active === false && filterKinds.subagent === false) {
+    return {};
+  }
+  const all = [];
+  for (const p of (projects || [])) {
+    for (const s of (p.sessions || [])) {
+      all.push(s);
+    }
+  }
+  const out = {};
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i + 1; j < all.length; j++) {
+      const a = all[i], b = all[j];
+      if ((a.day_iso || null) !== (b.day_iso || null)) continue;
+      const ovStart = Math.max(a.start, b.start);
+      const ovEnd = Math.min(a.end, b.end);
+      if (ovEnd <= ovStart) continue;  // no intersection (strict)
+      const ovMin = ovEnd - ovStart;
+      const ovMs = ovMin * 60 * 1000;
+      if (!out[a.id]) out[a.id] = { overlapMs: 0, peers: [] };
+      if (!out[b.id]) out[b.id] = { overlapMs: 0, peers: [] };
+      out[a.id].overlapMs += ovMs;
+      out[a.id].peers.push({ id: b.id, overlapStartMin: ovStart, overlapEndMin: ovEnd });
+      out[b.id].overlapMs += ovMs;
+      out[b.id].peers.push({ id: a.id, overlapStartMin: ovStart, overlapEndMin: ovEnd });
+    }
+  }
+  return out;
+}
+
+// WP12 P1.2: context for distributing the overlap detector's output to
+// SessionRow / CollapsedTrackRow / SidePanel / HeadlineCard without prop-drilling.
+// WP12 P2.verify-human.2 refinement: context value gained `sessionToProject`
+// (session_id → project_alias map) so OverlapMarkerLayer can scope the
+// collapsed-row marker to within-project peers only (cross-project overlap
+// still surfaces via HeadlineCard tile + SidePanel list + expanded overlay).
+// Shape: { overlaps: {sid: {overlapMs, peers}}, sessionToProject: {sid: alias} } | null
+const OverlapsContext = React.createContext(null);
+const useOverlaps = () => React.useContext(OverlapsContext);
+
+// WP12 P2.2: window-aggregate overlap counterweight for HeadlineCard's
+// `parallel` tile. Mirrors `_computeAwayMsForWindow` in shape + filter-gating
+// discipline (single source of truth — divergence here would split the headline
+// stats from the per-row overlay/marker rendering). Iterates day_payloads in
+// [startIso, endIso], runs the detector per-day, sums all per-session overlapMs
+// values, divides by 2 (each pairwise overlap is counted once per pair-member).
+function _computeOverlapMsForWindow(dayPayloadsByIso, startIso, endIso, filterKinds) {
+  if (filterKinds && filterKinds.active === false && filterKinds.subagent === false) {
+    return 0;
+  }
+  if (!dayPayloadsByIso || !startIso || !endIso) return 0;
+  let totalMs = 0;
+  for (const [iso, payload] of Object.entries(dayPayloadsByIso)) {
+    if (iso < startIso || iso > endIso) continue;
+    const overlaps = _detectSessionOverlaps(payload.projects || [], filterKinds);
+    for (const desc of Object.values(overlaps)) {
+      totalMs += desc.overlapMs;
+    }
+  }
+  return Math.floor(totalMs / 2);  // each pairwise overlap counted by both sessions
+}
+
 // minutes-since-midnight from a Date (local-tz)
 const _nowMinFromDate = (d) => d.getHours() * 60 + d.getMinutes();
 // ISO YYYY-MM-DD in local-tz (matches how viz_data emits today's `iso`)
@@ -1334,7 +1415,7 @@ function CompareView({ comparison }) {
 
 // HeadlineCard — three primary numbers (collapsed default) + chevron toggle.
 // Click chevron → expanded prop true → MetricsPanel renders below.
-function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 }) {
+function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0, parallelMs = 0 }) {
   const { kinds: filterKinds } = useFilter();
   const view = React.useMemo(
     () => _computeMetricsView(metrics, filterKinds),
@@ -1342,7 +1423,8 @@ function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 }) {
   );
   if (!view) return null;
 
-  // The headline numbers per Q1 of the spec + WP11 P2 away counterweight:
+  // The headline numbers per Q1 of the spec + WP11 P2 away counterweight
+  // + WP12 P2 parallel-work counterweight:
   //   1. active session wall-clock (engaged-session wall-clock — away-gaps excluded)
   //   2. human activity wall-clock (typing + reading + thinking)
   //   3. AI effort hours (agent burst effort-time only — no double counting)
@@ -1350,6 +1432,11 @@ function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 }) {
   //      computed frontend-side from kind=='away' segs in dayPayloadsByIso
   //      (single source of truth via _computeAwayMsForWindow). The `awayMs`
   //      prop is computed by _interactive_dashboard against view.window.{start,end}.
+  //   5. (WP12 P2 / Q3=A) parallel-work total — sum of cross-session interval
+  //      overlap minutes across the same window. Computed frontend-side via
+  //      _computeOverlapMsForWindow (single source of truth — same shape +
+  //      filter-gating discipline as _computeAwayMsForWindow). The `parallelMs`
+  //      prop arrives via the same plumbing path as `awayMs`.
   const tiles = [
     { id: 'engaged-session', label: 'Active session',  value_ms: view.engaged_session.wallclock_ms,
       sub: 'wall-clock' },
@@ -1359,10 +1446,20 @@ function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 }) {
       sub: 'effort-time' },
     { id: 'away',            label: 'Away',            value_ms: awayMs,
       sub: 'wall-clock' },
+    { id: 'parallel',        label: 'Parallel',        value_ms: parallelMs,
+      sub: 'overlap' },
   ];
 
-  // Empty-window check: post-filter zeros across all three headline numbers.
-  const isEmpty = tiles.every(t => t.value_ms === 0);
+  // Empty-window check: post-filter zeros across the three PRIMARY headline
+  // numbers (engaged-session / human / ai-effort). Counterweight tiles (away,
+  // parallel) compute independently of the metrics aggregator — including them
+  // here would suppress the empty caption whenever overlap or away data exists
+  // even though the primary metrics window is empty. Bug fix WP12 P2 (the
+  // 4-tile/`tiles.every` shape was a latent WP11 P2 bug surfaced when WP12 P2
+  // added a non-zero parallel tile on the empty-demo path).
+  const PRIMARY_TILE_IDS = ['engaged-session', 'human', 'ai-effort'];
+  const isPrimary = (t) => PRIMARY_TILE_IDS.includes(t.id);
+  const isEmpty = tiles.filter(isPrimary).every(t => t.value_ms === 0);
   // Raw-empty (pre-filter) check: distinguishes "no data at all" from
   // "data exists but filtered out".
   const rawEmpty = metrics.engaged_session.wallclock_ms === 0
@@ -1404,7 +1501,7 @@ function HeadlineCard({ metrics, expanded, onToggleExpanded, awayMs = 0 }) {
               <span style={{
                 fontFamily: CT_TOKENS.mono, fontSize: 20, fontWeight: 500,
                 color: CT_TOKENS.textPrimary, letterSpacing: '-0.01em',
-              }}>{emptyCaption ? '\u2014' : _fmtDurMs(t.value_ms)}</span>
+              }}>{(emptyCaption && isPrimary(t)) ? '\u2014' : _fmtDurMs(t.value_ms)}</span>
               <span style={{ fontFamily: CT_TOKENS.sans, fontSize: 11, color: CT_TOKENS.textTertiary }}>{t.sub}</span>
             </div>
           </div>
@@ -2257,6 +2354,81 @@ function _mergeProjectIntervalsByKind(project, dayOffsetForSession) {
   return out;
 }
 
+// WP12 P1.4: OverlapMarkerLayer — subtle hairline markers on the collapsed band
+// at each unique overlap interval contributed by any session of this project.
+// Marker is 2px wide, full row height, low opacity, with hover tooltip naming
+// the peer + duration. The collapsed merge-by-kind band is unchanged beneath.
+//
+// WP12 P2.verify-human.2: scope filter — markers only render when the overlap
+// peer belongs to the SAME project (within-project concurrent sessions, e.g.,
+// two terminals in the same cwd). Cross-project overlaps still surface via the
+// HeadlineCard Parallel tile, SidePanel "Overlaps with" list, and expanded
+// SessionRow overlay strip — but the collapsed-row marker is reserved for the
+// rarer (and more actionable) intra-project concurrency signal. Filter happens
+// at render time; detector output is unchanged (still SoT for other surfaces).
+function OverlapMarkerLayer({ project, dayOffsetForSession }) {
+  const viewport = useViewport();
+  const ctx = useOverlaps();
+  const overlaps = ctx && ctx.overlaps;
+  const sessionToProject = ctx && ctx.sessionToProject;
+  const { kinds: filterKinds } = useFilter();
+  if (filterKinds && filterKinds.active === false && filterKinds.subagent === false) {
+    return null;
+  }
+  if (!overlaps || !sessionToProject) return null;
+  // Collect every (peerId, startMin, endMin) tuple from any session in this
+  // project where the peer ALSO belongs to this project (same-project filter),
+  // applying the same dayOffset the merged-by-kind band uses so markers align
+  // with the band visually.
+  const seen = new Set();
+  const markers = [];
+  for (const s of (project.sessions || [])) {
+    const desc = overlaps[s.id];
+    if (!desc || !desc.peers) continue;
+    const off = dayOffsetForSession ? dayOffsetForSession(s) : 0;
+    for (const peer of desc.peers) {
+      // Same-project scope: skip peers that belong to a different project.
+      if (sessionToProject[peer.id] !== project.alias) continue;
+      const start = peer.overlapStartMin + off;
+      const end = peer.overlapEndMin + off;
+      const key = `${peer.id}:${start}:${end}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      markers.push({ peerId: peer.id, start, end });
+    }
+  }
+  if (markers.length === 0) return null;
+  return (
+    <>
+      {markers.map((m, i) => {
+        const mid = (m.start + m.end) / 2;
+        const { left } = viewportPct(mid, mid + 0.5, viewport);
+        const dur = m.end - m.start;
+        return (
+          <div
+            key={`${m.peerId}-${m.start}-${m.end}-${i}`}
+            data-overlap-marker
+            data-overlap-peer={m.peerId}
+            data-overlap-start={m.start}
+            data-overlap-end={m.end}
+            title={`Overlaps with ${m.peerId} for ${fmtDur(dur)}`}
+            style={{
+              position: 'absolute',
+              left,
+              top: 0, bottom: 0,
+              width: 2,
+              marginLeft: -1,
+              background: 'oklch(0.55 0.18 25 / 0.55)',
+              pointerEvents: 'auto',
+              zIndex: 2,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 // WP11 P1.6: CollapsedTrackRow renders one merged-by-kind timeline row for a
 // project whose chevron is collapsed. Kind colors preserved per `segStyle`;
 // active/subagent rendered at the same band height as SegmentBar's active
@@ -2360,6 +2532,7 @@ function CollapsedTrackRow({ project, totals, alt = false, onToggle, dayOffsetFo
             );
           });
         })}
+        <OverlapMarkerLayer project={project} dayOffsetForSession={dayOffsetForSession} />
       </div>
     </div>
   );
@@ -2442,6 +2615,55 @@ function ProjectHeaderRow({ project, totals, expanded = true, alt = false, onTog
   );
 }
 
+// WP12 P1.3: OverlapOverlayLayer — additive overlay rendered inside SessionRow's
+// timeline column. For each peer overlap range belonging to this session, emits
+// a translucent bottom-half strip at the overlap subrange. The full-height
+// SegmentBar above is untouched; the overlay only adds visual signal where
+// time was shared with another session.
+function OverlapOverlayLayer({ session, dayOffset }) {
+  const viewport = useViewport();
+  const ctx = useOverlaps();
+  const overlaps = ctx && ctx.overlaps;
+  const { kinds: filterKinds } = useFilter();
+  // If both active and subagent are filtered off, the detector returned {}
+  // already — but defensively skip rendering too.
+  if (filterKinds && filterKinds.active === false && filterKinds.subagent === false) {
+    return null;
+  }
+  const desc = overlaps && overlaps[session.id];
+  if (!desc || !desc.peers || desc.peers.length === 0) return null;
+  return (
+    <>
+      {desc.peers.map((peer, i) => {
+        const { left, width } = viewportPct(
+          peer.overlapStartMin + dayOffset,
+          peer.overlapEndMin + dayOffset,
+          viewport
+        );
+        return (
+          <div
+            key={`${peer.id}-${peer.overlapStartMin}-${peer.overlapEndMin}-${i}`}
+            data-overlap-peer={peer.id}
+            data-overlap-start={peer.overlapStartMin}
+            data-overlap-end={peer.overlapEndMin}
+            title={`Overlaps with ${peer.id} · ${fmtClock(peer.overlapStartMin)}\u2013${fmtClock(peer.overlapEndMin)}`}
+            style={{
+              position: 'absolute',
+              left, width,
+              top: ROW_HEIGHT / 2,
+              height: ROW_HEIGHT / 2 - 1,
+              background: 'oklch(0.55 0.18 25 / 0.18)',
+              borderTop: `1px dashed oklch(0.55 0.18 25 / 0.45)`,
+              pointerEvents: 'none',
+              minWidth: 2,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 function SessionRow({ session, alt = false, selectedSegId = null, onSelect, lastInGroup = false }) {
   // WP9 Phase 2: filter-aware per-row total. `sumActive` sums only
   // active+subagent regardless; here we additionally drop kinds the user
@@ -2486,6 +2708,7 @@ function SessionRow({ session, alt = false, selectedSegId = null, onSelect, last
         {session.segs.map((seg, i) => (
           <SegmentBar key={i} seg={seg} dayOffset={dayOffset} selected={`${session.id}:${i}` === selectedSegId} />
         ))}
+        <OverlapOverlayLayer session={session} dayOffset={dayOffset} />
       </div>
     </div>
   );
@@ -3502,12 +3725,22 @@ function Minimap({ data }) {
 
 /* ── Side panel (session details) ───────────────────────────── */
 function SidePanel({ session, project, segment, onClose }) {
+  // WP12 P2.3: per-session overlap peers via OverlapsContext. Returns null
+  // outside the Provider (e.g. on the static design-canvas page) or when the
+  // session has no overlap peers — both cases collapse to "section omitted".
+  // WP12 P2.verify-human.2: context value is now `{ overlaps, sessionToProject }`
+  // — unpack `overlaps` here. SidePanel intentionally shows ALL peers regardless
+  // of project (cross-project overlap is meaningful at the per-session inspection
+  // level — the user explicitly kept this surface project-agnostic).
+  const ctx = useOverlaps();
+  const overlaps = ctx && ctx.overlaps;
   if (!session) return null;
   const totalActive = sumActive(session.segs);
   const totalReading = sumKind(session.segs, 'reading');
   const totalThinking = sumKind(session.segs, 'thinking');
   const totalSubagent = sumKind(session.segs, 'subagent');
   const wallTime = session.end - session.start;
+  const overlapPeers = (overlaps && overlaps[session.id] && overlaps[session.id].peers) || [];
 
   const tools = Object.entries(session.tools).sort((a,b) => b[1] - a[1]);
   const maxTool = tools[0][1];
@@ -3606,6 +3839,39 @@ function SidePanel({ session, project, segment, onClose }) {
           </div>
         ))}
       </div>
+
+      {/* WP12 P2.3: Overlaps with — only renders when this session has overlap
+          peers in the current viewport. Section is omitted entirely (no header,
+          no empty placeholder) when peers is empty. */}
+      {overlapPeers.length > 0 && (
+        <div
+          data-side-panel-overlaps
+          style={{ padding: '14px 16px', borderBottom: `1px solid ${CT_TOKENS.border}` }}>
+          <div style={{
+            fontSize: 10.5, fontFamily: CT_TOKENS.sans, textTransform: 'uppercase',
+            letterSpacing: '0.08em', color: CT_TOKENS.textTertiary, fontWeight: 500,
+            marginBottom: 10,
+          }}>Overlaps with</div>
+          {overlapPeers.map((peer, i) => {
+            const dur = peer.overlapEndMin - peer.overlapStartMin;
+            return (
+              <div key={`${peer.id}-${i}`}
+                data-overlap-peer-row={peer.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '5px 0',
+                  fontFamily: CT_TOKENS.mono, fontSize: 11.5,
+                  color: CT_TOKENS.textSecondary,
+                }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: 'oklch(0.55 0.18 25 / 0.55)' }} />
+                <span style={{ flex: 1, color: CT_TOKENS.textPrimary, fontWeight: 500 }}>{peer.id}</span>
+                <span>{fmtClock(peer.overlapStartMin)}{'\u2013'}{fmtClock(peer.overlapEndMin)}</span>
+                <span style={{ color: CT_TOKENS.textTertiary }}>{fmtDur(dur)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Tools */}
       <div style={{ padding: '14px 16px', borderBottom: `1px solid ${CT_TOKENS.border}`, flex: 1, overflow: 'auto' }}>

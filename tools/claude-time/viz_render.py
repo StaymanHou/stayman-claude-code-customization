@@ -917,6 +917,12 @@ function Dashboard() {
             window.CT_DATA.metrics.window.end,
             filterKinds
           )}
+          parallelMs={_computeOverlapMsForWindow(
+            dayPayloadsByIso,
+            window.CT_DATA.metrics.window.start,
+            window.CT_DATA.metrics.window.end,
+            filterKinds
+          )}
         />
       )}
       {window.CT_DATA.metrics && metricsExpanded && (
@@ -992,6 +998,23 @@ function Dashboard() {
           maxRangeDays={window.CT_MAX_RANGE_DAYS || 90}
         />
       )}
+      {/* WP12 P2: lift OverlapsContext.Provider to wrap both DayTimeline AND
+          SidePanel — SidePanel is a sibling of DayTimeline, not a descendant,
+          so the Provider must sit at this level for `useOverlaps()` to be
+          reachable in both subtrees. Compute the per-day overlaps once here.
+          WP12 P2.verify-human.2: also compute sessionToProject map for
+          OverlapMarkerLayer's same-project scoping. */}
+      <OverlapsContext.Provider value={
+        (isDayLike && !dayLikePayload.empty)
+          ? {
+              overlaps: _detectSessionOverlaps(dayLikePayload.projects, filterKinds),
+              sessionToProject: (dayLikePayload.projects || []).reduce((acc, p) => {
+                for (const s of (p.sessions || [])) acc[s.id] = p.alias;
+                return acc;
+              }, {}),
+            }
+          : null
+      }>
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {isCompare ? (
           <CompareView comparison={comparePayload} />
@@ -1032,6 +1055,7 @@ function Dashboard() {
           />
         )}
       </div>
+      </OverlapsContext.Provider>
       {/* WP5 Phase 3 + WP8: minimap (Day/Custom views — re-orientation aid
           after deep zoom). Custom shares the Day-like multi-day data shape
           so Minimap works identically. WP7: Month view skips the minimap —

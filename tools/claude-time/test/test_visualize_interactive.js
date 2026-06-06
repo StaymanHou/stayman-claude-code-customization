@@ -278,7 +278,10 @@ async function runTests() {
       await page.close();
     }
 
-    // ── Outcome 2: 17 HH:00 ruler labels for default demo (deferred from WP5-P1 codify) ──
+    // ── Outcome 2: 18 HH:00 ruler labels for default demo (deferred from WP5-P1 codify) ──
+    // Updated 2026-06-06 (WP12 P2.4 Test Triage, obsolete-test high-confidence):
+    // P2.4 extended demo hour_range from [6, 23] to [6, 24] to fit the new
+    // s8/s9 overlap pair at 22:00–23:30. Ruler now has 18 labels ending at 23:00.
     {
       const page = await browser.newPage();
       await page.goto(URL_BASE + '/dash.html');
@@ -287,9 +290,9 @@ async function runTests() {
       await page.waitForTimeout(800);
       const t = await tickSummary(page);
       const expectFirst = '06:00';
-      const expectLast = '22:00';
-      check('default demo: 17 HH:00 ruler labels (06:00..22:00)',
-        t.count === 17 && t.first === expectFirst && t.last === expectLast,
+      const expectLast = '23:00';
+      check('default demo: 18 HH:00 ruler labels (06:00..23:00)',
+        t.count === 18 && t.first === expectFirst && t.last === expectLast,
         `count=${t.count} first=${t.first} last=${t.last}`);
       await page.close();
     }
@@ -319,7 +322,9 @@ async function runTests() {
       await page.close();
     }
 
-    // ── Outcome 4: keyboard `0` reset returns to default 17 HH:00 ──
+    // ── Outcome 4: keyboard `0` reset returns to default 18 HH:00 ──
+    // Updated 2026-06-06 (WP12 P2.4 Test Triage, obsolete-test high-confidence) —
+    // see Outcome 2 above for the rationale.
     {
       const page = await browser.newPage();
       await page.goto(URL_BASE + '/dash.html');
@@ -333,8 +338,8 @@ async function runTests() {
       await page.keyboard.press('0');
       await page.waitForTimeout(300);
       const t = await tickSummary(page);
-      check('keyboard 0 (reset): viewport returns to 17 HH:00 labels',
-        t.count === 17 && t.first === '06:00' && t.last === '22:00',
+      check('keyboard 0 (reset): viewport returns to 18 HH:00 labels',
+        t.count === 18 && t.first === '06:00' && t.last === '23:00',
         `count=${t.count} first=${t.first} last=${t.last}`);
       await page.close();
     }
@@ -2224,13 +2229,19 @@ async function runTests() {
     {
       const page = await browser.newPage();
 
-      // (1) Four-tile HeadlineCard in correct order with 'away' as 4th.
+      // (1) HeadlineCard tiles in canonical order, away as 4th.
+      // Updated 2026-06-06 (WP12 P2.8 plan-time downstream-contract grep + codify Test
+      // Triage: obsolete-test high-confidence — WP12 P2 intentionally adds a
+      // 5th `parallel` tile per spec; the assertion is relaxed to "first 4 in
+      // canonical order with away as 4th" so subsequent tile additions don't
+      // re-break the pin (same future-proofing applied to behavioral 1 at line ~909).
       await page.goto(URL_BASE + '/dash.html');
-      await page.waitForFunction(() => document.querySelectorAll('[data-metric-tile]').length === 4, { timeout: 5000 });
+      await page.waitForFunction(() => document.querySelectorAll('[data-metric-tile]').length >= 4, { timeout: 5000 });
       const tilesOrder = await page.evaluate(() =>
         Array.from(document.querySelectorAll('[data-metric-tile]')).map(t => t.getAttribute('data-metric-tile')));
-      check('v3 WP11 P2 behavioral 1: HeadlineCard renders 4 tiles in canonical order ending with `away`',
-        JSON.stringify(tilesOrder) === JSON.stringify(['engaged-session', 'human', 'ai-effort', 'away']),
+      check('v3 WP11 P2 behavioral 1: HeadlineCard renders first 4 tiles in canonical order ending with `away`',
+        tilesOrder.length >= 4 &&
+        JSON.stringify(tilesOrder.slice(0, 4)) === JSON.stringify(['engaged-session', 'human', 'ai-effort', 'away']),
         JSON.stringify(tilesOrder));
 
       // (2) Every [data-project-row] has one [data-away-pill] (default
@@ -2319,6 +2330,195 @@ async function runTests() {
         styles.found && styles.distinct,
         JSON.stringify(styles));
 
+      await page.close();
+    }
+
+    // ── WP12 P2 behavioral: overlap rendering against demo data (s8/s9) ──
+    // Phase 2 added the user-visible affordances on top of Phase 1's detector.
+    // Demo data (viz/data.js) now carries s8 (claude-time 22:00-23:00) +
+    // s9 (agent-handoff-protocol 22:30-23:30) overlapping at 22:30-23:00.
+    // These pins exercise the full render path end-to-end.
+
+    // WP12 P2 1: HeadlineCard has 5 tiles including parallel — shows 30m overlap.
+    {
+      const page = await browser.newPage();
+      await page.goto(`${URL_BASE}/dash.html`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-card]', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      const shape = await page.evaluate(() => {
+        const tiles = [...document.querySelectorAll('[data-metric-tile]')]
+          .map(el => el.getAttribute('data-metric-tile'));
+        const parallel = document.querySelector('[data-metric-tile="parallel"]');
+        const parallelText = parallel ? parallel.textContent.trim() : null;
+        return { tileIds: tiles, parallelPresent: !!parallel, parallelText };
+      });
+      // Demo overlap pairs (post-WP12-P2.verify-human.2 demo extension):
+      //   s8 (claude-time, 22:00-23:00) ↔ s9 (agent-handoff-protocol, 22:30-23:30): 30 min cross-project
+      //   s8 (claude-time) ↔ s10 (claude-time, 22:15-22:45): 30 min within-project
+      //   s9 (agent-handoff-protocol) ↔ s10 (claude-time): 15 min cross-project
+      // Parallel tile sum = 30+30+15 = 1h 15m total. Regex tolerant of the format
+      // _fmtDurMs renders (e.g. "1h 15m" or "75m").
+      check('v3 WP12 P2 behavioral 1: HeadlineCard renders 5 tiles including parallel',
+        shape.tileIds.length === 5 &&
+        shape.tileIds.includes('parallel') &&
+        shape.parallelPresent &&
+        /(75m|1h\s*15m)/.test(shape.parallelText || ''),
+        JSON.stringify(shape));
+      await page.close();
+    }
+
+    // WP12 P2 2: collapsed-row marker count + peer attr on first marker.
+    {
+      const page = await browser.newPage();
+      await page.goto(`${URL_BASE}/dash.html`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-project-row]', { timeout: 5000 });
+      await page.waitForTimeout(300);
+      // WP12 P2.verify-human.2: collapsed-row markers are scoped to within-project
+      // overlaps. Demo has one within-project pair (s8 ↔ s10, both claude-time)
+      // — so claude-time row gets 2 markers (s8's view of s10 peer + s10's view
+      // of s8 peer), other rows get 0. Cross-project pairs (s8↔s9, s9↔s10) do
+      // NOT produce markers.
+      const markers = await page.evaluate(() => {
+        const els = [...document.querySelectorAll('[data-overlap-marker]')];
+        const projectRows = [...document.querySelectorAll('[data-project-row]')];
+        const byProject = {};
+        for (const row of projectRows) {
+          const alias = row.getAttribute('data-project-alias');
+          byProject[alias] = row.querySelectorAll('[data-overlap-marker]').length;
+        }
+        return {
+          totalMarkers: els.length,
+          byProject,
+          peerSet: [...new Set(els.map(el => el.getAttribute('data-overlap-peer')))].sort(),
+          firstTitle: els[0] ? els[0].getAttribute('title') : null,
+        };
+      });
+      check('v3 WP12 P2 behavioral 2: collapsed-row markers scoped to within-project (claude-time only)',
+        markers.totalMarkers >= 1 &&
+        markers.byProject['claude-time'] >= 1 &&
+        (markers.byProject['agent-handoff-protocol'] || 0) === 0 &&
+        markers.peerSet.every(p => p === 's8' || p === 's10') &&  // only within-project peers
+        /Overlaps with s(8|10) for 30m/.test(markers.firstTitle || ''),
+        JSON.stringify(markers));
+      await page.close();
+    }
+
+    // WP12 P2 3: expanded-row OverlapOverlayLayer emits [data-overlap-peer] strips.
+    {
+      const page = await browser.newPage();
+      await page.goto(`${URL_BASE}/dash.html#expanded=claude-time,agent-handoff-protocol`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-session-row]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      const overlay = await page.evaluate(() => {
+        // OverlapOverlayLayer renders strips inside SessionRow timeline column.
+        // Each strip carries data-overlap-peer + data-overlap-start + data-overlap-end.
+        const strips = [...document.querySelectorAll('[data-session-row] [data-overlap-peer]')];
+        const peerSet = [...new Set(strips.map(s => s.getAttribute('data-overlap-peer')))].sort();
+        return {
+          stripCount: strips.length,
+          peerSet,
+          firstStart: strips[0] ? strips[0].getAttribute('data-overlap-start') : null,
+          firstEnd: strips[0] ? strips[0].getAttribute('data-overlap-end') : null,
+        };
+      });
+      // Post-P2.verify-human.2 demo: s8 (claude-time) has TWO peers (s9 cross-project,
+      // s10 within-project); s9 has TWO peers (s8, s10); s10 has TWO peers (s8, s9).
+      // Expanded rows render overlay strips for ALL peers regardless of project
+      // (overlay surface is project-agnostic by design).
+      check('v3 WP12 P2 behavioral 3: expanded SessionRow renders overlay strips for all peers (s8, s9, s10)',
+        overlay.stripCount >= 3 &&
+        overlay.peerSet.includes('s8') &&
+        overlay.peerSet.includes('s9') &&
+        overlay.peerSet.includes('s10'),
+        JSON.stringify(overlay));
+      await page.close();
+    }
+
+    // WP12 P2 4: SidePanel "Overlaps with" section renders when peers exist.
+    {
+      const page = await browser.newPage();
+      await page.goto(`${URL_BASE}/dash.html#expanded=claude-time`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-session-row]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      // Click the last seg-id on the page — that's s8's late-night segment.
+      await page.evaluate(() => {
+        const segs = [...document.querySelectorAll('[data-seg-id]')];
+        // Find s8's segment by its kind=active + start=1320 in the data-seg-id
+        // (format: kind-start-end). s8 active starts at minute 1320.
+        const s8seg = segs.find(s => /-1320-/.test(s.getAttribute('data-seg-id') || ''));
+        if (s8seg) s8seg.click();
+      });
+      await page.waitForTimeout(400);
+      const panel = await page.evaluate(() => {
+        const section = document.querySelector('[data-side-panel-overlaps]');
+        const rows = [...document.querySelectorAll('[data-overlap-peer-row]')];
+        return {
+          sectionPresent: !!section,
+          rowCount: rows.length,
+          firstPeer: rows[0] ? rows[0].getAttribute('data-overlap-peer-row') : null,
+          firstText: rows[0] ? rows[0].textContent.trim() : null,
+        };
+      });
+      // Post-P2.verify-human.2 demo: s8 has 2 peers now (s9 cross-project + s10
+      // within-project). SidePanel shows ALL peers regardless of project.
+      const panelExpanded = await page.evaluate(() => ({
+        rowCount: document.querySelectorAll('[data-overlap-peer-row]').length,
+        peerIds: [...document.querySelectorAll('[data-overlap-peer-row]')]
+          .map(r => r.getAttribute('data-overlap-peer-row')).sort(),
+      }));
+      check('v3 WP12 P2 behavioral 4: SidePanel shows Overlaps-with section with both peers of s8 (s9, s10)',
+        panel.sectionPresent &&
+        panelExpanded.rowCount === 2 &&
+        panelExpanded.peerIds.includes('s9') && panelExpanded.peerIds.includes('s10'),
+        JSON.stringify({ ...panel, ...panelExpanded }));
+      await page.close();
+    }
+
+    // WP12 P2 5: SidePanel "Overlaps with" section is OMITTED when no peers.
+    // Click a non-overlap session (s1 starts at minute 522 = 08:42, no peer).
+    {
+      const page = await browser.newPage();
+      await page.goto(`${URL_BASE}/dash.html#expanded=claude-time`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-session-row]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      await page.evaluate(() => {
+        const segs = [...document.querySelectorAll('[data-seg-id]')];
+        // s1's first segment starts at minute 522 (08:42).
+        const s1seg = segs.find(s => /^active-522-/.test(s.getAttribute('data-seg-id') || ''));
+        if (s1seg) s1seg.click();
+      });
+      await page.waitForTimeout(400);
+      const panel = await page.evaluate(() => ({
+        sidePanelOpen: document.body.textContent.includes('Tool calls'),
+        overlapsSection: !!document.querySelector('[data-side-panel-overlaps]'),
+        overlapRows: document.querySelectorAll('[data-overlap-peer-row]').length,
+      }));
+      check('v3 WP12 P2 behavioral 5: SidePanel OMITS Overlaps-with section when session has no peers (s1)',
+        panel.sidePanelOpen &&
+        !panel.overlapsSection &&
+        panel.overlapRows === 0,
+        JSON.stringify(panel));
+      await page.close();
+    }
+
+    // WP12 P2 6: Filter-gating — toggling BOTH active AND subagent OFF makes
+    // the parallel tile show 0m and markers disappear.
+    {
+      const page = await browser.newPage();
+      await page.goto(`${URL_BASE}/dash.html#filters=reading,thinking,away`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-metrics-card]', { timeout: 5000 });
+      await page.waitForTimeout(400);
+      const filtered = await page.evaluate(() => {
+        const parallel = document.querySelector('[data-metric-tile="parallel"]');
+        return {
+          parallelText: parallel ? parallel.textContent.trim() : null,
+          markerCount: document.querySelectorAll('[data-overlap-marker]').length,
+        };
+      });
+      check('v3 WP12 P2 behavioral 6: active+subagent off → parallel tile zero-value + 0 markers',
+        /Parallel0[sm]/.test(filtered.parallelText || '') &&  // _fmtDurMs(0) renders "0s"; structure: label+value+sub
+        filtered.markerCount === 0,
+        JSON.stringify(filtered));
       await page.close();
     }
 
