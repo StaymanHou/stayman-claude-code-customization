@@ -1,9 +1,9 @@
 ---
 stage: wbs
 state: in-progress
-updated: 2026-06-03
+updated: 2026-06-06
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP9 (2026-06-03)
+last_wp_shipped: WP10 (2026-06-06)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -191,16 +191,16 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 
 **Phase rationale:** These three WPs are UI features that the v3 substrate (pre-rendered window, frontend state-routing) unlocks more naturally than v2 could have shipped them. WP12-carry can now correctly visualize overlaps across day boundaries (pre-rendered window contains multi-day data). WP13-carry's collapsible rows + pills + away-total benefits from the row-density work being holistic. WP10 (row-density) is the user's explicit week-of-tracking pain point.
 
-### WP10: Day-view row-density mitigation (resolves SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY)
+### WP10: Day-view row-density mitigation (resolves SURFACE-2026-05-26-CLAUDE-TIME-VIZ-DAY-VIEW-ROW-DENSITY) ✅ SHIPPED 2026-06-06 (commit c719e1b)
 **Description:** After ~1 week of tracking, Day view has too many project rows to read comfortably. Options to evaluate at feature-spec time: (a) auto-hide rows with no activity in the visible viewport (data-driven filtering); (b) min-activity-threshold filter chip (e.g., "show only projects with >15m active"); (c) auto-sort rows by recent activity descending; (d) virtualization. Likely a combination of (a) + (c) is the cheapest user-impact win.
 **Phase:** 3
 **Dependencies:** WP5
 **Size:** M
 **Tasks:**
-- [ ] 10.1 At feature-spec time: pick the mitigation strategy (a/b/c/d combination). Record decision rationale.
-- [ ] 10.2 Implement chosen strategy in `DayTimeline` (and `WeekTimeline` if applicable).
-- [ ] 10.3 URL hash: any new state (e.g., min-activity threshold) gets a hash key per the consumer-reservation table.
-- [ ] 10.4 Test pins.
+- [x] 10.1 At feature-spec time: pick the mitigation strategy (a/b/c/d combination). Record decision rationale. **Chosen: (a)+(c), viewport-aware, with session-local escape hatch, Day-only.** Rationale captured in `workflow/archive/wp10-day-view-row-density.md` § Spec.
+- [x] 10.2 Implement chosen strategy in `DayTimeline` (Day-only — Custom view also renders via DayTimeline but is gated via new `view` prop set to `'custom'` by `_interactive_dashboard`). WeekTimeline unchanged.
+- [x] 10.3 URL hash: no new keys reserved. The escape-hatch toggle is session-local per spec (default-elision discipline — no URL pollution for non-default user state).
+- [x] 10.4 Test pins: +7 CLI source-shape (test_visualize_cli.sh 205→212/0) + 6 container behavioral (test_visualize_interactive.js 89→95/0). One WP9-P4 test fixture-selection migrated for order-agnostic robustness.
 
 ### WP11: Collapsible project rows + per-project pills + away-total visibility (carry from v2 WP13)
 **Description:** Three small UX wins, originally bundled in v2 WP13 (SUPERSEDED 2026-05-26):

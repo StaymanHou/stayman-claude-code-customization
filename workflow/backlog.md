@@ -98,7 +98,7 @@
   - **(c)** Auto-sort rows by recent activity descending so the top of the list is always the projects the user cares about today.
   - **(d)** Pagination / row-virtualization if (a)/(b)/(c) don't suffice.
 - **Priority:** medium — directly user-reported; affects daily usability; not blocking ship of WP11–WP13 (those are independent UI/visualization concerns) but should be addressed before declaring the v2 cycle complete or at the next finalize point.
-- **Status:** **RESOLVED-as-decision 2026-05-28** — rolled into the v3 cycle WBS as WP10 ("Row-density mitigation") + WP11 (collapsible project rows / pills / away total, the v2 WP13 carry-over). See `docs/product/wbs.md` Phase 3. Item stays open in the sense that the fix isn't shipped, but the planning question ("which cycle?") is answered — closing as a backlog item.
+- **Status:** **RESOLVED 2026-06-06** — shipped as v3 WP10 (commit c719e1b). Strategy (a)+(c) per spec: viewport-aware auto-hide + recency-descending sort + session-local escape hatch, Day-only. The (a)+(c) combination the WBS suggested as "cheapest user-impact win" was confirmed by user verify-human across all 7 leaves. Earlier 2026-05-28 "RESOLVED-as-decision" note (WBS planning) now superseded by actual ship.
 
 ## SURFACE-2026-05-24-WBS-EXCEEDS-300-LINE-SIZE-GUARD
 - **Source:** feature:spec (claude-time-viz-wp7-month-view, 2026-05-24)
