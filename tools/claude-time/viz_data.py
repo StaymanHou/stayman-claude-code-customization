@@ -1044,6 +1044,10 @@ def build_metrics(events: list[dict],
     Returns metric tree per the spec/plan; see `_empty_metrics` for shape.
     """
     if not events:
+        # Callers that know the window bounds must pass real dts even on
+        # empty events — otherwise window.start/end → "" and day_count → 0,
+        # discarding window context the caller already has. Compute from
+        # (start_iso, end_iso) via datetime.combine(date.fromisoformat(iso), time.min/max).
         if window_start_dt is None or window_end_dt is None:
             return _empty_metrics("", "", 0)
         return _empty_metrics(window_start_dt.date().isoformat(),
