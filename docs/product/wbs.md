@@ -1,9 +1,9 @@
 ---
 stage: wbs
-state: in-progress
+state: complete
 updated: 2026-06-06
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP11 (2026-06-06)
+last_wp_shipped: WP12 (2026-06-06) — v3 cycle complete
 ---
 
 # WBS — `claude-time visualize` v3
@@ -218,17 +218,17 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [x] 11.5 Filter-state aware: per-kind chip toggles project through `totalsByProject` (DayTimeline) AND `_computeAwayMsForWindow` (HeadlineCard) — single source of truth.
 - [x] 11.6 Test pins: CLI 212→230/0 (+18 source-shape pins across P1 + P2), behavioral 95→106/0 (+11 net WP11 pins; 2 obsolete-test migrations: WP9-P4 outside-click to union selector, WP10-P2 HeadlineCard tile count to ≥3).
 
-### WP12: Multi-instance overlap visualization (carry from v2 WP12)
-**Description:** When two sessions ran in parallel on the same wall-clock minute, render the overlap visually (slight vertical offset + "overlap" badge in side panel). The reclassifier handles the data correctly; this is a visualization-only layer.
+### WP12: Multi-instance overlap visualization (carry from v2 WP12) ✅ SHIPPED 2026-06-06 (commit 1bfb96f)
+**Result:** Client-side session-interval overlap detector (`_detectSessionOverlaps`, O(N²) pairwise, day_iso-aware, filter-gated) + `OverlapsContext` (carries detector output + `sessionToProject` map for marker scope filtering) + 3 render layers: `OverlapOverlayLayer` (expanded-row bottom-half translucent strip with peer id, `data-overlap-peer`), `OverlapMarkerLayer` (collapsed-row 2px hairline at overlap interval, `data-overlap-marker`, **within-project peers ONLY** per user direction at P2 verify-human), HeadlineCard 5th tile `data-metric-tile="parallel"` (filter-gated `_computeOverlapMsForWindow` summing pair-overlaps ÷ 2). SidePanel gained `[data-side-panel-overlaps]` section listing per-peer overlap ranges (cross-project peers included — only collapsed-row marker scoped to within-project). Demo data extended with s8 (claude-time 22:00-23:00) + s9 (agent-handoff-protocol 22:30-23:30, cross-project pair) + s10 (claude-time 22:15-22:45, within-project pair with s8) so `--demo` smoke-renders both overlap types end-to-end. 2-phase Size-M feature with 1 F12 verify-human back-loop (within-project marker scope refinement) + 8 Test Triage entries (5 obsolete-tests auto-fixed + 1 real semantic code regression in HeadlineCard empty-caption + 1 own-test regex + 1 pre-existing future-proof). Final test baselines: CLI 230 → **248/0** (+18 source-shape pins), behavioral 106 → **112/0** (+6 behavioral pins), Python 131/0 unchanged.
 **Phase:** 3
 **Dependencies:** WP5, WP11 (collapsed-row semantics define how overlap renders in the collapsed lane)
 **Size:** M
 **Tasks:**
-- [ ] 12.1 Detect overlapping sessions at render time within the visible viewport.
-- [ ] 12.2 Visual: half-height vertical stagger on overlapping segments + tooltip.
-- [ ] 12.3 Side panel: "Overlaps with" section when applicable.
-- [ ] 12.4 Headline stat: "X minutes of parallel work" when overlaps exist.
-- [ ] 12.5 Test pins against a seeded DB with synthetic overlapping sessions.
+- [x] 12.1 Detect overlapping sessions at render time within the visible viewport — `_detectSessionOverlaps` helper at viz/dashboard.jsx, O(N²) pairwise across all visible projects' sessions, day_iso-aware predicate for cross-day Custom-view aggregation, filter-gated (returns `{}` when both active+subagent off).
+- [x] 12.2 Visual: half-height vertical stagger on overlapping segments + tooltip — implemented as additive `OverlapOverlayLayer` (bottom-half translucent strip with `data-overlap-peer`, `data-overlap-start`, `data-overlap-end` selectors + tooltip "Overlaps with X · HH:MM–HH:MM") inside SessionRow.
+- [x] 12.3 Side panel: "Overlaps with" section when applicable — `[data-side-panel-overlaps]` section in SidePanel, conditionally rendered when peers exist; one `[data-overlap-peer-row]` per peer; cross-project peers included (project-agnostic per user direction).
+- [x] 12.4 Headline stat: "X minutes of parallel work" when overlaps exist — 5th HeadlineCard tile `data-metric-tile="parallel"` (filter-gated `_computeOverlapMsForWindow`, single source of truth mirroring `_computeAwayMsForWindow` shape). Also: collapsed-row marker via `OverlapMarkerLayer` (within-project scope per user direction at P2 verify-human).
+- [x] 12.5 Test pins — CLI source-shape +18 across both phases; container behavioral +6 (5-tile HeadlineCard with parallel=75m, within-project marker scope, expanded overlay 3-peer set, SidePanel section both presence and omission paths, filter-gating to zero). Demo fixture extended (s8/s9/s10) provides synthetic overlap end-to-end smoke without requiring a real DB.
 
 **Phase 3 → cycle close rationale:** Once these three UX WPs ship, the v3 cycle has delivered everything v2 deferred (overlap viz, collapsible rows, pills, away total) plus the v2-surfaced user pain (row density) plus the architectural fix (preset content-refresh, instant nav within window). Cycle close on `/product-finalize`.
 
