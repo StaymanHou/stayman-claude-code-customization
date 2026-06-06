@@ -3,7 +3,7 @@ stage: wbs
 state: in-progress
 updated: 2026-06-06
 cycle: claude-time-visualize-v3
-last_wp_shipped: WP10 (2026-06-06)
+last_wp_shipped: WP11 (2026-06-06)
 ---
 
 # WBS — `claude-time visualize` v3
@@ -202,7 +202,7 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 - [x] 10.3 URL hash: no new keys reserved. The escape-hatch toggle is session-local per spec (default-elision discipline — no URL pollution for non-default user state).
 - [x] 10.4 Test pins: +7 CLI source-shape (test_visualize_cli.sh 205→212/0) + 6 container behavioral (test_visualize_interactive.js 89→95/0). One WP9-P4 test fixture-selection migrated for order-agnostic robustness.
 
-### WP11: Collapsible project rows + per-project pills + away-total visibility (carry from v2 WP13)
+### WP11: Collapsible project rows + per-project pills + away-total visibility (carry from v2 WP13) ✅ SHIPPED 2026-06-06 (commit f8f6b3a)
 **Description:** Three small UX wins, originally bundled in v2 WP13 (SUPERSEDED 2026-05-26):
 (1) Project rows default to **collapsed** (one row per project, sessions merged into one track). Click chevron to expand to per-session rows.
 (2) Per-project **total pill** at the row label (active+subagent time, monospace).
@@ -211,12 +211,12 @@ This phase is also the riskiest in terms of emit-time performance (90-day SQLite
 **Dependencies:** WP5, WP10 (row-density mitigation may inform how pills display)
 **Size:** M
 **Tasks:**
-- [ ] 11.1 Collapsed-row segment merging: union of all session segments within a project, rendered as a single track.
-- [ ] 11.2 Per-row chevron + expand/collapse state (`useState`, defaults to collapsed). URL hash: `expanded=projectA,projectB` per existing CLAUDE.md reservation (originally WP13 reserved).
-- [ ] 11.3 Project total pill on row label.
-- [ ] 11.4 Away-total in two places: per-project row + headline-stats card.
-- [ ] 11.5 Filter-state aware (pills + totals reflect active filter chips).
-- [ ] 11.6 Test pins.
+- [x] 11.1 Collapsed-row segment merging: `_mergeProjectIntervalsByKind` helper + `CollapsedTrackRow` component (Q4=B merge-by-kind union); multi-day-aware via `dayOffsetForSession`.
+- [x] 11.2 Per-row chevron + expand/collapse state. URL hash `expanded=alias1,alias2` round-trips with default-elision; hash-restore initializer + debounced hash-write effect in `_interactive_dashboard`.
+- [x] 11.3 Project total pill on row label — `[data-active-pill]` on both ProjectHeaderRow + CollapsedTrackRow; renders filter-aware `activePlusSub`.
+- [x] 11.4 Away-total in two places: per-project row (`[data-away-pill]` beside active pill, Q5=A) + HeadlineCard 4th tile (Q3=A). `_computeAwayMsForWindow` (ms, headline) + `_computeProjectAwayMin` (minutes, row pill); both gate on `filterKinds.away !== false`.
+- [x] 11.5 Filter-state aware: per-kind chip toggles project through `totalsByProject` (DayTimeline) AND `_computeAwayMsForWindow` (HeadlineCard) — single source of truth.
+- [x] 11.6 Test pins: CLI 212→230/0 (+18 source-shape pins across P1 + P2), behavioral 95→106/0 (+11 net WP11 pins; 2 obsolete-test migrations: WP9-P4 outside-click to union selector, WP10-P2 HeadlineCard tile count to ≥3).
 
 ### WP12: Multi-instance overlap visualization (carry from v2 WP12)
 **Description:** When two sessions ran in parallel on the same wall-clock minute, render the overlap visually (slight vertical offset + "overlap" badge in side panel). The reclassifier handles the data correctly; this is a visualization-only layer.
