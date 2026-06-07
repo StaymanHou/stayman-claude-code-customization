@@ -169,3 +169,7 @@ Feature shipped via commit fba842c → origin/main on 2026-06-07. Finalize compl
 Requester = operator — closure notice for self-record.
 
 TRANSITION: F19
+
+## Session Pause — 2026-06-07 09:30
+Paused. See `workflow/.session.md` to resume.
+(Note: this WIP is finalized + archived; pause is at session-boundary, not mid-workflow. `/session-resume` will route to `/session-start` for the next item. Uncommitted state: 2 new bullets at the end of `CLAUDE.md` `## Conventions` from `/session-store-learning` — user explicitly deferred commit decision to next resume.)
