@@ -98,6 +98,21 @@ grep_check "incident-resolve references CHANGELOG convention" "skills/incident-r
 grep_check "task-close references CHANGELOG convention" "skills/task-close/SKILL.md" "CHANGELOG.md convention" 1
 grep_check "product-finalize references CHANGELOG convention" "skills/product-finalize/SKILL.md" "CHANGELOG.md convention" 1
 
+# Long-running commands rule lives in CLAUDE.snippet.md only — global harness rule, no per-skill
+# references. If the snippet section gets dropped or renamed, every project loses the timeout +
+# exclusive-resource concurrency discipline.
+grep_check "CLAUDE.snippet.md defines 'Long-running commands'" "CLAUDE.snippet.md" "^## Long-running commands" 1
+
+# Runtime registry subsection inside the Long-running commands section. Rule 1 forward-links
+# to this subsection ("see `### Runtime registry` below"); if the subsection heading goes missing,
+# the forward-link becomes dangling and the agent loses its read+update discipline.
+grep_check "CLAUDE.snippet.md defines '### Runtime registry'" "CLAUDE.snippet.md" "^### Runtime registry" 1
+
+# Project-root runtimes.md is the actual registry file each project maintains. The grep below
+# asserts the canonical frontmatter marker — a hand-edited file that drops the marker would
+# break the agent's "is this a registry?" identification on read.
+grep_check "runtimes.md exists with shape: runtime-registry frontmatter" "runtimes.md" "^shape: runtime-registry" 1
+
 # Entry-skill product-context loading convention has three discoverability surfaces:
 # (1) canonical mapping in CLAUDE.snippet.md, (2) cross-level note in transitions.md,
 # (3) per-skill `## Step 0` sections in each entry-point SKILL.md. If any of these goes missing

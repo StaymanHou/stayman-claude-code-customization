@@ -1,5 +1,27 @@
 # Backlog
 
+## SURFACE-2026-06-07-SESSION-RESUME-LEAVES-PAUSE-FOOTER
+- **Source:** Cross-project learning from NeoStayman WP30 finalize / session-reflect (2026-06-07). Full learning doc at `/Users/stayman/Personal/projects/neo-stayman-assistant/.claude/learnings/2026-06-07-session-resume-strip-stale-pause-footer.md`. NeoStayman backlog reference: `SURFACE-2026-05-16-SESSION-RESUME-LEAVES-PAUSE-MARKER`.
+- **Target level:** harness / skill — `~/.claude/skills/session-resume/SKILL.md` (which is symlinked from this repo's `skills/session-resume/SKILL.md`).
+- **Type:** behavioral gap in skill — orphan-footer cleanup miss
+- **Summary:** `/session-pause` appends a `## Session Pause — <timestamp>\nPaused. See workflow/.session.md to resume.` block at the END of `state_file` (typically `docs/product/wbs.md` or a WIP file). `/session-resume` deletes `workflow/.session.md` (its current §7) but does NOT strip the orphan footer block from the `state_file` body. Result: every finalize on a paused-then-resumed item incurs a recurring cleanup tax. 18 confirmed recurrences in one project alone (NeoStayman WP4 → WP30); 7 consecutive WPs since WP21 each spending 10–30s scrubbing the footer at finalize time. Cumulative cleanup cost has crossed the skill-patch cost (~5 min) by ~5×.
+- **Suggested action:** Patch `~/.claude/skills/session-resume/SKILL.md` to add a step between current §6 (backlog check) and §7 (delete `.session.md`):
+  > **6b. Strip the stale Pause footer from `state_file`.** The `## Session Pause — <timestamp>\nPaused. See …` block that `/session-pause` injected must be removed from the `state_file` body. Idempotent — no-op if the marker isn't there. Match pattern: trailing `## Session Pause — ` heading + body up to EOF (current `/session-pause` behavior is always-append). If a future `/session-pause` variant inserts mid-document, extend the match to "until next `## ` heading or EOF."
+- **Why it matters:** the cumulative cleanup cost is increasing linearly with the number of pause/resume cycles in any project. Multiple recent observations of this very repo also dirty `workflow/archive/<wip>.md` with pause footers post-resume (see this session's `verify-human-auto-skip-when-no-integration-boundary.md` archive diff). The footer is mechanically removable; only the skill's read-side doesn't currently know to remove it on resume.
+- **Risk:** Low. The match pattern is unambiguous (`## Session Pause — ` is unique to the inject path) and the Edit is reversible (preserved in git).
+- **Priority:** medium-high — 18+ observed recurrences in one project (rule-of-three is far exceeded); fix is small and reversible; addresses a paper cut that touches every paused workflow.
+- **Status:** pending
+
+## SURFACE-2026-06-07-CHECK-STRUCTURE-DRY-RUN-CONCURRENCY-FRAGILE
+- **Source:** feature:build — long-cmd-timeout-and-exclusive-resource-concurrency Phase 1 P1.4 (2026-06-07).
+- **Target level:** project (tests/check-structure.sh + project CLAUDE.md prior-runtime note)
+- **Type:** tech-debt / concurrency-fragility
+- **Summary:** `tests/check-structure.sh` Phase 1 invokes `./tests/run-tests.sh --dry-run` (line 762) which on this machine takes >5 min — exceeding the harness's 5-min hard Bash cap. Auto-background + the buffered `| tail -30` pipe means the output file stays empty until completion, masking progress. When the parent `check-structure.sh` is killed (e.g. user cancel or harness-timeout), its child `run-tests.sh --dry-run` does NOT receive SIGTERM and continues running. Subsequent re-invocations stack concurrent dry-runs against `tests/results/` and fixture state — the exact failure mode the new global Long-running-commands rule was just written to prevent. Today's build required `pkill -f run-tests.sh` to clear state before the third invocation could proceed cleanly.
+- **Context:** Bites every feature finalize and every shipping pass (`./tests/check-structure.sh` is run before every commit by the verify-codify and ship skills). Today's session burned ~10 min on this concurrency-stacking before the orphaned-child pattern was recognized. The pattern is silent — no error, just an indefinite hang on Phase 1.
+- **Suggested action:** Two small fixes: (1) Add a `trap 'pkill -P $$' EXIT` or `exec` discipline in `tests/check-structure.sh` so killing the parent propagates to children; (2) Document `tests/check-structure.sh` runtime ≥ 5 min in project CLAUDE.md under a "Tier-1 dev command runtimes" subsection so future Bash invocations set `timeout: 600000` explicitly. Optionally: profile `run-tests.sh --dry-run` to find why scenario enumeration takes >5 min — if it's reading every fixture for each scenario, an index file would cut the cost.
+- **Priority:** medium — bites every finalize/ship run; pattern is the canonical exclusive-resource failure mode in this very repo.
+- **Status:** pending
+
 ## SURFACE-2026-06-06-VERIFY-SH-NO-HARD-CONTENT-ASSERT
 - **Source:** task:act (codify-randomize-host-ports-test-coverage, 2026-06-06) — discovered during T5 bite-verification while trying to add a behavioral content-presence assertion (P10b).
 - **Target level:** feature:spec (small/medium — adds a new assertion shape to the test harness; touches `tests/lib/verify.sh`, scenarios, and the doc-side `## Conventions` block).

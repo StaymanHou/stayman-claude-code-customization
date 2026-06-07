@@ -162,6 +162,46 @@ The four terminal-close skills append to it automatically:
 - **Project root detection.** "Project root" = `git rev-parse --show-toplevel` if the working dir is in a git repo; otherwise the current working directory.
 - **No backdating.** The skill always writes today's date, regardless of when the WIP was created or when work actually finished.
 
+## Long-running commands (GLOBAL)
+
+**Before running a long command** — full test suite (`pytest`, `npm test` / `npx jest`, `cargo test`, `go test ./...`, `bundle exec rspec`, `mix test`, Playwright, etc.), full build (`npm run build`, `cargo build --release`, webpack/Vite production build), big migration, large codemod, or bulk data import — read the project's runtime registry (or estimate if absent) and pass an explicit `timeout` to the Bash tool. The default 2-min Bash timeout silently auto-backgrounds, producing a stale tool result that looks like a failure and tempts re-invocation in the foreground. The wrap-around is what causes the damage; the timeout decision is the prevention.
+
+The rule has three parts:
+
+- **Rule 1 — Consult the runtime registry; estimate only if absent; set `timeout` explicitly.** First, read `<proj-root>/runtimes.md` (see `### Runtime registry` below) for the tracked command's `**Use timeout:**` value and apply it directly. Only when the command is absent from the registry, estimate from scratch: for test suites, query the test count (`pytest --collect-only -q | tail -3`, `npx jest --listTests | wc -l`, `cargo test -- --list 2>/dev/null | tail -1`, `go test -list '.*' ./...`, `bundle exec rspec --dry-run`, etc.); for full builds, big migrations, and bulk operations, read the project `CLAUDE.md` for any prior-runtime notes. Apply `timeout ≥ expected * 1.5 + buffer` (Bash tool accepts ms, max 600000 = 10 min). After the command completes (or is killed), update the registry per the read+update discipline so future sessions inherit the measurement.
+- **Rule 2 — Never start a second instance of a long-running command against a shared exclusive resource.** "Exclusive resource" includes: shared dev/test DB (`*_test` database, single SQLite file, shared schema), shared cache or artifact directory (`node_modules/.cache`, `target/`, `dist/`, `.next/`, Bazel/Turbo cache), port-bound process (dev server, test runner with fixed port), lock file (Cargo, Bundler, `package-lock.json` write, git index), single-writer file/object (S3 prefix upload, fixture-generating script). On auto-background, **wait for the `BashOutput` completion notification** (or `<task-notification>` with `<status>completed</status>`) — do not re-invoke. Two concurrent runs against the same backing store race on setup/teardown, cache invalidation, lock acquisition, or fixture lifecycle. The first run usually finishes fine; the second is the destructive case.
+- **Rule 3 — When uncertain about runtime, run a small subset first.** A subset verifies health and gives a per-unit time estimate that feeds back into Rule 1's `timeout` calculation. Pick a subset appropriate to the runner: `pytest tests/<module>/`, `npx jest <path>`, `cargo test <module>::`, `go test ./pkg/...`, `bundle exec rspec spec/<area>/`. If the subset reveals an environmental problem (missing service, broken fixture, dependency drift), it surfaces in seconds rather than ten minutes into a foregrounded full run.
+
+Rationale: this rule exists because of a real near-miss where two `docker compose exec app pytest` runs nearly raced on `Base.metadata.create_all` / `drop_all` against a shared `*_test` database — the second invocation was user-backgrounded before reaching conftest setup. The pattern is ecosystem-independent: two `cargo test` runs contending on the `target/` lock, two `npm test` runs hitting a fixed port, or two migration tools attempting to lock the same schema-version row would each fail the same way. The exclusive-resource damage is silent and surfaces as flakiness or destruction, not as a Bash error.
+
+### Runtime registry
+
+Each project that uses this workflow system maintains a per-project runtime registry at `<proj-root>/runtimes.md` — a human-readable markdown file that records the last-observed wall-clock runtime of each tracked long-running command, the timeout value to pass to the Bash tool next time, and an audit-trail history of past observations. This is the file Rule 1 reads on every invocation of a tracked command, and writes after each completion (or kill). The intent is that the second session never re-estimates from scratch what the first session already measured.
+
+**Canonical shape:**
+
+```markdown
+---
+shape: runtime-registry
+updated: 2026-06-07
+---
+
+# Runtime Registry
+
+## ./tests/check-structure.sh
+- **Last:** 360s (2026-06-07)
+- **Use timeout:** 600000
+- **History:**
+  - 360s — 2026-06-07
+```
+
+**Read+update discipline:**
+
+- **Before invoking** a tracked command, `grep -A2 "^## <literal-command>" runtimes.md` and read the `**Use timeout:**` value (in milliseconds). Pass that value as the Bash tool's `timeout` parameter. If the command is absent from the registry, fall back to Rule 1's estimation path and append a new entry after completion.
+- **After completion** (or after killing a stuck run — both count as observations), update the same entry: set `**Last:**` to the new wall-clock time + today's date, recompute `**Use timeout:**` via `ceil(observed_seconds * 1.5 + 60) * 1000` (clamped to 600000 ms, the Bash tool's max), prepend a new bullet to `**History:**` with `<Ns> — <YYYY-MM-DD>`, and touch the frontmatter's `updated:` line. Old history bullets remain — the file grows by one line per observation.
+- **Tracked vs. untracked:** the registry is for commands that meaningfully exceed the 2-min Bash default and benefit from a recorded measurement (full test suites, full builds, big migrations, large codemods, bulk imports). Single-file edits, fast greps, one-off `ls` / `git status` calls, and similar sub-second commands are not tracked — the registry is not an activity log.
+- **Per-project, not global.** `~/.claude/runtimes.md` would conflate measurements across hardware, CI/laptop, and project topology. Keep registries per-project so each set of measurements reflects the project's actual environment.
+
 ## Pre-risky-action checklist (GLOBAL)
 
 **Before running any destructive-capable CLI** — scaffolders (`create-*`, `npm create *`), initializers (`*-init`, `yo *`), codegen tools that write to the working directory, or anything with an `--overwrite` / `--force` flag — run through this checklist:
