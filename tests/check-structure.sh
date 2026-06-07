@@ -107,6 +107,13 @@ grep_check "transitions.md has 'Entry-skill context loading' cross-level subsect
 grep_check "task-plan SKILL.md has Step 0 section" "skills/task-plan/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "feature-spec SKILL.md has Step 0 section" "skills/feature-spec/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "feature-plan SKILL.md has Step 0 section" "skills/feature-plan/SKILL.md" "^## Step 0: Available product context" 1
+
+# Randomize-host-ports guidance shipped to product-context Variant A in commit 5872554
+# (feature: docker-init-randomize-host-ports). The bullet is pure prose, so the only
+# regression net at the file level is presence of its distinctive anchors. Two pins:
+# the literal bullet name, plus the substantive ephemeral-range + 49152 lower-bound.
+grep_check "product-context SKILL.md retains 'Randomize host ports' bullet" "skills/product-context/SKILL.md" "Randomize host ports" 1
+grep_check "product-context SKILL.md cites ephemeral-port range with 49152 anchor" "skills/product-context/SKILL.md" "ephemeral range.*49152|49152.*ephemeral" 1
 grep_check "feature-reproduce SKILL.md has Step 0 section" "skills/feature-reproduce/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "incident-report SKILL.md has Step 0 section" "skills/incident-report/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "product-vision SKILL.md has Step 0 section" "skills/product-vision/SKILL.md" "^## Step 0: Available product context" 1
