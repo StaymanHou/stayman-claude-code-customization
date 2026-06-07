@@ -1,16 +1,17 @@
 ---
 workflow: feature
-state: plan (revised — F23 back-loop on 2026-06-07)
+state: ship (complete)
 created: 2026-06-07
 drive_mode: autopilot
 source_backlog: SURFACE-2026-05-29-LONG-CMD-TIMEOUT-AND-EXCLUSIVE-RESOURCE-CONCURRENCY
 source_learning: .claude/learnings/2026-05-29-pytest-timeout-and-concurrent-runs.md
+ship_commit: f0d86ed
 ---
 
 # Feature: Long-running commands — explicit timeout + exclusive-resource concurrency rule
 
 **Workflow:** feature
-**State:** plan (revised — F23 back-loop on 2026-06-07)
+**State:** ship (complete — commit f0d86ed on origin/main)
 **Created:** 2026-06-07
 **Entry:** spec (complex feature — multi-part rule, global blast radius)
 
@@ -141,10 +142,23 @@ None. The spec is grounded — source learning doc is comprehensive, target file
   - [x] verify-codify  <!-- Satisfied by existing P2.5 structural pins (a) `### Runtime registry` heading in CLAUDE.snippet.md + (b) `runtimes.md` shape-frontmatter marker. Both are the canonical regression tests for Phase 2 — pin (a) guards forward-link integrity (Rule 1's "see `### Runtime registry` below" resolves only if heading exists); pin (b) guards file-identification (a hand-edited runtimes.md that drops the frontmatter would no longer be a "registry" the agent recognizes on read). Integration-boundary satisfied: source-side pins are canonical because install.sh is deterministic. No test failures (check-structure.sh P2.7 result: 132 PASS / 1 unrelated FAIL). No new tests written. Finer-grained body-content pins (Rule 1 wording, discipline-bullet formulas) considered but rejected — heading pins guard the most likely refactor regression, and the harness has no scenario-level content-assert primitive (per SURFACE-2026-06-06-VERIFY-SH-NO-HARD-CONTENT-ASSERT). -->
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** All phases complete; ready for /feature-ship
+- **Path:** Feature > finalize (complete)
+- **Active scope:** Archived
 - **Blocked:** none
-- **Unvisited:** ship → finalize
+- **Unvisited:** (none)
+
+## Retrospect
+
+- **What changed in our understanding:** The original spec scoped the rule as **prose discipline only** — three rules in CLAUDE.snippet.md. Verify-human surfaced a gap: without a persistent registry, the agent re-estimates from scratch each session, and the rule's value degrades to "be careful." User feedback drove an F23 plan revision that added Phase 2 — the per-project `runtimes.md` mechanism — which turned the rule from "remember to estimate" into "consult memory; estimate as fallback; write the measurement back." That elevation is the load-bearing improvement.
+- **Assumptions that held:** (a) ecosystem-general wording with parenthetical examples (pytest/npm/cargo/go/bundle) reads naturally; (b) source-side structural pins satisfy the integration-boundary rule because `install.sh` injection is deterministic — no need for separate pins on the injected `~/.claude/CLAUDE.md`; (c) the global rule places cleanly between CHANGELOG and Pre-risky-action sections (semantic Bash-safety cluster); (d) `runtimes.md` belongs at project root (not under `tests/` or `.claude/`) since it generalizes beyond test commands.
+- **Assumptions that were wrong:** (a) **The build process itself exhibited the failure mode the new rule prevents.** During P1.4's check-structure.sh run, I auto-backgrounded twice, then orphaned-child `run-tests.sh --dry-run` processes from cancelled `check-structure.sh` parents stacked up — required `pkill -f run-tests.sh` to recover. Logged as `SURFACE-2026-06-07-CHECK-STRUCTURE-DRY-RUN-CONCURRENCY-FRAGILE`. The rule prose I was writing perfectly described what I was doing wrong while writing it. (b) The single-phase plan was *not* the right shape — verify-human's request for a registry mechanism couldn't be backfilled into a leaf-rebuild; the F23 back-loop to plan was correct and the F12-to-F23 chain (verify-human FAIL → build re-entry → escalate plan revision) was a clean use of the workflow's recovery transitions.
+- **Approach delta:** The actual implementation has TWO phases, not the originally-spec'd ONE. Phase 2 was added entirely via F23 plan revision (mid-flight, after Phase 1 verify-human FAIL). Phase 1's Rule 1 also gained a small P1.5 wording revision to forward-link the Phase 2 subsection. The retrospect's headline learning: **when verify-human surfaces a new-mechanism request rather than a wording fix, F23 back-loop is faster than trying to backfill the mechanism through a build-leaf rebuild.**
+
+## Communicate
+
+> **Feature complete:** `long-cmd-timeout-and-exclusive-resource-concurrency` has shipped (commit `f0d86ed` → origin/main). It adds a GLOBAL `## Long-running commands` section + `### Runtime registry` subsection to `~/.claude/CLAUDE.md` (via `CLAUDE.snippet.md` + `install.sh`), codifying three rules (consult registry → estimate fallback → set explicit Bash timeout; never start a second instance against a shared exclusive resource; subset-first when uncertain) and introducing a per-project `<proj-root>/runtimes.md` convention so future sessions inherit measured timeouts. This repo's registry is seeded with `./tests/check-structure.sh` (408000 ms) and `./tests/run-tests.sh` (600000 ms with explicit auto-background note). 3 new structural pins in `tests/check-structure.sh`; check-structure.sh now reports PASS=132 / FAIL=1.
+
+Requester = operator — closure notice for self-record.
 - **Open discoveries:** 1 — see `SURFACE-2026-06-07-CHECK-STRUCTURE-DRY-RUN-CONCURRENCY-FRAGILE` below
 
 ## Discoveries
