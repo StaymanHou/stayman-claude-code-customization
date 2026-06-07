@@ -1439,3 +1439,80 @@ scenarios:
         - "Feature shipped"
       not_contains: []
     max_retries: 2
+
+  # ── Auto-skip gate (feature: verify-human-auto-skip-when-no-integration-boundary, 2026-06-07) ──
+  # When drive_mode is autopilot AND verify-self all-PASS AND no integration boundary,
+  # feature-verify-human emits F11 without asking "do you agree to skip?". The affirmation
+  # block still prints in chat as the operator's read-time veto.
+  - id: F-verify-human-auto-skip-fires
+    name: "feature:verify-human auto-skips F11 in autopilot when no integration boundary"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-passed-isolated.md
+    system_prompt_extra: |
+      The WIP frontmatter has drive_mode: autopilot. verify-self is complete
+      with all 3 leaves [x] (PASS). Phase 1 only added isolated new artifacts:
+      a new preferences/helpers.py module that nothing imports, a new
+      /admin/preferences/status endpoint nothing links to, and a new
+      standalone prefs_admin CLI tool nothing invokes. The 5-condition
+      integration-boundary check returns "no boundary" — no existing endpoint,
+      UI page, CLI command, scheduled job, or external-system call consumes
+      these new artifacts. No Observable Outcome cites a consuming surface
+      by name. All four Auto-skip gates are clean.
+      Per §2 "Auto-skip gate (Mode 3+ + no boundary + verify-self all-PASS)"
+      of feature-verify-human SKILL.md, you must print the affirmation block
+      naming the isolated new artifacts, print a line "Auto-skipped per
+      drive_mode=autopilot — no integration boundary detected.", and emit
+      TRANSITION: F11 immediately. Do NOT ask "do you agree to skip?".
+    expect:
+      transition_id: F11
+      contains_any:
+        - "Auto-skipped"
+        - "no integration boundary"
+        - "isolated new artifacts"
+        - "/feature-verify-codify"
+      not_contains:
+        - "do you agree"
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F-verify-human-auto-skip-blocked
+    name: "feature:verify-human auto-skip does NOT fire when integration boundary applies"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-wire-into-existing.md
+    system_prompt_extra: |
+      The WIP frontmatter has drive_mode: autopilot. verify-self is complete
+      with all 3 leaves [x] (PASS). HOWEVER — Phase 1 modified the existing
+      POST /distribution/match handler (P1.3 replaced its Google-Sheet
+      lookup with MusicPoolService.get_random). This is condition (1) of
+      the 5-condition integration-boundary check: a line of code added or
+      modified inside an existing HTTP endpoint that was already consumed.
+      The boundary APPLIES.
+      Per §2 of feature-verify-human SKILL.md, when a boundary applies the
+      F11 skip path is forbidden, and the auto-skip gate cannot fire (gate (c)
+      fails). You must expand verify-human into leaf nodes, build a checklist
+      that includes at least one item exercising the consuming surface
+      (POST /distribution/match) with a captured curl invocation, present it
+      to the human, and then record their results.
+      The human responded: "I tested all the items in your checklist —
+      POST /distribution/match returns the new pool's video_id correctly,
+      the new admin endpoints work, the seed flow works. All happy paths
+      pass. Approve."
+      Record the human's approval, mark all leaves [x], and emit F13. Do NOT
+      auto-skip. Do NOT emit F11.
+    expect:
+      transition_id: F13
+      contains_any:
+        - "Manual Verification"
+        - "P1.verify-human"
+        - "/distribution/match"
+        - "/feature-verify-codify"
+      not_contains:
+        - "Auto-skipped"
+        - "no integration boundary detected"
+    max_retries: 2

@@ -154,7 +154,7 @@ Full policy tables for all workflows are in `docs/product/transitions.md` → "D
 | `feature-build` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-verify-auto` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-verify-self` | PAUSE | AUTO | AUTO | AUTO |
-| `feature-verify-human` | PAUSE | **PAUSE** | **PAUSE** | **SKIP** |
+| `feature-verify-human` | PAUSE | **PAUSE** | **PAUSE** (await human) — or **AUTO-SKIP** when no integration boundary + verify-self all-PASS | **SKIP** |
 | `feature-verify-codify` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-ship` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-finalize` | PAUSE | **PAUSE** | AUTO | AUTO |
@@ -166,6 +166,8 @@ Full policy tables for all workflows are in `docs/product/transitions.md` → "D
 | ESCALATE (any) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
 
 **SKIP** (verify-human in Mode 4): do not invoke `feature-verify-human` at all. Use the `verify-self` result as the acceptance gate and chain directly to `feature-verify-codify`.
+
+**AUTO-SKIP** (verify-human in Mode 3, conditional): invoke `feature-verify-human` as usual, but the skill itself checks an objective gate at §2 of `skills/feature-verify-human/SKILL.md` and emits `TRANSITION: F11` without prompting the human when **all four** of these hold: (a) `drive_mode` is `autopilot` or `full-autopilot` in the WIP frontmatter, (b) the current phase's `verify-self` subtree is all-PASS (no `UNVERIFIED`/`FAILED`/`FAILED-cosmetic`/`NOT-STARTED` leaves), (c) the 5-condition integration-boundary check returns "no boundary," and (d) no Observable Outcome cites a consuming surface by name. The affirmation block is still printed in chat as the operator's read-time veto. When any gate fails (most commonly: boundary applies, or verify-self has a non-PASS leaf), the existing F11-with-confirmation flow runs as before. Mode 4 is unaffected — it still SKIPs the skill entirely. The full gate definition and the known probe/decision-artifact false-positive limitation live in `skills/feature-verify-human/SKILL.md` §2 → "Auto-skip gate."
 
 ### Per-phase loop discipline
 

@@ -114,6 +114,15 @@ grep_check "feature-plan SKILL.md has Step 0 section" "skills/feature-plan/SKILL
 # the literal bullet name, plus the substantive ephemeral-range + 49152 lower-bound.
 grep_check "product-context SKILL.md retains 'Randomize host ports' bullet" "skills/product-context/SKILL.md" "Randomize host ports" 1
 grep_check "product-context SKILL.md cites ephemeral-port range with 49152 anchor" "skills/product-context/SKILL.md" "ephemeral range.*49152|49152.*ephemeral" 1
+
+# Auto-skip gate shipped to feature-verify-human/SKILL.md §2 (feature:
+# verify-human-auto-skip-when-no-integration-boundary). The gate is prose-only
+# behavioral guidance — the regression net is presence of its load-bearing anchors.
+# Two pins: the operator-visible affirmation tail-line, and the 4-gate heading anchor.
+grep_check "feature-verify-human SKILL.md retains 'Auto-skipped per drive_mode' affirmation line" "skills/feature-verify-human/SKILL.md" "Auto-skipped per drive_mode" 1
+grep_check "feature-verify-human SKILL.md retains 4-gate Auto-skip heading anchor" "skills/feature-verify-human/SKILL.md" "Mode 3\+ \+ no boundary \+ verify-self all-PASS" 1
+grep_check "feature-workflow AGENTS.md retains AUTO-SKIP pause-policy annotation" "agents/feature-workflow/AGENTS.md" "AUTO-SKIP" 1
+
 grep_check "feature-reproduce SKILL.md has Step 0 section" "skills/feature-reproduce/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "incident-report SKILL.md has Step 0 section" "skills/incident-report/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "product-vision SKILL.md has Step 0 section" "skills/product-vision/SKILL.md" "^## Step 0: Available product context" 1

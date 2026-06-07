@@ -1,7 +1,14 @@
+---
+feature: music-pool-distribution
+drive_mode: autopilot
+state: verify-self (passed)
+created: 2026-05-01
+---
+
 # Feature: Music Pool Distribution Source
 
 **Workflow:** feature
-**State:** verify-auto (passed)
+**State:** verify-self (passed)
 **Created:** 2026-05-01
 
 ## Problem Statement
@@ -23,7 +30,10 @@ depend on an external sheet.
   - [x] P1.2 Expose new admin endpoints `/music/pool/seed` and `/music/pool/status`
   - [x] P1.3 Replace `video_id = sheet.lookup(...)` with `video_id = MusicPoolService.get_random(service.session)` inside the existing POST /distribution/match handler
   - [x] verify-auto
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
+  - [x] verify-self
+    - [x] P1.verify-self.1 HTTP: GET /music/pool/status → 200, body has `count`
+    - [x] P1.verify-self.2 HTTP: POST /music/pool/seed → 200, body confirms seeded
+    - [x] P1.verify-self.3 HTTP: POST /distribution/match → 200, response video_id is from new pool
   - [ ] verify-human  <!-- status: NOT-STARTED -->
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
@@ -39,8 +49,8 @@ depend on an external sheet.
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > Phase 1 > verify-self
-- **Active scope:** verify-self (automated checks passed, running live-system observation)
+- **Path:** Feature > Phase 1 > verify-human
+- **Active scope:** verify-human (verify-self passed; phase modified existing POST /distribution/match handler — integration boundary applies)
 - **Blocked:** none
 - **Unvisited:** Phase 2
 - **Open discoveries:** none

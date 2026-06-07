@@ -25,15 +25,16 @@ This is the third step of the per-phase verification loop: `build → verify-aut
 
 ## Orchestrator Pause Policy (cheat-sheet)
 
-This skill is the **one forced human-pause** in the per-phase loop for Modes 1–3 — invocation itself PAUSEs while the human walks the checklist (§5 of the Procedure). Mode 4 SKIPs invocation entirely.
+This skill is the **one forced human-pause** in the per-phase loop for Modes 1–2 — invocation itself PAUSEs while the human walks the checklist (§5 of the Procedure). In Mode 3 the pause is **conditional**: when the §2 Auto-skip gate is clean (no integration boundary + verify-self all-PASS), the skill AUTO-SKIPs by emitting F11 without prompting; otherwise Mode 3 still PAUSEs. Mode 4 SKIPs invocation entirely.
 
-Once the human has responded and this skill emits an exit transition, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause:
+Once the human has responded (or in Mode 3 auto-skip, immediately) and this skill emits an exit transition, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause:
 
 | Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
 |---|---|---|---|---|
-| Skill invocation (entry — present checklist) | PAUSE | **PAUSE** (await human) | **PAUSE** (await human) | **SKIP** (orchestrator chains verify-self → verify-codify directly) |
+| Skill invocation (entry — present checklist) | PAUSE | **PAUSE** (await human) | **PAUSE** (await human) — or AUTO-SKIP when §2 Auto-skip gate clean (no boundary + verify-self all-PASS) | **SKIP** (orchestrator chains verify-self → verify-codify directly) |
 | F13 (human approves → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
 | F11 (human-confirmed skip → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
+| F11 (AUTO-SKIP — auto-skip gate clean, no prompt) | n/a | n/a | AUTO | n/a (skipped) |
 | F12 (back-loop to build with scoped leaves) | PAUSE | AUTO | AUTO | n/a (skipped) |
 
 **Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode (i.e., the human has already responded), the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user a second time after the human's reply. Emitting a clean `TRANSITION: F13` followed by a polite narrative summary ("Phase approved; ready to run verify-codify") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
@@ -57,10 +58,32 @@ First, determine whether this phase has an **integration boundary**. A phase has
 
 **If no boundary applies** (the phase only adds isolated new artifacts that no existing surface consumes):
 - Affirm this in writing: "This phase does NOT wire into any existing endpoint, route, UI page, CLI command, scheduled job, or external-system call. It only adds isolated new artifacts: [list them]."
-- Then ask the human: "Given that affirmation, do you agree to skip to verify-codify?"
-- Only proceed to verify-codify (F11) if the human confirms.
+- Then check the **Auto-skip gate** below. If gates clean, auto-skip without prompting. Otherwise, ask the human: "Given that affirmation, do you agree to skip to verify-codify?" Only proceed to verify-codify (F11) if the human confirms.
 
 The skip path is gated by the affirmation, not by the agent's general judgment that "there is nothing to test."
+
+#### Auto-skip gate (Mode 3+ + no boundary + verify-self all-PASS)
+
+In drive_mode `autopilot` (Mode 3) or `full-autopilot` (Mode 4), the human "do you agree to skip?" prompt is redundant when the objective gate is already clean — the operator has opted into autopilot, and the affirmation rules above provide an objective check. The auto-skip elides the prompt but **still prints the affirmation block in chat** so the operator retains a read-time veto.
+
+**Read `drive_mode`** from the WIP file's YAML frontmatter (`drive_mode: autopilot` or `drive_mode: full-autopilot`). Then evaluate all four conditions:
+
+1. **(a) drive_mode is `autopilot` or `full-autopilot`** — read from WIP frontmatter. If frontmatter has no `drive_mode` field, treat as Mode 2 (orchestrated) and do NOT auto-skip.
+2. **(b) verify-self all-PASS** — scan the current phase's `verify-self` subtree in the Work Tree. Every leaf must be `[x]` (no `UNVERIFIED`, no `FAILED`, no `FAILED-cosmetic`, no `NOT-STARTED`). If verify-self itself is `NOT-STARTED` or any leaf is non-PASS, do NOT auto-skip.
+3. **(c) No integration boundary applies** — the 5-condition check above returned "no boundary." If a boundary applies, auto-skip is irrelevant (the F11 skip path is forbidden entirely).
+4. **(d) No observable outcome cites a consuming surface by name** — re-read the phase's Observable Outcomes block. If any outcome line names an existing endpoint, UI route, CLI command, job, or external system that the phase modifies (rather than adds fresh), this is a boundary signal that (c) may have missed. Be conservative: if you cannot affirm "none of the outcomes references a consuming surface this phase touches," do NOT auto-skip.
+
+**When ALL four gates clean:**
+- Print the affirmation block in chat (the same paragraph from above naming the isolated new artifacts).
+- Print one additional line: `Auto-skipped per drive_mode=<mode> — no integration boundary detected.`
+- Emit `TRANSITION: F11` immediately. Do NOT ask "do you agree to skip?" — the operator's autopilot opt-in is the consent.
+- Update the WIP tree exactly as the human-confirmed F11 path would (mark verify-human `[x]`, update Current Node).
+
+**When ANY gate fails:** fall through to the existing F11-with-confirmation path (ask the human, wait for "skip" confirmation, then emit F11).
+
+This auto-skip applies only to the F11 path (no boundary, isolated artifacts). The F13 (human approves checklist) and F12 (back-loop) paths are unchanged and never auto-skip — those require actual human judgment by definition.
+
+**Known limitation — probe/decision-artifact false positive.** A phase whose load-bearing deliverable is a human decision ACK (probe results, retrospect findings, baseline measurements) with no integration boundary will be auto-skipped under the current gates. The operator's read-time veto (the printed affirmation block) is the recovery mechanism — manually run `/feature-build <leaf-id>` if a misclassification needs review. A future cycle may add a 5th gate (no decision-artifact outcomes) when a real regression hits.
 
 ### 3. Expand verify-human into leaf nodes (first run)
 

@@ -39,7 +39,7 @@ The full pause policy per workflow and per drive mode is in the **Drive modes** 
 | 0 | **Direct** | Direct slash command (e.g. `/feature-plan`) — not via session-start | One skill runs, then stops. The skill's own "Hand Off" prose is authoritative. No chaining. |
 | 1 | **Step-by-step** | session-start option 1 | Pause after every skill. The orchestrator summarises what was done and tells the user which slash command to run next — but does not invoke it automatically. |
 | 2 | **Orchestrated** | session-start option 2 | Follows the pause-policy table in `agents/<workflow>-workflow/AGENTS.md` exactly. Skill-level stop signals are ignored; `TRANSITION: <id>` tokens are the sole machine signal. |
-| 3 | **Autopilot** | session-start option 3 / default (Enter) | All steps AUTO except `verify-human` (still PAUSE) and ESCALATE (always PAUSE). |
+| 3 | **Autopilot** | session-start option 3 / default (Enter) | All steps AUTO except `verify-human` (conditional — AUTO-SKIPs when no integration boundary + verify-self all-PASS, else PAUSE) and ESCALATE (always PAUSE). |
 | 4 | **Full-autopilot** | session-start option 4 | All steps AUTO. `verify-human` is **skipped** — `verify-self` result is the acceptance gate. ESCALATE remains PAUSE. Runs until terminal state. |
 
 #### Mode precedence
@@ -67,7 +67,7 @@ Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes
 | build | PAUSE | AUTO | AUTO | AUTO |
 | verify-auto | PAUSE | AUTO | AUTO | AUTO |
 | verify-self | PAUSE | AUTO | AUTO | AUTO |
-| verify-human | PAUSE | PAUSE | **PAUSE** | **SKIP** |
+| verify-human | PAUSE | PAUSE | **PAUSE** (or **AUTO-SKIP** when no integration boundary + verify-self all-PASS) | **SKIP** |
 | verify-codify | PAUSE | AUTO | AUTO | AUTO |
 | ship | PAUSE | AUTO | AUTO | AUTO |
 | finalize | PAUSE | PAUSE | AUTO | AUTO |
@@ -129,7 +129,7 @@ I'll drive the <workflow> workflow. Which drive mode do you want?
 
   1. Step-by-step   — pause after every skill; you confirm each transition
   2. Orchestrated   — standard pauses (spec, plan, verify-human, finalize)
-  3. Autopilot      — only pauses at verify-human; everything else chains automatically
+  3. Autopilot      — only pauses at verify-human (and auto-skips it when no integration boundary); everything else chains automatically
   4. Full-autopilot — no pauses; verify-human skipped; runs to completion
 
 (Type 1–4 — or just press Enter for Autopilot)
@@ -298,7 +298,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 | F10 | verify-auto | verify-self | Tests pass → user runs `/feature-verify-self <dev-url>` |
 | F10b | verify-self | verify-human | All blocking outcomes pass (cosmetic issues noted) |
 | F9b | verify-self | build | Back-loop: blocking observable outcome failed |
-| F11 | verify-human | verify-codify | Phase has no integration boundary (agent affirms in writing) and human confirms skip — see verify-human SKILL.md "Integration-boundary rule" |
+| F11 | verify-human | verify-codify | Phase has no integration boundary (agent affirms in writing) — human confirms skip in Modes 1–2; in Mode 3, auto-skips without prompt when verify-self is also all-PASS — see verify-human SKILL.md "Integration-boundary rule" and "Auto-skip gate" |
 | F12 | verify-human | build | Back-loop: human rejects |
 | F13 | verify-human | verify-codify | Human approves happy path |
 | F14 | verify-codify | verify-human | Back-loop: new tests reveal issues human missed |
