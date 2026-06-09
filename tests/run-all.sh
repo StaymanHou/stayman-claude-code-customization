@@ -39,15 +39,17 @@ echo
 # Note: run-tests.sh exits non-zero on FAIL; we want Pass 2 to run regardless,
 # then exit non-zero based on the combined merged result. Hence `|| true`.
 echo "[Pass 1/2] haiku — scenarios without a model: tag"
-"$SCRIPT_DIR/run-tests.sh" --model haiku --filter-model default "${FORWARD_ARGS[@]}" || true
-P1_FILE=$(ls -1t "$RESULTS_DIR"/run-*.json 2>/dev/null | grep -v combined | head -1)
+"$SCRIPT_DIR/run-tests.sh" --model haiku --filter-model default ${FORWARD_ARGS[@]+"${FORWARD_ARGS[@]}"} || true
+# Subshell + `|| true` swallows the SIGPIPE that `head -1` triggers in `ls | grep | head`
+# under `set -o pipefail` (head closes the pipe early → ls exits 141 → pipefail propagates → set -e kills the script).
+P1_FILE=$({ ls -1t "$RESULTS_DIR"/run-*.json 2>/dev/null | grep -v combined | head -1; } || true)
 echo "Pass 1 results: $P1_FILE"
 echo
 
 # --- Pass 2: sonnet partition (scenarios tagged model: sonnet) ---
 echo "[Pass 2/2] sonnet — scenarios tagged model: sonnet"
-"$SCRIPT_DIR/run-tests.sh" --model sonnet --filter-model sonnet "${FORWARD_ARGS[@]}" || true
-P2_FILE=$(ls -1t "$RESULTS_DIR"/run-*.json 2>/dev/null | grep -v combined | head -1)
+"$SCRIPT_DIR/run-tests.sh" --model sonnet --filter-model sonnet ${FORWARD_ARGS[@]+"${FORWARD_ARGS[@]}"} || true
+P2_FILE=$({ ls -1t "$RESULTS_DIR"/run-*.json 2>/dev/null | grep -v combined | head -1; } || true)
 echo "Pass 2 results: $P2_FILE"
 echo
 
