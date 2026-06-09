@@ -6,6 +6,17 @@
 
 ## TODO
 
+## SURFACE-2026-06-09-GREP-CHECK-HELPER-PIPEFAIL-INTERACTION
+- **Order:** P-NEW (pending user re-ordering)
+- **Source:** feature:verify-codify (check-structure-sigterm-propagation, 2026-06-09) — surfaced as pre-existing tech debt during the design of 2 new negative pins. Same root cause hit me twice during this feature's verify-codify.
+- **Target level:** task:plan (small/simple — fix the helper's count-capture pattern + one-line audit of existing call sites)
+- **Type:** tech-debt / latent bug
+- **Summary:** `tests/check-structure.sh` line 38 (`grep_check` helper) uses `count=$(grep -cE "$pattern" "$file" 2>/dev/null || echo 0)`. Under the script's `set -euo pipefail`: when grep finds 0 matches, it exits 1 — so the `|| echo 0` ALSO fires, AND the original grep's stdout (`0\n`) is also captured. Result: `count="0\n0"` (literal 3-char string with embedded newline), not `0`. The subsequent `[ "$count" -ge "$min_count" ]` then fails with "integer expression expected" — except inside the helper, the failure is silently absorbed because the helper itself isn't `|| true`-protected... actually it might propagate via `set -e`. Confirmed empirically during the feature: my own initial pin code used the same `|| echo 0` pattern and produced `n="0\n0"`, causing `[ "$n" = "0" ]` to evaluate false and the pin to FAIL even with no matches. Fixed in my new pins via `n=$( (grep ... || true) | head -1 )`; the existing helper has NOT been audited or fixed.
+- **Context:** Every existing `grep_check` call in `tests/check-structure.sh` could in principle hit this when its pattern matches 0 lines. The reason it hasn't broken catastrophically is that `grep_check` is mostly used for positive pins (expected ≥1 match, so `count` rarely starts at 0). The bug bites the rare case where a `grep_check` is used to verify "this file exists with at least N entries" and the entry count drops to 0 — instead of getting a clean FAIL message, the script may abort early per `set -e`. Latent, not currently triggering.
+- **Suggested action:** Update the helper's count-capture to: `count=$( (grep -cE "$pattern" "$file" 2>/dev/null || true) | head -1 )` followed by `count="${count:-0}"`. Then audit any callers that pass `min_count=0` (allowed-form pins) — none expected since most pins are `≥1`. Single ~3-line change.
+- **Priority:** low — latent bug, not currently triggering; would surface only if a future pin's matched-count drops to 0.
+- **Status:** pending
+
 ## SURFACE-2026-05-29-VERIFY-SELF-IN-PLACE-FIX-SHORTCUT-POLICY
 - **Order:** P1
 - **Source:** v3 WP3 Phase 2 verify-self (2026-05-29) — `feature-verify-self` is contractually observe-only with BLOCKING fails going through F9b back-loop to `feature-build`. When the alias-key audit miss surfaced (P2.4), I shortcut that to in-place fix within verify-self because the bug was a one-line extension of the just-completed leaf AND the re-verification went through a fresh Playwright subagent (same audit-trail artifact as a formal back-loop would produce). User approved the shortcut at verify-human ack but acknowledged it as a procedure deviation.
