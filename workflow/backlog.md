@@ -29,41 +29,8 @@
 - **Priority:** low — latent bug, not currently triggering; would surface only if a future pin's matched-count drops to 0.
 - **Status:** pending
 
-## SURFACE-2026-05-29-VERIFY-SELF-IN-PLACE-FIX-SHORTCUT-POLICY
-- **Order:** P1
-- **Source:** v3 WP3 Phase 2 verify-self (2026-05-29) — `feature-verify-self` is contractually observe-only with BLOCKING fails going through F9b back-loop to `feature-build`. When the alias-key audit miss surfaced (P2.4), I shortcut that to in-place fix within verify-self because the bug was a one-line extension of the just-completed leaf AND the re-verification went through a fresh Playwright subagent (same audit-trail artifact as a formal back-loop would produce). User approved the shortcut at verify-human ack but acknowledged it as a procedure deviation.
-- **Target level:** harness / skill (`skills/feature-verify-self/SKILL.md`)
-- **Type:** policy clarification / workflow refinement
-- **Summary:** verify-self's "observe-only" rule produces friction when the fix is genuinely trivial (one-line extension of just-built code) and the re-verification artifact is equivalent to what a F9b back-loop would produce. Formal back-loop in those cases costs 3 extra Skill invocations (build → verify-auto → verify-self) for the same outcome. Worth codifying either: (a) verify-self may fix-in-place when the fix is a trivial extension of the just-completed leaf AND re-verification goes through a fresh subagent, with explicit `## Discoveries` audit-trail entry; OR (b) keep the strict observe-only rule but make F9b → F8 chain auto-fast for trivial-fix back-loops.
-- **Why it matters:** Drive-mode AUTOPILOT amplifies this — every back-loop is 3 Skill invocations of overhead. As the workflow system matures, observed friction patterns warrant explicit policy rather than ad-hoc deviations.
-- **Proposed fix:** Update `skills/feature-verify-self/SKILL.md` §3 with an explicit "in-place fix" sub-clause OR add a "Same-state quick-fix" entry to the `debug-*` skill category. Either route, the audit-trail discipline (entry in `## Discoveries` describing what was fixed + how it was re-verified) becomes the gate.
-- **Priority:** low-medium — a real but bounded friction; rule-of-three reached 2026-06-07 (v3 WP3 Phase 2, v3 WP11 Phase 1, verify-human-auto-skip-when-no-integration-boundary Phase 2). Project CLAUDE.md line 240 says "ready to formalize."
-- **Status:** resolved 2026-06-09 — feature `verify-self-in-place-fix-shortcut-policy` shipped (commit b097ac0). Option (a) chosen: explicit triple-gated "In-place fix shortcut" sub-clause in `skills/feature-verify-self/SKILL.md` §3 + structural-check pins + F10b-shortcut behavioral scenario.
-
-## SURFACE-2026-06-07-CHECK-STRUCTURE-DRY-RUN-CONCURRENCY-FRAGILE
-- **Order:** P2
-- **Source:** feature:build — long-cmd-timeout-and-exclusive-resource-concurrency Phase 1 P1.4 (2026-06-07).
-- **Target level:** project (tests/check-structure.sh + project CLAUDE.md prior-runtime note)
-- **Type:** tech-debt / concurrency-fragility
-- **Summary:** `tests/check-structure.sh` Phase 1 invokes `./tests/run-tests.sh --dry-run` (line 762) which on this machine takes >5 min — exceeding the harness's 5-min hard Bash cap. Auto-background + the buffered `| tail -30` pipe means the output file stays empty until completion, masking progress. When the parent `check-structure.sh` is killed (e.g. user cancel or harness-timeout), its child `run-tests.sh --dry-run` does NOT receive SIGTERM and continues running. Subsequent re-invocations stack concurrent dry-runs against `tests/results/` and fixture state — the exact failure mode the new global Long-running-commands rule was just written to prevent. Today's build required `pkill -f run-tests.sh` to clear state before the third invocation could proceed cleanly.
-- **Context:** Bites every feature finalize and every shipping pass (`./tests/check-structure.sh` is run before every commit by the verify-codify and ship skills). Today's session burned ~10 min on this concurrency-stacking before the orphaned-child pattern was recognized. The pattern is silent — no error, just an indefinite hang on Phase 1.
-- **Suggested action:** Two small fixes: (1) Add a `trap 'pkill -P $$' EXIT` or `exec` discipline in `tests/check-structure.sh` so killing the parent propagates to children; (2) Document `tests/check-structure.sh` runtime ≥ 5 min in project CLAUDE.md under a "Tier-1 dev command runtimes" subsection so future Bash invocations set `timeout: 600000` explicitly. Optionally: profile `run-tests.sh --dry-run` to find why scenario enumeration takes >5 min — if it's reading every fixture for each scenario, an index file would cut the cost.
-- **Priority:** medium — bites every finalize/ship run; pattern is the canonical exclusive-resource failure mode in this very repo.
-- **Status:** resolved 2026-06-09 — feature `check-structure-sigterm-propagation` shipped (commit d1cd105). Took the "Optional" path from the suggested action (bypass the subprocess entirely) rather than fixes (1) or (2). The recursive-walker trap approach was tried first and failed verify-self twice — bash command-substitution subshells are siblings of the script, not descendants, so no trap walking from `$$` can reach them. Switched to an inlined Python YAML scenario count (replacing line 795's `total=$(./tests/run-tests.sh --dry-run | ...)`), which eliminates the subprocess invocation entirely. Net effect: runtime ~240s → ~16s, orphan-child surface gone, and 4 structural pins in `check-structure.sh` forbid the regressed forms from returning. The (2) doc-note action was already addressed by the global Long-running-commands runtime-registry pattern (runtimes.md updated with new ~16s entry).
-
-## SURFACE-2026-06-06-RUN-ALL-UNBOUND-FORWARD-ARGS
-- **Order:** P3
-- **Source:** task:act (codify-randomize-host-ports-test-coverage, 2026-06-06) — surfaced while running `./tests/run-all.sh` for T4. Pre-existing harness bug, not introduced by this task.
-- **Target level:** task:plan (small/simple — one-line shell fix).
-- **Type:** test-infra / harness bug
-- **Summary:** `tests/run-all.sh:42` (and `:49`) expand `"${FORWARD_ARGS[@]}"` while `set -u` is on. When `FORWARD_ARGS` is empty (the common case when invoked with no args), expansion fails with `FORWARD_ARGS[@]: unbound variable` and the whole two-pass sweep aborts before Pass 1 runs. The combined-result JSON merge at line 56 never executes, so there's no run-* file produced and exit code is 1. Net effect: `./tests/run-all.sh` (no args) is completely broken on this machine's bash. Repro: `./tests/run-all.sh` → fails immediately. Workaround: use `./tests/run-tests.sh --model haiku --filter-model default` then `./tests/run-tests.sh --model sonnet --filter-model sonnet` manually.
-- **Why pre-existing:** the bug is in `set -euo pipefail` + empty-array expansion semantics; it would have fired the moment the script was ever run with no args. Likely the script was only ever validated with `--group <x>` arguments (which populate FORWARD_ARGS). Confirmed by `git log -p tests/run-all.sh` showing the file unchanged across recent commits.
-- **Suggested action:** Replace `"${FORWARD_ARGS[@]}"` with `${FORWARD_ARGS[@]+"${FORWARD_ARGS[@]}"}` on both lines (the conditional-expansion idiom that is safe under `set -u` for empty arrays on bash 3.2+). Verify with both `./tests/run-all.sh` (no args) and `./tests/run-all.sh --group product`.
-- **Priority:** medium — the wrapper script is the documented end-to-end harness invocation in CLAUDE.md ("two-pass sweep: haiku for untagged, sonnet for those tagged"); the workaround works but defeats the purpose of the wrapper. Any user following the documented flow will hit this.
-- **Status:** resolved 2026-06-09 — task `run-all-unbound-forward-args` closed. Applied the suggested `${FORWARD_ARGS[@]+"${FORWARD_ARGS[@]}"}` idiom on lines 42 + 49 (T1) and additionally fixed a sibling `set -o pipefail` + `head`-induced-SIGPIPE bug at lines 43 + 50 (T1b — `P1_FILE=$(ls ... | grep ... | head -1)` propagated exit 141 to `set -e`, killing the script between Pass 1 and Pass 2). The pipefail issue was a pre-existing sibling bug exposed only after T1 let the script reach line 43 for the first time; absorbed into the same task since same file + same bug-family. Verified end-to-end via real `./tests/run-all.sh --group debug` run (exit 0, both passes, combined merge), plus populated-args `--dry-run` regression check (exit 0), plus isolated `set -u` empty-array idiom test.
-
 ## SURFACE-2026-06-06-SETTINGS-FIXTURE-MODEL-DRIFT
-- **Order:** P4
+- **Order:** P1
 - **Source:** feature:verify-self (docker-init-randomize-host-ports, 2026-06-06) — pre-existing failure surfaced during structural sweep, not introduced by this feature.
 - **Target level:** task:plan (small/simple — one-line fixture update or `INTENTIONAL_DIFFS` entry).
 - **Type:** test-infra / fixture drift
@@ -73,7 +40,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG
-- **Order:** P5
+- **Order:** P2
 - **Source:** feature:verify-codify (finalize-before-ship-order-flip Phase 3 regression slice, 2026-05-13)
 - **Target level:** task:plan
 - **Type:** test-infra (recon discipline pending)
@@ -83,7 +50,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-10-I20-SCENARIO-MISSING
-- **Order:** P6
+- **Order:** P3
 - **Source:** feature:verify-codify (incident-codify feature, Phase 3, 2026-05-10)
 - **Target level:** task:plan
 - **Type:** gap (test coverage)
@@ -94,7 +61,7 @@
 - **Status:** open
 
 ## SURFACE-2026-06-07-SESSION-RESUME-LEAVES-PAUSE-FOOTER
-- **Order:** P7
+- **Order:** P4
 - **Source:** Cross-project learning from NeoStayman WP30 finalize / session-reflect (2026-06-07). Full learning doc at `/Users/stayman/Personal/projects/neo-stayman-assistant/.claude/learnings/2026-06-07-session-resume-strip-stale-pause-footer.md`. NeoStayman backlog reference: `SURFACE-2026-05-16-SESSION-RESUME-LEAVES-PAUSE-MARKER`.
 - **Target level:** harness / skill — `~/.claude/skills/session-resume/SKILL.md` (which is symlinked from this repo's `skills/session-resume/SKILL.md`).
 - **Type:** behavioral gap in skill — orphan-footer cleanup miss
@@ -107,7 +74,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-29-FEATURE-FINALIZE-MISSES-WBS-TASK-CHECKBOXES
-- **Order:** P8
+- **Order:** P5
 - **Source:** v3 WP3 session-resume (2026-05-29) — user observed that v3 WP1 and WP2 task checkboxes in `docs/product/wbs.md` were still `[ ]` despite both WPs being shipped, finalized, and committed (commits `4dd8d6d`, `8d9fc94`, `64fb865`, `c387829`). `feature-finalize` correctly tagged each WP heading with `✅ SHIPPED <date> (commit <sha>)` at the WP level but did not tick the per-task checkboxes (1.1–1.7, 2.1–2.3) underneath. Resume had to do it manually for both WPs.
 - **Target level:** harness / skill — `skills/feature-finalize/SKILL.md` WBS-update step.
 - **Type:** behavioral gap in close-skill
@@ -121,7 +88,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-22-CLAUDE-MD-MISSING-CLAUDE-TIME-CONTAINER-NOTE
-- **Order:** P9
+- **Order:** P6
 - **Note (2026-06-07):** User flagged "we are already v3, should double check." Verified: project CLAUDE.md still has no mention of `tools/claude-time/test/run-in-container.sh` or the container test path. The doc-gap remains regardless of v3 status. WP5 has long since shipped, so the original "WP5 dirty-tree blocker" no longer applies — the paragraph can be appended cleanly now.
 - **Source:** feature:finalize (claude-time-test-containerization, 2026-05-22)
 - **Target level:** task:plan (small/simple — single paragraph append)
@@ -133,7 +100,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-22-DEBUG-EMPIRICAL-TELEMETRY-SKILL
-- **Order:** P10
+- **Order:** P7
 - **Source:** user request (2026-05-22)
 - **Target level:** feature:spec (new `debug-*` sidebar skill — non-trivial design surface: trigger gate, instrumentation playbook, cleanup discipline)
 - **Type:** new-work / new debug skill in the agent-pulled sidebar category
@@ -144,7 +111,7 @@
 - **Status:** open
 
 ## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P11
+- **Order:** P8
 - **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
 - **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
 - **Type:** new skill or skill augmentation
@@ -155,7 +122,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
-- **Order:** P12
+- **Order:** P9
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
 - **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
 - **Type:** gap (test coverage — structural-only check doesn't catch behavioral drift)
@@ -170,7 +137,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P13
+- **Order:** P10
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
 - **Type:** workflow-enhancement
