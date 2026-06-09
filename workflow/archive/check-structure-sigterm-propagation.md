@@ -87,6 +87,24 @@ Auto-fixing both per HIGH-confidence Obsolete-test classification.
 
 [SURFACED-2026-06-09] Phase 1 research spike → recommendation: **Design B (bypass entirely) is strictly better than Design A (trap-based)**. Design A (background-PID + pkill fallback) was verified to work in sandbox. Design B (Python YAML scenario count) was verified to work AND dramatically simpler: replaces a 240s subprocess invocation with a ~50ms file walk, eliminates the orphan-child surface entirely, fewer LoC, simpler mental model. The P2 backlog entry's "Optional: profile run-tests.sh --dry-run to find why scenario enumeration takes >5 min — if it's reading every fixture for each scenario, an index file would cut the cost" — Design B IS that optional-cost-fix. The revised plan implements Design B in Phase 1.
 
+## Retrospect
+
+- **What changed in our understanding:** Bash command-substitution subshells are *siblings* of the invoking script (under the same wrapper bash PPID), not *descendants*. This means no trap walking from `$$` — neither `pkill -P $$` nor a recursive `_kill_descendants $$` — can ever reach the subshell or its children. The orphan-child problem we set out to fix was structurally unfixable by the original plan's approach. Required two failed builds to learn empirically.
+
+- **Assumptions that held:**
+  - The orphan-process pattern was real and worth fixing (the 2026-06-07 incident burned ~10 min).
+  - `run-tests.sh --dry-run` was a slow subprocess invocation (~240s) that didn't need to run from `check-structure.sh` — the YAML files are parseable in ~50ms.
+  - The runtime registry (`runtimes.md`) was the right home for the new runtime measurement.
+
+- **Assumptions that were wrong:**
+  - **First wrong assumption:** That `pkill -P $$` would catch the dry-run process tree (it doesn't — the tree is multi-level *and* not a descendant of `$$`).
+  - **Second wrong assumption:** That a recursive walker (`_kill_descendants $$`) would catch it (same root cause — wrong about the process-tree topology).
+  - **Third wrong assumption (caught in research, not build):** That a simple background-PID + `pkill -f` would be the clean fix. Research showed Design B (bypass entirely) was strictly better — drops runtime AND eliminates the orphan-child surface in one move.
+
+- **Approach delta:** The first plan said "one trap line + a comment in `check-structure.sh`." Reality required: 1 plan revision (F23), 1 research spike (F22-from-plan-as-redirect), a new 2-phase plan that REPLACES the subprocess invocation rather than managing its side effects, and 4 regression pins. The user's intervention at "tackle P2 in autopilot" → option-3 redirect to research was load-bearing — without it, this would have been a 3rd-iteration trap-tweaking exercise rather than a strict improvement.
+
+- **Codify-time triage entries:** 2 caught during Phase 1 verify-codify (both HIGH-confidence Obsolete-test): self-matching regex bug in negative pin, `grep -c ... || echo 0` interaction with `pipefail`. 1 mistake during Phase 2 verify-codify: duplicate `runtimes.md` shape pin (already existed at Phase 3 line ~114). All caught and fixed in-state without back-loops.
+
 ## Downstream contract impacts
 
 - **`tests/check-structure.sh`** is invoked by `feature-verify-codify` and `feature-ship` skill procedures. The change does NOT alter exit-code semantics (still exits 0 on pass, 1 on fail) or output shape (the `[PASS]/[FAIL]` summary lines for each Phase are unchanged). The "Scenario count" line text is identical except for sourcing the count from Python instead of subprocess output. No downstream skill/test contracts assert against the script's internals.
