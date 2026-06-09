@@ -15,7 +15,7 @@
 - **Why it matters:** Drive-mode AUTOPILOT amplifies this — every back-loop is 3 Skill invocations of overhead. As the workflow system matures, observed friction patterns warrant explicit policy rather than ad-hoc deviations.
 - **Proposed fix:** Update `skills/feature-verify-self/SKILL.md` §3 with an explicit "in-place fix" sub-clause OR add a "Same-state quick-fix" entry to the `debug-*` skill category. Either route, the audit-trail discipline (entry in `## Discoveries` describing what was fixed + how it was re-verified) becomes the gate.
 - **Priority:** low-medium — a real but bounded friction; rule-of-three reached 2026-06-07 (v3 WP3 Phase 2, v3 WP11 Phase 1, verify-human-auto-skip-when-no-integration-boundary Phase 2). Project CLAUDE.md line 240 says "ready to formalize."
-- **Status:** pending
+- **Status:** resolved 2026-06-09 — feature `verify-self-in-place-fix-shortcut-policy` shipped (commit b097ac0). Option (a) chosen: explicit triple-gated "In-place fix shortcut" sub-clause in `skills/feature-verify-self/SKILL.md` §3 + structural-check pins + F10b-shortcut behavioral scenario.
 
 ## SURFACE-2026-06-07-CHECK-STRUCTURE-DRY-RUN-CONCURRENCY-FRAGILE
 - **Order:** P2

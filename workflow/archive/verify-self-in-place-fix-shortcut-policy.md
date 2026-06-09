@@ -69,6 +69,22 @@ surface_id: SURFACE-2026-05-29-VERIFY-SELF-IN-PLACE-FIX-SHORTCUT-POLICY
 - **Evidence:** Phase 1's diff is markdown-only edits to two files; the failing assertion in `tests/check-structure.sh` reads `~/.claude/settings.json` vs. `tests/fixtures/settings.json` — completely orthogonal.
 - **Action:** No file modified or deleted by Phase 1 verify-codify. Pre-existing failure is acknowledged and left for P4's own task cycle. Total: PASS 132 / FAIL 1 (the 1 FAIL is the pre-existing P4 drift).
 
+## Retrospect
+
+- **What changed in our understanding:** None — the policy was well-defined in the backlog entry (option (a) selected at plan time, three observed instances analyzed) and CLAUDE.md line 240 had explicitly marked it "ready to formalize." The feature was nearly a transcription job from spec → implementation.
+- **Assumptions that held:**
+  - The build-time grep discipline (CLAUDE.md "Build-time selector-emission discipline") caught one case-sensitivity miss in Phase 1 — `awk` outcome was case-sensitive but my first edit used "Trivial extension" (capitalized). One small in-place edit (no back-loop needed). Discipline worked as designed.
+  - Phase splitting was correct — Phase 1 (SKILL.md edit) and Phase 2 (tests) cleanly separated. Phase 1's verify-codify correctly deferred all test coverage to Phase 2 (the codification phase), which avoided the temptation to write tests for SKILL.md prose before the structural pin existed.
+  - The auto-skip gate fired correctly twice (both Phase 1 and Phase 2 verify-human) — the affirmation block + drive_mode autopilot was the right composition for a doc-only feature.
+- **Assumptions that were wrong:** None of significance. The plan's downstream contract analysis correctly identified that no existing tests grep against §3 prose, so the SKILL.md edit had no fragile downstream consumers.
+- **Approach delta:** Implementation matched plan exactly. P1.1 + P1.2 collapsed into a single Edit invocation because the "What this shortcut is NOT" guard paragraph fit naturally adjacent to the gate language; the plan had allowed for either separate or combined.
+
+## Communicate
+
+> **Feature complete:** `verify-self-in-place-fix-shortcut-policy` has shipped (commit b097ac0). The verify-self "in-place fix shortcut" is now an explicit triple-gated sub-clause in `skills/feature-verify-self/SKILL.md` §3 — permitting a fix in place when (a) it's a trivial extension of the just-completed leaf, (b) re-verification runs through a fresh model invocation, and (c) an audit-trail `[SHORTCUT-<date>]` entry lands in WIP `## Discoveries`. Regression coverage: 2 structural-check pins + the `F10b-shortcut` behavioral scenario (PASS strict on haiku).
+>
+> Requester = operator — closure notice for self-record.
+
 ## Downstream contract impacts (plan-time grep)
 
 - **`skills/feature-verify-self/SKILL.md`** — Phase 1 edits the file in place. No other skill greps against literal §3 text, so no downstream key-name/object-shape impact from the SKILL.md edit alone.
