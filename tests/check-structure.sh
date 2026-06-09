@@ -776,12 +776,65 @@ else
   check "All scenario YAML files parse cleanly" "fail" "python3 not available"
 fi
 
-# Minimum scenario count (should be ≥ 88 after product-doc-archival feature)
-total=$(./tests/run-tests.sh --dry-run 2>/dev/null | grep "^TOTAL" | grep -oE "[0-9]+" | tail -1 || echo 0)
+# Minimum scenario count (should be ≥ 88 after product-doc-archival feature).
+# Counts scenarios directly from tests/scenarios/*.yaml via Python rather than
+# shelling out to `./tests/run-tests.sh --dry-run` — the subprocess invocation
+# took ~240s on this machine (the bulk of check-structure.sh's runtime) and
+# orphaned a process tree that subsequent re-invocations would race against
+# (see backlog SURFACE-2026-06-07-CHECK-STRUCTURE-DRY-RUN-CONCURRENCY-FRAGILE).
+# Counting semantics match run-tests.sh: every scenario in every yaml counts
+# (run-tests.sh increments TOTAL once per scenario after filtering; with no
+# --id/--filter-model/--group flags, every scenario passes filtering).
+total=$(python3 - <<'PYEOF' 2>/dev/null || echo 0
+import yaml, pathlib
+total = 0
+for f in sorted(pathlib.Path('tests/scenarios').glob('*.yaml')):
+    with open(f) as fh:
+        data = yaml.safe_load(fh) or {}
+    total += len(data.get('scenarios', []) or [])
+print(total)
+PYEOF
+)
 if [ "${total:-0}" -ge 88 ]; then
   check "Scenario count ≥ 88 ($total registered)" "pass"
 else
   check "Scenario count ≥ 88" "fail" "only $total scenarios found"
+fi
+
+# Regression pins for the orphan-subprocess fix (backlog SURFACE-2026-06-07).
+# Codify Phase 1's chosen approach (inlined Python YAML count) and forbid the
+# prior subprocess invocation + the failed-experiment trap helper from silently
+# returning via merge or refactor. Each pin's grep regex deliberately avoids
+# matching its own implementation lines (no literal match-strings here).
+# [s] is a character class matching literal 's' — the [/] brackets in the source
+# stop this very line from matching its own regex (which scans for run-tests.sh).
+invocation_re='\./tests/run-test[s]\.sh --dry-run'
+n=$( (grep -cE "^[[:space:]]*[^#[:space:]].*${invocation_re}" tests/check-structure.sh 2>/dev/null || true) | head -1 )
+n="${n:-0}"
+if [ "$n" -eq 0 ]; then
+  check "tests/check-structure.sh does NOT invoke the prior dry-run subprocess form" "pass"
+else
+  check "tests/check-structure.sh does NOT invoke the prior dry-run subprocess form" "fail" \
+    "$n non-comment lines re-invoke the dead form (orphans + 240s runtime); count scenarios inline with python instead"
+fi
+walker_re='_kill_descendants[[:space:]]*\('
+n=$( (grep -cE "$walker_re" tests/check-structure.sh 2>/dev/null || true) | head -1 )
+n="${n:-0}"
+if [ "$n" -eq 0 ]; then
+  check "tests/check-structure.sh does NOT define/call the failed walker helper" "pass"
+else
+  check "tests/check-structure.sh does NOT define/call the failed walker helper" "fail" \
+    "$n call/definition sites found; helper couldn't reach sibling subshells (see backlog entry)"
+fi
+grep_check "tests/check-structure.sh counts scenarios via inlined python3 heredoc" \
+  "tests/check-structure.sh" "python3 - <<'PYEOF'" 1
+
+# runtimes.md must carry at least one **Use timeout:** entry — that's the
+# load-bearing field agents read before invoking tracked long-running commands.
+# (shape: frontmatter is already pinned by Phase 3 at line ~114.)
+if [ -f runtimes.md ]; then
+  grep_check "runtimes.md has at least one **Use timeout:** entry" \
+    "runtimes.md" "^- \*\*Use timeout:\*\* [0-9]+" 1
 fi
 
 echo ""
