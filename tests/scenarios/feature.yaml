@@ -373,6 +373,61 @@ scenarios:
         - "/feature-build"
     max_retries: 2
 
+  # Tests the "In-place fix shortcut" sub-clause in feature-verify-self/SKILL.md §3.
+  # When a BLOCKING failure is a trivial extension of the just-completed leaf
+  # AND a fresh subagent re-verifies the fix, the agent may apply the fix in-place
+  # and emit F10b (forward to verify-human) with an audit-trail entry — instead of
+  # F9b (back-loop to build). All three gates hold in the fixture and prompt:
+  # (a) trivial fix, (b) fresh subagent re-verifies, (c) audit-trail in Discoveries.
+  - id: F10b-shortcut
+    name: "feature:verify-self applies in-place fix shortcut on trivial BLOCKING fail with fresh re-verification"
+    skill: feature-verify-self
+    args: "http://localhost:3000"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-verify-self-trivial-fix.md
+    system_prompt_extra: |
+      SUBAGENT RESULTS ALREADY RECEIVED. Do not attempt to connect to the app.
+      The verification subagent has already run and returned these results:
+
+      ```result
+      outcome: GET /api/user/theme → 200, body contains {"theme": "light"|"dark"}
+      status: FAIL
+      severity: BLOCKING
+      detail: Returns 200 but body is {"theme": null}. The migration written
+              moments ago in P1.1 added the column without a DEFAULT clause —
+              a one-character SQL fix to the migration just written.
+      ---
+      outcome: PUT /api/user/theme with {"theme": "dark"} → 200
+      status: PASS
+      severity: N/A
+      detail: Persists correctly when value is explicitly provided.
+      ```
+
+      The §3 "In-place fix shortcut" sub-clause applies. All three gates hold:
+      (a) the fix is a trivial extension of the just-completed leaf P1.1 — adding
+          DEFAULT 'light' to the migration the agent itself just wrote (one
+          character / one keyword);
+      (b) re-verification will run through a fresh Playwright subagent against
+          the same Observable Outcome (identical artifact to what F9b → verify-self
+          would produce);
+      (c) the agent will append an audit-trail entry
+          `[SHORTCUT-2026-06-09] P1.verify-self.1 — added DEFAULT 'light' to
+          migration; re-verified via fresh subagent` to ## Discoveries.
+
+      Apply the fix in-place, re-verify per gate 2, mark the leaf [x], append
+      the ## Discoveries entry, and proceed to F10b (forward to verify-human) —
+      NOT F9b (back-loop to build).
+    expect:
+      transition_id: F10b
+      contains_any:
+        - "/feature-verify-human"
+        - "SHORTCUT"
+        - "shortcut"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
   - id: F11
     name: "feature:verify-human skips to verify-codify with reasoning"
     skill: feature-verify-human

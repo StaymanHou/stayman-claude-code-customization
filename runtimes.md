@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-07
+updated: 2026-06-09
 ---
 
 # Runtime Registry
@@ -8,9 +8,10 @@ updated: 2026-06-07
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 232s (2026-06-07)
+- **Last:** ~240s (2026-06-09)
 - **Use timeout:** 408000
 - **History:**
+  - ~240s — 2026-06-09  <!-- foreground run under 408s timeout, no auto-bg; wall time not exactly measured but consistent with prior 232s observation -->
   - 232s — 2026-06-07
   - 360s — 2026-06-07  <!-- inflated by orphaned-process concurrency hang; see SURFACE-2026-06-07-CHECK-STRUCTURE-DRY-RUN-CONCURRENCY-FRAGILE -->
 

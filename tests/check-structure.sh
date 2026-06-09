@@ -138,6 +138,14 @@ grep_check "feature-verify-human SKILL.md retains 'Auto-skipped per drive_mode' 
 grep_check "feature-verify-human SKILL.md retains 4-gate Auto-skip heading anchor" "skills/feature-verify-human/SKILL.md" "Mode 3\+ \+ no boundary \+ verify-self all-PASS" 1
 grep_check "feature-workflow AGENTS.md retains AUTO-SKIP pause-policy annotation" "agents/feature-workflow/AGENTS.md" "AUTO-SKIP" 1
 
+# In-place fix shortcut shipped to feature-verify-self/SKILL.md §3 (feature:
+# verify-self-in-place-fix-shortcut-policy). The clause is prose-only behavioral
+# guidance permitting a narrow exception to the observe-only contract. The
+# regression net is presence of its load-bearing anchors. Two pins: the heading
+# anchor and the audit-trail SHORTCUT-token convention.
+grep_check "feature-verify-self SKILL.md retains 'In-place fix shortcut' sub-clause" "skills/feature-verify-self/SKILL.md" "In-place fix shortcut" 1
+grep_check "feature-verify-self SKILL.md retains SHORTCUT-token audit-trail convention" "skills/feature-verify-self/SKILL.md" "\[SHORTCUT-<YYYY-MM-DD>\]" 1
+
 grep_check "feature-reproduce SKILL.md has Step 0 section" "skills/feature-reproduce/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "incident-report SKILL.md has Step 0 section" "skills/incident-report/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "product-vision SKILL.md has Step 0 section" "skills/product-vision/SKILL.md" "^## Step 0: Available product context" 1

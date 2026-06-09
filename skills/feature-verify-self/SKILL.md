@@ -142,6 +142,22 @@ Read the `result` block from the subagent's output. For each outcome:
 
 **Playwright unavailable:** If the subagent errors on Playwright tools, fall back to curl-only for HTTP outcomes. Annotate browser outcomes as `<!-- status: UNVERIFIED: Playwright MCP not available — check manually -->`. These items ARE surfaced to verify-human.
 
+#### In-place fix shortcut (BLOCKING-fail handling — narrow exception)
+
+verify-self is contractually observe-only: BLOCKING failures normally route through the F9b back-loop to `feature-build`. This sub-clause defines a narrow exception that permits an in-place fix when the back-loop would cost 3 extra Skill invocations (build → verify-auto → verify-self) for an outcome equivalent to what the back-loop itself would have produced.
+
+**All three gates must hold:**
+
+1. **Trivial extension of the just-completed leaf.** The fix is a one-line (or small, mechanical) extension of code/config/test scaffolding written in the just-completed impl leaf. It is *not* a redesign, a re-plan, a new abstraction, or a fix that crosses files/modules outside the leaf's scope. If you cannot describe the fix in one sentence as "extend X that was just written in P<N>.<M>", the gate fails — use F9b instead.
+2. **Fresh model invocation re-verifies.** Re-verification of the fixed leaf goes through a fresh model invocation — either a freshly-spawned Playwright subagent (preferred, identical artifact to what F9b → verify-self would produce), or a fresh `Skill` invocation of `feature-verify-self` against the same Observable Outcome. Re-verification by the same agent re-reading its own state does NOT count and does NOT satisfy this gate.
+3. **Audit-trail entry in WIP `## Discoveries`.** Append an entry of the form `[SHORTCUT-<YYYY-MM-DD>] <leaf-id> — <one-line description of what was fixed and how it was re-verified>` to the WIP file's `## Discoveries` section before transitioning. The entry is the artifact a reviewer can grep for when reconstructing why the F9b back-loop was bypassed.
+
+When all three gates hold (trivial extension + fresh re-verification + audit-trail entry): apply the fix in-place, re-verify per gate 2, mark the leaf `[x]`, append the `## Discoveries` entry, and proceed to F10b. When any gate fails: do not shortcut — back-loop F9b normally.
+
+**What this shortcut is NOT.** It is not license to override genuine BLOCKING failures whenever a fix is convenient. It is not a fast-path for non-trivial fixes that happen to be in the same file. It is not a substitute for re-planning when the plan was wrong (use F23 instead). The triviality + fresh-re-verification + audit-trail gates are the boundary; the agent's comfort with the fix is not.
+
+Rule of three observed instances codified 2026-06-09: v3 WP3 Phase 2 (2026-05-29), v3 WP11 Phase 1 (2026-06-06), verify-human-auto-skip-when-no-integration-boundary Phase 2 (2026-06-07). All three were ad-hoc deviations user-approved at verify-human; this clause formalizes them.
+
 ### 4. Update WIP tree
 
 - Write all leaf statuses under `verify-self` node
