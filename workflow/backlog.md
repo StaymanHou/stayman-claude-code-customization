@@ -77,17 +77,6 @@
 - **Priority:** medium — real gap in the current verify loop, no active blocker, worth speccing when a feature cycle has space.
 - **Status:** open
 
-## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P4
-- **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
-- **Target level:** feature:spec
-- **Type:** workflow-enhancement
-- **Summary:** When `feature-build` hits an "I cannot tell if my fix actually worked because I never confirmed the bug" moment, allow REDIRECT into `feature-reproduce` (similar to F22 redirect to research). Currently reproduce is only an entry transition (F31) and post-spec/plan suggestion — there's no path FROM build INTO reproduce.
-- **Context:** Useful for bug-fix features that didn't go through reproduce upfront but discover during build that they need a failing-test anchor. Without this transition, the agent has to either (a) continue without confirmation, or (b) abandon and restart at reproduce. A redirect would preserve build state and let reproduce run, then resume.
-- **Suggested action:** Add Fnew → build → reproduce REDIRECT transition. Update feature-build SKILL.md to surface this as a valid exit when "could not confirm fix worked" condition holds. Update reproduce SKILL.md to recognize REDIRECT entry and hand back to build.
-- **Priority:** low (deferred — wait until we observe the need in practice)
-- **Status:** open
-
 ---
 
 ## MAYBE
