@@ -43,20 +43,8 @@
 - **Status:** pending
 
 
-## SURFACE-2026-05-22-CLAUDE-MD-MISSING-CLAUDE-TIME-CONTAINER-NOTE
-- **Order:** P3
-- **Note (2026-06-07):** User flagged "we are already v3, should double check." Verified: project CLAUDE.md still has no mention of `tools/claude-time/test/run-in-container.sh` or the container test path. The doc-gap remains regardless of v3 status. WP5 has long since shipped, so the original "WP5 dirty-tree blocker" no longer applies — the paragraph can be appended cleanly now.
-- **Source:** feature:finalize (claude-time-test-containerization, 2026-05-22)
-- **Target level:** task:plan (small/simple — single paragraph append)
-- **Type:** doc-gap
-- **Summary:** Project root `CLAUDE.md` doesn't mention that `tools/claude-time/` tests now run inside a Docker container via `tools/claude-time/test/run-in-container.sh`. The README under `tools/claude-time/` covers it fully, but a contributor reading the project-root CLAUDE.md sees only the workflow-system test invocations and would assume host-side tests are supported.
-- **Context:** During finalize of `claude-time-test-containerization`, a brief paragraph was drafted to add under `## Commands` in CLAUDE.md but had to be reverted because of an operator mistake (`git checkout HEAD -- CLAUDE.md` while the file had cross-feature dirty state from WP5 — see lesson logged in retrospect of `claude-time-test-containerization`). Re-adding the paragraph would only collide with WP5's still-uncommitted CLAUDE.md edits; deferring to a clean window.
-- **Suggested action:** Append a paragraph under `## Commands` (right after the workflow-system test runner block) explaining: container is the canonical test path for `tools/claude-time/`; lifecycle wrapper at `tools/claude-time/test/run-in-container.sh` (start/stop/status/exec/restart/logs/help); bundles Python 3.12 + Perl + sqlite3 + jq + Node + Playwright + Chromium; project root bind-mounts at `/work` rw; see `tools/claude-time/README.md` → "Running tests" for canonical invocations. ~3 sentences, single hunk.
-- **Priority:** low — discoverable from `tools/claude-time/README.md` already; CLAUDE.md note is a nice signal for project-root readers but not a blocker.
-- **Status:** open
-
 ## SURFACE-2026-05-22-DEBUG-EMPIRICAL-TELEMETRY-SKILL
-- **Order:** P4
+- **Order:** P3
 - **Source:** user request (2026-05-22)
 - **Target level:** feature:spec (new `debug-*` sidebar skill — non-trivial design surface: trigger gate, instrumentation playbook, cleanup discipline)
 - **Type:** new-work / new debug skill in the agent-pulled sidebar category
@@ -67,7 +55,7 @@
 - **Status:** open
 
 ## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P5
+- **Order:** P4
 - **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
 - **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
 - **Type:** new skill or skill augmentation
@@ -78,7 +66,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
-- **Order:** P6
+- **Order:** P5
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
 - **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
 - **Type:** gap (test coverage — structural-only check doesn't catch behavioral drift)
@@ -93,7 +81,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P7
+- **Order:** P6
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
 - **Type:** workflow-enhancement

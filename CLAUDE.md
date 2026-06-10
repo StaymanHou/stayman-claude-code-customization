@@ -26,6 +26,8 @@ The skills and agents here are **symlinked into `~/.claude/`** by `install.sh`. 
 
 Test runner requires `claude` CLI, `jq`, and `bc` on PATH. Results are written to `tests/results/run-<timestamp>.json` (gitignored). Each test spins up a temp project directory, copies `tests/fixtures/` into it, runs the skill in `--print` mode with a system prompt that forces the model to emit `TRANSITION: <id>` at the end, then verifies the output.
 
+**`tools/claude-time/` tests run in a Docker container, not on the host.** The container is the canonical test path for the `claude-time` subproject; lifecycle is managed by `tools/claude-time/test/run-in-container.sh` (subcommands: `start`, `stop`, `restart`, `status`, `exec <cmd>`, `logs`, `help`). The image bundles Python 3.12 + Perl + sqlite3 + jq + Node + Playwright + Chromium, and the repo root bind-mounts at `/work` rw so edits on the host are visible inside the container immediately. See `tools/claude-time/README.md` → "Running tests" for canonical invocations.
+
 ## Architecture
 
 ### Two kinds of artifacts
