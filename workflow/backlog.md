@@ -43,19 +43,31 @@
 - **Status:** pending
 
 
-## SURFACE-2026-05-22-DEBUG-EMPIRICAL-TELEMETRY-SKILL
-- **Order:** P3
-- **Source:** user request (2026-05-22)
-- **Target level:** feature:spec (new `debug-*` sidebar skill — non-trivial design surface: trigger gate, instrumentation playbook, cleanup discipline)
-- **Type:** new-work / new debug skill in the agent-pulled sidebar category
-- **Summary:** Add a `debug-*` sidebar skill (working name: `debug-empirical-telemetry` or `debug-observe-runtime`) that forces a shift from static-analysis debugging ("read the code, reason about what it does, propose a fix") to empirical observation of the running system ("add logging/timing/counters, run, read the telemetry, then decide"). Triggered after N failed static-reasoning attempts on the same bug, or whenever the bug-shape involves runtime values the agent cannot derive from code alone (DB query plans/timing, race conditions, intermittent failures, perf regressions, "this variable is somehow the wrong value at this line").
-- **Context:** Agents (this one included) default to static analysis as the first and often only debugging mode — read code, build a mental model, propose a fix. Real debugging frequently requires runtime evidence: insert prints/logs, add timing instrumentation, dump intermediate state, capture a stack at the failure point, run EXPLAIN on a query, sample a hot loop. Without an explicit prompt to switch modes, the agent loops on the static approach even after it has demonstrably failed. A sidebar skill in the `debug-*` family is the right shape: agent-pulled when stalled, runs to completion, returns to caller. Parallels `debug-bisect-known-good` (also a stall-recovery technique) but with a different mechanism (observation vs. bisection).
-- **Suggested action:** Author `skills/debug-empirical-telemetry/SKILL.md` following the `debug-*` category convention (mandatory sections: `## Category Context`, `## When to use`, `## When NOT to use`, `## Procedure` with Gate Check, `## Pitfalls`, `## Termination` with `DEBUG-TELEMETRY-*` tokens + `RETURN-TO:` line). Gate suggestions: (a) ≥2–3 failed static-analysis fix attempts on the same bug, AND (b) the bug involves runtime values the agent cannot derive from code (timing, DB stats, env-dependent state, intermittency, perf). Procedure should walk: pick the smallest observable that would discriminate between current hypotheses → instrument (logging, timing, counter, EXPLAIN, etc.) → run → read telemetry → iterate or hand back a concrete cause. Include a cleanup-discipline step (remove or guard the instrumentation before exit) since stray prints in committed code is a real failure mode. Also: discoverability surfaces per the "new skill category needs three surfaces" lesson — caller-skill prose mentions in `feature-build`/`incident-investigate`/`task-act`, "Debug techniques" subsection rows in each relevant orchestrator AGENTS.md, note in `docs/product/transitions.md` sidebar section. Worth speccing rather than planning directly — the trigger gate and the instrumentation playbook both have non-obvious failure modes (over-instrumenting, leaving prints in code, instrumenting too late after the bug has been "guessed-fixed", picking the wrong observable).
-- **Priority:** medium — real recurring agent-behavior gap that costs wall-clock time when it bites, but no active bug forcing it now; pick up after WP5 of claude-time-visualize-v2 or interleave when next debugging an empirical-shaped bug.
-- **Status:** open
+## SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO
+- **Order:** P-NEW (pending user re-ordering)
+- **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 3 P3.7 stretch deferral, 2026-06-10)
+- **Target level:** task:plan (small/simple — single scenario + fixture, scoped follow-up)
+- **Type:** test-coverage gap
+- **Summary:** The `debug-empirical-telemetry` skill ships with 3 PASSing scenarios covering 3 of its 4 termination paths (DEBUG-TELEMETRY-START via GATE-MET fixture; DEBUG-TELEMETRY-SKIP via 2 gate-fail fixtures — Gate 1 insufficient-attempts AND Gate 2 static-derivable). The 4th termination token, `DEBUG-TELEMETRY-INCONCLUSIVE` (≥3 non-converging telemetry rounds → escalate to caller), is documented in the SKILL.md (`§7. Inconclusive escalation`) but has NO behavioral test scenario. The deferral at P3.7 was a deliberate scoping decision — the INCONCLUSIVE path is structurally hard to test from a fixture because it requires conveying "the agent has already done 3 rounds of telemetry and none discriminated" without embedding telemetry results in the fixture itself, and the model tends to suggest more telemetry rounds rather than escalating from a fixture description.
+- **Context:** Pattern would be: author `tests/fixtures/wip/debug-empirical-telemetry-inconclusive.md` describing a bug-shape where ≥3 instrument-run-read rounds already happened (e.g. "instrumented dequeue boundary, observed timestamps look fine; instrumented release_lock, observed correct ordering; instrumented worker-ID assignment, no overlap — but the duplicate still happens 1 in 30 runs"), and a scenario asserting `transition_id: DEBUG-TELEMETRY-INCONCLUSIVE` + `contains_any: [escalation, exhausted, suggest, alternative]`. Likely needs sonnet tag per the entry-state assertion-shape guidance in CLAUDE.md (sonnet handles "describe-then-escalate" prose more reliably than haiku).
+- **Why it matters:** The INCONCLUSIVE path is the "graceful failure" mode for empirical telemetry — when it fires, it produces a SURFACE entry in workflow/backlog.md (per the SKILL.md procedure) so future learning accumulates. A regression in the path would silently swallow that learning artifact. Low-bite probability today (the path activates only after 3 non-converging rounds, which is rare in practice), but ships a coverage gap.
+- **Suggested action:** Author 1 fixture + 1 scenario; tag `model: sonnet` if haiku is empirically noisy on the path; ship as a follow-up task to `debug-empirical-telemetry-skill`. Could be combined with the related sonnet-tag pattern from `SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET` if a sonnet-tagging hygiene pass is done in the same task.
+- **Priority:** low — covers a rare-but-real terminal path; not blocking.
+- **Status:** pending
+
+## SURFACE-2026-06-10-DEBUG-WITHIN-SKILL-STRUCTURAL-PINS
+- **Order:** P-NEW (pending user re-ordering)
+- **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 1 surfacing, 2026-06-10)
+- **Target level:** task:plan (small/simple — single tests/check-structure.sh edit, iterating loop already in place)
+- **Type:** test-coverage extension (debug-* category)
+- **Summary:** `tests/check-structure.sh` Phase 3b iterates over all `skills/debug-*/SKILL.md` files but only asserts the 2 gate-boundary headings (`## When to use` / `## When NOT to use`) are present. The other load-bearing SKILL.md properties are NOT pinned for any debug-* skill: (1) file presence in the iterating loop, (2) 6 required sections in full (`## Category Context`, `## Procedure`, `## Pitfalls`, `## Termination` in addition to the 2 already pinned), (3) 4 termination tokens in the `## Termination` table, (4) `argument-hint:` frontmatter field, (5) Gate Check as the first `### ` subheading under Procedure. This is the existing convention — both `debug-bisect-known-good` AND `debug-empirical-telemetry` ship with these gaps. Not a regression of either skill; surfacing as a category-level structural-pin extension proposal.
+- **Context:** Verified Phase 1 of the `debug-empirical-telemetry-skill` feature observed all 9 of these structural properties via verify-self CLI checks (and confirmed all PASS for the new skill). Codifying them as Phase 3b iterating-loop assertions would add coverage uniformly to both existing debug-* skills + any future ones. Per Phase 1's discovery note in the WIP file: "expected new PASS count: 143 + (5 pins × 2 skills) = 153 instead of the planned 150."
+- **Suggested action:** Extend Phase 3b's `for debug_skill in skills/debug-*/SKILL.md` loop with ~5 new `grep_check` calls inside the existing iteration: file presence (implicit — the loop body already requires `-f`), 6-required-sections grep, termination-token regex, argument-hint frontmatter grep, Gate-Check-first-under-Procedure grep. Estimated +5 pins × 2 skills = +10 PASS, 150 → 160 after this task lands.
+- **Priority:** low — both existing debug-* skills currently satisfy these pins; the regression risk is "future edit deletes/breaks one of these properties," which would be caught at PR time by check-structure.sh once pins land. No active bite.
+- **Status:** pending
 
 ## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P4
+- **Order:** P3
 - **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
 - **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
 - **Type:** new skill or skill augmentation
@@ -66,7 +78,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
-- **Order:** P5
+- **Order:** P4
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
 - **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
 - **Type:** gap (test coverage — structural-only check doesn't catch behavioral drift)
@@ -81,7 +93,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P6
+- **Order:** P5
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
 - **Type:** workflow-enhancement
