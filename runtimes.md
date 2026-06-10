@@ -8,9 +8,10 @@ updated: 2026-06-09
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** ~16s (2026-06-09)
+- **Last:** 17s (2026-06-09)
 - **Use timeout:** 84000
 - **History:**
+  - 17s — 2026-06-09  <!-- post-settings-fixture-model-drift task; 139/139 PASS, no FAILs -->
   - ~16s — 2026-06-09  <!-- post-dry-run-bypass; subprocess invocation replaced with inlined python YAML count (see check-structure-sigterm-propagation feature, archived 2026-06-09); the >5min runtime is gone -->
   - ~240s — 2026-06-09  <!-- foreground run under 408s timeout, no auto-bg; wall time not exactly measured but consistent with prior 232s observation -->
   - 232s — 2026-06-07

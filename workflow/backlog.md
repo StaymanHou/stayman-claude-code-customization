@@ -37,7 +37,7 @@
 - **Summary:** `tests/check-structure.sh` reports 1 FAIL: `settings fixture in sync with live (modulo documented diffs): drift detected — model: live=<missing> fixture="opus[1m]"`. The live `~/.claude/settings.json` no longer has a `model` field (or it's been removed/renamed), but the fixture at `tests/fixtures/settings.json` still asserts `model: "opus[1m]"`. Net effect: structural sweep always shows 124/125, masking real future fixture regressions.
 - **Suggested action:** Two options: (a) update `tests/fixtures/settings.json` to drop the `model` field (match live); (b) add the field to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` if the difference is intentionally tolerated. Lean: (a) — the fixture should track live unless there's a reason to pin a specific model harness fingerprint.
 - **Priority:** low — masks no real signal today, but every additional drifted field weakens the fixture's value as a regression net.
-- **Status:** open
+- **Status:** resolved 2026-06-09 — task `settings-fixture-model-drift` closed. Applied option (a): dropped the `"model": "opus[1m]"` line from `tests/fixtures/settings.json` (and the trailing comma on the prior line). `./tests/check-structure.sh` now reports 139/139 PASS, FAIL: 0 (was 124/125 with the drift FAIL). Inline drift detector confirms `OK (no drift outside intentional diffs)`.
 
 ## SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG
 - **Order:** P2

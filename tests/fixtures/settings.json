@@ -105,6 +105,5 @@
   "effortLevel": "xhigh",
   "promptSuggestionEnabled": true,
   "skipDangerousModePermissionPrompt": true,
-  "defaultMode": "acceptEdits",
-  "model": "opus[1m]"
+  "defaultMode": "acceptEdits"
 }
