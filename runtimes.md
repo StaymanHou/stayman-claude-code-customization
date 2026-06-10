@@ -14,6 +14,9 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
 - **Last:** 18s (2026-06-10)
 - **Use timeout:** 87000
 - **History:**
+  - 18s — 2026-06-10  <!-- mid reproduce-as-redirect-from-build Phase 3 complete; 178/178 PASS, 0 FAIL (was 175 → +3: F36 row on feature-build, F37+F37b rows on feature-reproduce) -->
+  - 18s — 2026-06-10  <!-- mid reproduce-as-redirect-from-build Phase 2 complete; 175 PASS + 1 expected FAIL (ROW_MAPPING gap, resolved in Phase 3) -->
+  - 18s — 2026-06-10  <!-- mid reproduce-as-redirect-from-build Phase 1; 175/175 PASS, no FAILs (docs/AGENTS.md only, no SKILL.md changes yet) -->
   - 18s — 2026-06-10  <!-- post-cheat-sheet-agents-drift; 175/175 PASS, no FAILs (was 150/150; +25 from Phase 9b drift assertions: 1 AGENTS.md-table-parse + 24 per-row matches across 8 SKILL files) -->
   - 17s — 2026-06-10  <!-- post-feature-finalize-tick-wbs-task-checkboxes; 141/141 PASS, no FAILs (was 140/140; +1 from new pin) -->
   - 16s — 2026-06-10  <!-- post-I20-scenario-add; 139/139 PASS, no FAILs -->

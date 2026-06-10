@@ -1263,10 +1263,26 @@ ROW_MAPPING = {
         ("F8 ",                   "`feature-build`"),
         ("F9b ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
         ("F22 ",                  "REDIRECT (F22)"),
+        ("F36 ",                  "REDIRECT (F36)"),
         ("F23 ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
         ("F25 ",                  "SURFACE F25 (note-and-continue)"),
         ("F26 ",                  "SURFACE F26 (pause-and-escalate)"),
         ("F27 ",                  None),  # incident interrupt — no AGENTS.md table row
+    ],
+    "feature-reproduce": [
+        # F32/F33/F34/F35 are the SKILL's own exit transitions — AGENTS.md does not
+        # have per-transition rows for these (they map to the `feature-reproduce`
+        # invocation-level pause policy in AGENTS.md, but the canonical-row labels
+        # there are "reproduce — F32/F33", "reproduce — F34", "reproduce — F35",
+        # not the F-ID-prefix shape used by other skills). Mark None to skip from
+        # drift comparison — the SKILL.md cheat-sheet table is the source of truth
+        # for these specific rows, mirroring the verify-human treatment for F11/F13.
+        ("F32 ",                  None),
+        ("F33 ",                  None),
+        ("F34 ",                  None),
+        ("F35 ",                  None),
+        ("F37 ",                  "Return-from-REDIRECT (F37, F37b)"),
+        ("F37b ",                 "Return-from-REDIRECT (F37, F37b)"),
     ],
     "feature-verify-auto": [
         ("F10 ",                  "`feature-verify-auto`"),
@@ -1305,7 +1321,7 @@ else:
 SKILLS = [
     "feature-spec", "feature-research", "feature-plan", "feature-build",
     "feature-verify-auto", "feature-verify-self", "feature-verify-human",
-    "feature-verify-codify",
+    "feature-verify-codify", "feature-reproduce",
 ]
 
 for skill in SKILLS:

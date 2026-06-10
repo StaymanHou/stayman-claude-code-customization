@@ -1442,6 +1442,106 @@ scenarios:
         - "/feature-plan"
     max_retries: 2
 
+  - id: F36
+    name: "feature:build → reproduce REDIRECT when fix cannot be confirmed without reproduction"
+    skill: feature-build
+    model: sonnet  # F22 (REDIRECT to research) is sonnet-tagged for the same reason — REDIRECT routing is haiku-noisy. F36 mirrors F22's shape; tagging sonnet preemptively. Recon at verify-codify.
+    args: "Phase 2 — inventory race fix continuation"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-needs-repro.md
+    system_prompt_extra: |
+      You are mid-Phase-2 implementing the row-lock + timeout-handler fix for an
+      InventoryService.reserveStock() race condition. The feature entered the
+      workflow at /feature-plan (not via /feature-reproduce), so no pre-fix
+      failing-test anchor exists. While wrapping callers in the timeout handler
+      (P2.2), you realized: Phase 1's verify-codify only confirmed the lock IS
+      acquired — never that the race ACTUALLY fires without it. If you ship now,
+      you cannot distinguish "the lock is preventing the bug" from "the bug was
+      never reproducing in our environment to begin with." This is exactly the
+      F36 REDIRECT condition — pause build, run /feature-reproduce to capture a
+      pre-fix failing test, then return to build via F37/F37b with the artifact
+      anchoring verify-codify.
+    expect:
+      transition_id: F36
+      contains_any:
+        - "/feature-reproduce"
+        - "REDIRECT"
+        - "reproduce"
+      not_contains:
+        - "/feature-verify-auto"
+    max_retries: 2
+
+  - id: F37
+    name: "feature:reproduce → build (return-from-F36) when reproduced cleanly mid-build"
+    skill: feature-reproduce
+    args: "Returning to build with reproduce artifact in hand"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-reproduce-from-build-success.md
+    system_prompt_extra: |
+      The WIP file's ## Current Node carries the sentinel "Redirect source: build
+      (F36 — Phase 2)", meaning this reproduce invocation was triggered by F36
+      from feature-build mid-Phase-2 — NOT a normal entry via F31 or
+      session-start. Per the F36-redirect-entry mode (§1.5 in the SKILL):
+      F32/F33/F34/F35 are not the valid exits here. F37 (reproduced cleanly,
+      return to build with artifact) and F37b (could-not-reproduce, return to
+      build with Discovery) are the only allowed exits. This run reproduced
+      cleanly — the failing test `tests/inventory/test_reserve_stock.py::
+      test_double_reserve_under_concurrent_request` fails on pre-Phase-1 code
+      and passes on the current code. The artifact has been written to the
+      ## Reproduction Artifact (mid-build, from F36) section. Return to build
+      via F37.
+    expect:
+      transition_id: F37
+      contains_any:
+        - "/feature-build"
+        - "F37"
+        - "return to build"
+      not_contains:
+        - "F32"
+        - "F33"
+        - "/feature-spec"
+        - "/feature-plan"
+        - "terminate"
+    max_retries: 2
+
+  - id: F37b
+    name: "feature:reproduce → build (return-from-F36) when could-not-reproduce mid-build"
+    skill: feature-reproduce
+    args: "Could not reproduce locally; returning to build with Discovery"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-reproduce-from-build-could-not.md
+    system_prompt_extra: |
+      The WIP file's ## Current Node carries the sentinel "Redirect source: build
+      (F36 — Phase 2)", meaning this reproduce invocation was triggered by F36
+      from feature-build mid-Phase-2. Per the F36-redirect-entry mode (§1.5 in
+      the SKILL): F32/F33/F34/F35 are not the valid exits — and specifically,
+      F34 (preventive hardening → spec) and F35 (terminate) are DISALLOWED in
+      F36-entry mode because the feature is mid-build, not at entry. This run
+      attempted reproduction 200 times in the test environment with asyncio
+      concurrent reserveStock calls — the race never fires locally due to
+      deterministic asyncio scheduling. Production telemetry confirms the bug
+      is real (12 duplicate-reservation incidents in 30 days), but the local
+      reproduction surface cannot capture it. Return to build via F37b,
+      documenting the could-not-reproduce outcome as a Discovery. The fix may
+      still ship; verify-codify will rely on telemetry monitoring rather than
+      a local failing-test anchor.
+    expect:
+      transition_id: F37b
+      contains_any:
+        - "/feature-build"
+        - "F37b"
+        - "could-not-reproduce"
+        - "return to build"
+      not_contains:
+        - "F34"
+        - "F35"
+        - "terminate"
+        - "/feature-spec"
+    max_retries: 2
+
   # F16-order-flip: regression scenario for SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP
   # See workflow/archive/finalize-before-ship-order-flip.md for the full feature plan
   # and reproduction history. The bug: agent narration after verify-codify enumerated

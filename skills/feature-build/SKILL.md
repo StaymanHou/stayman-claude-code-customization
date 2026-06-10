@@ -16,6 +16,7 @@ You are in the **feature** workflow at the **build** state.
 - **F8 → verify-auto:** Phase implementation complete → tell user to run `/feature-verify-auto`
 - **F9b (back-loop from verify-self):** Re-entered to fix a blocking observable outcome — after fixing, run the re-verify gate before transitioning to verify-auto
 - **F22 → research (REDIRECT):** Hit unknown during implementation → pause, research, return
+- **F36 → reproduce (REDIRECT):** Realized the fix cannot be confirmed without first reproducing the bug → pause, reproduce, return (F37 on success or F37b on could-not-reproduce)
 - **F23 → plan (back-loop):** Plan is wrong/incomplete → document what's wrong, go back to plan
 - **F25 → SURFACE to product:wbs:** Discovered module/component not in WBS (note-and-continue)
 - **F26 → SURFACE to product:arch:** Architectural change needed (pause-and-escalate)
@@ -30,6 +31,7 @@ When invoked by `/session-start` in orchestrated mode, the orchestrator reads `T
 | F8 (build → verify-auto) | PAUSE | AUTO | AUTO | AUTO |
 | F9b (back-loop re-verify passed → verify-auto) | PAUSE | AUTO | AUTO | AUTO |
 | F22 (REDIRECT to research) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| F36 (REDIRECT to reproduce) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
 | F23 (back-loop to plan) | PAUSE | AUTO | AUTO | AUTO |
 | F25 (SURFACE to product:wbs, note-and-continue) | PAUSE | AUTO | AUTO | AUTO |
 | F26 (SURFACE to product:arch, pause-and-escalate) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
@@ -92,6 +94,13 @@ When you discover something new while working on a leaf:
 **Unknown encountered (F22 REDIRECT):**
 Save state, document the question, tell user to run `/feature-research`. Note that this is a REDIRECT so research knows to return here.
 
+**Cannot confirm fix worked without reproduction (F36 REDIRECT):**
+When you realize mid-build that you applied a bug fix but never confirmed the bug actually existed in the first place — i.e., you cannot distinguish "the code path is different now" from "the bug never reproduced because it wasn't there" — pause build and REDIRECT into `/feature-reproduce` to capture a pre-fix failing test or deterministic recipe. Before emitting the transition:
+
+1. Write a placeholder section to the WIP file: `## Reproduction Artifact (mid-build, from F36)` with an empty body (reproduce will fill it on return).
+2. Update `## Current Node` to add a sentinel line: `**Redirect source:** build (F36 — Phase N)` — `feature-reproduce` reads this on entry to detect F36-source and route its exit through F37 (success) or F37b (could-not-reproduce) instead of the normal F32/F33/F34/F35.
+3. Tell user to run `/feature-reproduce`. Note that F35 (terminate) and F34 (preventive hardening reset to spec) are disallowed from F36-entered reproduce — F37b (return with could-not-reproduce documented as Discovery) is the always-available fallback.
+
 **Plan is wrong (F23 back-loop):**
 Document what's wrong and why in the WIP file. Tell user to run `/feature-plan` to revise.
 
@@ -138,6 +147,7 @@ End your output with the canonical transition token so the orchestrator can act 
 - `TRANSITION: F8` — phase complete, hand off to verify-auto (default exit)
 - `TRANSITION: F9b` — back-loop re-verify passed, hand off to verify-auto after scoped re-entry
 - `TRANSITION: F22` — REDIRECT to research (unknown encountered)
+- `TRANSITION: F36` — REDIRECT to reproduce (fix cannot be confirmed without reproducing the bug first)
 - `TRANSITION: F23` — back-loop to plan (plan was wrong)
 - `TRANSITION: F25` — SURFACE to product:wbs (note-and-continue, then return)
 - `TRANSITION: F26` — SURFACE to product:arch (pause-and-escalate)

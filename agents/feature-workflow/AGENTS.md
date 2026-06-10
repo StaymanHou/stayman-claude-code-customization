@@ -110,6 +110,9 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F33 | reproduce → plan | Reproduced cleanly, small/simple feature | forward |
 | F34 | reproduce → spec | Could-not-reproduce, user elects preventive hardening | forward (framing reset) |
 | F35 | reproduce → EXIT (terminate) | Could-not-reproduce, no preventive fix → close workflow | exit |
+| F36 | build → reproduce | REDIRECT: fix cannot be confirmed without reproducing first | redirect |
+| F37 | reproduce → build | Return-from-F36: reproduced cleanly, resume build with artifact | forward |
+| F37b | reproduce → build | Return-from-F36: could-not-reproduce, resume build with Discovery | forward |
 
 ## Your Role
 
@@ -122,6 +125,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 4. **Handle cross-level transitions:**
    - **SURFACE (F25, F26):** Follow surface mechanism rules
    - **REDIRECT (F22):** Pause build, send to research, plan return
+   - **REDIRECT (F36):** Pause build, send to reproduce, return via F37 (reproduced) or F37b (could-not-reproduce)
    - **SURFACE-IN (F28):** Accept escalations from task level
 5. **Support pause/resume** via `/session-pause` and `/session-resume`.
 
@@ -161,6 +165,8 @@ Full policy tables for all workflows are in `docs/product/transitions.md` → "D
 | `feature-refactor` | PAUSE | AUTO | AUTO | AUTO |
 | Back-loops (F6, F9, F9b, F12, F14, F23, F24) | PAUSE | AUTO | AUTO | AUTO |
 | REDIRECT (F22) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| REDIRECT (F36) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+| Return-from-REDIRECT (F37, F37b) | PAUSE | AUTO | AUTO | AUTO |
 | SURFACE F25 (note-and-continue) | PAUSE | AUTO | AUTO | AUTO |
 | SURFACE F26 (pause-and-escalate) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
 | ESCALATE (any) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
