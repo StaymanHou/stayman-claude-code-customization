@@ -74,3 +74,83 @@ scenarios:
         - "DEBUG-BISECT-START"
         - "DEBUG-BISECT-COMPLETE"
     max_retries: 2
+
+  # debug-empirical-telemetry has TWO conjunctive gates. Same shape as bisect's
+  # 3-scenario pair: GATE-MET asserts the procedure activates (DEBUG-TELEMETRY-START);
+  # INSUFFICIENT-ATTEMPTS asserts Gate-1 SKIP; STATIC-DERIVABLE asserts Gate-2 SKIP.
+
+  - id: DEBUG-TELEMETRY-GATE-MET
+    name: "debug-empirical-telemetry: both gates hold → procedure activates"
+    skill: debug-empirical-telemetry
+    args: >
+      Background worker processQueue() occasionally processes the same job twice
+      (1 in 30 runs). The dequeue SQL uses UPDATE...RETURNING WHERE locked_at IS NULL
+      FOR UPDATE SKIP LOCKED — looks atomic on paper. 3 failed straight-line debug
+      attempts: read the dequeue query, read the release_lock path, stared at the
+      worker loop. Race condition is not visible in static reading. Need to observe
+      what each worker is doing at the moment a duplicate fires.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-empirical-telemetry-gates-met.md
+    # No `not_contains` — this is an entry-state scenario where the skill stays
+    # IN the procedure. Per CLAUDE.md "Test scenario design — routing-fork patterns",
+    # aggressive not_contains on entry-state scenarios is prose-leak fragile.
+    expect:
+      transition_id: DEBUG-TELEMETRY-START
+      contains_any:
+        - "instrument"
+        - "observe"
+        - "telemetry"
+        - "Gate 1"
+        - "Gate 2"
+    max_retries: 2
+
+  - id: DEBUG-TELEMETRY-INSUFFICIENT-ATTEMPTS
+    name: "debug-empirical-telemetry: only 1 static-reasoning attempt → SKIP"
+    skill: debug-empirical-telemetry
+    args: >
+      GET /api/users/12345 returns 500 with KeyError 'preferences' in the serializer.
+      Only one static-reasoning attempt so far — read the serializer line. Have not
+      yet checked the DB row, compared to working user IDs, or looked at recent
+      migrations. Gate-2 may hold (bug-shape involves runtime DB state) but Gate-1
+      (≥2–3 failed static attempts) does NOT hold.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-empirical-telemetry-gate1-fails.md
+    expect:
+      transition_id: DEBUG-TELEMETRY-SKIP
+      contains_any:
+        - "Gate 1"
+        - "fewer than"
+        - "static"
+        - "attempts"
+        - "straight-line"
+      not_contains:
+        - "DEBUG-TELEMETRY-START"
+        - "DEBUG-TELEMETRY-COMPLETE"
+    max_retries: 2
+
+  - id: DEBUG-TELEMETRY-STATIC-DERIVABLE
+    name: "debug-empirical-telemetry: bug is static-derivable typo → SKIP"
+    skill: debug-empirical-telemetry
+    args: >
+      User-onboarding flow crashes with KeyError 'emial' at config_loader.py:42
+      (config["emial"]). Config schema documents the field as 'email'. Every other
+      lookup in the codebase uses 'email' correctly. The cause is a 1-character
+      typo, fully visible by reading the line. No runtime evidence needed — Gate 2
+      fails (the bug is statically derivable).
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-empirical-telemetry-gate2-fails.md
+    expect:
+      transition_id: DEBUG-TELEMETRY-SKIP
+      contains_any:
+        - "Gate 2"
+        - "static"
+        - "typo"
+        - "read the code"
+        - "derivable"
+      not_contains:
+        - "DEBUG-TELEMETRY-START"
+        - "DEBUG-TELEMETRY-COMPLETE"
+    max_retries: 2

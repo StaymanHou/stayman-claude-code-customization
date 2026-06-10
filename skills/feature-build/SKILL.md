@@ -99,7 +99,9 @@ Document what's wrong and why in the WIP file. Tell user to run `/feature-plan` 
 
 ### 4b. Debug-technique Sidebar (optional)
 
-If straight-line debugging during implementation has stalled (≥3 failed attempts to localize a bug, or 2+ verify-self back-loops on the same observable outcome) AND a structurally similar known-good path exists in the same environment, consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: feature-build` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID, no plan revision needed. See `agents/feature-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list of available techniques.
+If straight-line debugging during implementation has stalled (≥3 failed attempts to localize a bug, or 2+ verify-self back-loops on the same observable outcome) AND a structurally similar known-good path exists in the same environment, consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: feature-build` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID, no plan revision needed.
+
+If instead the bug-shape requires runtime evidence (timing/race, intermittent symptom, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line") and static reasoning has stalled (≥2–3 failed read-the-code-and-guess attempts), consider `/debug-empirical-telemetry` as the sidebar. It walks the agent through smallest-discriminating-observable → instrument → run → read → cleanup, and emits a `RETURN-TO: feature-build` token on completion. Same same-state round-trip discipline — no transition ID, no plan revision. See `agents/feature-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list of available techniques.
 
 ### 5. Parent Completion Enforcement
 Before exiting, scan every phase node in the Work Tree:

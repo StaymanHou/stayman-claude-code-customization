@@ -119,5 +119,6 @@ The following `debug-*` skills are available as sidebars from within incident wo
 | Sidebar | Caller state(s) | Trigger summary |
 |---------|-----------------|-----------------|
 | `/debug-bisect-known-good` | `incident-investigate` | Straight-line investigation has stalled (≥3 failed attempts to localize) AND a structurally similar known-good path exists in the same environment |
+| `/debug-empirical-telemetry` | `incident-investigate` | Static-reasoning investigation has stalled (≥2–3 failed attempts) AND the incident-shape demands runtime evidence (timing/race, intermittent failure, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line in production") |
 
 See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE.md`) for the category convention. The full procedure and gate-check for each sidebar lives in its own `SKILL.md`. New `debug-*` skills are added to this table when they ship.

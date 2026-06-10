@@ -38,7 +38,9 @@ You are in the **incident** workflow at the **investigate** state.
 
 ### 3b. Debug-technique Sidebar (optional)
 
-If straight-line investigation has stalled (≥3 self-loop iterations without converging on a root cause, or repeated hypothesis-rejected cycles) AND a structurally similar known-good path exists in the same environment (e.g. a working customer/tenant/region exhibiting the same workload), consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: incident-investigate` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID. See `agents/incident-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list.
+If straight-line investigation has stalled (≥3 self-loop iterations without converging on a root cause, or repeated hypothesis-rejected cycles) AND a structurally similar known-good path exists in the same environment (e.g. a working customer/tenant/region exhibiting the same workload), consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: incident-investigate` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID.
+
+If instead the incident-shape demands runtime evidence (timing/race, intermittent failure, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line in production") and static reasoning across the available logs and code has stalled, consider `/debug-empirical-telemetry` as the sidebar. It walks the agent through smallest-discriminating-observable → instrument → run → read → cleanup, and emits a `RETURN-TO: incident-investigate` token on completion. Same same-state round-trip discipline — no transition ID. See `agents/incident-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list.
 
 ### 4. Update Report
 Append to the incident file:

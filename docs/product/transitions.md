@@ -199,7 +199,7 @@ Current workflow pauses, another workflow/step runs, original resumes:
 
 A **sidebar** is a skill invoked from within a workflow state that **returns to the same state** when done. Sidebars are NOT workflow transitions — they do not advance the state machine, do not consume an F/I/T/P/S transition ID, and do not appear in any orchestrator's pause-policy table.
 
-The `debug-*` skill prefix is reserved for sidebars: agent-pulled debugging/troubleshooting techniques that workflow skills can reach for when standard procedure stalls. Examples: `/debug-bisect-known-good` (codified 2026-05-13).
+The `debug-*` skill prefix is reserved for sidebars: agent-pulled debugging/troubleshooting techniques that workflow skills can reach for when standard procedure stalls. Examples: `/debug-bisect-known-good` (codified 2026-05-13 — bisect from a structurally similar known-good path when straight-line debug has stalled and a working sibling exists); `/debug-empirical-telemetry` (codified 2026-06-10 — switch from static reasoning to instrument-run-read-iterate when the bug requires runtime evidence such as timing/race, intermittent, DB query plan/timing, perf, env-dependent state, or "wrong value at this line").
 
 **How sidebars differ from REDIRECT:**
 

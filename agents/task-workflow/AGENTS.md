@@ -95,6 +95,7 @@ The following `debug-*` skills are available as sidebars from within task workfl
 | Sidebar | Caller state(s) | Trigger summary |
 |---------|-----------------|-----------------|
 | `/debug-bisect-known-good` | `task-act` | Straight-line debugging during act has stalled (≥3 failed attempts) AND a structurally similar known-good path exists in the same environment |
+| `/debug-empirical-telemetry` | `task-act` | Static-reasoning debugging during act has stalled (≥2–3 failed attempts) AND the bug-shape requires runtime evidence (timing/race, intermittent, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line") |
 
 See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE.md`) for the category convention. The full procedure and gate-check for each sidebar lives in its own `SKILL.md`. New `debug-*` skills are added to this table when they ship.
 

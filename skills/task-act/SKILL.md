@@ -54,7 +54,9 @@ This check must be completed before implementing. Its purpose: prevent working o
 
 ### 3b. Debug-technique Sidebar (optional)
 
-If straight-line debugging during act has stalled (≥3 failed attempts to localize a bug) AND a structurally similar known-good path exists in the same environment, consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: task-act` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID, no plan revision needed. See `agents/task-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list.
+If straight-line debugging during act has stalled (≥3 failed attempts to localize a bug) AND a structurally similar known-good path exists in the same environment, consider invoking `/debug-bisect-known-good` as a sidebar before continuing. The sidebar runs to completion, emits a `RETURN-TO: task-act` token, and resumes this state with the cause in hand. This is a same-state round-trip — no new transition ID, no plan revision needed.
+
+If instead the bug-shape requires runtime evidence (timing/race, intermittent symptom, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line") and static reasoning has stalled (≥2–3 failed read-the-code-and-guess attempts), consider `/debug-empirical-telemetry` as the sidebar. It walks the agent through smallest-discriminating-observable → instrument → run → read → cleanup, and emits a `RETURN-TO: task-act` token on completion. Same same-state round-trip discipline — no transition ID, no plan revision. See `agents/task-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list.
 
 ### 4. Attach Discoveries to the Tree
 
