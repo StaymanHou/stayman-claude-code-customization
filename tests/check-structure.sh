@@ -146,6 +146,15 @@ grep_check "feature-workflow AGENTS.md retains AUTO-SKIP pause-policy annotation
 grep_check "feature-verify-self SKILL.md retains 'In-place fix shortcut' sub-clause" "skills/feature-verify-self/SKILL.md" "In-place fix shortcut" 1
 grep_check "feature-verify-self SKILL.md retains SHORTCUT-token audit-trail convention" "skills/feature-verify-self/SKILL.md" "\[SHORTCUT-<YYYY-MM-DD>\]" 1
 
+# Pause-footer strip shipped to session-resume/SKILL.md §6b (task:
+# session-resume-strip-pause-footer). The step removes the orphan
+# `## Session Pause — <timestamp>` block that `/session-pause` always appends
+# to `state_file` EOF. Without §6b, every paused-then-resumed item accrues a
+# 10–30s cleanup tax at finalize/close time (18+ recurrences observed in one
+# project alone). This pin anchors the heading so a future edit can't silently
+# drop the step.
+grep_check "session-resume SKILL.md retains §6b 'Strip the stale Pause footer' step" "skills/session-resume/SKILL.md" "Strip the stale Pause footer" 1
+
 grep_check "feature-reproduce SKILL.md has Step 0 section" "skills/feature-reproduce/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "incident-report SKILL.md has Step 0 section" "skills/incident-report/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "product-vision SKILL.md has Step 0 section" "skills/product-vision/SKILL.md" "^## Step 0: Available product context" 1

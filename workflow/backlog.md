@@ -43,21 +43,8 @@
 - **Status:** pending
 
 
-## SURFACE-2026-06-07-SESSION-RESUME-LEAVES-PAUSE-FOOTER
-- **Order:** P3
-- **Source:** Cross-project learning from NeoStayman WP30 finalize / session-reflect (2026-06-07). Full learning doc at `/Users/stayman/Personal/projects/neo-stayman-assistant/.claude/learnings/2026-06-07-session-resume-strip-stale-pause-footer.md`. NeoStayman backlog reference: `SURFACE-2026-05-16-SESSION-RESUME-LEAVES-PAUSE-MARKER`.
-- **Target level:** harness / skill — `~/.claude/skills/session-resume/SKILL.md` (which is symlinked from this repo's `skills/session-resume/SKILL.md`).
-- **Type:** behavioral gap in skill — orphan-footer cleanup miss
-- **Summary:** `/session-pause` appends a `## Session Pause — <timestamp>\nPaused. See workflow/.session.md to resume.` block at the END of `state_file` (typically `docs/product/wbs.md` or a WIP file). `/session-resume` deletes `workflow/.session.md` (its current §7) but does NOT strip the orphan footer block from the `state_file` body. Result: every finalize on a paused-then-resumed item incurs a recurring cleanup tax. 18 confirmed recurrences in one project alone (NeoStayman WP4 → WP30); 7 consecutive WPs since WP21 each spending 10–30s scrubbing the footer at finalize time. Cumulative cleanup cost has crossed the skill-patch cost (~5 min) by ~5×.
-- **Suggested action:** Patch `~/.claude/skills/session-resume/SKILL.md` to add a step between current §6 (backlog check) and §7 (delete `.session.md`):
-  > **6b. Strip the stale Pause footer from `state_file`.** The `## Session Pause — <timestamp>\nPaused. See …` block that `/session-pause` injected must be removed from the `state_file` body. Idempotent — no-op if the marker isn't there. Match pattern: trailing `## Session Pause — ` heading + body up to EOF (current `/session-pause` behavior is always-append). If a future `/session-pause` variant inserts mid-document, extend the match to "until next `## ` heading or EOF."
-- **Why it matters:** the cumulative cleanup cost is increasing linearly with the number of pause/resume cycles in any project. Multiple recent observations of this very repo also dirty `workflow/archive/<wip>.md` with pause footers post-resume (see this session's `verify-human-auto-skip-when-no-integration-boundary.md` archive diff). The footer is mechanically removable; only the skill's read-side doesn't currently know to remove it on resume.
-- **Risk:** Low. The match pattern is unambiguous (`## Session Pause — ` is unique to the inject path) and the Edit is reversible (preserved in git).
-- **Priority:** medium-high — 18+ observed recurrences in one project (rule-of-three is far exceeded); fix is small and reversible; addresses a paper cut that touches every paused workflow.
-- **Status:** pending
-
 ## SURFACE-2026-05-29-FEATURE-FINALIZE-MISSES-WBS-TASK-CHECKBOXES
-- **Order:** P4
+- **Order:** P3
 - **Source:** v3 WP3 session-resume (2026-05-29) — user observed that v3 WP1 and WP2 task checkboxes in `docs/product/wbs.md` were still `[ ]` despite both WPs being shipped, finalized, and committed (commits `4dd8d6d`, `8d9fc94`, `64fb865`, `c387829`). `feature-finalize` correctly tagged each WP heading with `✅ SHIPPED <date> (commit <sha>)` at the WP level but did not tick the per-task checkboxes (1.1–1.7, 2.1–2.3) underneath. Resume had to do it manually for both WPs.
 - **Target level:** harness / skill — `skills/feature-finalize/SKILL.md` WBS-update step.
 - **Type:** behavioral gap in close-skill
@@ -71,7 +58,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-22-CLAUDE-MD-MISSING-CLAUDE-TIME-CONTAINER-NOTE
-- **Order:** P5
+- **Order:** P4
 - **Note (2026-06-07):** User flagged "we are already v3, should double check." Verified: project CLAUDE.md still has no mention of `tools/claude-time/test/run-in-container.sh` or the container test path. The doc-gap remains regardless of v3 status. WP5 has long since shipped, so the original "WP5 dirty-tree blocker" no longer applies — the paragraph can be appended cleanly now.
 - **Source:** feature:finalize (claude-time-test-containerization, 2026-05-22)
 - **Target level:** task:plan (small/simple — single paragraph append)
@@ -83,7 +70,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-22-DEBUG-EMPIRICAL-TELEMETRY-SKILL
-- **Order:** P6
+- **Order:** P5
 - **Source:** user request (2026-05-22)
 - **Target level:** feature:spec (new `debug-*` sidebar skill — non-trivial design surface: trigger gate, instrumentation playbook, cleanup discipline)
 - **Type:** new-work / new debug skill in the agent-pulled sidebar category
@@ -94,7 +81,7 @@
 - **Status:** open
 
 ## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P7
+- **Order:** P6
 - **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
 - **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
 - **Type:** new skill or skill augmentation
@@ -105,7 +92,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
-- **Order:** P8
+- **Order:** P7
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
 - **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
 - **Type:** gap (test coverage — structural-only check doesn't catch behavioral drift)
@@ -120,7 +107,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P9
+- **Order:** P8
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
 - **Type:** workflow-enhancement
