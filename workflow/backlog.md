@@ -77,23 +77,8 @@
 - **Priority:** medium — real gap in the current verify loop, no active blocker, worth speccing when a feature cycle has space.
 - **Status:** open
 
-## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
-- **Order:** P4
-- **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
-- **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
-- **Type:** gap (test coverage — structural-only check doesn't catch behavioral drift)
-- **Summary:** `tests/check-structure.sh` Phase 9 asserts each of the 8 affected feature SKILL.md files contains an `## Orchestrator Pause Policy (cheat-sheet)` block with the `Hard rule for AUTO exits` anchor + 4-mode table row, but does NOT assert that the per-skill table rows *match* the canonical pause-policy table in `agents/feature-workflow/AGENTS.md`. If AGENTS.md changes (e.g. a transition flips PAUSE↔AUTO for a drive mode), the per-skill cheat-sheets could silently drift and continue claiming the old policy.
-- **Context:** Phase 9 was added by `incident-codify` as the structural substitute for behavioral red→green coverage (which was unavailable because reproduction was abandoned per `SURFACE-2026-05-17-CLAUDE-PRINT-AGENTIC-LOOP-SUPPRESSES-PAUSE-DECISION`). The structural check catches outright deletion or imperative weakening; the drift case is uncovered.
-- **Suggested action:** Extend Phase 9 (or add Phase 10) that:
-  1. Parses the pause-policy table from `agents/feature-workflow/AGENTS.md` into a `{skill_or_transition_key: {mode: AUTO|PAUSE|SKIP}}` dict.
-  2. For each of the 8 affected SKILL.md files, parses its cheat-sheet table.
-  3. Asserts every per-skill row matches the corresponding row in the canonical table.
-  Likely 30–60 lines of bash + a small awk/python helper. Single source of truth: AGENTS.md.
-- **Priority:** medium (not blocking; the regression mode (drift) is plausible but lower-probability than the regression mode Phase 9 already catches (prose removal/softening)).
-- **Status:** pending
-
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P5
+- **Order:** P4
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
 - **Type:** workflow-enhancement

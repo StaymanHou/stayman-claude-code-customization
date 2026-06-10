@@ -3,6 +3,7 @@ shape: runtime-registry
 updated: 2026-06-10
 ---
 
+
 <!-- Bookkeeping: `./tests/run-tests.sh --id <8-batch> --model sonnet` observed at 197s (2026-06-09 verify-codify-scenarios-need-sonnet-tag task). Per-scenario sonnet ≈ 25s. Useful estimator for future `--id <N-batch> --model sonnet` calls: `timeout_ms = ceil(N * 25 * 1.5 + 60) * 1000`. Below 384000ms (~6.4 min) for N ≤ 8 scenarios. -->
 
 # Runtime Registry
@@ -10,9 +11,10 @@ updated: 2026-06-10
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 17s (2026-06-10)
+- **Last:** 18s (2026-06-10)
 - **Use timeout:** 87000
 - **History:**
+  - 18s — 2026-06-10  <!-- post-cheat-sheet-agents-drift; 175/175 PASS, no FAILs (was 150/150; +25 from Phase 9b drift assertions: 1 AGENTS.md-table-parse + 24 per-row matches across 8 SKILL files) -->
   - 17s — 2026-06-10  <!-- post-feature-finalize-tick-wbs-task-checkboxes; 141/141 PASS, no FAILs (was 140/140; +1 from new pin) -->
   - 16s — 2026-06-10  <!-- post-I20-scenario-add; 139/139 PASS, no FAILs -->
   - 17s — 2026-06-09  <!-- post-settings-fixture-model-drift task; 139/139 PASS, no FAILs -->

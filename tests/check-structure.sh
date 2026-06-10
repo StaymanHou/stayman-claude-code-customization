@@ -1084,13 +1084,23 @@ echo ""
 # the pause-policy decision sits next to the transition emission instead of
 # relying on AGENTS.md prose the orchestrator read once at session start.
 #
-# Three structural assertions per file:
+# Four assertions per file (presence × 3, then drift × 1 over the whole set):
 #   (1) the canonical heading is present
 #   (2) the "Hard rule for AUTO exits" semantic anchor is present — the
 #       imperative wording is the load-bearing part; if it weakens to
 #       "should" or a softer phrasing, the regression mode returns
 #   (3) the block contains a per-skill pause-policy table referencing all
 #       four drive modes
+#   (4) Phase 9b drift check (see SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT):
+#       per-skill table VALUES match the canonical pause-policy table in
+#       agents/feature-workflow/AGENTS.md. Catches the case where AGENTS.md
+#       flips a transition's policy but one or more SKILL.md cheat-sheets
+#       silently keep claiming the old value. Parses both tables in Python,
+#       normalizes cell values (strip markdown bold, take first policy token,
+#       map "pause already taken at entry" sentinel to PAUSE), and applies a
+#       static row-mapping dict for the many-to-one cases (all back-loop
+#       transitions across the 8 files collapse to AGENTS.md's "Back-loops"
+#       row; F22→REDIRECT; F25/F26→SURFACE rows).
 #
 # If this phase fails, the mitigation has been silently weakened — that is
 # the regression signal the original incident WIP file says we must catch.
@@ -1139,6 +1149,217 @@ for f in "${PAUSE_POLICY_FILES[@]}"; do
       "no single line references all four modes (table row missing or malformed)"
   fi
 done
+
+# (4) Phase 9b: per-skill cheat-sheet VALUES match the canonical pause-policy
+# table in agents/feature-workflow/AGENTS.md. Phase 9 above catches structural
+# regressions (block removed, anchor weakened, mode names dropped); this
+# drift check catches the value-mismatch case where AGENTS.md is updated but
+# one or more per-skill SKILL.md tables silently keep claiming the old policy.
+# See SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT.
+#
+# Mapping per-skill transition rows → AGENTS.md row keys (many-to-one in places,
+# e.g. all back-loops collapse to AGENTS.md's "Back-loops" row). Rows with no
+# canonical counterpart (F27 incident interrupt, n/a-tagged Mode-4 cells in
+# verify-human) are skipped from comparison without emitting PASS or FAIL.
+drift_output=$(python3 - <<'PYEOF' 2>&1 || true
+import re
+from pathlib import Path
+
+POLICY_TOKEN_RE = re.compile(r"\*?\*?(AUTO-SKIP|AUTO|PAUSE|SKIP|n/a)\*?\*?", re.IGNORECASE)
+
+def normalize_cell(cell):
+    """Strip markdown bolding, parenthetical commentary, and 'pause already taken at entry'
+    sentinel. Return the first policy token found, lowercased, or '' if none."""
+    s = cell.strip()
+    # Handle the "pause already taken at entry" sentinel — semantically the per-skill row
+    # delegates to the entry row's pause; the exit transition itself does NOT pause. So
+    # canonically this row's value matches whatever AGENTS.md says for the skill (which for
+    # spec/research/plan in Mode 2/3 is PAUSE — same value). We map sentinel → PAUSE so the
+    # comparison passes against AGENTS.md's PAUSE for these rows.
+    if "pause already taken at entry" in s.lower():
+        return "pause"
+    m = POLICY_TOKEN_RE.search(s)
+    return m.group(1).lower() if m else ""
+
+def parse_table(lines, start_pat, stop_pat=re.compile(r"^## ")):
+    """Find first table inside the block bounded by start_pat (inclusive) and stop_pat
+    (exclusive — next ## heading). Return list of [cell, cell, ...] rows (data rows only,
+    skipping header + separator)."""
+    in_block = False
+    rows = []
+    for line in lines:
+        if not in_block:
+            if start_pat.search(line):
+                in_block = True
+            continue
+        if stop_pat.match(line):
+            break
+        if not line.startswith("|"):
+            continue
+        # Skip the header-separator line (|---|---|...)
+        if re.match(r"^\|\s*[-:]+\s*\|", line):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        rows.append(cells)
+    return rows
+
+def parse_agents_table(path):
+    """Parse the canonical pause-policy table from agents/feature-workflow/AGENTS.md.
+    Returns dict: row_label -> {mode_index: normalized_value}. mode_index is 0-3."""
+    lines = Path(path).read_text().splitlines()
+    rows = parse_table(lines, re.compile(r"^### Pause policy by drive mode"))
+    if not rows:
+        return {}
+    header = rows[0]
+    # Expected header: ["Step", "Mode 1 — Step-by-step", ...]; data rows have label in col 0.
+    # Drop the header row and any further rows whose first cell doesn't look like a step name.
+    table = {}
+    for row in rows[1:]:
+        if len(row) < 5:
+            continue
+        label = row[0].strip()
+        if not label:
+            continue
+        # mode_index 0..3 maps to Mode 1..4 → columns 1..4
+        table[label] = {i: normalize_cell(row[i + 1]) for i in range(4)}
+    return table
+
+def parse_skill_table(path):
+    """Parse the per-skill cheat-sheet table. Returns list of (transition_label, {mode_index: value})."""
+    lines = Path(path).read_text().splitlines()
+    rows = parse_table(lines, re.compile(r"^## Orchestrator Pause Policy \(cheat-sheet\)"))
+    if not rows:
+        return []
+    out = []
+    for row in rows[1:]:  # drop header
+        if len(row) < 5:
+            continue
+        label = row[0].strip()
+        if not label:
+            continue
+        values = {i: normalize_cell(row[i + 1]) for i in range(4)}
+        out.append((label, values))
+    return out
+
+# Map: (skill basename, transition-label pattern) → AGENTS.md row label.
+# Pattern is a substring that must appear in the per-skill row's first cell. None means
+# skip from comparison.
+ROW_MAPPING = {
+    "feature-spec": [
+        ("Skill invocation",      "`feature-spec`"),
+        ("F3 ",                   "`feature-spec`"),
+        ("F4 ",                   "`feature-spec`"),
+    ],
+    "feature-research": [
+        ("Skill invocation",      "`feature-research`"),
+        ("F5 ",                   "`feature-research`"),
+        ("F6 ",                   "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+    ],
+    "feature-plan": [
+        ("Skill invocation",      "`feature-plan`"),
+        ("F7 ",                   "`feature-plan`"),
+    ],
+    "feature-build": [
+        ("F8 ",                   "`feature-build`"),
+        ("F9b ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+        ("F22 ",                  "REDIRECT (F22)"),
+        ("F23 ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+        ("F25 ",                  "SURFACE F25 (note-and-continue)"),
+        ("F26 ",                  "SURFACE F26 (pause-and-escalate)"),
+        ("F27 ",                  None),  # incident interrupt — no AGENTS.md table row
+    ],
+    "feature-verify-auto": [
+        ("F10 ",                  "`feature-verify-auto`"),
+        ("F9 ",                   "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+        ("F24 ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+    ],
+    "feature-verify-self": [
+        ("F10b ",                 "`feature-verify-self`"),
+        ("F9b ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+    ],
+    "feature-verify-human": [
+        ("Skill invocation",      "`feature-verify-human`"),
+        # F13/F11 exit rows describe orchestrator behavior AFTER the skill emits
+        # a transition (post-human-response). AGENTS.md has no row for these —
+        # the canonical row describes the invocation-pause policy. Skip from
+        # comparison. F11-AUTO-SKIP is similar: governed by the auto-skip gate,
+        # documented in the SKILL itself, not in AGENTS.md's pause-policy table.
+        ("F13 ",                  None),
+        ("F11 (human-confirmed",  None),
+        ("F11 (AUTO-SKIP",        None),
+        ("F12 ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+    ],
+    "feature-verify-codify": [
+        ("F15 ",                  "`feature-verify-codify`"),
+        ("F16 ",                  "`feature-verify-codify`"),
+        ("F14 ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
+    ],
+}
+
+agents = parse_agents_table("agents/feature-workflow/AGENTS.md")
+if not agents:
+    print("FAIL\tparse AGENTS.md pause-policy table\tcould not locate or parse '### Pause policy by drive mode' table")
+else:
+    print("PASS\tparse AGENTS.md pause-policy table")
+
+SKILLS = [
+    "feature-spec", "feature-research", "feature-plan", "feature-build",
+    "feature-verify-auto", "feature-verify-self", "feature-verify-human",
+    "feature-verify-codify",
+]
+
+for skill in SKILLS:
+    path = f"skills/{skill}/SKILL.md"
+    skill_rows = parse_skill_table(path)
+    if not skill_rows:
+        print(f"FAIL\t{path} cheat-sheet table parseable\tno data rows found between heading and next ##")
+        continue
+    mapping = {pat: agents_key for pat, agents_key in ROW_MAPPING.get(skill, [])}
+    for label, values in skill_rows:
+        # Find which pattern matches this row label
+        agents_key = None
+        matched_pat = None
+        for pat, target in mapping.items():
+            if pat in label:
+                matched_pat = pat
+                agents_key = target
+                break
+        if matched_pat is None:
+            # Row in SKILL.md has no mapping declared — surface as FAIL so we don't
+            # silently miss new rows added to a SKILL.md without updating this script.
+            print(f"FAIL\t{path} row '{label}' has mapping\tno entry in ROW_MAPPING for this skill — add one or mark None")
+            continue
+        if agents_key is None:
+            # Explicitly marked None → skip from comparison
+            continue
+        if agents_key not in agents:
+            print(f"FAIL\t{path} row '{label}' canonical row exists\tAGENTS.md has no row '{agents_key}'")
+            continue
+        canon = agents[agents_key]
+        for mode_idx in range(4):
+            skill_val = values[mode_idx]
+            canon_val = canon[mode_idx]
+            # Skip n/a cells — they're explicitly out-of-scope (e.g. verify-human Mode 4 SKIP).
+            if skill_val == "n/a":
+                continue
+            if skill_val == canon_val:
+                continue
+            # Mismatch
+            print(f"FAIL\t{path} row '{label}' Mode {mode_idx + 1} matches AGENTS.md '{agents_key}'\texpected '{canon_val}' (from AGENTS.md), got '{skill_val}' (from SKILL.md)")
+            break
+        else:
+            print(f"PASS\t{path} row '{label}' values match AGENTS.md '{agents_key}'")
+PYEOF
+)
+
+while IFS=$'\t' read -r status desc detail; do
+  [ -z "$status" ] && continue
+  if [ "$status" = "PASS" ]; then
+    check "$desc" "pass"
+  else
+    check "$desc" "fail" "$detail"
+  fi
+done <<< "$drift_output"
 
 echo ""
 
