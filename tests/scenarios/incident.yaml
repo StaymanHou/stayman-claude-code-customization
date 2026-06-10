@@ -431,6 +431,41 @@ scenarios:
         - "/incident-resolve"
     max_retries: 2
 
+  - id: I20
+    name: "incident:codify → investigate back-loop when codify-time evidence reveals root-cause analysis was wrong"
+    skill: incident-codify
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-codify-with-reproduce-artifact.md
+    system_prompt_extra: |
+      You ran the failing test from the reproduce artifact against the
+      mitigated code — it passes cleanly. So the mitigation DID fix the
+      specific case investigate identified. However, while writing additional
+      regression coverage at codify time, you discovered that a sibling
+      request shape ALSO produces the same NoneType 500: GET /api/v2/users
+      with `?include=preferences` triggers a different serializer code path
+      that has its own null-handling gap on a DIFFERENT field
+      (`notification_email`, not `profile_image_url`). The original
+      investigation concluded the bug was a single-field issue on
+      `profile_image_url`. The new codify-time evidence contradicts that
+      conclusion: the root cause is a broader pattern — multiple
+      nullable-but-required fields across multiple serializer paths — not
+      a single-field issue. Per the incident-codify procedure: codify-time
+      evidence that reveals the root-cause analysis was wrong means
+      back-loop to investigate, NOT auto-fix and NOT continue to resolve.
+      Document the new evidence and hand off to re-investigate.
+    expect:
+      transition_id: I20
+      contains_any:
+        - "/incident-investigate"
+        - "back-loop"
+        - "root cause"
+      not_contains:
+        - "/incident-resolve"
+        - "/incident-mitigate"
+    max_retries: 2
+
   # F-CHGLOG-2: incident-resolve appends to project CHANGELOG.md
   # Test-only ID — no entry in transitions.md's main table; this asserts a side-effect of I10.
   - id: F-CHGLOG-2

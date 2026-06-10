@@ -42,39 +42,9 @@
 - **Priority:** low — latent bug, not currently triggering; would surface only if a future pin's matched-count drops to 0.
 - **Status:** pending
 
-## SURFACE-2026-06-06-SETTINGS-FIXTURE-MODEL-DRIFT
-- **Order:** P1
-- **Source:** feature:verify-self (docker-init-randomize-host-ports, 2026-06-06) — pre-existing failure surfaced during structural sweep, not introduced by this feature.
-- **Target level:** task:plan (small/simple — one-line fixture update or `INTENTIONAL_DIFFS` entry).
-- **Type:** test-infra / fixture drift
-- **Summary:** `tests/check-structure.sh` reports 1 FAIL: `settings fixture in sync with live (modulo documented diffs): drift detected — model: live=<missing> fixture="opus[1m]"`. The live `~/.claude/settings.json` no longer has a `model` field (or it's been removed/renamed), but the fixture at `tests/fixtures/settings.json` still asserts `model: "opus[1m]"`. Net effect: structural sweep always shows 124/125, masking real future fixture regressions.
-- **Suggested action:** Two options: (a) update `tests/fixtures/settings.json` to drop the `model` field (match live); (b) add the field to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` if the difference is intentionally tolerated. Lean: (a) — the fixture should track live unless there's a reason to pin a specific model harness fingerprint.
-- **Priority:** low — masks no real signal today, but every additional drifted field weakens the fixture's value as a regression net.
-- **Status:** resolved 2026-06-09 — task `settings-fixture-model-drift` closed. Applied option (a): dropped the `"model": "opus[1m]"` line from `tests/fixtures/settings.json` (and the trailing comma on the prior line). `./tests/check-structure.sh` now reports 139/139 PASS, FAIL: 0 (was 124/125 with the drift FAIL). Inline drift detector confirms `OK (no drift outside intentional diffs)`.
-
-## SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG
-- **Order:** P2
-- **Source:** feature:verify-codify (finalize-before-ship-order-flip Phase 3 regression slice, 2026-05-13)
-- **Target level:** task:plan
-- **Type:** test-infra (recon discipline pending)
-- **Summary:** 6 verify-codify scenarios SOFT_PASS on haiku but should be tagged `model: sonnet` per the recon discipline documented in CLAUDE.md. F-boundary-codify confirmed: SOFT_PASS on haiku (`/feature-ship` leaks in non-`/feature-ship` scenario), PASS strictly on sonnet (verified 2026-05-13). Other 5 SOFT_PASSes (F14, F15, F16-triage-ambiguous, F16-triage-flaky, F16-triage-regression) fail on output-shape issues (missing TRANSITION line, prose-leak family) — same haiku-noise class. **Extension (2026-05-13 full-sweep):** F13-prefiltered also FAILs on haiku with the "no structured TRANSITION line" pattern — likely same class. Include in the sonnet-tag recon pass.
-- **Suggested action:** Apply the documented recon discipline (`see haiku failure → run on sonnet → confirm PASS → tag`). For each of the 6, run on sonnet; for those that PASS strictly, add `model: sonnet` to the scenario in `tests/scenarios/feature.yaml` and a one-line comment citing the haiku flake pattern. Likely all 6 fall into this category given the failure shapes.
-- **Priority:** medium (only matters when running the haiku-only partition; current Phase 3 work was unblocked by recon on the most concerning case)
-- **Status:** resolved 2026-06-09 — task `verify-codify-scenarios-need-sonnet-tag` closed. Sonnet recon sweep (197s, 8 scenarios) confirmed 6 strict PASSes → tagged `model: sonnet` in `tests/scenarios/feature.yaml`: F13-prefiltered, F13, F14, F15, F16-triage-regression, F-boundary-codify (the last re-confirmed; tag was never applied at 2026-05-13 recon). **2 scenarios SOFT_PASSed on sonnet too** (F16-triage-ambiguous: `not_contains [auto-fix]` triggered by sonnet prose; F16-triage-flaky: skips structured TRANSITION line) — NOT haiku-noise-only; surfaced separately as `SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET` for scenario-design / skill-prose investigation. Dry-run `--filter-model sonnet` partition correctly grew from 3 → 9 scenarios.
-
-## SURFACE-2026-05-10-I20-SCENARIO-MISSING
-- **Order:** P3
-- **Source:** feature:verify-codify (incident-codify feature, Phase 3, 2026-05-10)
-- **Target level:** task:plan
-- **Type:** gap (test coverage)
-- **Summary:** I20 (codify → investigate back-loop) has no test scenario. The other three codify transitions (I17, I18, I19) and the defer variant (I18-defer) all have scenarios. I20 is the rare "codify-time evidence reveals investigate's root-cause analysis was wrong" case — distinct from I19 ("mitigation didn't fix the bug, try a different fix").
-- **Context:** I20 was approved in verify-human as part of the SKILL.md procedure (kept rather than folded into I19) but the plan's Phase 3 scenario list didn't include it. Without a scenario, the I20 path is documented but uncovered — a future regression on I20 emission would slip through the test sweep.
-- **Suggested action:** Add an I20 scenario to `tests/scenarios/incident.yaml`. Fixture: `incident-codify-with-reproduce-artifact.md` (or a new fixture). Prompt should describe codify-time evidence that contradicts the prior investigation's root-cause conclusion (e.g., the failing test passes against the mitigated code, but a different failing condition exists that wasn't part of the original investigation). Expected transition: I20 → /incident-investigate.
-- **Priority:** low (the path is rare in practice; cost of adding a scenario is small but not urgent)
-- **Status:** open
 
 ## SURFACE-2026-06-07-SESSION-RESUME-LEAVES-PAUSE-FOOTER
-- **Order:** P4
+- **Order:** P3
 - **Source:** Cross-project learning from NeoStayman WP30 finalize / session-reflect (2026-06-07). Full learning doc at `/Users/stayman/Personal/projects/neo-stayman-assistant/.claude/learnings/2026-06-07-session-resume-strip-stale-pause-footer.md`. NeoStayman backlog reference: `SURFACE-2026-05-16-SESSION-RESUME-LEAVES-PAUSE-MARKER`.
 - **Target level:** harness / skill — `~/.claude/skills/session-resume/SKILL.md` (which is symlinked from this repo's `skills/session-resume/SKILL.md`).
 - **Type:** behavioral gap in skill — orphan-footer cleanup miss
@@ -87,7 +57,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-29-FEATURE-FINALIZE-MISSES-WBS-TASK-CHECKBOXES
-- **Order:** P5
+- **Order:** P4
 - **Source:** v3 WP3 session-resume (2026-05-29) — user observed that v3 WP1 and WP2 task checkboxes in `docs/product/wbs.md` were still `[ ]` despite both WPs being shipped, finalized, and committed (commits `4dd8d6d`, `8d9fc94`, `64fb865`, `c387829`). `feature-finalize` correctly tagged each WP heading with `✅ SHIPPED <date> (commit <sha>)` at the WP level but did not tick the per-task checkboxes (1.1–1.7, 2.1–2.3) underneath. Resume had to do it manually for both WPs.
 - **Target level:** harness / skill — `skills/feature-finalize/SKILL.md` WBS-update step.
 - **Type:** behavioral gap in close-skill
@@ -101,7 +71,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-22-CLAUDE-MD-MISSING-CLAUDE-TIME-CONTAINER-NOTE
-- **Order:** P6
+- **Order:** P5
 - **Note (2026-06-07):** User flagged "we are already v3, should double check." Verified: project CLAUDE.md still has no mention of `tools/claude-time/test/run-in-container.sh` or the container test path. The doc-gap remains regardless of v3 status. WP5 has long since shipped, so the original "WP5 dirty-tree blocker" no longer applies — the paragraph can be appended cleanly now.
 - **Source:** feature:finalize (claude-time-test-containerization, 2026-05-22)
 - **Target level:** task:plan (small/simple — single paragraph append)
@@ -113,7 +83,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-22-DEBUG-EMPIRICAL-TELEMETRY-SKILL
-- **Order:** P7
+- **Order:** P6
 - **Source:** user request (2026-05-22)
 - **Target level:** feature:spec (new `debug-*` sidebar skill — non-trivial design surface: trigger gate, instrumentation playbook, cleanup discipline)
 - **Type:** new-work / new debug skill in the agent-pulled sidebar category
@@ -124,7 +94,7 @@
 - **Status:** open
 
 ## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P8
+- **Order:** P7
 - **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
 - **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
 - **Type:** new skill or skill augmentation
@@ -135,7 +105,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
-- **Order:** P9
+- **Order:** P8
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
 - **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
 - **Type:** gap (test coverage — structural-only check doesn't catch behavioral drift)
@@ -150,7 +120,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P10
+- **Order:** P9
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
 - **Type:** workflow-enhancement
