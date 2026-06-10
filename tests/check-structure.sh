@@ -94,6 +94,17 @@ grep_check "CLAUDE.md mentions verify-self" "CLAUDE.md" "verify-self" 1
 # If any of these drop the reference, the close path silently stops writing to CHANGELOG.
 grep_check "CLAUDE.snippet.md defines 'CHANGELOG.md convention'" "CLAUDE.snippet.md" "^## CHANGELOG.md convention" 1
 grep_check "feature-finalize references CHANGELOG convention" "skills/feature-finalize/SKILL.md" "CHANGELOG.md convention" 1
+
+# feature-finalize §1 WBS-update step must direct the agent to tick per-task checkboxes within
+# the shipped WP's section after appending the ✅ SHIPPED tag. Per SURFACE-2026-05-29-FEATURE-
+# FINALIZE-MISSES-WBS-TASK-CHECKBOXES: 12-of-12 WPs since v3 cycle start landed with the WP
+# heading ✅ SHIPPED but the underlying task checkboxes left as `- [ ]`, making WBS a
+# partially-trustworthy state surface for downstream planning skills. If this directive gets
+# dropped in a future edit, the inconsistency returns silently and accrues across every WP
+# finalize. Anchor phrase chosen to capture the per-task tick discipline specifically (not the
+# generic WP-heading update, which is the pre-existing behavior).
+grep_check "feature-finalize directs WBS per-task checkbox tick" "skills/feature-finalize/SKILL.md" "WBS per-task checkbox tick" 1
+
 grep_check "incident-resolve references CHANGELOG convention" "skills/incident-resolve/SKILL.md" "CHANGELOG.md convention" 1
 grep_check "task-close references CHANGELOG convention" "skills/task-close/SKILL.md" "CHANGELOG.md convention" 1
 grep_check "product-finalize references CHANGELOG convention" "skills/product-finalize/SKILL.md" "CHANGELOG.md convention" 1

@@ -43,22 +43,8 @@
 - **Status:** pending
 
 
-## SURFACE-2026-05-29-FEATURE-FINALIZE-MISSES-WBS-TASK-CHECKBOXES
-- **Order:** P3
-- **Source:** v3 WP3 session-resume (2026-05-29) — user observed that v3 WP1 and WP2 task checkboxes in `docs/product/wbs.md` were still `[ ]` despite both WPs being shipped, finalized, and committed (commits `4dd8d6d`, `8d9fc94`, `64fb865`, `c387829`). `feature-finalize` correctly tagged each WP heading with `✅ SHIPPED <date> (commit <sha>)` at the WP level but did not tick the per-task checkboxes (1.1–1.7, 2.1–2.3) underneath. Resume had to do it manually for both WPs.
-- **Target level:** harness / skill — `skills/feature-finalize/SKILL.md` WBS-update step.
-- **Type:** behavioral gap in close-skill
-- **Summary:** `feature-finalize` updates `docs/product/wbs.md` to mark WP-level shipped status but does not propagate completion down to the WP's task list. This is a deterministic miss — every WP finalize since at least v3 cycle start has produced an inconsistency between heading state (✅ SHIPPED) and task-checkbox state (`[ ]` × N).
-- **Why it matters:** WBS becomes a partially-trustworthy state surface. Future planning skills (`feature-spec` for downstream WPs, `/product-finalize` cycle-close sweep) read WBS to determine what's actually done. Unticked checkboxes under a ✅ SHIPPED heading muddle the source of truth — and visually suggest "in progress" even when the WP is fully shipped.
-- **Proposed fix:** Update `skills/feature-finalize/SKILL.md` WBS-update step: after appending the `✅ SHIPPED <date> (commit <sha>)` tag to the WP heading, ALSO walk the WP's task list and convert each `- [ ]` to `- [x]` (the WP being shipped means by definition all its tasks landed — they're not partial-credit). One-line procedure: "For the WP being finalized, `replace_all` `- [ ]` → `- [x]` *within that WP's section only*." Add a structure-check pin if cheap.
-- **Risk:** Low. Tasks that genuinely didn't ship would be ones the WP was descoped on — in which case the WP should be RE-SCOPED in WBS at finalize time, not silently shipped with hidden gaps. The fix surfaces this discipline.
-- **Priority:** medium — accumulates technical debt across every WP finalize but isn't a blocker.
-- **Updates:**
-  - 2026-06-06 (WP11 finalize): **12th consecutive WP affected**. Pre-ticked 11.1-11.6 manually before the auto-ship-marker tag this finalize cycle. Pattern is now overwhelmingly established (12-of-12 WPs since v3 cycle start); the harness fix should be the next available cycle's first task.
-- **Status:** pending
-
 ## SURFACE-2026-05-22-CLAUDE-MD-MISSING-CLAUDE-TIME-CONTAINER-NOTE
-- **Order:** P4
+- **Order:** P3
 - **Note (2026-06-07):** User flagged "we are already v3, should double check." Verified: project CLAUDE.md still has no mention of `tools/claude-time/test/run-in-container.sh` or the container test path. The doc-gap remains regardless of v3 status. WP5 has long since shipped, so the original "WP5 dirty-tree blocker" no longer applies — the paragraph can be appended cleanly now.
 - **Source:** feature:finalize (claude-time-test-containerization, 2026-05-22)
 - **Target level:** task:plan (small/simple — single paragraph append)
@@ -70,7 +56,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-22-DEBUG-EMPIRICAL-TELEMETRY-SKILL
-- **Order:** P5
+- **Order:** P4
 - **Source:** user request (2026-05-22)
 - **Target level:** feature:spec (new `debug-*` sidebar skill — non-trivial design surface: trigger gate, instrumentation playbook, cleanup discipline)
 - **Type:** new-work / new debug skill in the agent-pulled sidebar category
@@ -81,7 +67,7 @@
 - **Status:** open
 
 ## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P6
+- **Order:** P5
 - **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
 - **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
 - **Type:** new skill or skill augmentation
@@ -92,7 +78,7 @@
 - **Status:** open
 
 ## SURFACE-2026-05-17-CHEAT-SHEET-AGENTS-DRIFT
-- **Order:** P7
+- **Order:** P6
 - **Source:** incident:resolve (autopilot-pause-policy-recheck-regression, 2026-05-17)
 - **Target level:** task:plan (small/simple — single bash/python pass parsing two source files)
 - **Type:** gap (test coverage — structural-only check doesn't catch behavioral drift)
@@ -107,7 +93,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-05-08-REPRODUCE-AS-REDIRECT-FROM-BUILD
-- **Order:** P8
+- **Order:** P7
 - **Source:** feature:build (reproduce-step feature, 2026-05-08) — Phase 4 backlog spinout
 - **Target level:** feature:spec
 - **Type:** workflow-enhancement

@@ -27,6 +27,7 @@ Read the WIP file's `## Current Node`. If `**Path:**` contains `verify-codify` A
 - Update relevant docs to reflect the new feature (API docs, setup guides, etc.)
 - Update the project `CLAUDE.md` (root) if new patterns or critical rules were discovered
 - Update `docs/product/wbs.md` and `docs/product/roadmap.md` to reflect the completed feature (check off milestones, mark WPs done). Bump `updated:` in frontmatter.
+- **WBS per-task checkbox tick (required):** when marking a WP done in `docs/product/wbs.md`, after appending the `✅ SHIPPED <date> (commit <sha>)` tag to the WP heading, ALSO convert every `- [ ]` to `- [x]` **within that WP's section only** (between the WP's heading and the next WP heading, or EOF if it's the last WP). The WP being shipped means by definition all its tasks landed — leaving unticked task checkboxes underneath a `✅ SHIPPED` heading makes WBS a partially-trustworthy state surface for downstream planning skills. Do **not** use a global `replace_all` across the whole file — that would mistakenly tick checkboxes in other WPs that are still in-progress. If a task genuinely did not land, the WP should be re-scoped explicitly in WBS rather than silently shipped with hidden gaps.
 
 ### 2. Full Backlog Review
 Scan `workflow/backlog.md` for ALL unresolved items:
