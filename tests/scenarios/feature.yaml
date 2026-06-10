@@ -181,6 +181,7 @@ scenarios:
   - id: F13-prefiltered
     name: "feature:verify-human excludes verify-self [x] items from checklist"
     skill: feature-verify-human
+    model: sonnet  # Haiku flakes: no structured TRANSITION line; sonnet is reliable (PASS strictly 2026-06-09). See backlog SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG (recon 2026-06-09).
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -477,6 +478,7 @@ scenarios:
   - id: F13
     name: "feature:verify-human → verify-codify when approved"
     skill: feature-verify-human
+    model: sonnet  # Haiku flakes: output-shape issues (missing TRANSITION line / prose-leak); sonnet is reliable (PASS strictly 2026-06-09). See backlog SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG (recon 2026-06-09).
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -498,6 +500,7 @@ scenarios:
   - id: F14
     name: "feature:verify-codify back-loops when tests reveal issues"
     skill: feature-verify-codify
+    model: sonnet  # Haiku flakes: output-shape issues (missing TRANSITION line / prose-leak); sonnet is reliable (PASS strictly 2026-06-09). See backlog SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG (recon 2026-06-09).
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -520,6 +523,7 @@ scenarios:
   - id: F15
     name: "feature:verify-codify → build (next phase) when more phases"
     skill: feature-verify-codify
+    model: sonnet  # Haiku flakes: output-shape issues (missing TRANSITION line / prose-leak); sonnet is reliable (PASS strictly 2026-06-09). See backlog SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG (recon 2026-06-09).
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -559,6 +563,7 @@ scenarios:
   - id: F16-triage-regression
     name: "feature:verify-codify auto-fixes high-confidence code regression"
     skill: feature-verify-codify
+    model: sonnet  # Haiku flakes: prose-leak family (output-shape issues); sonnet is reliable (PASS strictly 2026-06-09). See backlog SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG (recon 2026-06-09).
     args: "phase 2"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -1281,6 +1286,7 @@ scenarios:
   - id: F-boundary-codify
     name: "feature:verify-codify requires test on consuming surface when boundary applies"
     skill: feature-verify-codify
+    model: sonnet  # Haiku flakes: /feature-ship leaks in non-/feature-ship scenario; sonnet is reliable (PASS strictly 2026-05-13 + re-verified 2026-06-09). See backlog SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG (recon 2026-05-13, re-confirmed 2026-06-09).
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md

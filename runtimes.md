@@ -3,6 +3,8 @@ shape: runtime-registry
 updated: 2026-06-09
 ---
 
+<!-- Bookkeeping: `./tests/run-tests.sh --id <8-batch> --model sonnet` observed at 197s (2026-06-09 verify-codify-scenarios-need-sonnet-tag task). Per-scenario sonnet ≈ 25s. Useful estimator for future `--id <N-batch> --model sonnet` calls: `timeout_ms = ceil(N * 25 * 1.5 + 60) * 1000`. Below 384000ms (~6.4 min) for N ≤ 8 scenarios. -->
+
 # Runtime Registry
 
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.

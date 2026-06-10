@@ -18,6 +18,19 @@
 - **Priority:** medium — the gap is structural and ships latent bugs by default, but the failure mode requires the right combination of plan-declared-narrow-verification + sibling-bug-in-fix-target to bite. The feature-spec is non-trivial (state-machine extension + 7 files changed minimum + design decisions on 5 open questions); pickup when a feature cycle has scope. Could also serve as a useful dogfooding cycle for the workflow system itself.
 - **Status:** pending
 
+## SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET
+- **Order:** P-NEW (pending user re-ordering)
+- **Source:** task:act (verify-codify-scenarios-need-sonnet-tag, 2026-06-09) — surfaced during the P2 sonnet recon sweep when these 2 of 8 scenarios SOFT_PASSed on sonnet too (not just haiku).
+- **Target level:** task:plan (small/medium — scenario design fix, possibly skill-prose audit)
+- **Type:** test-scenario design / output-shape mismatch
+- **Summary:** During the P2 sonnet recon sweep (`./tests/run-tests.sh --id ... --model sonnet`, 197s, 2026-06-09), 6 of 8 candidates PASSed strictly and were tagged; 2 SOFT_PASSed on **sonnet too** — so they're NOT haiku-noise-only and shouldn't be tagged-and-forgotten:
+  - **F16-triage-ambiguous** (line 592): `SOFT_PASS (Contains 'pause' but also mentioned: auto-fix)`. The scenario's `not_contains` list forbids "auto-fix" but sonnet's prose still references it while correctly choosing the pause path. This is the "describing what it won't do" prose-leak pattern documented in CLAUDE.md → "Test scenario design — routing-fork patterns" → "Entry-state transitions need a different test shape than exit transitions."
+  - **F16-triage-flaky** (line 626): `SOFT_PASS (Contains 'flaky' (no structured TRANSITION line))`. Sonnet emits the right reasoning + classification but skips the literal `TRANSITION: F16` line. This is the "no structured TRANSITION line" pattern — output-shape issue, not classification issue.
+- **Why it matters:** These 2 scenarios are currently treated as PASS-equivalent in `tests/run-all.sh` two-pass sweeps because SOFT_PASS isn't FAIL. But the underlying signal is real: either the assertion shape is too strict (false positive) or the skill prose has drifted (false negative). Each case needs its own diagnosis.
+- **Suggested action:** For F16-triage-ambiguous: re-examine the `not_contains: [auto-fix, ...]` assertion — likely needs softening to allow "auto-fix" in negation context (e.g. "the failure is NOT a code regression to auto-fix"), or the skill prose needs to avoid auto-fix references when emitting the pause classification. For F16-triage-flaky: investigate why sonnet skips the structured TRANSITION line — possibly the SHARED_PROMPT instructions aren't strong enough when the skill's natural prose ends with a triage classification rather than a transition (the skill might be emitting the right *content* but skipping the *line shape*). May benefit from a skill-prose update to verify-codify SKILL.md (explicit "even for triage outcomes, emit TRANSITION: F16 before classifying").
+- **Priority:** low-medium — SOFT_PASS is not a blocker today but masks the underlying issue and creates a precedent where SOFT_PASS-on-sonnet is treated as "good enough."
+- **Status:** pending
+
 ## SURFACE-2026-06-09-GREP-CHECK-HELPER-PIPEFAIL-INTERACTION
 - **Order:** P-NEW (pending user re-ordering)
 - **Source:** feature:verify-codify (check-structure-sigterm-propagation, 2026-06-09) — surfaced as pre-existing tech debt during the design of 2 new negative pins. Same root cause hit me twice during this feature's verify-codify.
@@ -47,7 +60,7 @@
 - **Summary:** 6 verify-codify scenarios SOFT_PASS on haiku but should be tagged `model: sonnet` per the recon discipline documented in CLAUDE.md. F-boundary-codify confirmed: SOFT_PASS on haiku (`/feature-ship` leaks in non-`/feature-ship` scenario), PASS strictly on sonnet (verified 2026-05-13). Other 5 SOFT_PASSes (F14, F15, F16-triage-ambiguous, F16-triage-flaky, F16-triage-regression) fail on output-shape issues (missing TRANSITION line, prose-leak family) — same haiku-noise class. **Extension (2026-05-13 full-sweep):** F13-prefiltered also FAILs on haiku with the "no structured TRANSITION line" pattern — likely same class. Include in the sonnet-tag recon pass.
 - **Suggested action:** Apply the documented recon discipline (`see haiku failure → run on sonnet → confirm PASS → tag`). For each of the 6, run on sonnet; for those that PASS strictly, add `model: sonnet` to the scenario in `tests/scenarios/feature.yaml` and a one-line comment citing the haiku flake pattern. Likely all 6 fall into this category given the failure shapes.
 - **Priority:** medium (only matters when running the haiku-only partition; current Phase 3 work was unblocked by recon on the most concerning case)
-- **Status:** open
+- **Status:** resolved 2026-06-09 — task `verify-codify-scenarios-need-sonnet-tag` closed. Sonnet recon sweep (197s, 8 scenarios) confirmed 6 strict PASSes → tagged `model: sonnet` in `tests/scenarios/feature.yaml`: F13-prefiltered, F13, F14, F15, F16-triage-regression, F-boundary-codify (the last re-confirmed; tag was never applied at 2026-05-13 recon). **2 scenarios SOFT_PASSed on sonnet too** (F16-triage-ambiguous: `not_contains [auto-fix]` triggered by sonnet prose; F16-triage-flaky: skips structured TRANSITION line) — NOT haiku-noise-only; surfaced separately as `SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET` for scenario-design / skill-prose investigation. Dry-run `--filter-model sonnet` partition correctly grew from 3 → 9 scenarios.
 
 ## SURFACE-2026-05-10-I20-SCENARIO-MISSING
 - **Order:** P3
