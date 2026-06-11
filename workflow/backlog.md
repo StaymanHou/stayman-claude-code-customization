@@ -1,25 +1,13 @@
 # Backlog
 
-> **Reading order:** Items in the **TODO** section below carry an `**Order:**` line (P1, P2, …) reflecting the priority sequence confirmed by Stayman on 2026-06-07. Address them in that order — `**Order:**` is the user-confirmed pickup sequence; the `**Priority:**` line beneath it preserves the original triage-time priority for context. Items in the **MAYBE** section are parked — revisit after the TODO list is drained. Buried items live in `workflow/backlog-deferred-2026-05.md` (full content) and `CHANGELOG.md` (resolved items, per project convention).
+> **Reading order:** Items in the **TODO** section below carry an `**Order:**` line (P1, P2, …) reflecting the priority sequence confirmed by Stayman on 2026-06-11. Address them in that order — `**Order:**` is the user-confirmed pickup sequence; the `**Priority:**` line beneath it preserves the original triage-time priority for context. Items in the **MAYBE** section are parked — revisit after the TODO list is drained. Buried items live in `workflow/backlog-deferred-2026-05.md` (full content) and `CHANGELOG.md` (resolved items, per project convention).
 
 ---
 
 ## TODO
 
-## SURFACE-2026-06-09-TASK-WORKFLOW-NEEDS-LITE-VERIFY
-- **Order:** P-NEW (pending user re-ordering)
-- **Source:** session:reflect → session:store-learning (post task `run-all-unbound-forward-args` close, 2026-06-09). Full learning draft at `.claude/learnings/2026-06-09-task-workflow-needs-lite-verify.md` (gitignored — local-only until promoted to a feature-spec).
-- **Target level:** feature:spec (workflow-system design — adds a new state to the task workflow state machine; non-trivial surface touching task-act SKILL.md, task-close SKILL.md, new task-verify SKILL.md, agents/task-workflow/AGENTS.md, docs/product/transitions.md, tests/scenarios/task.yaml, tests/check-structure.sh)
-- **Type:** new-work / workflow-system state-machine extension
-- **Summary:** The task workflow (plan → act → close) lacks a verify gate. The implicit assumption that "task = atomic = no verify needed" is empirically wrong — even trivial 2-line shell fixes can harbor masked sibling bugs that only a real end-to-end verification surfaces. Add `task-verify` as a new state between `task-act` and `task-close`: single step (not a 5-leaf chain like feature-verify), commit to an observable in writing before running, PASS auto-routes to /task-close, FAIL pauses + scope-restricted back-loop to task-act, SURFACED-sibling-bug uses the same in-place-fix-shortcut shape codified for feature-verify-self on 2026-06-09.
-- **Context:** On 2026-06-09, task `run-all-unbound-forward-args` planned as a one-line shell fix (T1: replace `"${FORWARD_ARGS[@]}"` with `${FORWARD_ARGS[@]+"${FORWARD_ARGS[@]}"}` on lines 42+49 of `tests/run-all.sh`). The user mid-act directed "verify the test still works after the change before closing" — running a real `./tests/run-all.sh --group debug` (instead of the plan's `--dry-run` proxy) surfaced T1b, a sibling `set -o pipefail` + SIGPIPE bug at lines 43+50 that was masked by T1 (the script crashed at line 42 before reaching line 43 in any prior execution). Without the user's override, a still-broken script would have shipped with a passing close. The feature workflow's 5-step verify chain (`verify-auto → verify-self → verify-human → verify-codify`) exists specifically because "agent built it and it compiles" ≠ "it actually works end-to-end" — the same property holds for tasks at smaller scale.
-- **Why it matters:** This is a structural gap, not an operator failure. The workflow currently depends on the user catching the right moment with the right directive to enforce verification rigor. A workflow-level fix removes that dependency. Affects every task in every project using this workflow harness. The empirical rule-of-three for "task-act-then-close shipped a broken thing" is not yet reached — but the *shape* of the failure mode (plan declares insufficient verification + close-without-verify ships the broken artifact) is well-precedented in the feature workflow's history, which is why feature-verify-self exists.
-- **Suggested action:** Spec'able feature (not direct plan) — design surface includes: (1) new transitions T5a/T5b/T5c shape (act → verify always; verify → close on PASS; verify → act on FAIL with scope restriction); (2) observable-statement requirement timing (plan-time vs verify-time — see open question in the learning draft; verify-time is likely correct because plan-time declarations are empirically insufficient when the declaration is too narrow); (3) docs-only auto-skip path (e.g. backlog-status updates, CLAUDE.md prose edits — argues yes-with-explicit-gate `docs-only: true` declared at plan time); (4) SURFACED-sibling-bug handling shape (mirror the feature-verify-self in-place-fix-shortcut policy formalized in `skills/feature-verify-self/SKILL.md` §3); (5) regression coverage shape — at minimum a T5b PASS scenario and T5c FAIL scenario in `tests/scenarios/task.yaml` plus structural pins on the new SKILL.md's required sections in `tests/check-structure.sh`.
-- **Priority:** medium — the gap is structural and ships latent bugs by default, but the failure mode requires the right combination of plan-declared-narrow-verification + sibling-bug-in-fix-target to bite. The feature-spec is non-trivial (state-machine extension + 7 files changed minimum + design decisions on 5 open questions); pickup when a feature cycle has scope. Could also serve as a useful dogfooding cycle for the workflow system itself.
-- **Status:** pending
-
 ## SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET
-- **Order:** P-NEW (pending user re-ordering)
+- **Order:** P4 (combine with P3 as a single sonnet-hygiene task)
 - **Source:** task:act (verify-codify-scenarios-need-sonnet-tag, 2026-06-09) — surfaced during the P2 sonnet recon sweep when these 2 of 8 scenarios SOFT_PASSed on sonnet too (not just haiku).
 - **Target level:** task:plan (small/medium — scenario design fix, possibly skill-prose audit)
 - **Type:** test-scenario design / output-shape mismatch
@@ -32,7 +20,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-09-GREP-CHECK-HELPER-PIPEFAIL-INTERACTION
-- **Order:** P-NEW (pending user re-ordering)
+- **Order:** P5
 - **Source:** feature:verify-codify (check-structure-sigterm-propagation, 2026-06-09) — surfaced as pre-existing tech debt during the design of 2 new negative pins. Same root cause hit me twice during this feature's verify-codify.
 - **Target level:** task:plan (small/simple — fix the helper's count-capture pattern + one-line audit of existing call sites)
 - **Type:** tech-debt / latent bug
@@ -44,7 +32,7 @@
 
 
 ## SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO
-- **Order:** P-NEW (pending user re-ordering)
+- **Order:** P3 (combine with P4 as a single sonnet-hygiene task)
 - **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 3 P3.7 stretch deferral, 2026-06-10)
 - **Target level:** task:plan (small/simple — single scenario + fixture, scoped follow-up)
 - **Type:** test-coverage gap
@@ -56,7 +44,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-10-DEBUG-WITHIN-SKILL-STRUCTURAL-PINS
-- **Order:** P-NEW (pending user re-ordering)
+- **Order:** P2
 - **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 1 surfacing, 2026-06-10)
 - **Target level:** task:plan (small/simple — single tests/check-structure.sh edit, iterating loop already in place)
 - **Type:** test-coverage extension (debug-* category)
@@ -67,7 +55,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P3
+- **Order:** P1
 - **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
 - **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
 - **Type:** new skill or skill augmentation
