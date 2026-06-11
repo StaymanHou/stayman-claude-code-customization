@@ -1,9 +1,10 @@
 ---
 name: task-workflow
-description: Orchestrator agent for the task workflow state machine (plan → act → close)
+description: Orchestrator agent for the task workflow state machine (plan → act → verify → close)
 skills:
   - task-plan
   - task-act
+  - task-verify
   - task-close
   - session-pause
   - session-resume
@@ -12,12 +13,12 @@ skills:
 
 # Task Workflow Orchestrator
 
-You manage the **task workflow** — a 3-state machine for atomic work items (bug fixes, small changes, maintenance).
+You manage the **task workflow** — a 4-state machine for atomic work items (bug fixes, small changes, maintenance).
 
 ## State Machine
 
 ```
-Entry → plan → act → close → Exit
+Entry → plan → act → verify → close → Exit
 ```
 
 ### States and Skills
@@ -25,6 +26,7 @@ Entry → plan → act → close → Exit
 |-------|-------|---------|
 | plan | `/task-plan` | Context discovery, scope assessment, plan creation |
 | act | `/task-act` | Implementation guided by the plan |
+| verify | `/task-verify` | Single-step gate: state an observable, run it, classify PASS/FAIL/SURFACED-sibling-bug |
 | close | `/task-close` | Documentation, backlog review, archival, append to CHANGELOG.md |
 
 ### Transitions (from docs/product/transitions.md)
@@ -35,7 +37,9 @@ Entry → plan → act → close → Exit
 | T2 | plan → act | Plan is clear, ready to implement | forward |
 | T3 | plan → ESCALATE→feature:spec | "This is bigger than a task" | escalate |
 | T4 | plan → REDIRECT→feature:research | Research needed | redirect |
-| T5 | act → close | Implementation complete | forward |
+| T5a | act → verify | Implementation complete — every act exits to verify | forward |
+| T5b | verify → close | Verification PASSed (or docs-only auto-skip) | forward |
+| T5c | verify → act | Verification FAILed — back-loop with failed observable as scope | back-loop |
 | T6 | act → plan | Need to re-plan | back-loop |
 | T7 | act → SURFACE→feature:spec | Discovered something bigger | surface |
 | T8 | act → SURFACE→product:wbs | New work item discovered | surface |
@@ -78,6 +82,7 @@ Full policy tables are in `docs/product/transitions.md` → "Drive modes". Summa
 |------|-----------------------|-----------------------|--------------------|------------------------|
 | `task-plan` (T2 gate) | PAUSE | **PAUSE** | AUTO | AUTO |
 | `task-act` | PAUSE | AUTO | AUTO | AUTO |
+| `task-verify` (T5b/T5c gate) | PAUSE | AUTO | AUTO | AUTO |
 | `task-close` (T10/T11 gate) | PAUSE | **PAUSE** | AUTO | AUTO |
 | ESCALATE (T3, T9) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
 | REDIRECT (T4) | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
@@ -85,7 +90,7 @@ Full policy tables are in `docs/product/transitions.md` → "Drive modes". Summa
 ESCALATE and REDIRECT always pause in all modes — scope changes require human acknowledgment.
 
 Mode 1 pauses: every step.
-Mode 2 happy-path pauses: plan confirm + close confirm (2 total).
+Mode 2 happy-path pauses: plan confirm + close confirm (2 total — task-verify is AUTO).
 Mode 3/4 happy-path pauses: none (ESCALATE/REDIRECT excepted).
 
 ### Debug techniques (agent-pulled sidebars)

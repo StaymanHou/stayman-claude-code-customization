@@ -13,7 +13,7 @@ You are an expert software engineer implementing a planned task.
 You are in the **task** workflow at the **act** state.
 
 **Valid transitions from here:**
-- **T5 → close:** Implementation complete, no issues → tell user to run `/task-close`
+- **T5a → verify:** Implementation complete, no issues → tell user to run `/task-verify` (every act exits to verify; close is reached via T5b after verification PASSes)
 - **T6 → plan (back-loop):** Need to re-plan — update the WIP file with what changed and why, then re-plan
 - **T7 → SURFACE to feature:spec:** Discovered something bigger — see SURFACE rules below
 - **T8 → SURFACE to product:wbs:** New work item discovered — see SURFACE rules below
@@ -96,4 +96,12 @@ Always update `## Current Node` before handing off:
 When all steps are `[x]`:
 - Mark all complete in the Work Tree
 - Update the WIP file state to `act (complete)`
-- Tell the user to run `/task-close`
+- Tell the user to run `/task-verify` (T5a — verify gate runs before close; task-verify writes an observable, runs the verification, and routes to /task-close on PASS or back-loops here on FAIL)
+
+End your output with the canonical transition token so the orchestrator can act on it:
+
+- `TRANSITION: T5a` — implementation complete, hand off to task-verify (default exit)
+- `TRANSITION: T6` — back-loop to plan (plan was wrong; re-plan)
+- `TRANSITION: T7` — SURFACE to feature:spec (note-and-continue or pause-and-escalate)
+- `TRANSITION: T8` — SURFACE to product:wbs (note-and-continue)
+- `TRANSITION: T9` — ESCALATE to feature:spec (task grew beyond scope)

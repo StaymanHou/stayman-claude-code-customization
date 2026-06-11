@@ -109,6 +109,26 @@ grep_check "incident-resolve references CHANGELOG convention" "skills/incident-r
 grep_check "task-close references CHANGELOG convention" "skills/task-close/SKILL.md" "CHANGELOG.md convention" 1
 grep_check "product-finalize references CHANGELOG convention" "skills/product-finalize/SKILL.md" "CHANGELOG.md convention" 1
 
+# task-verify single-step gate shipped to the task workflow 2026-06-11 (feature:
+# task-workflow-needs-lite-verify). The new skill sits between task-act and
+# task-close, writing an observable and running it before close. The structural
+# pin set below catches regression on its load-bearing properties:
+#   1. SKILL.md exists
+#   2. Frontmatter `name: task-verify` is present and correct (drives `/task-verify` invocation)
+#   3. State Machine Context names T5b/T5c (the two exit transitions)
+#   4. Orchestrator Pause Policy cheat-sheet section present (required for all
+#      workflow skills that have orchestrator-visible transitions)
+#   5. SHORTCUT-token audit-trail convention is preserved (mirrors feature-verify-self §3)
+#   6. CLAUDE.md Conventions section cites task-verify (so future agents/authors discover it)
+#   7. task-act SKILL.md emits TRANSITION: T5a (replaces old T5 → close routing)
+grep_check "task-verify SKILL.md exists with name frontmatter" "skills/task-verify/SKILL.md" "^name: task-verify$" 1
+grep_check "task-verify SKILL.md has 'State Machine Context' section" "skills/task-verify/SKILL.md" "^## State Machine Context" 1
+grep_check "task-verify SKILL.md names T5b and T5c exit transitions" "skills/task-verify/SKILL.md" "T5b|T5c" 2
+grep_check "task-verify SKILL.md has 'Orchestrator Pause Policy (cheat-sheet)' section" "skills/task-verify/SKILL.md" "Orchestrator Pause Policy \(cheat-sheet\)" 1
+grep_check "task-verify SKILL.md retains SHORTCUT-token audit-trail convention" "skills/task-verify/SKILL.md" "\[SHORTCUT-<YYYY-MM-DD>\]" 1
+grep_check "CLAUDE.md Conventions section cites task-verify" "CLAUDE.md" "task-verify" 1
+grep_check "task-act SKILL.md emits TRANSITION: T5a" "skills/task-act/SKILL.md" "TRANSITION: T5a" 1
+
 # Long-running commands rule lives in CLAUDE.snippet.md only — global harness rule, no per-skill
 # references. If the snippet section gets dropped or renamed, every project loses the timeout +
 # exclusive-resource concurrency discipline.

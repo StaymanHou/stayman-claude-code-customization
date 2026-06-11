@@ -86,6 +86,7 @@ Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes
 |------|-----------------------|-----------------------|--------------------|------------------------|
 | plan | PAUSE | PAUSE | AUTO | AUTO |
 | act | PAUSE | AUTO | AUTO | AUTO |
+| verify (T5b/T5c gate) | PAUSE | AUTO | AUTO | AUTO |
 | close | PAUSE | PAUSE | AUTO | AUTO |
 | ESCALATE / REDIRECT | PAUSE | **PAUSE** | **PAUSE** | **PAUSE** |
 
@@ -337,12 +338,14 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 ## Task Workflow
 
 ```
-States:  plan → act → close
+States:  plan → act → verify → close
 Entry:   plan (peer workflow — not spawned by feature workflow)
 Terminal: close
 ```
 
 **Peer model:** Task is an independent entry point (like incident), not a sub-workflow of feature. The feature workflow does not spawn tasks. Tasks escalate *upward* to feature when scope grows — never downward. Use task for atomic, well-scoped changes; use feature for anything with multiple phases or a verify loop.
+
+**verify gate (T5a/T5b/T5c):** Every `task-act` exits to `task-verify` (T5a). The verify skill writes an observable into the WIP, runs the verification, and emits T5b (PASS → close) or T5c (FAIL → back-loop to act). Pure-docs tasks may declare `docs-only: true` at plan time to auto-skip the gate. See `skills/task-verify/SKILL.md` for the full procedure. Replaces the pre-2026-06-11 `act → close` direct path (old T5).
 
 | ID | From | To | Condition |
 |----|------|----|-----------|
@@ -350,7 +353,9 @@ Terminal: close
 | T2 | plan | act | Plan is clear, ready to implement |
 | T3 | plan | ESCALATE→feature:spec | "This is bigger than a task" — close task, update docs, open feature |
 | T4 | plan | REDIRECT→feature:research | Research needed — pause task, research, return |
-| T5 | act | close | Implementation complete, no issues |
+| T5a | act | verify | Implementation complete — every act exits to verify (replaces old T5: act → close) |
+| T5b | verify | close | Verification PASSed — observable confirms fix worked (or docs-only auto-skip) |
+| T5c | verify | act | Verification FAILed — back-loop to act with failed observable as scope marker |
 | T6 | act | plan | Back-loop: need to re-plan |
 | T7 | act | SURFACE→feature:spec | Discovered something bigger (note-and-continue or pause-and-escalate depending on blocker status) |
 | T8 | act | SURFACE→product:wbs | New work item discovered (note-and-continue) |

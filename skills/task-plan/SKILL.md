@@ -63,6 +63,13 @@ Evaluate whether this is truly a task or should be escalated:
 Create a markdown file in `workflow/wip/<task-slug>.md` using the **Work Tree format** (task variant — no Observable Outcomes, no verify loop):
 
 ```markdown
+---
+workflow: task
+state: plan (complete)
+created: <YYYY-MM-DD>
+docs-only: false  # set to `true` only for pure-docs tasks (CLAUDE.md prose edits, backlog status updates, README touches) — enables task-verify auto-skip
+---
+
 # Task: <title>
 
 **Workflow:** task
@@ -93,6 +100,8 @@ Create a markdown file in `workflow/wip/<task-slug>.md` using the **Work Tree fo
 ```
 
 Note: Task Work Tree has no Observable Outcomes and no verify loop — tasks are atomic. The `## Current Node` section is still required so that re-entry after a back-loop carries precise scope.
+
+**About `docs-only:`** — the `docs-only: true` frontmatter declaration enables `/task-verify` to auto-skip the verification gate, emitting T5b (PASS) immediately without running a verification command. Set to `true` ONLY when the task touches no runtime surface — pure markdown edits, backlog updates, retrospect-only changes, CLAUDE.md prose touches. If the task changes any code, shell script, config file, or anything with a runtime effect, set `docs-only: false` (or omit — default is `false`). Misdeclaring a code task as `docs-only: true` bypasses the verification that exists to catch latent bugs (see `skills/task-verify/SKILL.md` → "When the gate auto-skips" for the rationale).
 
 ### 5. Stop and Hand Off
 After creating the plan:

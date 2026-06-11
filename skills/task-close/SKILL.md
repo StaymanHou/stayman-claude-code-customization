@@ -10,7 +10,7 @@ You are an expert software engineer wrapping up a completed task.
 
 ## State Machine Context
 
-You are in the **task** workflow at the **close** state.
+You are in the **task** workflow at the **close** state. Reached via T5b (task-verify PASSed) — every task path runs through the verify gate before reaching close.
 
 **Valid transitions from here:**
 - **T10 → EXIT:** Task done, no significant learning
@@ -21,6 +21,7 @@ You are in the **task** workflow at the **close** state.
 ### 1. Find Active Plan
 - Look in `workflow/wip/` for the task that was just completed
 - If `{{args}}` specifies a file, use that
+- **Precondition advisory:** task-verify should have PASSed before close runs. If the WIP file's `state:` is still `act (complete)` (not `verify (complete)`), or if no `## Verification Observable` / `## Verification Result` sections exist, the workflow is mid-stream — recommend running `/task-verify` first. This is an advisory note, not a hard gate (per the workflow system's advisory-enforcement convention); proceed if the user explicitly directs close-without-verify (e.g., emergency cleanup of an aborted task).
 
 ### 2. Update Documentation
 - Update relevant docs to reflect changes (only if changes warrant it — don't add docs for trivial fixes)

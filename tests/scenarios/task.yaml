@@ -5,6 +5,7 @@ scenarios:
   - id: T2
     name: "task:plan → act when plan is clear"
     skill: task-plan
+    model: sonnet  # haiku-marginal on loading-spinner input post-2026-06-11; haiku consistently routes to T3 ESCALATE since task-plan SKILL.md gained the docs-only documentation block. Sonnet PASSes after one retry. Sonnet-tagged per CLAUDE.md convention for haiku-marginal classification calls.
     args: "Add a loading spinner to the login button while auth request is in flight"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -102,22 +103,71 @@ scenarios:
         - "/task-close"
     max_retries: 2
 
-  - id: T5
-    name: "task:act → close when implementation complete"
+  - id: T5a
+    name: "task:act → verify when implementation complete (verify gate, not close)"
     skill: task-act
     fixtures:
       claude_md: fixtures/CLAUDE.md
       wip: fixtures/wip/task-act-complete.md
     system_prompt_extra: |
       All implementation steps in the plan are already marked complete.
-      Tests pass. There are no issues or discoveries.
+      Tests pass. There are no issues or discoveries. Per the updated task
+      workflow, act exits to /task-verify (T5a), not directly to /task-close.
+      The verify gate writes an observable and runs it; /task-close runs
+      only after /task-verify PASSes.
     expect:
-      transition_id: T5
+      transition_id: T5a
       contains_any:
-        - "/task-close"
+        - "/task-verify"
       not_contains:
         - "/task-plan"
         - "SURFACE"
+        - "ESCALATE"
+    max_retries: 2
+
+  - id: T5b
+    name: "task:verify → close when verification PASSes"
+    skill: task-verify
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-verify-pass.md
+    system_prompt_extra: |
+      The verification observable has already been declared and run for this task.
+      The Verification Result section shows Status: PASS with concrete evidence
+      (script ran end-to-end, exit code 0). The fix is confirmed. Per the
+      task-verify procedure §6, when verification PASSes, emit TRANSITION: T5b
+      and tell the user to run /task-close.
+    expect:
+      transition_id: T5b
+      contains_any:
+        - "/task-close"
+      not_contains:
+        - "/task-act"
+        - "FAIL"
+        - "back-loop"
+    max_retries: 2
+
+  - id: T5c
+    name: "task:verify → act (back-loop) when verification FAILs"
+    skill: task-verify
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-verify-fail.md
+    system_prompt_extra: |
+      The verification observable has been declared and run. The Verification
+      Result section shows Status: FAIL — the observable command exited with a
+      different error than the original task addressed, but the original
+      observable is still unsatisfied. This is NOT a SURFACED-sibling-bug
+      auto-absorb candidate (the failure mode shifted but the observable is
+      unmet). Per task-verify §6, when verification FAILs, emit TRANSITION: T5c
+      and tell the user to run /task-act with the failed observable as the
+      scope-restriction marker.
+    expect:
+      transition_id: T5c
+      contains_any:
+        - "/task-act"
+      not_contains:
+        - "/task-close"
         - "ESCALATE"
     max_retries: 2
 
