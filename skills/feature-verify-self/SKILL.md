@@ -96,42 +96,31 @@ If a boundary does not apply (the phase only adds isolated new artifacts — a n
 
 ### 2. Spawn self-verification subagent
 
-Spawn an `Agent` with the following information baked into the prompt (the subagent is one-shot — all context must be in the prompt):
+**The spawn is unconditional.** Per `docs/product/arch.md` (Revision 2026-04-27, "verify-self runs as a subagent"), the verification work runs in a one-shot subagent so that Playwright snapshots, console-message dumps, and accessibility-tree output stay in the subagent's context — *parent context stays lean across multi-phase features*. The spawn fires regardless of whether the phase's Observable Outcomes happen to need Playwright; the design property is parent-context cleanliness, not tool availability. Do not skip the spawn because outcomes "look CLI-verifiable." The subagent's agent definition at `agents/feature-verify-self-runner/AGENTS.md` carries the job description, severity taxonomy, and procedure — you provide only the dynamic context.
+
+**Assemble the dynamic context:**
+
+1. `<dev-url>` — from `{{args}}` (the URL the running app is at).
+2. `<observable-outcomes>` — verbatim from the current phase's `**Observable outcomes:**` block in the WIP tree.
+
+**Invoke the subagent** by passing exactly this shape to the `Agent` tool:
 
 ```
-You are a QA verification agent. Your job is to observe a running application and report pass/fail for each observable outcome. Do NOT fix anything — observe only.
-
-Dev URL: <url from args>
+Agent({
+  subagent_type: 'feature-verify-self-runner',
+  description: 'Phase <N> verify-self subagent',
+  prompt: `Dev URL: <dev-url>
 
 Observable outcomes to verify:
-<paste the Observable outcomes list from the current phase>
+<observable-outcomes>
 
-Severity taxonomy:
-- BLOCKING: blank page or white screen, JS console error on load, application crash, missing required element (form field, button, nav link), broken navigation (404/redirect loop), auth failure, data loss (save doesn't persist), wrong HTTP status on critical endpoint (500 instead of 200, 404 on existing resource)
-- COSMETIC: spacing/padding off, wrong color or font, copy typo or wrong label, minor layout deviation, non-critical missing decoration (icon, border radius)
-- When in doubt, classify as BLOCKING.
-
-For each outcome:
-1. Use browser_navigate to open the URL
-2. Use browser_console_messages to check for JS errors
-3. Use browser_snapshot to inspect the accessibility tree
-4. Use browser_click / browser_fill_form as needed to exercise interactions
-5. Use curl (via Bash) for HTTP/API outcomes
-
-Report format — output a fenced result block at the end:
-```result
-outcome: <outcome text>
-status: PASS | FAIL
-severity: BLOCKING | COSMETIC | N/A
-detail: <what you observed>
----
-outcome: ...
+(Your standing instructions — severity taxonomy, procedure, output format, hard rules — live in your agent definition. Apply them to the outcomes above and emit the result block.)`
+})
 ```
 
-Stop after the result block. Do not suggest fixes.
-```
+The subagent's response will end with a fenced `result` block — one entry per Observable Outcome with `status`, `severity`, `detail`.
 
-Allowed tools for the subagent: `mcp__playwright__browser_navigate`, `mcp__playwright__browser_snapshot`, `mcp__playwright__browser_console_messages`, `mcp__playwright__browser_take_screenshot`, `mcp__playwright__browser_click`, `mcp__playwright__browser_fill_form`, `mcp__playwright__browser_evaluate`, `Bash`
+**Bootstrap-skip fallback.** If `Agent({subagent_type: 'feature-verify-self-runner', ...})` returns `Agent type 'feature-verify-self-runner' not found` (the subagent definition was added mid-session and the harness's agent registry was loaded earlier — same bootstrap-skip pattern as SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START), fall back to `subagent_type: 'general-purpose'` for this one invocation and append a one-line note to the WIP's `## Discoveries` section: `[SURFACED-<date>] Phase <N> verify-self — feature-verify-self-runner not in agent registry (bootstrap-skip); fell back to general-purpose.` This fallback is for the new-session bootstrap case only; in steady-state operation the named subagent should always resolve.
 
 ### 3. Parse subagent results
 

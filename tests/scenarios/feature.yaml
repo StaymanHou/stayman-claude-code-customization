@@ -429,6 +429,64 @@ scenarios:
         - "/feature-build"
     max_retries: 2
 
+  # Tests the dispatch-wiring contract shipped 2026-06-12 by the verify-self-
+  # and-review-quality-subagent-dispatch feature (SURFACE-2026-06-11-VERIFY-SELF-
+  # AND-REVIEW-QUALITY-SUBAGENT-DISPATCH-UNVALIDATED). The skill's §2 must
+  # invoke the verification subagent by `subagent_type: 'feature-verify-self-runner'`,
+  # not just "spawn an Agent" with an unnamed target. The fixture's Phase 1 is
+  # the kind of CLI-verifiable-shape phase that historically tempted inline
+  # dispatch ("no subagent needed; CLI-verifiable" pattern). Even with all
+  # outcomes CLI-shaped, the skill must still name the subagent_type literally —
+  # unconditional spawn per arch.md 2026-04-27 design property.
+  - id: F10b-dispatches-subagent-by-name
+    name: "feature:verify-self dispatches by subagent_type 'feature-verify-self-runner' even on CLI-verifiable phase"
+    skill: feature-verify-self
+    args: "n/a — CLI-only phase, no dev URL"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/verify-self-cli-verifiable-phase.md
+    system_prompt_extra: |
+      SUBAGENT RESULTS ALREADY RECEIVED. Do not attempt to actually spawn the subagent
+      (the fixture phase has no live app — all outcomes are local-filesystem CLI checks).
+      The verification subagent has already run and returned these results:
+
+      ```result
+      outcome: CLI: grep -F "new-convention-keyword" CLAUDE.md matches at least 1 line
+      status: PASS
+      severity: N/A
+      detail: 1 match found
+      ---
+      outcome: CLI: grep -F "see CLAUDE.md" docs/reference/conventions.md matches at least 1 line
+      status: PASS
+      severity: N/A
+      detail: 1 match found
+      ---
+      outcome: CLI: wc -l CLAUDE.md shows the file is larger than the pre-edit baseline
+      status: PASS
+      severity: N/A
+      detail: 247 lines, baseline was 223
+      ---
+      outcome: CLI: bash -n install.sh exits 0
+      status: PASS
+      severity: N/A
+      detail: syntax check OK
+      ```
+
+      All outcomes PASS. Before emitting your transition, in your output, describe the
+      spawn invocation you WOULD have made to dispatch the verification subagent — show
+      the exact `Agent({subagent_type: '...', ...})` call shape per your §2 procedure. This
+      is the dispatch-wiring contract — the prose evidence that you followed §2 even when
+      the outcomes were CLI-verifiable. Then emit TRANSITION: F10b.
+    expect:
+      transition_id: F10b
+      contains_any:
+        - "subagent_type: 'feature-verify-self-runner'"
+        - "subagent_type: \"feature-verify-self-runner\""
+        - "feature-verify-self-runner"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
   - id: F11
     name: "feature:verify-human skips to verify-codify with reasoning"
     skill: feature-verify-human

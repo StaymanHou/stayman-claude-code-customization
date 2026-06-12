@@ -67,25 +67,49 @@ Use these definitions consistently. They are also embedded in the reviewer subag
 
 ### 2. Spawn the code-quality reviewer subagent
 
-Spawn an `Agent` with the externalized prompt template at `skills/feature-review-quality/reviewer-prompt.md` as the prompt body, plus the dynamic context (ship SHA, base SHA, feature name, commit history, diff stat, WIP file path) appended. The subagent is one-shot — all context must be baked into the spawn prompt.
+**The spawn is unconditional.** Per `docs/product/arch.md` (Revision 2026-04-27, "verify-self runs as a subagent" — the same context-isolation property applies here), the reviewer runs in a one-shot subagent so that the reviewer's standing instructions (~150 lines: scope, codebase context, review criteria, output format, calibration anchors) AND its git-diff reading stay in the subagent's context — *parent context stays lean across the ship → finalize boundary*. The reviewer's job description lives in the agent definition at `agents/code-quality-reviewer/AGENTS.md`; you provide only the dynamic context for which diff to review.
 
-**Prompt assembly:**
+**Assemble the dynamic context:**
 
-1. Read `skills/feature-review-quality/reviewer-prompt.md` (the template).
-2. Append a `## Dynamic Context` section with:
-   - **Feature:** `<feature name from WIP filename>`
-   - **Ship commit SHA:** `<SHIP_SHA>`
-   - **Base commit SHA:** `<BASE_SHA>`
-   - **WIP file path:** `workflow/wip/<feature-name>.md`
-   - **Commit history (feature):** the output of `git log --format="%h %s" $BASE_SHA^..$SHIP_SHA | head -30`
-   - **Diff stat:** the output of `git diff --stat $BASE_SHA^..$SHIP_SHA`
-3. Append the explicit instruction: "Output the result block per the format in §3 of the template. Do not modify any files."
+1. `<feature-name>` — from the WIP filename (`workflow/wip/<feature-name>.md`).
+2. `<ship-sha>` — `SHIP_SHA` captured in §1.
+3. `<base-sha>` — `BASE_SHA` captured in §1.
+4. `<commit-history>` — output of `git log --format="%h %s" $BASE_SHA^..$SHIP_SHA | head -30`.
+5. `<diff-stat>` — output of `git diff --stat $BASE_SHA^..$SHIP_SHA`.
+6. `<wip-path>` — `workflow/wip/<feature-name>.md`.
 
-Allowed tools for the subagent: `Read`, `Glob`, `Grep`, `Bash` (for `git show`, `git diff`, file inspection only — no file edits). Do NOT grant Edit/Write to the subagent — it is observe-only.
+**Invoke the subagent** by passing exactly this shape to the `Agent` tool:
+
+```
+Agent({
+  subagent_type: 'code-quality-reviewer',
+  description: 'Code-quality review of <feature-name>',
+  prompt: `## Dynamic Context
+
+- **Feature:** <feature-name>
+- **Ship commit SHA:** <ship-sha>
+- **Base commit SHA:** <base-sha>
+- **WIP file path:** <wip-path>
+- **Commit history (feature):**
+\`\`\`
+<commit-history>
+\`\`\`
+- **Diff stat:**
+\`\`\`
+<diff-stat>
+\`\`\`
+
+(Your standing instructions — scope, review criteria, output format, calibration anchors, hard rules — live in your agent definition. Apply them to this diff window and emit the tripartite review block per the format in your output-format section.)`
+})
+```
+
+The subagent's response will be the tripartite review block (`## Code-Quality Review — <feature-name>` heading + Strengths / Issues by severity / Assessment / If you disagree).
+
+**Bootstrap-skip fallback.** If `Agent({subagent_type: 'code-quality-reviewer', ...})` returns `Agent type 'code-quality-reviewer' not found` (subagent definition added mid-session, agent registry loaded earlier — same bootstrap-skip pattern as SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START), fall back to `subagent_type: 'general-purpose'` for this one invocation, prepend the contents of `agents/code-quality-reviewer/AGENTS.md` (everything after the closing frontmatter `---`) to the prompt above so the general-purpose subagent gets the standing instructions, and append a one-line note to the WIP's `## Discoveries` section: `[SURFACED-<date>] feature-review-quality — code-quality-reviewer not in agent registry (bootstrap-skip); fell back to general-purpose with prepended agent body.` This fallback is for the new-session bootstrap case only.
 
 ### 3. Parse subagent results
 
-Read the structured result block from the subagent's output. The expected shape (per the reviewer-prompt.md output format):
+Read the structured result block from the subagent's output. The expected shape (per the output-format section of `agents/code-quality-reviewer/AGENTS.md`):
 
 ```
 ## Code-Quality Review — <feature name>

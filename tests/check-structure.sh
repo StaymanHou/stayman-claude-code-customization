@@ -197,17 +197,20 @@ grep_check "product-vision SKILL.md has Step 0 section" "skills/product-vision/S
 # Mode 3, MINOR → auto-backlog). Mode 4 SKIPs entirely (ship → finalize via
 # F17b). The pin set below catches regression on load-bearing properties:
 #   1. SKILL.md exists with name frontmatter
-#   2. Externalized reviewer-prompt.md exists
+#   2. Reviewer prompt body lives at agents/code-quality-reviewer/AGENTS.md
+#      (was skills/feature-review-quality/reviewer-prompt.md until 2026-06-12;
+#       moved into the executable subagent definition per the
+#       verify-self-and-review-quality-subagent-dispatch feature)
 #   3. State Machine Context names F39/F40/F41 (the three exit transitions)
 #   4. Severity Taxonomy section is present with CRITICAL/MAJOR/MINOR vocabulary
-#   5. Reviewer prompt has tripartite output format anchors
+#   5. Reviewer agent body has tripartite output format anchors
 #   6. CLAUDE.md Conventions section cites feature-review-quality
 #   7. feature-ship SKILL.md emits TRANSITION: F38 (default) AND F17b (Mode-4 SKIP)
 grep_check "feature-review-quality SKILL.md exists with name frontmatter" "skills/feature-review-quality/SKILL.md" "^name: feature-review-quality$" 1
-grep_check "feature-review-quality reviewer-prompt.md exists" "skills/feature-review-quality/reviewer-prompt.md" "Code-Quality Reviewer" 1
+grep_check "code-quality-reviewer agent definition exists at agents/code-quality-reviewer/AGENTS.md" "agents/code-quality-reviewer/AGENTS.md" "Code-Quality Reviewer" 1
 grep_check "feature-review-quality SKILL.md names F39/F40/F41 exit transitions" "skills/feature-review-quality/SKILL.md" "F39|F40|F41" 3
 grep_check "feature-review-quality SKILL.md has Severity Taxonomy with CRITICAL/MAJOR/MINOR" "skills/feature-review-quality/SKILL.md" "CRITICAL|MAJOR|MINOR" 3
-grep_check "feature-review-quality reviewer-prompt.md has tripartite output anchors" "skills/feature-review-quality/reviewer-prompt.md" "Strengths|Issues|Assessment" 3
+grep_check "code-quality-reviewer AGENTS.md has tripartite output anchors" "agents/code-quality-reviewer/AGENTS.md" "Strengths|Issues|Assessment" 3
 grep_check "CLAUDE.md Conventions section cites feature-review-quality" "CLAUDE.md" "feature-review-quality" 1
 grep_check "feature-ship SKILL.md emits TRANSITION: F38 (default path)" "skills/feature-ship/SKILL.md" "TRANSITION: F38" 1
 grep_check "feature-ship SKILL.md emits TRANSITION: F17b (Mode 4 SKIP path)" "skills/feature-ship/SKILL.md" "TRANSITION: F17b" 1
@@ -1428,6 +1431,111 @@ while IFS=$'\t' read -r status desc detail; do
     check "$desc" "fail" "$detail"
   fi
 done <<< "$drift_output"
+
+echo ""
+
+# ── Phase 10: Subagent dispatch wiring ──────────────────────────────────────
+#
+# Codifies the dispatch contract shipped by the verify-self-and-review-quality-
+# subagent-dispatch feature (2026-06-12, SURFACE-2026-06-11-VERIFY-SELF-AND-
+# REVIEW-QUALITY-SUBAGENT-DISPATCH-UNVALIDATED). Two new executable subagent
+# definitions live under agents/ alongside the 4 reference-only *-workflow
+# orchestrator docs. The distinguishing marker is frontmatter shape:
+#
+#   - Reference-only workflow agents:  `skills:` in frontmatter (no `tools:`).
+#     The 4 *-workflow/AGENTS.md files are read by /session-start as procedure
+#     references; they are NOT meant to be spawned via Agent({subagent_type:...}).
+#   - Executable subagents:  `tools:` in frontmatter (no `skills:`).
+#     Spawned by skills that name them via subagent_type. Today: feature-
+#     verify-self-runner (verify-self), code-quality-reviewer (review-quality).
+#
+# The pin block below is SELF-EXTENDING: it iterates agents/*/AGENTS.md and
+# selects executable subagents by `tools:` frontmatter presence. New executable
+# subagents added later automatically pick up the same coverage.
+#
+# Assertions (per executable subagent):
+#   (a) frontmatter `name:` matches directory basename
+#   (b) frontmatter `description:` is present
+#   (c) frontmatter `tools:` lists ≥ 1 tool
+#   (d) at least one skills/*/SKILL.md body references `subagent_type: '<name>'`
+#       — an executable subagent with no caller is dead code
+#
+# Plus one cross-skill assertion (over the SKILL.md set):
+#   (e) every skills/*/SKILL.md with `Agent` in `allowed-tools` contains at
+#       least one `subagent_type:` reference. A skill that declares Agent but
+#       never names a subagent_type is the dispatch gap that motivated this
+#       feature (SURFACE-2026-06-11-VERIFY-SELF-AND-REVIEW-QUALITY-SUBAGENT-
+#       DISPATCH-UNVALIDATED) — the pin catches that regression.
+
+echo "[Phase 10] Subagent dispatch wiring"
+
+for agent_md in agents/*/AGENTS.md; do
+  agent_dir="$(dirname "$agent_md")"
+  agent_name="$(basename "$agent_dir")"
+
+  # Extract frontmatter (lines between the first two `---` markers).
+  fm=$(awk '/^---$/{n++; next} n==1' "$agent_md")
+
+  # Executable subagent marker: `tools:` key present in frontmatter.
+  if ! grep -qE "^tools:" <<< "$fm"; then
+    # Reference-only (or no frontmatter) — skip executable-subagent assertions.
+    continue
+  fi
+
+  # (a) name matches dir
+  if grep -qE "^name:\s*${agent_name}\s*$" <<< "$fm"; then
+    check "executable subagent $agent_name: frontmatter name matches dir" "pass"
+  else
+    check "executable subagent $agent_name: frontmatter name matches dir" "fail" \
+      "name: line in $agent_md does not match directory basename '$agent_name'"
+  fi
+
+  # (b) description present
+  if grep -qE "^description:\s*\S" <<< "$fm"; then
+    check "executable subagent $agent_name: description present" "pass"
+  else
+    check "executable subagent $agent_name: description present" "fail" \
+      "no non-empty description: line in $agent_md frontmatter"
+  fi
+
+  # (c) tools list non-empty (≥1 list item under tools:)
+  tools_lines=$(awk '/^tools:/{flag=1; next} flag && /^[a-zA-Z]/{flag=0} flag' <<< "$fm" | grep -cE "^\s*-\s+\S" || true)
+  if [ "${tools_lines:-0}" -ge 1 ]; then
+    check "executable subagent $agent_name: tools list non-empty (≥1 entry)" "pass"
+  else
+    check "executable subagent $agent_name: tools list non-empty (≥1 entry)" "fail" \
+      "tools: list under $agent_md frontmatter has 0 entries"
+  fi
+
+  # (d) at least one skill references this subagent_type
+  ref_count=$(grep -rE "subagent_type:\s*['\"]${agent_name}['\"]" skills/ 2>/dev/null | wc -l | tr -d ' ')
+  if [ "${ref_count:-0}" -ge 1 ]; then
+    check "executable subagent $agent_name: referenced by ≥1 skill via subagent_type" "pass"
+  else
+    check "executable subagent $agent_name: referenced by ≥1 skill via subagent_type" "fail" \
+      "no skills/*/SKILL.md contains subagent_type: '$agent_name' — executable subagent with no caller is dead code"
+  fi
+done
+
+# (e) every skill with `Agent` in allowed-tools must reference some subagent_type.
+for skill_md in skills/*/SKILL.md; do
+  skill_name="$(basename "$(dirname "$skill_md")")"
+  fm=$(awk '/^---$/{n++; next} n==1' "$skill_md")
+
+  # Does the skill declare Agent in allowed-tools? Look for a list-item line `- Agent` under allowed-tools.
+  if ! grep -qE "^\s*-\s+Agent\s*$" <<< "$fm"; then
+    continue
+  fi
+
+  ref_count=$(grep -cE "subagent_type:" "$skill_md" 2>/dev/null || echo 0)
+  ref_count=${ref_count%%[^0-9]*}
+  if [ "${ref_count:-0}" -ge 1 ]; then
+    check "skill $skill_name declares Agent and references ≥1 subagent_type" "pass"
+  else
+    check "skill $skill_name declares Agent and references ≥1 subagent_type" "fail" \
+      "$skill_md has 'Agent' in allowed-tools but body contains no 'subagent_type:' reference — dispatch gap (SURFACE-2026-06-11)"
+  fi
+done
 
 echo ""
 

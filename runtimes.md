@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-10
+updated: 2026-06-12
 ---
 
 
@@ -11,9 +11,10 @@ updated: 2026-06-10
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 18s (2026-06-10)
-- **Use timeout:** 87000
+- **Last:** 31s (2026-06-12)
+- **Use timeout:** 107000
 - **History:**
+  - 31s — 2026-06-12  <!-- verify-self-and-review-quality-subagent-dispatch Phase 1 verify-auto; 200/200 PASS no FAILs (baseline unchanged — Phase 1 only adds new agent dirs, no pin changes yet). Bump from 18s → 31s likely due to 2 new agents/* entries iterating through Phase 3c structural pins. -->
   - 18s — 2026-06-10  <!-- mid reproduce-as-redirect-from-build Phase 3 complete; 178/178 PASS, 0 FAIL (was 175 → +3: F36 row on feature-build, F37+F37b rows on feature-reproduce) -->
   - 18s — 2026-06-10  <!-- mid reproduce-as-redirect-from-build Phase 2 complete; 175 PASS + 1 expected FAIL (ROW_MAPPING gap, resolved in Phase 3) -->
   - 18s — 2026-06-10  <!-- mid reproduce-as-redirect-from-build Phase 1; 175/175 PASS, no FAILs (docs/AGENTS.md only, no SKILL.md changes yet) -->
