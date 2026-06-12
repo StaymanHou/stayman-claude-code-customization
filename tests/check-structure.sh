@@ -1537,6 +1537,51 @@ for skill_md in skills/*/SKILL.md; do
   fi
 done
 
+# (f) every `subagent_type: '<name>'` reference in skills/*/SKILL.md must point to
+# an agents/<name>/AGENTS.md whose frontmatter carries `tools:` (executable-subagent
+# marker), NOT `skills:` (reference-only marker). Closes the symmetric-enforcement
+# gap that (a)-(e) above left open: those pins enforce "every exec-subagent must be
+# referenced," but did not enforce "every reference must point at an exec-subagent."
+# A skill writing subagent_type: 'feature-workflow' (a reference-only orchestrator
+# agent) would not have failed any pre-2026-06-12 pin — this pin catches that.
+# Closes SURFACE-2026-06-12-QUALITY-SUBAGENT-DISPATCH-PIN-ASYMMETRIC and addresses
+# the latent risk in SURFACE-2026-06-12-REFERENCE-WORKFLOW-AGENTS-ARE-INVOKABLE.
+# Regex requires a non-empty alphanumeric/dash/underscore name inside quotes — the
+# prose mention `Agent({subagent_type: "..."})` in session-start/SKILL.md does not
+# match (literal placeholder, no agent name).
+#
+# Harness-provided subagent_types are allowlisted: `general-purpose` is the
+# built-in fallback used by the bootstrap-skip pattern in feature-verify-self
+# and feature-review-quality (per SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-
+# LOADED-ONCE-AT-SESSION-START) and is not backed by an agents/<name>/AGENTS.md
+# file in this repo. Add more entries to the case statement below if future
+# skills use other harness-built-ins.
+for skill_md in skills/*/SKILL.md; do
+  skill_name="$(basename "$(dirname "$skill_md")")"
+
+  # Extract each subagent_type reference's target name. One PASS per reference.
+  while IFS= read -r ref_name; do
+    [ -z "$ref_name" ] && continue
+    case "$ref_name" in
+      general-purpose) continue ;;  # harness-built-in, no agents/<name>/ backing
+    esac
+    target_agent_md="agents/${ref_name}/AGENTS.md"
+    if [ ! -f "$target_agent_md" ]; then
+      check "skill $skill_name → subagent_type '$ref_name': target agent file exists" "fail" \
+        "$skill_md references subagent_type: '$ref_name' but $target_agent_md does not exist"
+      continue
+    fi
+    target_fm=$(awk '/^---$/{n++; next} n==1' "$target_agent_md")
+    if grep -qE "^tools:" <<< "$target_fm"; then
+      check "skill $skill_name → subagent_type '$ref_name': target has tools: frontmatter (executable subagent)" "pass"
+    else
+      check "skill $skill_name → subagent_type '$ref_name': target has tools: frontmatter (executable subagent)" "fail" \
+        "$target_agent_md has no 'tools:' frontmatter — reference-only agent cannot be a subagent_type target (asymmetric-enforcement gap, SURFACE-2026-06-12-QUALITY-SUBAGENT-DISPATCH-PIN-ASYMMETRIC)"
+    fi
+  done < <(grep -oE "subagent_type:\s*['\"][a-zA-Z0-9_-]+['\"]" "$skill_md" 2>/dev/null \
+           | sed -E "s/^subagent_type:[[:space:]]*['\"]([a-zA-Z0-9_-]+)['\"]/\1/")
+done
+
 echo ""
 
 # ── Summary ────────────────────────────────────────────────────────────────

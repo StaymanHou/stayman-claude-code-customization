@@ -26,7 +26,7 @@
 - **Why it matters:** SURFACE-2026-06-12-REFERENCE-WORKFLOW-AGENTS-ARE-INVOKABLE (P7) already names this gap from the other direction (the 4 reference-only agents ARE registered as invokable). The pin proposed here is the structural-test side of P7's convention. Shipping the back-reference pin in the parent feature would have been the symmetric and cheap path; the omission is the gap.
 - **Suggested action:** Extend Phase 10 with one additional `grep_check` (after the existing `(e)` cross-skill assertion): for each `subagent_type:\s*['"]<name>['"]` reference in `skills/*/SKILL.md`, assert that `agents/<name>/AGENTS.md` exists AND has `tools:` frontmatter (not `skills:`). Expected +N pins where N = total `subagent_type:` references in skills (currently ~6 across the 2 dispatch-aware skills × ~3 occurrences each).
 - **Priority:** medium — symmetric enforcement is cheap; P7 (`SURFACE-2026-06-12-REFERENCE-WORKFLOW-AGENTS-ARE-INVOKABLE`) already proposes a similar fix. Consider merging the two into a single task.
-- **Status:** pending
+- **Status:** resolved 2026-06-12 by task `subagent-dispatch-back-reference-pin` — Phase 10 (f) back-reference pin shipped in `tests/check-structure.sh` (PASS 210 → 214; bite-verified). See CHANGELOG.
 
 ## SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START
 - **Order:** P6
@@ -48,7 +48,7 @@
 - **Context:** This observation is the empirical anchor for the new convention introduced by the parent feature (verify-self-and-review-quality-subagent-dispatch): executable subagents carry `tools:` frontmatter, reference-only agents carry `skills:` frontmatter. The convention is documented at Phase 3.4 (CLAUDE.md update). What's still missing: a structural pin asserting that no SKILL.md's `subagent_type:` reference points to an agent with `skills:` (reference-only) frontmatter. Phase 3.1's "Subagent dispatch wiring" pin block could be extended to include this assertion.
 - **Suggested action:** Single task:plan with two impl-tasks: (i) extend `tests/check-structure.sh` Phase "Subagent dispatch wiring" with one more `grep_check`: for every `subagent_type: '<name>'` reference in skills, assert the referenced `agents/<name>/AGENTS.md` has `tools:` in its frontmatter (NOT `skills:`); (ii) consider whether to rename the 4 reference-only `*-workflow` directories to something the harness wouldn't auto-register (e.g., `agents-reference/<name>/` instead of `agents/<name>/`) — bigger change, but removes the latent risk entirely. (i) is the low-effort path; (ii) is the principled path.
 - **Priority:** low-medium — latent risk, not currently triggering. Worth addressing before more executable subagents are added that might conflict with reference-agent names.
-- **Status:** pending
+- **Status:** resolved 2026-06-12 by task `subagent-dispatch-back-reference-pin` — path (i) shipped: Phase 10 (f) back-reference pin now catches any skill writing `subagent_type:` that points at a reference-only agent. Path (ii) (rename `*-workflow/` dirs) deliberately not taken — the lower-effort pin closes the latent risk without restructuring. See CHANGELOG.
 
 ## SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET
 - **Order:** P4 (combine with P3 as a single sonnet-hygiene task)
