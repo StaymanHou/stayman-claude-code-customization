@@ -219,18 +219,32 @@ echo ""
 
 # ── Phase 3b: debug-* skill category invariants ────────────────────────────
 #
-# `debug-*` skills are agent-pulled sidebars (not workflow states). The trigger
-# boundary lives in two required sections — `## When to use` and `## When NOT to use`.
-# If those are removed, the skill loses its self-documenting gate boundary and
-# becomes silently more permissive. A grep check catches the regression.
+# `debug-*` skills are agent-pulled sidebars (not workflow states). The
+# convention (CLAUDE.md → "`debug-*` Skill Category") requires 6 specific
+# SKILL.md sections, an `argument-hint:` frontmatter field, a Gate Check as
+# the first `### 1.` subheading under Procedure, and ≥4 DEBUG-<TECH>-<OUTCOME>
+# termination tokens. Each property is load-bearing — drop one and the agent
+# loses a discoverability or self-documenting surface. Pin them all per skill.
 
 echo "[Phase 3b] debug-* skill category invariants"
 
 for debug_skill in skills/debug-*/SKILL.md; do
   [ -f "$debug_skill" ] || continue
   name=$(basename "$(dirname "$debug_skill")")
+  # Gate-boundary sections (the original 2 pins — required for agent to discover the trigger)
   grep_check "$name has '## When to use' section (gate boundary)" "$debug_skill" "^## When to use$" 1
   grep_check "$name has '## When NOT to use' section (gate boundary)" "$debug_skill" "^## When NOT to use$" 1
+  # Other 4 required sections (per CLAUDE.md → `debug-*` Skill Category)
+  grep_check "$name has '## Category Context' section" "$debug_skill" "^## Category Context$" 1
+  grep_check "$name has '## Procedure' section" "$debug_skill" "^## Procedure$" 1
+  grep_check "$name has '## Pitfalls' section (parenthetical-suffix tolerant)" "$debug_skill" "^## Pitfalls" 1
+  grep_check "$name has '## Termination' section" "$debug_skill" "^## Termination$" 1
+  # Frontmatter `argument-hint:` field (per convention — debug-* skills accept a free-form description)
+  grep_check "$name has 'argument-hint:' frontmatter field" "$debug_skill" "^argument-hint:" 1
+  # Gate Check is the first `### 1.` subheading under Procedure (procedural discipline — gates run before any other step)
+  grep_check "$name has Gate Check as first '### 1.' subheading" "$debug_skill" "^### 1\. Gate Check" 1
+  # ≥4 DEBUG-<TECH>-<OUTCOME> termination tokens (covers START/SKIP/COMPLETE + 1+ outcome-specific token like NO-CONVERGE / INCONCLUSIVE)
+  grep_check "$name emits ≥4 'DEBUG-<TECH>-<OUTCOME>' termination tokens" "$debug_skill" "DEBUG-[A-Z]+(-[A-Z]+)+" 4
 done
 
 echo ""
