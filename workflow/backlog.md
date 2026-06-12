@@ -6,17 +6,6 @@
 
 ## TODO
 
-## SURFACE-2026-06-12-QUALITY-WIP-DUPLICATE-VERIFY-CODIFY-LEAVES
-- **Order:** P-quality (auto-backlogged at feature-review-quality time, 2026-06-12; place in order at operator's discretion)
-- **Source:** feature:review-quality (verify-self-and-review-quality-subagent-dispatch, 2026-06-12) — MAJOR finding #1 from the reviewer subagent
-- **Target level:** task:plan (small/simple — 2-line deletion + audit pass)
-- **Type:** convention violation / cleanup hygiene
-- **Summary:** In `workflow/wip/verify-self-and-review-quality-subagent-dispatch.md` (now archived by finalize, see `workflow/archive/`), Phases 2 and 3 each had a duplicate `verify-codify` leaf at ship time: one `[x]` with completion note immediately followed by `- [ ] verify-codify  <!-- status: NOT-STARTED -->`. The verify-codify completion notes were APPENDED ABOVE the original NOT-STARTED entry instead of REPLACING it (lines 259-260 and 285-286 of the WIP at ship time). Per the global Work-Tree-format rule ("a parent's checkbox may only be `[x]` when ALL children are `[x]`"), Phases 2 and 3 are technically NOT cleanly closed — each has an unchecked child.
-- **Why it matters:** load-bearing global convention. Future readers (or finalize-time grep) reading the tree to confirm phase closure see a contradiction. The archived WIP now carries the audit-trail artifact. Pattern was caused by my edit pattern — the existing `[x] verify-codify` lines were duplicated rather than substituted during Phase 2 + 3 verify-codify completion. To prevent recurrence, the `feature-verify-codify` skill's `[ ] verify-codify` → `[x] verify-codify` transition discipline could be tightened (or a structural pin could check that no two `verify-codify` lines sit under the same Phase node).
-- **Suggested action:** Two options: (a) document this as a known cleanup hygiene gap in CLAUDE.md and rely on operator review at verify-codify-time to catch; (b) add a structural pin in `tests/check-structure.sh` that scans WIP archives for the pattern (≥2 verify-codify lines under one phase). Option (a) is sufficient if recurrence is rare; (b) requires WIP-scanning logic.
-- **Priority:** low-medium — cosmetic audit-trail artifact in one archived WIP; the actual feature shipped clean. Pattern could recur — that's the load-bearing aspect.
-- **Status:** pending
-
 ## SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START
 - **Order:** P6
 - **Source:** feature:ship (code-quality-reviewer-subagent, 2026-06-11) — dogfooding limitation observed when ship → review-quality F38 chain attempted to invoke the newly-created `feature-review-quality` skill in the same session that introduced it. Returned "Unknown skill" error. **Updated 2026-06-12 (verify-self-and-review-quality-subagent-dispatch Phase 1 verify-self):** the limitation also applies to the **Agent registry** — newly-created subagents under `agents/` are similarly not visible until next session. **Updated 2026-06-12 (Phase 2 verify-self):** scope is also broader than "additions" — **edited Skill SKILL.md content is also cached at session start** and is NOT re-read on subsequent invocations within the same session. Observed when `/feature-verify-self` was invoked after Phase 2 edited that skill's §2; the OLD pre-edit SKILL.md was served. Means the bootstrap-skip is BOTH new-artifact-invisibility AND edited-artifact-content-staleness.
