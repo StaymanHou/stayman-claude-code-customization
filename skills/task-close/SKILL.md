@@ -80,6 +80,7 @@ For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 3. `git add CHANGELOG.md <wip-file>` — stage CHANGELOG + the WIP file with retrospect together.
 4. `git mv <wip-file> workflow/archive/<wip-file>` — perform the archive move now.
 5. Single commit captures retrospect edit + CHANGELOG append + archive move.
+6. **Do NOT `git push`.** The close commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
 ### 7. Reflect Check
 Evaluate whether significant learning occurred during this task (beyond what was captured in the retrospect):

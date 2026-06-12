@@ -103,6 +103,8 @@ For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 
 **Operational sequence:** edit `CHANGELOG.md` before the file-move operations in step 6 are committed. Stage CHANGELOG together with the archive moves so the entire cycle-close lands in one commit (or a tightly grouped commit pair if 6 already commits separately).
 
+**Do NOT `git push`.** The cycle-close commit(s) land locally only. Pushing is the operator's call — they may want to review the resynced durable docs, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
+
 **Idempotency:** if a `**Product cycle complete:**` bullet for this cycle name already exists in CHANGELOG.md, skip the append (re-running product-finalize on an already-closed cycle is a no-op).
 
 ### 7. Confirm and Exit

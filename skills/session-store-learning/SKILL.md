@@ -71,9 +71,18 @@ Present:
 **Project-scope:**
 - Write or append to the existing project file (CLAUDE.md, memory, skill) at the proposed `.claude/` path
 - If updating an existing file, append or merge rather than overwrite
+- **Amend the learning into HEAD (required).** After the write, fold the learning into the most recent commit so it lives in the same commit as the work it describes (the just-completed close commit, in the typical post-reflect cadence):
+  - `git add <file-path-just-written>`
+  - `git commit --amend --no-edit`
+  - Rationale: `/session-store-learning` typically runs after `/session-reflect`, which runs after a terminal-close skill (`feature-finalize`, `task-close`, `incident-resolve`, `product-finalize`). HEAD is the close commit. Amending prevents the "uncommitted learning file lost in a destructive git operation during the next cross-feature pause" failure mode (resolved `SURFACE-2026-05-22-LEARNING-COMMIT-OFTEN-AT-CROSS-FEATURE-BRANCH`).
+  - If HEAD happens to be a non-close commit (e.g., the user committed manually between reflect and store-learning), amend-to-HEAD still lands the learning into a sensible local commit rather than leaving it uncommitted. Reversible later via `git reset --soft HEAD~1` / `git rebase -i` if the operator wants to detach.
+  - Do NOT `git push` after amending — see no-auto-push contract in the four close skills.
 - Confirm what was saved and where
 
 **Global-scope:**
+
+(No amend. Global-scope drafts live in `.claude/learnings/` which is gitignored — `git add` would no-op without `-f`, and forcing-add a gitignored file defeats the purpose of the local-curation workflow. The draft stays as a working-tree-only file until the operator hand-ports it.)
+
 - Ensure `.claude/learnings/` exists; create it if not
 - Write the drafted file to `.claude/learnings/<YYYY-MM-DD>-<slug>.md` using this schema:
 

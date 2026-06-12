@@ -88,6 +88,7 @@ The §3 "Archive" step lists the `git mv` action but the actual execution order 
 3. `git add CHANGELOG.md <wip-file>` — stage CHANGELOG + the WIP file with retrospect together.
 4. `git mv <wip-file> workflow/archive/<wip-file>` — perform the move now (the §3 action).
 5. Single commit captures retrospect edit + CHANGELOG append + archive move.
+6. **Do NOT `git push`.** The close commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
 **Idempotency:** if the WIP file is already inside `workflow/archive/`, the append is a no-op — skip it. (Re-running finalize on an already-archived item should not double-write the changelog.)
 
