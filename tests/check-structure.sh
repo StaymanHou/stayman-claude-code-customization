@@ -35,7 +35,13 @@ grep_check() {
   local pattern="$3"
   local min_count="${4:-1}"
   local count
-  count=$(grep -cE "$pattern" "$file" 2>/dev/null || echo 0)
+  # NB: Under `set -euo pipefail`, the naive `count=$(grep -cE ... || echo 0)` form
+  # produces "0\n0" (3-char string with embedded newline) when grep finds 0 matches,
+  # because both grep's stdout (`0\n`) AND the `|| echo 0` fire. The `(... || true)
+  # | head -1` form suppresses grep's exit-1 inside the subshell + takes only the
+  # first line of count output. The `:-0` fallback handles the empty-capture case.
+  count=$( (grep -cE "$pattern" "$file" 2>/dev/null || true) | head -1 )
+  count="${count:-0}"
   if [ "$count" -ge "$min_count" ]; then
     check "$desc" "pass"
   else
