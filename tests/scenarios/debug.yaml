@@ -158,7 +158,7 @@ scenarios:
   - id: DEBUG-TELEMETRY-INCONCLUSIVE
     name: "debug-empirical-telemetry: 3 rounds exhausted, no converging observable → INCONCLUSIVE"
     skill: debug-empirical-telemetry
-    model: sonnet  # Haiku flakes: describe-then-escalate paths are noisy on haiku. Sonnet behavior: SOFT_PASS lenient (contains 'inconclusive' but model emits TRANSITION line in a shape that captures only the prefix "DEBUG" via the harness regex — likely a markdown-decorated emit like `**TRANSITION: DEBUG**-TELEMETRY-INCONCLUSIVE`). Lenient coverage > no coverage; the contains_any list catches the behavioral signal even when the structured TRANSITION line shape is fragile. See backlog SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO and SURFACE-2026-06-12-DEBUG-TELEMETRY-INCONCLUSIVE-STRICT-PASS-NEEDED for the strict-fix follow-up.
+    model: sonnet  # Haiku flakes: describe-then-escalate paths are noisy on haiku. Strict PASS on sonnet after harness fixes 2026-06-12 (verify.sh:39 — `tr -d '*'` strips markdown bold, `tail -1` picks the terminal emit when SKILL emits multiple TRANSITION lines like the §1 START + §7 INCONCLUSIVE pattern). See backlog SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO for original scenario rationale.
     args: >
       Worker processQueue() duplicate-fires bug. 3 prior telemetry rounds already
       ran: (1) instrumented dequeue boundary — SKIP LOCKED works correctly,

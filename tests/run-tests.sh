@@ -241,7 +241,10 @@ ${extra_prompt}"
     local rc=$?
     set -e
     detail="$VERIFY_DETAIL"
-    transition_found=$(echo "$result_text" | sed -n 's/.*TRANSITION:[[:space:]]*\([A-Za-z0-9_]*\).*/\1/p' | head -1) || true
+    # Display-only capture for logging — kept consistent with verify.sh:39
+    # (tr -d '*' strips markdown bold; hyphen in capture class accepts DEBUG-*
+    # tokens; tail -1 picks the terminal emit when a skill emits multiple).
+    transition_found=$(echo "$result_text" | tr -d '*' | sed -n 's/.*TRANSITION:[[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' | tail -1) || true
 
     if [ $rc -eq 0 ]; then
       if [ $attempt -gt 1 ]; then

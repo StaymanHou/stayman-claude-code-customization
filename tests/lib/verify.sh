@@ -31,12 +31,24 @@ verify_result() {
   local negative_hits=""
 
   # 1. Structured check: look for TRANSITION: <id>
-  # Tolerances built into this regex:
-  #   - Leading/trailing markdown decoration (e.g. `**TRANSITION:**` from bold-mark)
-  #     — strip `*` between colon and the ID, plus any whitespace
+  # Tolerances built into this pipeline:
+  #   - Markdown bold decoration anywhere on the line — `tr -d '*'` strips ALL
+  #     asterisks before capture. Handles `**TRANSITION: ID**` (leading+trailing),
+  #     `**TRANSITION:** ID` (prefix-only — was already handled), and crucially
+  #     `**TRANSITION: DEBUG**-TELEMETRY-INCONCLUSIVE` (mid-token bold-end, which
+  #     the prior `[*[:space:]]*` prefix-only tolerance could NOT handle).
+  #     `*` is not a valid character in any F/I/T/P/S/DEBUG token, so stripping
+  #     it globally only widens accepted shapes — never invents new matches.
   #   - Hyphens in the ID — captures `DEBUG-BISECT-SKIP` as well as `F1`, `T2`
-  #     (debug-* sidebar tokens are hyphenated; legacy IDs are alphanumeric+_)
-  found_transition=$(echo "$result_text" | sed -n 's/.*TRANSITION:[*[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' | head -1)
+  #     (debug-* sidebar tokens are hyphenated; legacy IDs are alphanumeric+_).
+  #   - Multiple TRANSITION emits per output — `tail -1` picks the LAST emit,
+  #     which is the terminal signal. `debug-empirical-telemetry` intentionally
+  #     emits `TRANSITION: DEBUG-TELEMETRY-START` mid-procedure (§1 gate-met
+  #     informational) before the terminal token (`DEBUG-TELEMETRY-COMPLETE` or
+  #     `DEBUG-TELEMETRY-INCONCLUSIVE`). `head -1` would pick START; we want the
+  #     terminal one. Single-emit scenarios converge — `head -1` and `tail -1`
+  #     return the same thing.
+  found_transition=$(echo "$result_text" | tr -d '*' | sed -n 's/.*TRANSITION:[[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p' | tail -1)
 
   # 2. Negative check
   if [ -n "$not_contains" ]; then

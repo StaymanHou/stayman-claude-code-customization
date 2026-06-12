@@ -6,16 +6,7 @@
 
 ## TODO
 
-## SURFACE-2026-06-12-DEBUG-TELEMETRY-INCONCLUSIVE-STRICT-PASS-NEEDED
-- **Order:** P-followup (auto-backlogged 2026-06-12 from task `sonnet-hygiene-and-telemetry-inconclusive-scenario`)
-- **Source:** task:act (sonnet-hygiene-and-telemetry-inconclusive-scenario, 2026-06-12) — surfaced after 3 bite-verify attempts to land DEBUG-TELEMETRY-INCONCLUSIVE as a strict PASS scenario.
-- **Target level:** task:plan (small/simple — either skill-prose fix OR alternate fixture shape)
-- **Type:** test-coverage gap / SOFT_PASS-on-sonnet
-- **Summary:** The new DEBUG-TELEMETRY-INCONCLUSIVE scenario (`tests/scenarios/debug.yaml`) ships SOFT_PASS on sonnet (3 attempts: $0.07 + $0.09 + $0.09 = $0.25 total bite-verify spend). The model correctly classifies the bug as inconclusive (`contains_any` matches 'inconclusive' cleanly) but emits the `TRANSITION:` line in a shape that captures only the prefix `DEBUG` via the harness regex `s/.*TRANSITION:[*[:space:]]*\([A-Za-z0-9_-]*\).*/\1/p` — likely a markdown-decorated emit like `**TRANSITION: DEBUG**-TELEMETRY-INCONCLUSIVE` where the bold-span breaks the alnum-hyphen capture class. The fixture has been hardened with explicit emit-shape instructions ("plain text exactly, no markdown decoration, do NOT split the token across lines, do NOT bold-mark it") — sonnet still ignored these.
-- **Context:** Original SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO already warned: "the INCONCLUSIVE path is structurally hard to test from a fixture because it requires conveying 'the agent has already done 3 rounds of telemetry and none discriminated' without embedding telemetry results in the fixture itself, and the model tends to suggest more telemetry rounds rather than escalating from a fixture description." The describe-then-escalate path is genuinely fragile. The two F16-triage scenarios in the same task PASSed strict cleanly via `transition_id_any: [F16, F14]` — that's the right shape for dual-identity exits. The DEBUG-TELEMETRY-INCONCLUSIVE case has a different shape (single-id exit but markdown-decoration emit issue) and needs a different fix.
-- **Suggested action:** Three candidate paths, pick one when scheduled: (a) **Skill-prose fix** — tighten `skills/debug-empirical-telemetry/SKILL.md` §7 with "TRANSITION line emission discipline" sub-instruction explicitly forbidding markdown decoration of the token, and add a sample emit block with NO markdown formatting; sonnet may then comply across all uses, not just this test. (b) **Harness regex broadening** — extend `tests/lib/verify.sh` line 39 regex's character class to also capture across `**` mid-token (currently `[*[:space:]]*` is the prefix-tolerance only). Heavier change; may have other-scenario side effects. (c) **Accept SOFT_PASS** — leave as-is; lenient coverage is the documented behavior of the harness's `contains_any` fallback. The current implementation IS option (c) until a future task picks (a) or (b).
-- **Priority:** low — SOFT_PASS provides lenient coverage, which is harness-supported. Strict PASS would be nice-to-have but not blocking.
-- **Status:** pending
+_(empty — TODO list drained as of 2026-06-12; see CHANGELOG.md for resolved items)_
 
 ---
 
