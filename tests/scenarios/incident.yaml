@@ -490,3 +490,24 @@ scenarios:
         - "Incident resolved"
       not_contains: []
     max_retries: 2
+
+  - id: I10-no-auto-push
+    name: "incident:resolve close commit does NOT auto-push"
+    skill: incident-resolve
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-mitigated.md
+    system_prompt_extra: |
+      The incident is fully resolved. Monitoring period passed with no
+      regressions. When describing the §4b operational sequence (CHANGELOG
+      append + archive move + single commit), confirm what happens regarding
+      pushing the resolve commit upstream.
+    expect:
+      transition_id: I10
+      contains_any:
+        - "Do NOT"
+        - "do not push"
+        - "operator"
+        - "land locally"
+    max_retries: 2

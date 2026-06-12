@@ -346,3 +346,24 @@ scenarios:
         - "Product cycle complete"
       not_contains: []
     max_retries: 2
+
+  - id: P13-no-auto-push
+    name: "product:product-finalize cycle-close commit does NOT auto-push"
+    skill: product-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/wbs-complete
+    system_prompt_extra: |
+      You are running product-finalize for the "API Documentation Generator" cycle.
+      All WPs in wbs.md are marked [x]. arch.md is accurate. backlog.md is empty.
+      The cycle name is "api-doc-generator-v1". When describing the §6b operational
+      sequence (CHANGELOG append + cycle-close commit), confirm what happens
+      regarding pushing the cycle-close commit upstream.
+    expect:
+      transition_id: P13
+      contains_any:
+        - "Do NOT"
+        - "do not push"
+        - "operator"
+        - "land locally"
+    max_retries: 2

@@ -753,3 +753,24 @@ scenarios:
         - "FAKE-LOW-FIXTURE"
       not_contains_strict: true
     max_retries: 2
+
+  - id: S20-amend-head
+    name: "session:store-learning project-scope writes amend into HEAD"
+    skill: session-store-learning
+    args: >
+      I just learned that in this project specifically, when running the
+      claude-time tests, you must use the container-based test runner
+      (tools/claude-time/test/run-in-container.sh) rather than running
+      pytest on the host. This is a project-specific rule — save it as a
+      Context Rule in this project's CLAUDE.md so future sessions in this
+      project follow the convention.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S20
+      contains_any:
+        - "--amend"
+        - "git commit --amend"
+        - "git add"
+        - "HEAD"
+    max_retries: 2

@@ -1604,6 +1604,22 @@ done
 
 echo ""
 
+# Phase 11: Close-commit discipline pins
+# Pins the no-auto-push clause across all four terminal-close skills + the amend-to-HEAD
+# clause in session-store-learning. Codifies SKILL.md prose contracts shipped 2026-06-12
+# (close-commit-discipline feature) to prevent silent drift toward auto-push or away
+# from learning-amend folding into HEAD.
+echo "[Phase 11] Close-commit discipline (no auto-push + amend learnings to HEAD)"
+
+grep_check "feature-finalize forbids git push from close commit"   "skills/feature-finalize/SKILL.md"        "Do NOT.*git push"             1
+grep_check "task-close forbids git push from close commit"          "skills/task-close/SKILL.md"              "Do NOT.*git push"             1
+grep_check "incident-resolve forbids git push from resolve commit"  "skills/incident-resolve/SKILL.md"        "Do NOT.*git push"             1
+grep_check "product-finalize forbids git push from cycle-close commit" "skills/product-finalize/SKILL.md"     "Do NOT.*git push"             1
+grep_check "session-store-learning folds learning into HEAD via amend" "skills/session-store-learning/SKILL.md" "git commit --amend --no-edit" 1
+grep_check "session-store-learning stages the learning file before amend" "skills/session-store-learning/SKILL.md" "git add <file-path"        1
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

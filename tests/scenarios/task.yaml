@@ -372,3 +372,22 @@ scenarios:
         - "Task closed"
       not_contains: []
     max_retries: 2
+
+  - id: T10-no-auto-push
+    name: "task:close close commit does NOT auto-push"
+    skill: task-close
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-act-complete.md
+    system_prompt_extra: |
+      The task is complete. When describing the §6 operational sequence
+      (CHANGELOG append + archive move + single commit), confirm what
+      happens regarding pushing the close commit upstream.
+    expect:
+      transition_id_any: [T10, T11]
+      contains_any:
+        - "Do NOT"
+        - "do not push"
+        - "operator"
+        - "land locally"
+    max_retries: 2

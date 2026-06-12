@@ -1842,3 +1842,23 @@ scenarios:
         - "Auto-skipped"
         - "no integration boundary detected"
     max_retries: 2
+
+  - id: F19-no-auto-push
+    name: "feature:finalize close commit does NOT auto-push"
+    skill: feature-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-no-debt.md
+    system_prompt_extra: |
+      Documentation updated. Code reviewed. No tech debt identified.
+      Feature is clean and complete. When describing the §3c operational
+      sequence (retrospect + CHANGELOG append + archive move), confirm
+      what happens regarding pushing the close commit upstream.
+    expect:
+      transition_id: F19
+      contains_any:
+        - "Do NOT"
+        - "do not push"
+        - "operator"
+        - "land locally"
+    max_retries: 2
