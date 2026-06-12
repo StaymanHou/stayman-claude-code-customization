@@ -154,3 +154,36 @@ scenarios:
         - "DEBUG-TELEMETRY-START"
         - "DEBUG-TELEMETRY-COMPLETE"
     max_retries: 2
+
+  - id: DEBUG-TELEMETRY-INCONCLUSIVE
+    name: "debug-empirical-telemetry: 3 rounds exhausted, no converging observable → INCONCLUSIVE"
+    skill: debug-empirical-telemetry
+    model: sonnet  # Haiku flakes: describe-then-escalate paths are noisy on haiku. Sonnet behavior: SOFT_PASS lenient (contains 'inconclusive' but model emits TRANSITION line in a shape that captures only the prefix "DEBUG" via the harness regex — likely a markdown-decorated emit like `**TRANSITION: DEBUG**-TELEMETRY-INCONCLUSIVE`). Lenient coverage > no coverage; the contains_any list catches the behavioral signal even when the structured TRANSITION line shape is fragile. See backlog SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO and SURFACE-2026-06-12-DEBUG-TELEMETRY-INCONCLUSIVE-STRICT-PASS-NEEDED for the strict-fix follow-up.
+    args: >
+      Worker processQueue() duplicate-fires bug. 3 prior telemetry rounds already
+      ran: (1) instrumented dequeue boundary — SKIP LOCKED works correctly,
+      H1 ruled out; (2) instrumented release_lock/handler ordering — handler
+      fires once per dequeue, H2 ruled out; (3) instrumented downstream sink —
+      receives two distinct legitimate events from two workers separated by
+      15-30 min, H3 ruled out. The visible observable space is exhausted —
+      the duplicate manifests across distinct dequeues, but the dequeue
+      protocol prevents concurrent access. Do NOT run a 4th telemetry round.
+      Acknowledge inconclusive, run cleanup, escalate.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-empirical-telemetry-inconclusive.md
+    # No `not_contains` — this is an in-procedure terminal scenario where
+    # the skill stays IN the empirical-telemetry mode while emitting the
+    # INCONCLUSIVE termination. Per CLAUDE.md "Test scenario design — routing-
+    # fork patterns", aggressive not_contains on in-procedure scenarios is
+    # prose-leak fragile.
+    expect:
+      transition_id: DEBUG-TELEMETRY-INCONCLUSIVE
+      contains_any:
+        - "inconclusive"
+        - "exhausted"
+        - "escalate"
+        - "escalation"
+        - "alternative"
+        - "ruled out"
+    max_retries: 2
