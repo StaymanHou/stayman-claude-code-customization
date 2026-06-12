@@ -6,8 +6,24 @@
 
 ## TODO
 
+## SURFACE-2026-06-11-VERIFY-SELF-AND-REVIEW-QUALITY-SUBAGENT-DISPATCH-UNVALIDATED
+- **Order:** P1
+- **Source:** feature:reflect (code-quality-reviewer-subagent, 2026-06-11) — operator-flagged at reflection: "I actually don't think verify-self currently really spawns a subagent." Surfaced when reviewing whether `feature-review-quality` needs a dedicated subagent type. Investigation shows both skills (`feature-verify-self` and the new `feature-review-quality`) describe Agent-spawn dispatch in their §2 but neither has been empirically validated end-to-end.
+- **Target level:** task:plan (small/medium — likely investigation-then-fix; could escalate to feature:spec if the dispatch shape needs redesign)
+- **Type:** latent contract gap / unverified behavior
+- **Summary:** Both `feature-verify-self/SKILL.md` §2 and `feature-review-quality/SKILL.md` §2 instruct the agent to "spawn an Agent with the [prompt template] baked into the prompt — the subagent is one-shot." The `Agent` tool is in both skills' `allowed-tools` frontmatter. BUT: there's no empirical confirmation that either dispatch actually executes the intended pattern — i.e., that the agent (calling Claude) actually invokes `Agent({prompt: <prompt + dynamic context>, ...})` rather than performing the verification work inline in the parent context. The new `feature-review-quality` was created mid-session and couldn't dogfood (bootstrap-skip per SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START), so its first real invocation will be in a fresh session — but verify-self has been live for months and the dispatch was never empirically validated either, per operator observation.
+- **Why it matters:** arch.md (2026-04-27 revision) explicitly notes the design intent: "verify-self runs as a subagent (not in parent context). Playwright output stays in the subagent's context — parent context stays lean across multi-phase features." If verify-self has been doing the verification inline in parent context all along, that design property has been silently lost. Worse: every multi-phase feature this repo has shipped has accumulated verify-self's Playwright output (snapshots, console logs, accessibility trees) into the parent's context — which is the failure mode the subagent dispatch was specifically designed to prevent. Same risk now baked into `feature-review-quality`'s ~150-line reviewer-prompt + the full git-diff context it grounds against. If the dispatch is silently inline, parent context bloats per phase.
+- **Suggested action:** Two-step investigation + fix:
+  1. **Validate:** Run `/feature-verify-self <url>` against a real running app and inspect whether an `Agent` invocation actually fires (look for the spawn in the conversation transcript). If the verification happens inline in parent context with no `Agent` call, the dispatch contract is broken at the SKILL.md prose level.
+  2. **Fix:** Depends on what (1) finds:
+     - If the SKILL.md prose is unambiguous but the model just doesn't follow it: strengthen the prose, add an explicit `Agent({ ... })` example template, possibly add a structural-pin check ("SKILL.md §2 must contain `Agent({` or equivalent literal").
+     - If the dispatch genuinely isn't possible from inside a Skill invocation (because Skill calls run in a tool sandbox that can't spawn Agent): redesign — either move the subagent dispatch to the orchestrator level (the parent reads the SKILL.md, then orchestrator spawns Agent based on the procedure), or accept that "verify-self as inline" is the actual current behavior and update arch.md + SKILL.md to match reality.
+  3. **Apply fix to both skills:** any solution applied to verify-self must also apply to `feature-review-quality` — same dispatch shape, same arch.md design property.
+- **Priority:** high — design property has been silently broken (or never worked) since arch.md's 2026-04-27 revision; affects every multi-phase feature shipped since. The new `feature-review-quality` skill inherits the same potential gap. Worth investigating before more skills are built on the same "spawn an Agent" pattern.
+- **Status:** pending
+
 ## SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START
-- **Order:** P5
+- **Order:** P6
 - **Source:** feature:ship (code-quality-reviewer-subagent, 2026-06-11) — dogfooding limitation observed when ship → review-quality F38 chain attempted to invoke the newly-created `feature-review-quality` skill in the same session that introduced it. Returned "Unknown skill" error.
 - **Target level:** task:plan (small/simple — document the limitation OR explore session-restart-after-skill-install workaround)
 - **Type:** harness limitation / observation
@@ -18,7 +34,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET
-- **Order:** P3 (combine with P2 as a single sonnet-hygiene task)
+- **Order:** P4 (combine with P3 as a single sonnet-hygiene task)
 - **Source:** task:act (verify-codify-scenarios-need-sonnet-tag, 2026-06-09) — surfaced during the P2 sonnet recon sweep when these 2 of 8 scenarios SOFT_PASSed on sonnet too (not just haiku).
 - **Target level:** task:plan (small/medium — scenario design fix, possibly skill-prose audit)
 - **Type:** test-scenario design / output-shape mismatch
@@ -31,7 +47,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-09-GREP-CHECK-HELPER-PIPEFAIL-INTERACTION
-- **Order:** P4
+- **Order:** P5
 - **Source:** feature:verify-codify (check-structure-sigterm-propagation, 2026-06-09) — surfaced as pre-existing tech debt during the design of 2 new negative pins. Same root cause hit me twice during this feature's verify-codify.
 - **Target level:** task:plan (small/simple — fix the helper's count-capture pattern + one-line audit of existing call sites)
 - **Type:** tech-debt / latent bug
@@ -43,7 +59,7 @@
 
 
 ## SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO
-- **Order:** P2 (combine with P3 as a single sonnet-hygiene task)
+- **Order:** P3 (combine with P4 as a single sonnet-hygiene task)
 - **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 3 P3.7 stretch deferral, 2026-06-10)
 - **Target level:** task:plan (small/simple — single scenario + fixture, scoped follow-up)
 - **Type:** test-coverage gap
@@ -55,7 +71,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-10-DEBUG-WITHIN-SKILL-STRUCTURAL-PINS
-- **Order:** P1
+- **Order:** P2
 - **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 1 surfacing, 2026-06-10)
 - **Target level:** task:plan (small/simple — single tests/check-structure.sh edit, iterating loop already in place)
 - **Type:** test-coverage extension (debug-* category)
