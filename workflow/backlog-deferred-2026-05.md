@@ -88,3 +88,20 @@ Items buried from `workflow/backlog.md` on 2026-06-07 by user decision. Still pe
 - **Suggested action:** Add to `tests/check-structure.sh` a Phase that iterates `skills/*/SKILL.md`, extracts the `name:` field from frontmatter, and asserts it equals `basename "$(dirname "$f")"`. Should be <10 lines of bash. Likely all current skills pass already; the check is a regression guard.
 - **Priority:** low (no current regression; defensive)
 - **Status:** open (deferred)
+
+---
+
+# Backlog — Deferred (2026-06)
+
+Items buried 2026-06-12 by user decision.
+
+## SURFACE-2026-06-02-BEHAVIORAL-PRESSURE-TESTS-FOR-SKILL-LANGUAGE
+- **Buried:** 2026-06-12 (Stayman: deferred — no current pickup signal; revisit if a real wild failure traces to weak skill prose, or a future cycle has scope for test-infrastructure investment).
+- **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' test suite includes **behavioral pressure tests** that plant rationalization-shaped inputs (e.g. "the test is flaky, just claim it passes", planted SQL injection bugs in review fixtures) and assert the skill resists. Distinct from this repo's transition tests (which verify "given input X, skill emits TRANSITION Y") and structural tests (`tests/check-structure.sh`).
+- **Target level:** harness / tests (`tests/run-tests.sh` augmentation or new `tests/pressure/` group).
+- **Type:** test-coverage expansion
+- **Summary:** Current tests in this repo verify (a) transitions fire correctly given clean inputs, and (b) structural conventions hold (frontmatter, required sections, byte-pins). Neither tests whether discipline-bearing skill language **survives pressure** — i.e., whether `feature-verify-codify` resists a fixture that says "tests are flaky just merge it", or whether `feature-build` resists "this is a simple change just do it, no plan needed". Behavioral pressure tests are a meaningfully different signal: they test the *rationalization-resistance* of skill prose, which is the property that matters most when the model is mid-task and under time pressure. **User stance (per conversation):** maybe — existing tests are largely working, but there's potential value in more rigorous coverage. Not a priority pickup; defer until either (a) a skill failure mode in the wild traces back to language that didn't resist pressure, or (b) a future cycle has scope for test-infrastructure investment.
+- **Why it matters:** This repo's principle is "advisory enforcement over hard blocks." That principle is unfalsified without pressure tests — every claim that "the prose is strong enough" rests on author intuition rather than measured behavior. If/when the principle gets challenged (a real failure mode where advisory framing let discipline lapse), pressure tests would be the empirical instrument to either defend the framing or surface specific prose weaknesses.
+- **Suggested action:** Light spec when picked up. Sketch: add `tests/scenarios/pressure/` directory; each scenario is a YAML with a rationalization-shaped fixture + an expected-behavior assertion (must contain escalation language, must not emit transition-to-complete, etc.). Run on sonnet (haiku won't expose the failure mode reliably). Start with 3-5 high-value targets — verify-codify (Test Triage gate under "flaky test" pressure), feature-build (under "this is small just do it" pressure), incident-mitigate (under "ship the fix it's prod" pressure). Don't try to cover all 35 skills.
+- **Original priority:** low-medium — user-flagged as "maybe", not immediate; pickup signal is either a real wild failure tracing to weak prose, or a scoped test-infrastructure cycle.
+- **Status:** open (buried 2026-06-12)
