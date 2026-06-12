@@ -28,19 +28,6 @@
 - **Priority:** low — SOFT_PASS provides lenient coverage, which is harness-supported. Strict PASS would be nice-to-have but not blocking.
 - **Status:** pending
 
-## SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET
-- **Order:** P4 (combine with P3 as a single sonnet-hygiene task)
-- **Source:** task:act (verify-codify-scenarios-need-sonnet-tag, 2026-06-09) — surfaced during the P2 sonnet recon sweep when these 2 of 8 scenarios SOFT_PASSed on sonnet too (not just haiku).
-- **Target level:** task:plan (small/medium — scenario design fix, possibly skill-prose audit)
-- **Type:** test-scenario design / output-shape mismatch
-- **Summary:** During the P2 sonnet recon sweep (`./tests/run-tests.sh --id ... --model sonnet`, 197s, 2026-06-09), 6 of 8 candidates PASSed strictly and were tagged; 2 SOFT_PASSed on **sonnet too** — so they're NOT haiku-noise-only and shouldn't be tagged-and-forgotten:
-  - **F16-triage-ambiguous** (line 592): `SOFT_PASS (Contains 'pause' but also mentioned: auto-fix)`. The scenario's `not_contains` list forbids "auto-fix" but sonnet's prose still references it while correctly choosing the pause path. This is the "describing what it won't do" prose-leak pattern documented in CLAUDE.md → "Test scenario design — routing-fork patterns" → "Entry-state transitions need a different test shape than exit transitions."
-  - **F16-triage-flaky** (line 626): `SOFT_PASS (Contains 'flaky' (no structured TRANSITION line))`. Sonnet emits the right reasoning + classification but skips the literal `TRANSITION: F16` line. This is the "no structured TRANSITION line" pattern — output-shape issue, not classification issue.
-- **Why it matters:** These 2 scenarios are currently treated as PASS-equivalent in `tests/run-all.sh` two-pass sweeps because SOFT_PASS isn't FAIL. But the underlying signal is real: either the assertion shape is too strict (false positive) or the skill prose has drifted (false negative). Each case needs its own diagnosis.
-- **Suggested action:** For F16-triage-ambiguous: re-examine the `not_contains: [auto-fix, ...]` assertion — likely needs softening to allow "auto-fix" in negation context (e.g. "the failure is NOT a code regression to auto-fix"), or the skill prose needs to avoid auto-fix references when emitting the pause classification. For F16-triage-flaky: investigate why sonnet skips the structured TRANSITION line — possibly the SHARED_PROMPT instructions aren't strong enough when the skill's natural prose ends with a triage classification rather than a transition (the skill might be emitting the right *content* but skipping the *line shape*). May benefit from a skill-prose update to verify-codify SKILL.md (explicit "even for triage outcomes, emit TRANSITION: F16 before classifying").
-- **Priority:** low-medium — SOFT_PASS is not a blocker today but masks the underlying issue and creates a precedent where SOFT_PASS-on-sonnet is treated as "good enough."
-- **Status:** pending
-
 ## SURFACE-2026-06-09-GREP-CHECK-HELPER-PIPEFAIL-INTERACTION
 - **Order:** P5
 - **Source:** feature:verify-codify (check-structure-sigterm-propagation, 2026-06-09) — surfaced as pre-existing tech debt during the design of 2 new negative pins. Same root cause hit me twice during this feature's verify-codify.
@@ -52,18 +39,6 @@
 - **Priority:** low — latent bug, not currently triggering; would surface only if a future pin's matched-count drops to 0.
 - **Status:** pending
 
-
-## SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO
-- **Order:** P3 (combine with P4 as a single sonnet-hygiene task)
-- **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 3 P3.7 stretch deferral, 2026-06-10)
-- **Target level:** task:plan (small/simple — single scenario + fixture, scoped follow-up)
-- **Type:** test-coverage gap
-- **Summary:** The `debug-empirical-telemetry` skill ships with 3 PASSing scenarios covering 3 of its 4 termination paths (DEBUG-TELEMETRY-START via GATE-MET fixture; DEBUG-TELEMETRY-SKIP via 2 gate-fail fixtures — Gate 1 insufficient-attempts AND Gate 2 static-derivable). The 4th termination token, `DEBUG-TELEMETRY-INCONCLUSIVE` (≥3 non-converging telemetry rounds → escalate to caller), is documented in the SKILL.md (`§7. Inconclusive escalation`) but has NO behavioral test scenario. The deferral at P3.7 was a deliberate scoping decision — the INCONCLUSIVE path is structurally hard to test from a fixture because it requires conveying "the agent has already done 3 rounds of telemetry and none discriminated" without embedding telemetry results in the fixture itself, and the model tends to suggest more telemetry rounds rather than escalating from a fixture description.
-- **Context:** Pattern would be: author `tests/fixtures/wip/debug-empirical-telemetry-inconclusive.md` describing a bug-shape where ≥3 instrument-run-read rounds already happened (e.g. "instrumented dequeue boundary, observed timestamps look fine; instrumented release_lock, observed correct ordering; instrumented worker-ID assignment, no overlap — but the duplicate still happens 1 in 30 runs"), and a scenario asserting `transition_id: DEBUG-TELEMETRY-INCONCLUSIVE` + `contains_any: [escalation, exhausted, suggest, alternative]`. Likely needs sonnet tag per the entry-state assertion-shape guidance in CLAUDE.md (sonnet handles "describe-then-escalate" prose more reliably than haiku).
-- **Why it matters:** The INCONCLUSIVE path is the "graceful failure" mode for empirical telemetry — when it fires, it produces a SURFACE entry in workflow/backlog.md (per the SKILL.md procedure) so future learning accumulates. A regression in the path would silently swallow that learning artifact. Low-bite probability today (the path activates only after 3 non-converging rounds, which is rare in practice), but ships a coverage gap.
-- **Suggested action:** Author 1 fixture + 1 scenario; tag `model: sonnet` if haiku is empirically noisy on the path; ship as a follow-up task to `debug-empirical-telemetry-skill`. Could be combined with the related sonnet-tag pattern from `SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET` if a sonnet-tagging hygiene pass is done in the same task.
-- **Priority:** low — covers a rare-but-real terminal path; not blocking.
-- **Status:** pending
 
 ---
 
