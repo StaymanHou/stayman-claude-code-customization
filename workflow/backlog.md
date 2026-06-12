@@ -6,8 +6,19 @@
 
 ## TODO
 
+## SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START
+- **Order:** P5
+- **Source:** feature:ship (code-quality-reviewer-subagent, 2026-06-11) — dogfooding limitation observed when ship → review-quality F38 chain attempted to invoke the newly-created `feature-review-quality` skill in the same session that introduced it. Returned "Unknown skill" error.
+- **Target level:** task:plan (small/simple — document the limitation OR explore session-restart-after-skill-install workaround)
+- **Type:** harness limitation / observation
+- **Summary:** The Skill tool's in-process skill registry is loaded once at session start. New skills added mid-session (e.g., a feature that introduces a new SKILL.md, runs install.sh to create the symlink, and then attempts to invoke the new skill) are NOT visible to `Skill("<name>")` calls — the call returns "Unknown skill". This bites in two cases: (1) any feature that creates a new skill cannot dogfood that skill within the same session that created it; (2) any orchestrator chain that would invoke a newly-installed skill (like F38 → review-quality after this feature shipped) must defer to a future session. Confirmed empirically 2026-06-11 during this feature's ship: `Skill("feature-review-quality")` returned "Unknown skill" despite the symlink being live at `~/.claude/skills/feature-review-quality`.
+- **Context:** Workaround used here was a one-time bootstrap-skip — the feature shipped, finalized normally, and the next feature shipped in any future session will be the first real invocation of F38 → review-quality. This is acceptable but introduces a small dogfooding gap: the new skill ships untested-in-real-invocation, only tested via the harness's `Skill` proxy through `tests/run-tests.sh` (which spawns its own subprocess and presumably loads the registry fresh per test).
+- **Suggested action:** Two options: (a) document the limitation in CLAUDE.md as a known property of the Skill harness ("new skills added mid-session require a new session to invoke; tests/run-tests.sh exercises new skills via subprocess spawn"), low-effort; (b) investigate whether `/session-pause` → `/session-resume` would reload the registry, which would give us mid-session skill discovery for free. Option (b) is the higher-value path but needs spike effort to confirm.
+- **Priority:** low — the workaround (bootstrap-skip, defer real invocation to next session) is acceptable; the limitation only bites the feature that creates a new skill. Documenting it is sufficient unless option (b) proves trivial.
+- **Status:** pending
+
 ## SURFACE-2026-06-09-F16-TRIAGE-AMBIGUOUS-FLAKY-SOFT-PASS-ON-SONNET
-- **Order:** P4 (combine with P3 as a single sonnet-hygiene task)
+- **Order:** P3 (combine with P2 as a single sonnet-hygiene task)
 - **Source:** task:act (verify-codify-scenarios-need-sonnet-tag, 2026-06-09) — surfaced during the P2 sonnet recon sweep when these 2 of 8 scenarios SOFT_PASSed on sonnet too (not just haiku).
 - **Target level:** task:plan (small/medium — scenario design fix, possibly skill-prose audit)
 - **Type:** test-scenario design / output-shape mismatch
@@ -20,7 +31,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-09-GREP-CHECK-HELPER-PIPEFAIL-INTERACTION
-- **Order:** P5
+- **Order:** P4
 - **Source:** feature:verify-codify (check-structure-sigterm-propagation, 2026-06-09) — surfaced as pre-existing tech debt during the design of 2 new negative pins. Same root cause hit me twice during this feature's verify-codify.
 - **Target level:** task:plan (small/simple — fix the helper's count-capture pattern + one-line audit of existing call sites)
 - **Type:** tech-debt / latent bug
@@ -32,7 +43,7 @@
 
 
 ## SURFACE-2026-06-10-DEBUG-TELEMETRY-INCONCLUSIVE-SCENARIO
-- **Order:** P3 (combine with P4 as a single sonnet-hygiene task)
+- **Order:** P2 (combine with P3 as a single sonnet-hygiene task)
 - **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 3 P3.7 stretch deferral, 2026-06-10)
 - **Target level:** task:plan (small/simple — single scenario + fixture, scoped follow-up)
 - **Type:** test-coverage gap
@@ -44,7 +55,7 @@
 - **Status:** pending
 
 ## SURFACE-2026-06-10-DEBUG-WITHIN-SKILL-STRUCTURAL-PINS
-- **Order:** P2
+- **Order:** P1
 - **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 1 surfacing, 2026-06-10)
 - **Target level:** task:plan (small/simple — single tests/check-structure.sh edit, iterating loop already in place)
 - **Type:** test-coverage extension (debug-* category)
@@ -53,17 +64,6 @@
 - **Suggested action:** Extend Phase 3b's `for debug_skill in skills/debug-*/SKILL.md` loop with ~5 new `grep_check` calls inside the existing iteration: file presence (implicit — the loop body already requires `-f`), 6-required-sections grep, termination-token regex, argument-hint frontmatter grep, Gate-Check-first-under-Procedure grep. Estimated +5 pins × 2 skills = +10 PASS, 150 → 160 after this task lands.
 - **Priority:** low — both existing debug-* skills currently satisfy these pins; the regression risk is "future edit deletes/breaks one of these properties," which would be caught at PR time by check-structure.sh once pins land. No active bite.
 - **Status:** pending
-
-## SURFACE-2026-06-02-CODE-QUALITY-REVIEWER-SUBAGENT
-- **Order:** P1
-- **Source:** Comparative analysis of `obra/superpowers` workflow system (2026-06-02). Full report archived at `docs/product/archive/research/2026-06-02-superpowers-comparison.md`. Specific borrow: superpowers' subagent-driven-development pattern dispatches a **code-quality-reviewer subagent** (distinct from a spec-compliance reviewer) on each completed task. Code-quality reviewer reads the implementation against quality criteria (good patterns, appropriate abstractions, testability) — separate from "did it match the spec?" which is a different lens.
-- **Target level:** harness / skill — likely a new dedicated review skill, or augmentation of `feature-verify-human` / `feature-finalize`.
-- **Type:** new skill or skill augmentation
-- **Summary:** This repo currently has no code-quality review pass distinct from spec-compliance verification. `feature-verify-human` mixes "did it do what the plan said?" (binary spec compliance) with "is it well-built?" (judgment-based code quality) — two different questions that benefit from different lenses. Superpowers' separation forces the agent through two distinct passes with different checklists. Worth importing as either: (a) a dedicated reviewer subagent invoked after `feature-verify-human` (or after `feature-build` on a phase) with a curated prompt template (their pattern: store reviewer prompts as separate files referenced from the skill), OR (b) a new leaf in the per-phase verify loop between `verify-human` and `verify-codify` — `verify-code-quality`. Subagent route preserves parent context and matches this repo's "use subagents for isolated review tasks" posture; new-leaf route slots into the existing state machine more naturally.
-- **Why it matters:** Current verify loop catches "wrong thing built" (verify-human against observable outcomes) and "regression coverage missing" (verify-codify). The middle question — "is the implementation well-built? are the abstractions right? is it testable? are there obvious smells?" — is currently implicit in human review and inconsistently applied. A dedicated pass with a curated prompt would surface code-quality issues that get missed when the human is checking observable outcomes.
-- **Suggested action:** Spec'able feature (not direct plan) — both the placement (new skill vs. augment existing) and the prompt template need design. Open questions: (1) parent-context review vs. subagent dispatch — parent context preserves continuity but pollutes; subagent is fresh-eyes but costs an Agent invocation. (2) Scope — per phase or per feature? Per phase is more granular but more friction. (3) Prompt template — what does a code-quality reviewer for *this* codebase actually check for? Superpowers' `code-quality-reviewer-prompt.md` is a starting point but their patterns may not all transfer.
-- **Priority:** medium — real gap in the current verify loop, no active blocker, worth speccing when a feature cycle has space.
-- **Status:** open
 
 ---
 
