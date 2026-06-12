@@ -54,17 +54,6 @@
 - **Priority:** low — covers a rare-but-real terminal path; not blocking.
 - **Status:** pending
 
-## SURFACE-2026-06-10-DEBUG-WITHIN-SKILL-STRUCTURAL-PINS
-- **Order:** P2
-- **Source:** feature:verify-codify (debug-empirical-telemetry-skill, Phase 1 surfacing, 2026-06-10)
-- **Target level:** task:plan (small/simple — single tests/check-structure.sh edit, iterating loop already in place)
-- **Type:** test-coverage extension (debug-* category)
-- **Summary:** `tests/check-structure.sh` Phase 3b iterates over all `skills/debug-*/SKILL.md` files but only asserts the 2 gate-boundary headings (`## When to use` / `## When NOT to use`) are present. The other load-bearing SKILL.md properties are NOT pinned for any debug-* skill: (1) file presence in the iterating loop, (2) 6 required sections in full (`## Category Context`, `## Procedure`, `## Pitfalls`, `## Termination` in addition to the 2 already pinned), (3) 4 termination tokens in the `## Termination` table, (4) `argument-hint:` frontmatter field, (5) Gate Check as the first `### ` subheading under Procedure. This is the existing convention — both `debug-bisect-known-good` AND `debug-empirical-telemetry` ship with these gaps. Not a regression of either skill; surfacing as a category-level structural-pin extension proposal.
-- **Context:** Verified Phase 1 of the `debug-empirical-telemetry-skill` feature observed all 9 of these structural properties via verify-self CLI checks (and confirmed all PASS for the new skill). Codifying them as Phase 3b iterating-loop assertions would add coverage uniformly to both existing debug-* skills + any future ones. Per Phase 1's discovery note in the WIP file: "expected new PASS count: 143 + (5 pins × 2 skills) = 153 instead of the planned 150."
-- **Suggested action:** Extend Phase 3b's `for debug_skill in skills/debug-*/SKILL.md` loop with ~5 new `grep_check` calls inside the existing iteration: file presence (implicit — the loop body already requires `-f`), 6-required-sections grep, termination-token regex, argument-hint frontmatter grep, Gate-Check-first-under-Procedure grep. Estimated +5 pins × 2 skills = +10 PASS, 150 → 160 after this task lands.
-- **Priority:** low — both existing debug-* skills currently satisfy these pins; the regression risk is "future edit deletes/breaks one of these properties," which would be caught at PR time by check-structure.sh once pins land. No active bite.
-- **Status:** pending
-
 ---
 
 ## MAYBE
