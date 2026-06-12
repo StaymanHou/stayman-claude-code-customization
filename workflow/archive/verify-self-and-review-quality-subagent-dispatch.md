@@ -286,11 +286,11 @@ All 6 OQs resolved in-spec:
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > ship (all 3 phases complete; entering ship)
-- **Active scope:** feature-ship
+- **Path:** Feature > review-quality (complete) → finalize (next)
+- **Active scope:** feature-finalize
 - **Blocked:** none
-- **Unvisited:** ship → review-quality (or finalize direct via F17b if Mode 4) → finalize
-- **Open discoveries:** 3 (all operator-approved at Phase 2 verify-human; backlog updates landed)
+- **Unvisited:** finalize
+- **Open discoveries:** 3 (operator-approved); 2 new MAJOR review-quality findings auto-backlogged (SURFACE-2026-06-12-QUALITY-WIP-DUPLICATE-VERIFY-CODIFY-LEAVES + SURFACE-2026-06-12-QUALITY-SUBAGENT-DISPATCH-PIN-ASYMMETRIC)
 
 ## Test Triage — Phase 1 verify-codify cross-phase deferral
 
@@ -320,6 +320,58 @@ All 6 OQs resolved in-spec:
 - **P3.2** behavioral scenario in `tests/scenarios/feature.yaml` asserting the harness sees the `subagent_type` literal in a fresh subprocess (which loads new SKILL.md content from disk, bypassing this-session cache).
 
 Phase 2 verify-codify is structurally complete; regression-coverage surface remains 200/200 PASS. No test files modified beyond the pin substitution in Phase 2 itself, and that substitution was net 0 in PASS count (verified at verify-auto). No triage entry against a failure.
+
+## Code-Quality Review — verify-self-and-review-quality-subagent-dispatch
+
+Spawned via `general-purpose` fallback per the new `feature-review-quality` §2 bootstrap-skip prose — the named `code-quality-reviewer` subagent isn't yet in this session's agent registry (same registry-cached-at-session-start pattern as Phase 1+2 verify-self). The dispatch fired empirically; this review is the first real F38 → review-quality output in the repo's history.
+
+### Strengths
+- Self-extending Phase-10 pin block in `tests/check-structure.sh` (lines 1472-1538) iterates `agents/*/AGENTS.md` and selects executable subagents by `tools:` frontmatter marker — adding the third subagent in the future picks up coverage automatically with no edit. This is the right shape for category-level coverage.
+- Cross-skill assertion (e) (`tests/check-structure.sh:1520-1538`) catches the exact regression the feature was built to prevent: any skill declaring `Agent` in `allowed-tools` but containing no `subagent_type:` reference fails the pin. Directly maps a SURFACE-2026-06-11 to a structural test.
+- Bootstrap-skip fallback prose in both `skills/feature-verify-self/SKILL.md:123` and `skills/feature-review-quality/SKILL.md:108` is concrete and actionable — names the recovery shape (`subagent_type: 'general-purpose'`) and the audit-trail line format. Avoids re-discovery cost on the next mid-session add.
+- The `agents/code-quality-reviewer/AGENTS.md:26` calibration update — distinguishing reference-only vs. executable agents — is internally self-referential (the reviewer's own definition now describes the convention it embodies), which keeps the codebase context section honest with what the agent actually sees on disk.
+- CLAUDE.md "Two kinds of artifacts" section (`CLAUDE.md:36-38`) is now precise about the frontmatter marker as the structural distinguisher and cites the Phase-10 pin block as the enforcement surface — the doc/code/test alignment is tight.
+
+### Issues
+**CRITICAL**
+- (none)
+
+**MAJOR**
+- [`workflow/wip/verify-self-and-review-quality-subagent-dispatch.md:259-260` and `:285-286`] Each completed Phase has a duplicate `verify-codify` leaf: one `[x]` with the completion note immediately followed by `- [ ] verify-codify  <!-- status: NOT-STARTED -->`. Per the global Work-Tree-format rule ("a parent's checkbox may only be `[x]` when ALL children are `[x]`"), Phases 2 and 3 are technically NOT cleanly closed since each has an unchecked child. — *Why it matters: load-bearing global convention; future readers reading the tree to confirm phase closure will see a contradiction. Fix is one-line per occurrence — delete the duplicate NOT-STARTED leaf — and is the kind of artifact `feature-finalize` should clean before archive.*
+- [`SURFACE-2026-06-12-REFERENCE-WORKFLOW-AGENTS-ARE-INVOKABLE` in `workflow/backlog.md:34-43`] The newly-codified convention (`tools:` ↔ executable, `skills:` ↔ reference) is enforced "forward" by Phase 10 — but a skill that erroneously writes `subagent_type: 'feature-workflow'` (or any reference-only agent name) would not fail any pin. The new backlog entry P7 names this gap and proposes a one-line additional `grep_check`, but the gap exists at ship time. — *Why it matters: shipping the back-reference pin in the same feature would have been the symmetric and cheap path. The omission converts a structural guard into a discipline norm.*
+
+**MINOR**
+- [`workflow/wip/verify-self-and-review-quality-subagent-dispatch.md:289-293`] `## Current Node` says `Path: Feature > ship (all 3 phases complete; entering ship)` but the commit history shows the feature already shipped at 737af32. Current Node is stale relative to the actual workflow position — should already point at `review-quality` or `finalize`. — *Why it matters: trivial cosmetic, but `## Current Node` is documented as authoritative; ship didn't update it.*
+- [`tests/fixtures/wip/verify-self-cli-verifiable-phase.md:22`] Observable outcome references `docs/reference/conventions.md`, which doesn't exist in the repo. The scenario short-circuits via `system_prompt_extra`, so outcomes are never executed — fine for the test. But the fixture would mislead a reader. A one-line comment "fixture is mocked at run time; outcomes are illustrative only" would prevent the trip-hazard. — *Why it matters: low-effort polish.*
+- [`skills/feature-verify-self/SKILL.md:106-119` and `skills/feature-review-quality/SKILL.md:83-103`] The `Agent({...})` invocation blocks are written in JS object literal syntax, but Agent tool calls in this harness are actually JSON-shaped tool calls. The prose is illustrative, and the `subagent_type: 'feature-verify-self-runner'` string is what the structural pin and behavioral scenario grep against — but the JS-object shape diverges from how the harness actually receives the call. — *Why it matters: minor pedagogic clarity; replacing the JS braces with prose would be unambiguous.*
+- [`tests/check-structure.sh:1502`] The `tools:` non-empty assertion uses `awk` to extract the YAML list block, but on a malformed AGENTS.md (e.g., `tools:` field followed by an inline `[]`) the regex `^[a-zA-Z]` lookahead would prematurely terminate. — *Why it matters: defensive shell parsing for YAML is fragile; `yq -r '.tools | length'` would be more robust. Low priority — pin works for current inputs.*
+
+### Assessment
+Solid, well-shaped feature that closes a real gap (non-deterministic subagent dispatch surfaced from archive grep) with three layers of enforcement (agent definitions on disk, skill prose naming the target, structural + behavioral pins). The self-extending pin block is the highlight — it's the right pattern for a category-level convention. The biggest cleanliness gap is the WIP-file duplicate `verify-codify` leaves; this should be addressed by `feature-finalize`. The backlog item for the back-reference pin is correctly identified, but shipping the asymmetric enforcement leaves the convention partially load-bearing — a same-feature extension would have completed the picture.
+
+### If you disagree
+Operator: dismiss any finding by editing this section in the WIP file and marking the line `[DISMISSED]` before `feature-finalize` archives the WIP. The finding will be skipped by the orchestrator's severity-tier action matrix.
+
+## Retrospect
+
+- **What changed in our understanding:** The operator's initial framing (P1 backlog item) anticipated "the dispatch prose may be weak — verify-self may be running inline instead of spawning a subagent." Mid-spec, the operator caught the deeper truth: *the two subagents being spawned don't exist as definitions in this repo*. The 4 `agents/*-workflow/AGENTS.md` files are reference-only orchestrator documents, by design; no executable subagent has ever existed in this repo until now. So the §2 prose said "spawn an Agent" without ever naming what kind, and the executing agent had no clean target — falling back to either default `general-purpose` or skipping the spawn entirely when CLI tools sufficed. This reframing changed the fix shape from "prose-strengthen + structural pin" (the original 3-option tree) to "create the two missing dispatch targets, then wire skills by `subagent_type` name" (the actual feature).
+
+- **Assumptions that held:**
+  - The harness's `Agent` tool with `subagent_type` parameter would work as a runtime selector once a target exists — confirmed empirically when the F10b-dispatches-subagent-by-name behavioral scenario PASSed strict on haiku at 17s on first attempt.
+  - `install.sh`'s existing `agents/*/` for-loop would symlink new directories without modification — confirmed empirically (P1.3, both `[new]` then `[ok]` idempotent).
+  - The structural-pin convention's `tools:` frontmatter marker would cleanly distinguish executable from reference agents — held; the Phase 10 self-extending pin block works.
+  - The bootstrap-skip from yesterday's P6 backlog entry would apply to mid-session subagent dispatch — confirmed empirically AND scope was BROADER than P6 originally stated.
+
+- **Assumptions that were wrong:**
+  - **Scope of bootstrap-skip was broader than P6 originally captured.** P6 was about "new skills/agents added mid-session aren't visible." Phase 2 verify-self confirmed it also covers "edited Skill SKILL.md content is not re-read mid-session" — the harness loads BOTH the registry AND the prose body at session start. P6 entry extended with this finding.
+  - **The 4 reference-only `*-workflow` agents are INVOKABLE as subagent_type.** Surfaced during Phase 1 verify-self's bootstrap-skip error message, which listed them as "Available agents." The convention's CLAUDE.md doc said they're reference-only; the harness disagrees. New SURFACE-2026-06-12-REFERENCE-WORKFLOW-AGENTS-ARE-INVOKABLE (P7) captures the gap.
+  - **Phase 10 enforcement is asymmetric.** Caught by feature-review-quality (the new skill dogfooding for the first time): the pin block enforces "executable subagents must be referenced by ≥1 skill" forward but not the back-reference ("a `subagent_type:` value must point to an executable agent, not a reference-only one"). The symmetric pin would have been ~3 lines; omission converts a structural guard into a discipline norm. New SURFACE-2026-06-12-QUALITY-SUBAGENT-DISPATCH-PIN-ASYMMETRIC captures this.
+
+- **Approach delta:** Spec landed on (a) prose-and-pin with (b) orchestrator-dispatch as fallback. Both options were *wrong scope* — neither addressed the missing target. Operator caught it at end of spec presentation. Spec rewritten around the corrected framing. All 3 phases executed without F23 (plan back-loop) or F36 (reproduce REDIRECT). One F12-shaped event (operator's mid-spec catch) but no formal back-loop transition fired — it was treated as inline spec revision before plan handoff. Verify-codify discipline was satisfied with the cross-phase test-deferral pattern (P1 + P2 codify deferred to Phase 3, which IS the test-coverage phase) — same pattern as task-workflow-needs-lite-verify and code-quality-reviewer-subagent yesterday. The feature dogfooded itself at review-quality time: this is the first real F38 → review-quality invocation in repo history, and the new bootstrap-skip fallback prose worked exactly as designed.
+
+## Closure message
+
+**Feature complete:** `verify-self-and-review-quality-subagent-dispatch` has shipped (commit 737af32 on origin/main). Two new executable subagent definitions land under `agents/` (`feature-verify-self-runner`, `code-quality-reviewer`), both calling skills are wired to invoke their subagent by `subagent_type` name, and the dispatch contract is regression-gated by a structural pin block (Phase 10) + a behavioral scenario (`F10b-dispatches-subagent-by-name`, haiku PASS strict 17s). The 2026-04-27 arch.md "verify-self runs as a subagent" design property is restored from a discipline norm into a structurally-enforced contract. Verify by running `./tests/check-structure.sh` (expect 210/210 PASS) or `./tests/run-tests.sh --id F10b-dispatches-subagent-by-name --model haiku`. (Requester = operator — closure notice for self-record.)
 
 ## Discoveries
 
