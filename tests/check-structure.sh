@@ -190,6 +190,28 @@ grep_check "feature-reproduce SKILL.md has Step 0 section" "skills/feature-repro
 grep_check "incident-report SKILL.md has Step 0 section" "skills/incident-report/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "product-vision SKILL.md has Step 0 section" "skills/product-vision/SKILL.md" "^## Step 0: Available product context" 1
 
+# feature-review-quality per-feature code-quality reviewer subagent shipped
+# 2026-06-11 (feature: code-quality-reviewer-subagent). Sits between ship and
+# finalize; advisory by default with severity-tier action matrix (CRITICAL →
+# auto-refactor in Modes 2-3, MAJOR → pause-and-ask Mode 2 / auto-backlog
+# Mode 3, MINOR → auto-backlog). Mode 4 SKIPs entirely (ship → finalize via
+# F17b). The pin set below catches regression on load-bearing properties:
+#   1. SKILL.md exists with name frontmatter
+#   2. Externalized reviewer-prompt.md exists
+#   3. State Machine Context names F39/F40/F41 (the three exit transitions)
+#   4. Severity Taxonomy section is present with CRITICAL/MAJOR/MINOR vocabulary
+#   5. Reviewer prompt has tripartite output format anchors
+#   6. CLAUDE.md Conventions section cites feature-review-quality
+#   7. feature-ship SKILL.md emits TRANSITION: F38 (default) AND F17b (Mode-4 SKIP)
+grep_check "feature-review-quality SKILL.md exists with name frontmatter" "skills/feature-review-quality/SKILL.md" "^name: feature-review-quality$" 1
+grep_check "feature-review-quality reviewer-prompt.md exists" "skills/feature-review-quality/reviewer-prompt.md" "Code-Quality Reviewer" 1
+grep_check "feature-review-quality SKILL.md names F39/F40/F41 exit transitions" "skills/feature-review-quality/SKILL.md" "F39|F40|F41" 3
+grep_check "feature-review-quality SKILL.md has Severity Taxonomy with CRITICAL/MAJOR/MINOR" "skills/feature-review-quality/SKILL.md" "CRITICAL|MAJOR|MINOR" 3
+grep_check "feature-review-quality reviewer-prompt.md has tripartite output anchors" "skills/feature-review-quality/reviewer-prompt.md" "Strengths|Issues|Assessment" 3
+grep_check "CLAUDE.md Conventions section cites feature-review-quality" "CLAUDE.md" "feature-review-quality" 1
+grep_check "feature-ship SKILL.md emits TRANSITION: F38 (default path)" "skills/feature-ship/SKILL.md" "TRANSITION: F38" 1
+grep_check "feature-ship SKILL.md emits TRANSITION: F17b (Mode 4 SKIP path)" "skills/feature-ship/SKILL.md" "TRANSITION: F17b" 1
+
 echo ""
 
 # ── Phase 3b: debug-* skill category invariants ────────────────────────────
@@ -1136,6 +1158,7 @@ PAUSE_POLICY_FILES=(
   skills/feature-verify-self/SKILL.md
   skills/feature-verify-human/SKILL.md
   skills/feature-verify-codify/SKILL.md
+  skills/feature-review-quality/SKILL.md
 )
 
 for f in "${PAUSE_POLICY_FILES[@]}"; do
@@ -1330,6 +1353,15 @@ ROW_MAPPING = {
         ("F16 ",                  "`feature-verify-codify`"),
         ("F14 ",                  "Back-loops (F6, F9, F9b, F12, F14, F23, F24)"),
     ],
+    "feature-review-quality": [
+        # Skill invocation maps to F39 row in AGENTS.md (the default-clean path).
+        # F39/F40/F41 each have their own AGENTS.md rows since drift between
+        # them matters (each tier's per-mode action is independently load-bearing).
+        ("Skill invocation",      "`feature-review-quality` — F39 (clean / MINOR / Mode-3 MAJOR auto-backlogged)"),
+        ("F39 ",                  "`feature-review-quality` — F39 (clean / MINOR / Mode-3 MAJOR auto-backlogged)"),
+        ("F40 ",                  "`feature-review-quality` — F40 (CRITICAL → auto-invoke refactor)"),
+        ("F41 ",                  "`feature-review-quality` — F41 (Mode-2 MAJOR — operator pause-and-ask)"),
+    ],
 }
 
 agents = parse_agents_table("agents/feature-workflow/AGENTS.md")
@@ -1341,7 +1373,7 @@ else:
 SKILLS = [
     "feature-spec", "feature-research", "feature-plan", "feature-build",
     "feature-verify-auto", "feature-verify-self", "feature-verify-human",
-    "feature-verify-codify", "feature-reproduce",
+    "feature-verify-codify", "feature-reproduce", "feature-review-quality",
 ]
 
 for skill in SKILLS:

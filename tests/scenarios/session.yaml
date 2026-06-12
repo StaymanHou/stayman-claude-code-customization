@@ -157,7 +157,8 @@ scenarios:
     system_prompt_extra: |
       You are driving the feature workflow end-to-end (orchestrated mode).
       The user has confirmed they want end-to-end driving.
-      feature-ship completed (transition F17 fired — ship → finalize).
+      feature-ship completed (F38 → review-quality); review-quality reported clean
+      with no findings and emitted F39 — review-quality → finalize.
       Per the AUTO/PAUSE policy in agents/feature-workflow/AGENTS.md:
       feature-finalize is PAUSE — the orchestrator must stop after finalize
       completes and wait for the human to confirm cycle close and backlog review.

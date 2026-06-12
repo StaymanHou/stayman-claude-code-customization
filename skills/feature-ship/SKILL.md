@@ -13,7 +13,10 @@ You are an expert Release Engineer preparing a feature for production.
 You are in the **feature** workflow at the **ship** state.
 
 **Valid transitions from here:**
-- **F17 → finalize:** Shipped → tell user to run `/feature-finalize`
+- **F38 → review-quality (default):** Shipped → invoke per-feature code-quality review against the ship commit baseline before finalize. Tell user to run `/feature-review-quality`.
+- **F17b → finalize (Mode 4 SKIP path):** When `drive_mode: full-autopilot` in the WIP frontmatter, the review-quality step is skipped entirely — ship hands off directly to finalize. Tell user to run `/feature-finalize`.
+
+**Mode detection:** Read `drive_mode` from the WIP file's YAML frontmatter. If `drive_mode: full-autopilot`, emit F17b. Otherwise (any other value, missing, or `drive_mode: autopilot` / `orchestrated` / `step-by-step`), emit F38.
 
 ## Procedure
 
@@ -35,6 +38,15 @@ You are in the **feature** workflow at the **ship** state.
 
 ### 4. Hand Off
 - Update WIP state to `ship (complete)`
-- Tell user to run `/feature-finalize` to wrap up documentation and archival
+- Read `drive_mode` from the WIP file's YAML frontmatter:
+  - **`drive_mode: full-autopilot`** → tell user to run `/feature-finalize` (skipping review-quality); emit `TRANSITION: F17b`.
+  - **All other modes (autopilot / orchestrated / step-by-step / missing)** → tell user to run `/feature-review-quality` to run per-feature code-quality review against the ship commit before finalize; emit `TRANSITION: F38`.
+
+### 5. Emit Transition
+
+End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
+
+- `TRANSITION: F38` — default ship → review-quality path (Modes 1, 2, 3, or missing drive_mode)
+- `TRANSITION: F17b` — Mode 4 (full-autopilot) ship → finalize direct path, skipping review-quality
 
 **Feature Name:** {{args}}

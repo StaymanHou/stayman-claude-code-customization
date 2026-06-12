@@ -1,6 +1,6 @@
 ---
 name: feature-workflow
-description: Orchestrator agent for the feature workflow state machine — the most complex workflow with 10 states and per-phase verification loops
+description: Orchestrator agent for the feature workflow state machine — the most complex workflow with 11 states and per-phase verification loops
 skills:
   - feature-reproduce
   - feature-spec
@@ -11,6 +11,7 @@ skills:
   - feature-verify-human
   - feature-verify-codify
   - feature-ship
+  - feature-review-quality
   - feature-finalize
   - feature-refactor
   - session-pause
@@ -20,7 +21,7 @@ skills:
 
 # Feature Workflow Orchestrator
 
-You manage the **feature workflow** — a 10-state machine for multi-step implementation units.
+You manage the **feature workflow** — an 11-state machine for multi-step implementation units.
 
 ## State Machine
 
@@ -37,10 +38,13 @@ Entry (simple)  ─────────────────────�
     │                                           │
     │              (all phases done) ◄──────────┘
     │                     │
-    └─────────────────── ship → finalize → [refactor] → Exit
+    └─────────── ship → review-quality ──┬──→ finalize → [refactor] → Exit
+                       │  (Modes 1-3)    │
+                       │                 └──→ refactor (F40, CRITICAL) → plan/exit
+                       └─→ finalize (F17b, Mode 4 SKIPs review-quality)
 ```
 
-**Order after verify-codify (final phase):** ship → finalize, never the reverse. Finalize archives the WIP file that ship reads from; reversing emits premature "shipped" claims. See `SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP`.
+**Order after verify-codify (final phase):** ship → review-quality → finalize, never reversed. Finalize archives the WIP file that ship reads from; reversing emits premature "shipped" claims. See `SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP`. The review-quality step sits between ship and finalize so the reviewer reads against the green-tests committed baseline; Mode 4 (full-autopilot) skips review-quality entirely via F17b.
 
 ### Small/Simple Criteria (skip spec, enter at plan)
 All must hold:
@@ -70,6 +74,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | verify-human | `/feature-verify-human` | Manual verification |
 | verify-codify | `/feature-verify-codify` | Codify tests from verification |
 | ship | `/feature-ship` | Cleanup and PR prep |
+| review-quality | `/feature-review-quality` | Per-feature code-quality review (advisory; CRITICAL auto-refactors in Modes 2-3, Mode 4 SKIPs) |
 | finalize | `/feature-finalize` | Docs, backlog review, archive, append to CHANGELOG.md |
 | refactor | `/feature-refactor` | Tech debt cleanup |
 
@@ -93,7 +98,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F14 | verify-codify → verify-human | New tests reveal issues | back-loop |
 | F15 | verify-codify → build | More phases remain | forward |
 | F16 | verify-codify → ship | All phases done | forward |
-| F17 | ship → finalize | Shipped | forward |
+| F17b | ship → finalize | Shipped, Mode 4 SKIPs review-quality — direct ship → finalize | forward |
 | F18 | finalize → refactor | Tech debt found | forward |
 | F19 | finalize → EXIT→reflect | No tech debt | exit |
 | F20 | refactor → plan | Needs plan (cleanup only!) | forward |
@@ -113,6 +118,10 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F36 | build → reproduce | REDIRECT: fix cannot be confirmed without reproducing first | redirect |
 | F37 | reproduce → build | Return-from-F36: reproduced cleanly, resume build with artifact | forward |
 | F37b | reproduce → build | Return-from-F36: could-not-reproduce, resume build with Discovery | forward |
+| F38 | ship → review-quality | Shipped — invoke per-feature code-quality review (default path; Mode 4 skips via F17b) | forward |
+| F39 | review-quality → finalize | Review clean (no findings, MINOR auto-backlogged, or Mode-3 MAJOR auto-backlogged) | forward |
+| F40 | review-quality → refactor | Review surfaced CRITICAL finding — auto-invoke refactor (Modes 2–3) | forward |
+| F41 | review-quality → finalize | Mode-2 MAJOR after operator pause-and-ask, operator chose backlog/defer | forward |
 
 ## Your Role
 
@@ -161,6 +170,10 @@ Full policy tables for all workflows are in `docs/product/transitions.md` → "D
 | `feature-verify-human` | PAUSE | **PAUSE** | **PAUSE** (await human) — or **AUTO-SKIP** when no integration boundary + verify-self all-PASS | **SKIP** |
 | `feature-verify-codify` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-ship` | PAUSE | AUTO | AUTO | AUTO |
+| `feature-review-quality` — F39 (clean / MINOR / Mode-3 MAJOR auto-backlogged) | PAUSE | AUTO | AUTO | **SKIP** (entire skill) |
+| `feature-review-quality` — F40 (CRITICAL → auto-invoke refactor) | PAUSE | AUTO | AUTO | **SKIP** (entire skill) |
+| `feature-review-quality` — F41 (Mode-2 MAJOR — operator pause-and-ask) | PAUSE | **PAUSE** | n/a (Mode 3 auto-backlogs via F39) | **SKIP** (entire skill) |
+| `feature-ship` — F17b alternate (Mode 4 SKIP path — ship goes direct to finalize) | n/a | n/a | n/a | AUTO (ship emits F17b → finalize, skipping review-quality) |
 | `feature-finalize` | PAUSE | **PAUSE** | AUTO | AUTO |
 | `feature-refactor` | PAUSE | AUTO | AUTO | AUTO |
 | Back-loops (F6, F9, F9b, F12, F14, F23, F24) | PAUSE | AUTO | AUTO | AUTO |

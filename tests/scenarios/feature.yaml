@@ -750,19 +750,105 @@ scenarios:
         - "mock"
     max_retries: 2
 
-  - id: F17
-    name: "feature:ship → finalize"
+  - id: F38
+    name: "feature:ship → review-quality (default path in Modes 1-3)"
     skill: feature-ship
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-codify-all-phases-done.md
+      wip: fixtures/wip/feature-shipped-autopilot.md
     system_prompt_extra: |
-      All cleanup done. No temporary files. Tests pass. PR is ready.
+      Cleanup done. Tests pass. The WIP frontmatter shows drive_mode: autopilot,
+      so this is NOT the Mode-4 SKIP path — review-quality must be invoked
+      before finalize.
     expect:
-      transition_id: F17
+      transition_id: F38
+      contains_any:
+        - "/feature-review-quality"
+        - "review-quality"
+      not_contains:
+        - "/feature-finalize"
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F17b
+    name: "feature:ship → finalize direct (Mode 4 full-autopilot SKIPs review-quality)"
+    skill: feature-ship
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-shipped-full-autopilot.md
+    system_prompt_extra: |
+      Cleanup done. Tests pass. The WIP frontmatter shows drive_mode: full-autopilot,
+      so review-quality is SKIPPED entirely — ship hands off directly to finalize.
+    expect:
+      transition_id: F17b
       contains_any:
         - "/feature-finalize"
       not_contains:
+        - "/feature-review-quality"
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F39
+    name: "feature:review-quality → finalize (clean review, no findings)"
+    skill: feature-review-quality
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-review-quality-clean.md
+    system_prompt_extra: |
+      The reviewer subagent has already completed and the result block in the WIP's
+      `## Code-Quality Review` section shows zero CRITICAL, zero MAJOR, zero MINOR
+      findings. No backlogging needed. Proceed to finalize.
+    expect:
+      transition_id: F39
+      contains_any:
+        - "/feature-finalize"
+        - "finalize"
+      not_contains:
+        - "/feature-refactor"
+        - "/feature-build"
+    max_retries: 2
+
+  - id: F40
+    name: "feature:review-quality → refactor (CRITICAL finding in Modes 2-3 auto-invokes refactor)"
+    skill: feature-review-quality
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-review-quality-critical.md
+    system_prompt_extra: |
+      The reviewer subagent has completed and the WIP's `## Code-Quality Review`
+      section shows ONE CRITICAL finding (a silent-failure security regression in
+      the auth path). drive_mode is autopilot. Per the severity-tier action matrix,
+      CRITICAL in Modes 2-3 auto-invokes refactor before finalize.
+    expect:
+      transition_id: F40
+      contains_any:
+        - "/feature-refactor"
+        - "refactor"
+        - "CRITICAL"
+      not_contains:
+        - "/feature-finalize"
+    max_retries: 2
+
+  - id: F41
+    name: "feature:review-quality → finalize (Mode-2 MAJOR after pause-and-ask, operator chose backlog/defer)"
+    skill: feature-review-quality
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-review-quality-major-mode2.md
+    system_prompt_extra: |
+      The reviewer subagent has completed; the WIP shows ONE MAJOR finding around
+      duplication between code and migration. drive_mode is orchestrated (Mode 2).
+      The operator has already responded to the pause-and-ask prompt with
+      "backlog and continue" — proceed to finalize via F41 (the Mode-2 MAJOR
+      completion path).
+    expect:
+      transition_id: F41
+      contains_any:
+        - "/feature-finalize"
+        - "finalize"
+        - "backlog"
+      not_contains:
+        - "/feature-refactor"
         - "/feature-build"
     max_retries: 2
 

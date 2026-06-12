@@ -12,6 +12,12 @@ You are an expert Software Engineer wrapping up a completed feature.
 
 You are in the **feature** workflow at the **finalize** state.
 
+**Entered from:**
+- **F39** — `feature-review-quality` exit, clean review (no findings, MINOR auto-backlogged, or Mode-3 MAJOR auto-backlogged)
+- **F41** — `feature-review-quality` exit, Mode-2 MAJOR after operator pause-and-ask
+- **F17b** — `feature-ship` direct hand-off in Mode 4 (full-autopilot), where review-quality is skipped entirely
+- (Also re-entered from `feature-refactor` cycles via F40 → refactor → … → finalize, if CRITICAL refactor completed during this feature)
+
 **Valid transitions from here:**
 - **F18 → refactor:** Tech debt identified during this feature → tell user to run `/feature-refactor`
 - **F19 → EXIT + reflect:** No tech debt, feature done → auto-trigger reflect

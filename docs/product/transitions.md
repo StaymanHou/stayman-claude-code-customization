@@ -70,6 +70,10 @@ Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes
 | verify-human | PAUSE | PAUSE | **PAUSE** (or **AUTO-SKIP** when no integration boundary + verify-self all-PASS) | **SKIP** |
 | verify-codify | PAUSE | AUTO | AUTO | AUTO |
 | ship | PAUSE | AUTO | AUTO | AUTO |
+| review-quality — F39 (clean, MINOR-backlogged, Mode-3 MAJOR-backlogged) | PAUSE | AUTO | AUTO | **SKIP** (entire skill) |
+| review-quality — F40 (CRITICAL → auto-invoke refactor) | PAUSE | AUTO | AUTO | **SKIP** (entire skill) |
+| review-quality — F41 (Mode-2 MAJOR — operator pause-and-ask) | PAUSE | **PAUSE** | n/a (Mode 3 auto-backlogs via F39) | **SKIP** (entire skill) |
+| review-quality — F17b alternate path (Mode 4 SKIP — ship goes direct to finalize) | n/a | n/a | n/a | **SKIP** invocation; ship emits F17b → finalize |
 | finalize | PAUSE | PAUSE | AUTO | AUTO |
 | refactor | PAUSE | AUTO | AUTO | AUTO |
 | Back-loops | PAUSE | AUTO | AUTO | AUTO |
@@ -307,7 +311,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 | F14 | verify-codify | verify-human | Back-loop: new tests reveal issues human missed |
 | F15 | verify-codify | build | Tests written, more phases remain (advance to next phase) |
 | F16 | verify-codify | ship | Tests written, all phases complete |
-| F17 | ship | finalize | Shipped / PR ready |
+| F17b | ship | finalize | Shipped, Mode 4 (full-autopilot) SKIPs review-quality — direct ship → finalize |
 | F18 | finalize | refactor | Tech debt identified |
 | F19 | finalize | EXIT→reflect | No tech debt, feature done |
 | F20 | refactor | plan | Refactor needs a plan — CONSTRAINT: scoped to cleanup only, no new features |
@@ -328,8 +332,14 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 | F36 | build | reproduce | REDIRECT: mid-build realization that the fix cannot be confirmed without first reproducing the bug — pause build, reproduce, return |
 | F37 | reproduce | build | Return-from-F36: reproduced cleanly mid-build, artifact attached to WIP; resume build with reproduce artifact as verify-codify anchor |
 | F37b | reproduce | build | Return-from-F36: could-not-reproduce mid-build, document outcome as Discovery; resume build (F35 disallowed from F36-entered reproduce) |
+| F38 | ship | review-quality | Shipped — invoke per-feature code-quality review against the ship commit baseline (default path; Mode 4 skips via F17b) |
+| F39 | review-quality | finalize | Review clean (no findings, MINOR-only auto-backlogged, or Mode-3 MAJOR auto-backlogged) — proceed to finalize |
+| F40 | review-quality | refactor | Review surfaced CRITICAL finding → auto-invoke `feature-refactor` (Modes 2–3) before finalize |
+| F41 | review-quality | finalize | Mode-2 MAJOR finding after operator pause-and-ask completed — operator chose backlog or defer-refactor; proceed to finalize |
 
 **Reproduce step (F31–F35):** Optional, opt-in. Triggered when the user describes undesirable behavior (bug, regression, broken state). For new-capability features (no bug language) reproduce is skipped — workflow enters at spec or plan as before. Red-green discipline: write a failing test (or deterministic manual recipe, or telemetry signature) capturing the bug *before* spec/plan. The reproduction artifact becomes the anchor verify-codify uses to confirm "fixed means this no longer happens." Drive-mode behavior in the Pause-policy section above: F32/F33 are AUTO in modes 2–4; F34 is AUTO in mode 4 only (PAUSE in 1–3 because preventive hardening is a meaningful divergence); F35 is PAUSE in all modes (terminating a workflow without a reproduce signal deserves human confirmation).
+
+**Code-quality reviewer step (F38–F41):** A per-feature post-ship review pass implemented by `feature-review-quality` that sits between `feature-ship` and `feature-finalize`. The ship commit creates a known-good baseline (green tests committed); the reviewer reads the feature's diff against that baseline plus the WIP file and emits a tripartite output (strengths / issues by severity / assessment). Severity is **advisory by default with per-tier action**: CRITICAL → auto-invoke `feature-refactor` (F40, Modes 2–3); MAJOR → Mode 2 pause-and-ask (F41) or Mode 3 auto-backlog (F39); MINOR → auto-backlog (F39). Mode 4 (full-autopilot) skips the review entirely via F17b (direct ship → finalize). The pass does NOT back-loop into already-shipped commits — its outputs flow forward into refactor or backlog. Diverges deliberately from `obra/superpowers`' per-task "all findings block" model: this repo's per-feature placement makes back-loops on shipped commits more expensive, so the read-time veto pattern (operator may dismiss findings by editing the WIP `## Code-Quality Review` section before finalize) is the recovery surface. See `skills/feature-review-quality/SKILL.md` for the full procedure and reviewer prompt at `skills/feature-review-quality/reviewer-prompt.md`.
 
 **Reproduce-as-REDIRECT-from-build (F36–F37b):** A second entry path into reproduce, used when an agent mid-`feature-build` realizes it cannot confirm the fix worked without first reproducing the bug. Mirrors F22 (build → research REDIRECT) in shape. Build emits F36, writes a `**Redirect source:** build (F36 — Phase N)` sentinel into `## Current Node` of the WIP file, and creates a placeholder `## Reproduction Artifact (mid-build, from F36)` section. Reproduce reads Current Node first per existing protocol, detects the sentinel, and on exit emits F37 (reproduced cleanly) or F37b (could-not-reproduce) instead of the normal F32/F33/F34/F35. F35 is **disallowed** from F36-entered reproduce — terminating a feature mid-build because the bug couldn't be re-reproduced is the wrong outcome; F37b is the always-available fallback that documents could-not-reproduce as a Discovery and resumes build. F34 (preventive-hardening framing reset to spec) is similarly disallowed — the feature is already past spec, so framing reset is meaningless. Drive-mode behavior in the Pause-policy section above: F36 mirrors F22 (PAUSE in modes 1–3, AUTO in mode 4 — REDIRECTs deserve human confirmation that diverting into another state is the right move); F37/F37b are back-loop-shaped (PAUSE in mode 1, AUTO in modes 2–4).
 
