@@ -12,6 +12,12 @@
 - **Status:** pending
 - **Pickup shape:** one combined task sweeping all 5 (~30 min) when convenient, or skip until the underlying SKILL.md prose is next touched.
 
+## Code-quality findings — verify-sh-contains-required (2026-06-13)
+- **Pointer:** 3 MINOR findings auto-backlogged from the `feature-review-quality` post-ship pass. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md) → `# verify-sh-contains-required — 2026-06-13` section. Findings: Phase 3e header case-range stale (G-K should be G-M), `_csv` arg suffix misleading (pipe-separated), CLAUDE.md grep pin alternation overspecified.
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** one combined task sweeping all 3 (~10 min) when convenient. Each is a single-line edit; none load-bearing.
+
 ## SURFACE-2026-06-12-PHASE-3D-REGEX-TEST-MISSES-TR-PREFIX
 - **Source:** feature:verify-codify (close-commit-discipline Phase 1, 2026-06-12) — surfaced during `check-structure.sh` baseline run after Phase 1's `git commit`.
 - **Target level:** task:plan (small — 1-line test-scaffolding fix in `tests/check-structure.sh:320`).
@@ -20,17 +26,6 @@
 - **Confirmed at:** HEAD~1 (before close-commit-discipline Phase 1 commit) — same 2 FAILs reproduce. Not introduced by this feature; baseline-pre-existing.
 - **Suggested action:** In `tests/check-structure.sh:326-336`, change `regex_test` to mirror the production pipeline: `actual=$(echo "$input" | tr -d '*' | sed -n "$REGEX_PATTERN")`. Re-run; both markdown-bold cases should PASS. Single-line fix in test scaffolding only.
 - **Priority:** low — production behavior is correct, only the property test is misaligned. Baseline check-structure.sh count drifts from 228 to 226 — interpret 226/226 as "all PASS" post-fix.
-- **Status:** pending
-
-## SURFACE-2026-06-06-VERIFY-SH-NO-HARD-CONTENT-ASSERT
-- **Order:** P1 (was P2; P1 resolved by close-commit-discipline feature 2026-06-12; this item promoted to next pickup)
-- **Source:** task:act (codify-randomize-host-ports-test-coverage, 2026-06-06) — discovered during T5 bite-verification while trying to add a behavioral content-presence assertion (P10b).
-- **Target level:** feature:spec (small/medium — adds a new assertion shape to the test harness; touches `tests/lib/verify.sh`, scenarios, and the doc-side `## Conventions` block).
-- **Type:** harness limitation / missing primitive
-- **Summary:** `tests/lib/verify.sh::verify_result` (lines 70-82) treats a matching `transition_id` as **authoritative PASS** and never re-examines `contains_any` once that match fires. `contains_any` is only consulted as a SOFT_PASS fallback when no `transition_id` match was found. Net effect: no scenario in the current harness can hard-assert content presence. If you write `transition_id: X` + `contains_any: [Y, Z]` intending "must contain Y or Z AND emit X," you actually get "emit X (Y and Z are checked only if X fails)." Confirmed by 2x bite-verification (2026-06-06): mutated SKILL.md to remove the randomize-host-ports bullet, ran the candidate P10b scenario with `contains_any` set to literal SKILL.md prose anchors (first weak: `ephemeral|49152|randomize`; then strong: `lsof -nP -iTCP|random.randint(49152, 65535)|58329:5173`) — both passed because the model still emitted `TRANSITION: P10` correctly, and the harness short-circuited.
-- **Why it matters:** Several conventions in CLAUDE.md (e.g. the integration-boundary rule's "verify-codify must include a test on the consuming surface") presuppose that scenarios can test *content* of the surface, not just transitions. Today they can't — only structural `grep_check` pins in `tests/check-structure.sh` actually hard-assert content, and those don't exercise the model. The P10b case landed cleanly on the structural-pin side (see the same task), but a future feature whose only verifiable surface is "the model emits the right downstream prose under a real skill invocation" has no harness primitive available.
-- **Suggested action:** Add a new `contains_required` (or `must_contain_all` / `contains_required_any`) field to the scenario schema. Semantics: when set, even on a `transition_id` match, ALL (or ANY) of the listed strings must appear in `result_text` or the scenario FAILs. Implementation is small: a new check between lines 71 and 82 of verify.sh. Update `## Conventions` block in `CLAUDE.md` (the bullet about `expect:` fields) to document the new field. Pilot use: re-introduce a P10b-equivalent scenario with `contains_required: [<SKILL.md-prose anchor>]` once the primitive lands.
-- **Priority:** medium — current workaround (structural `grep_check` pins) covers most prose-presence regressions, but the gap will bite the moment a feature ships prose that's only meaningful when the model is actually invoking the skill (not just whether the file contains it).
 - **Status:** pending
 
 ---

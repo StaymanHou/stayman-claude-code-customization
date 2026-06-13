@@ -51,10 +51,10 @@ This blocks future scenarios whose only verifiable surface is "the model emits t
   - [x] verify-codify  <!-- Added 4 structural pins to tests/check-structure.sh Phase 1: (a) "P10b scenario exists in product.yaml", (b) "P10b uses contains_required_any (new hard-assert primitive)", (c) "CLAUDE.md ## Conventions documents contains_required (AND-fanout)", (d) "CLAUDE.md ## Conventions documents contains_required_any (OR-fanout)". All 4 PASS. check-structure.sh: 249 PASS / 2 FAIL (baseline pre-existing FAILs unchanged, already triaged in Phase 1). Phase 3e (verify_result semantics, 13 cases) + these 4 Phase 2 pins together form the complete safety net for the feature contract. -->
 
 ## Current Node
-- **Path:** Feature complete — ready to ship
-- **Active scope:** All phases (1 + 2) complete. Hand off to /feature-ship.
+- **Path:** Feature shipped + reviewed — ready to finalize
+- **Active scope:** Ship commit e0c2917 + review-quality complete (3 MINOR findings auto-backlogged). Next: /feature-finalize.
 - **Blocked:** none
-- **Unvisited:** none (post-ship: review-quality, finalize)
+- **Unvisited:** none
 - **Open discoveries:** none
 
 ## Test Triage — regex markdown-bold cases (Phase 3d, pre-existing baseline)
@@ -73,6 +73,40 @@ Per CLAUDE.md `## Conventions` — "Plan-level downstream contract impacts pass"
 - **`tests/scenarios/*.yaml` schema** — adding two new optional fields under `expect:`. Existing scenarios are unaffected (empty-default behavior preserved). No scenario lints or YAML schema validator enforces a closed key set.
 - **`CLAUDE.md` line 227** — `## Conventions` bullet about `expect:` fields. P2.2 extends the bullet; no other doc grep-asserts against its current literal text (confirmed by `grep -rn "Test scenario .expect. fields" .` — sole occurrence is CLAUDE.md itself).
 - **No subcase-A/B/C/D fragility** (literal-payload-object, array-length, function-signature, variable-binding-name): the function-signature change at P1.1 is in `tests/lib/verify.sh`, which `check-structure.sh` does not grep-pin against literal arg-count or signature shape; only `tests/run-tests.sh` invokes it, and that single call site is owned by this feature's P1.3.
+
+## Retrospect
+
+- **What changed in our understanding:** Two things. (1) The `_csv` arg-suffix naming in `verify_result`'s docstring is more misleading than it first appears — the separator is pipe `|`, not comma, and a future contributor reading "csv" could write a comma-separated string and get silent single-string match. Surfaced as MINOR by the code-quality reviewer; mirrors the pre-existing `contains_any_csv`/`not_contains_csv` convention but worth a future rename pass. (2) `./tests/run-tests.sh --dry-run --id <ID>` — even with `--id` filtering — does a full YAML-parse pass through ALL 159 scenarios via python subprocesses before filtering. Wall-clock per invocation: ~5 min (parse) + 30-90s (haiku call if not dry-run). The `--id` flag does NOT skip the parse pass; this is structural to the runner's filter-after-parse design. Surfaced operationally during Phase 1 verify-human (bash auto-bg several times before completion).
+- **Assumptions that held:** (a) The 2026-05-06 `transition_id_any` + `not_contains_strict` extension was the right structural precedent — same positional-args-with-empty-default pattern, same parse_scenario_nested wiring. (b) `contains_required_any` would be the right primitive for P10b (OR-fanout, robust to phrasing variation in haiku output). (c) Phase 2's mutation test would mechanically prove the primitive bites, providing high-confidence load-bearing evidence the structural pins alone can't give. (d) The Test Triage gate for the 2 baseline FAILs (Phase 3d regex/markdown-bold) would absorb correctly without action by this feature.
+- **Assumptions that were wrong:** (a) Initial expectation was that codifying Phase 1 would happen "indirectly via Phase 2's pilot scenario." That was wrong: Phase 2 is end-to-end coverage at the model level; Phase 1 needs its own unit-level pins because the new args' bite is only exercised when a scenario opts in. Resolved by adding Phase 3e (13 vr_check cases A-M) sourcing verify.sh directly — mirrors the existing Phase 3d shape. (b) Expected `./tests/run-tests.sh --dry-run` to complete in seconds based on the "dry-run skips the claude --print call" branch in run-tests.sh:152. Was wrong — the per-scenario YAML-parse pass that precedes filtering is the cost (~5min for 159 scenarios). Adjusted by switching to direct unit-cases against `verify_result` for regression coverage.
+- **Approach delta:** Plan was 2 phases (harness primitive + pilot scenario/doc). Reality matched exactly — zero back-loops, zero F23 plan revisions, zero F22 redirects. The only mid-feature surprise was the `./tests/run-tests.sh --dry-run` auto-bg behavior; resolved as operator-discipline (wait for completion notification) rather than feature scope creep. Phase 1's verify-codify scope grew slightly during execution — added Phase 3e (12+1=13 cases A-M including the L+M `contains_required_any all-miss with list` and `contains_required two-miss naming both missing strings`) once the unit-test approach was clear. The reviewer subagent flagged this as MINOR doc-drift in the Phase 3e header comment (says "G-K", should be "G-M") — captured in backlog-quality-findings.md for the next sweep.
+
+## Code-Quality Review — verify-sh-contains-required
+
+### Strengths
+- Backward-compatibility is structurally guarded: empty-string defaults in positions 7 and 8 mean every existing scenario behaves identically, and Phase 3e cases A-F explicitly pin that invariant — a future refactor that accidentally drops the empty-default contract will redden the structural test before any scenario runs.
+- Mutation-verification mid-feature (stash-remove the SKILL.md bullet → P10b FAILed with exact wording → restore → PASS) is the right empirical anchor for "the primitive is load-bearing, not trivially-true." This is the kind of evidence-driven verify-self that the workflow's discipline is designed to produce.
+- `VERIFY_DETAIL` wording is treated as part of the contract — Phase 3e asserts on operator-facing substrings (e.g., "required content missing: ephemeral", "49152, randomize") so the human debugging story can't silently regress to a generic message.
+- The Phase-3e/Phase-2-grep-pin pair is well-decomposed: Phase 3e pins the harness primitive's semantics in isolation; Phase 2 pins the scenario + convention-doc surface. Each pin layer breaks for a different class of regression.
+- Step numbering inside `verify_result` was updated cleanly (old "4. Evaluate ID match" → "5. Evaluate ID match" with new "4. Required-content checks" inserted) — comment-numbering drift is the kind of thing that's easy to skip on refactor; the author didn't skip it.
+
+### Issues
+**CRITICAL**
+- (none)
+
+**MAJOR**
+- (none)
+
+**MINOR**
+- [tests/check-structure.sh:378] Phase 3e header comment says "Forward cases (G-K) pin the new AND/ANY behavior" but the actual implementation runs cases G through M (7 forward cases — G, H, I, J, K, L, M). Cases L and M were added without updating the header comment. The WIP's verify-codify note and the diff-stat comment in `runtimes.md` both correctly say "13 vr_check unit cases (A-M)" — only the Phase 3e header is stale. Trivial documentation drift; tomorrow's reader of the header comment will mis-count.
+- [tests/lib/verify.sh:5,15-16] The new arg names in the function signature comment are suffixed `_csv` (`contains_required_csv`, `contains_required_any_csv`) but the actual separator is the pipe `|`, not comma. This mirrors the pre-existing `contains_any_csv` / `not_contains_csv` naming convention so it isn't a new sin — but it is a small documentation hazard: a future contributor reading "csv" and writing `"ephemeral,49152,randomize"` in a scenario will get a single literal string match attempt rather than three. Worth a follow-up rename to `_list` (or a parenthetical "(pipe-separated, despite name)" in the docstring) at a future cleanup pass — not load-bearing here because the new field-level CLAUDE.md docs correctly say "pipe-separated."
+- [tests/check-structure.sh:1037-1042] The two CLAUDE.md grep pins use alternation `"contains_required:.*AND-fanout|AND-fanout.*contains_required:"` to tolerate either ordering on the line. This is defensive and harmless, but the documented convention is a single bullet on one line with a fixed ordering — the simpler grep `"contains_required.*AND-fanout"` (without anchoring to the colon) would catch the same regressions while being easier to read at the grep-call site. Cosmetic; pin works as written.
+
+### Assessment
+This is a tightly-scoped, well-built test-harness primitive that closes a real load-bearing gap (the SOFT_PASS-fallback masking of content regressions, twice-bitten in the 2026-06-06 task that motivated the SURFACE). The mutation-verification of the pilot P10b scenario gives high confidence the primitive bites on real model output rather than being a trivially-true addition; the Phase 3e backward-compat cases A-F give high confidence existing scenarios stayed semantically identical; and the Phase 2 grep pins (P10b existence + CLAUDE.md docs) close the convention-discoverability loop so a future contributor can't silently revert to soft-pass-only verification. Future readers will find the code clear — the step-numbered comment block in `verify_result` is unusually friendly for a shell function. No technical debt accrued; the only findings are documentation-polish nits with no behavioral consequence.
+
+### If you disagree
+Operator: dismiss any finding by editing this section in the WIP file and marking the line `[DISMISSED]` before `feature-finalize` archives the WIP. The finding will be skipped by the orchestrator's severity-tier action matrix.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
