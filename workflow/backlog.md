@@ -6,17 +6,7 @@
 
 ## TODO
 
-## Code-quality findings — close-commit-discipline (2026-06-12)
-- **Pointer:** 5 MINOR findings auto-backlogged from the `feature-review-quality` post-ship pass. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md) → `# close-commit-discipline — 2026-06-12` section. Findings: 4-way prose duplication, product-finalize format asymmetry, loose grep pattern, redundant S20 anchor, no-family-marker scenario comment.
-- **Priority:** low (all)
-- **Status:** pending
-- **Pickup shape:** one combined task sweeping all 5 (~30 min) when convenient, or skip until the underlying SKILL.md prose is next touched.
-
-## Code-quality findings — verify-sh-contains-required (2026-06-13)
-- **Pointer:** 3 MINOR findings auto-backlogged from the `feature-review-quality` post-ship pass. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md) → `# verify-sh-contains-required — 2026-06-13` section. Findings: Phase 3e header case-range stale (G-K should be G-M), `_csv` arg suffix misleading (pipe-separated), CLAUDE.md grep pin alternation overspecified.
-- **Priority:** low (all)
-- **Status:** pending
-- **Pickup shape:** one combined task sweeping all 3 (~10 min) when convenient. Each is a single-line edit; none load-bearing.
+_(TODO empty — both code-quality findings groups resolved by the sweep-quality-findings-2026-06-13 task; see `CHANGELOG.md` for the 8 `**Backlog resolved:**` entries.)_
 
 ## MAYBE
 

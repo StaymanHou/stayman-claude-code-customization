@@ -3,6 +3,7 @@
 # Sources by run-tests.sh; not invoked directly.
 
 # verify_result <result_text> <expected_id> <contains_any_csv> <not_contains_csv> [<expected_id_any_csv>] [<not_contains_strict>] [<contains_required_csv>] [<contains_required_any_csv>]
+# (The `_csv` suffix on multi-value args is historical — separator is the pipe `|`, not comma.)
 # Returns: 0=PASS, 1=SOFT_PASS, 2=FAIL
 # Sets global: VERIFY_DETAIL with explanation
 #

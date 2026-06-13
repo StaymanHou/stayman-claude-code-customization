@@ -375,7 +375,7 @@ echo ""
 #
 # Backward-compat cases (A-F) protect the 2026-05-06 transition_id_any +
 # not_contains_strict semantics that the new args must preserve.
-# Forward cases (G-K) pin the new AND/ANY behavior.
+# Forward cases (G-M) pin the new AND/ANY behavior.
 
 echo "[Phase 3e] verify_result contains_required* semantics (tests/lib/verify.sh)"
 
@@ -1038,9 +1038,9 @@ grep_check "P10b uses contains_required_any (new hard-assert primitive)" \
 # so a partial revert (e.g. someone removes contains_required_any but leaves
 # contains_required) is caught.
 grep_check "CLAUDE.md ## Conventions documents contains_required (AND-fanout)" \
-  "CLAUDE.md" "contains_required:.*AND-fanout|AND-fanout.*contains_required:" 1
+  "CLAUDE.md" "contains_required.*AND-fanout" 1
 grep_check "CLAUDE.md ## Conventions documents contains_required_any (OR-fanout)" \
-  "CLAUDE.md" "contains_required_any:.*OR-fanout|OR-fanout.*contains_required_any:" 1
+  "CLAUDE.md" "contains_required_any.*OR-fanout" 1
 
 echo ""
 
@@ -1722,10 +1722,10 @@ echo ""
 # from learning-amend folding into HEAD.
 echo "[Phase 11] Close-commit discipline (no auto-push + amend learnings to HEAD)"
 
-grep_check "feature-finalize forbids git push from close commit"   "skills/feature-finalize/SKILL.md"        "Do NOT.*git push"             1
-grep_check "task-close forbids git push from close commit"          "skills/task-close/SKILL.md"              "Do NOT.*git push"             1
-grep_check "incident-resolve forbids git push from resolve commit"  "skills/incident-resolve/SKILL.md"        "Do NOT.*git push"             1
-grep_check "product-finalize forbids git push from cycle-close commit" "skills/product-finalize/SKILL.md"     "Do NOT.*git push"             1
+grep_check "feature-finalize forbids git push from close commit"   "skills/feature-finalize/SKILL.md"        "Do NOT \`git push\`"          1
+grep_check "task-close forbids git push from close commit"          "skills/task-close/SKILL.md"              "Do NOT \`git push\`"          1
+grep_check "incident-resolve forbids git push from resolve commit"  "skills/incident-resolve/SKILL.md"        "Do NOT \`git push\`"          1
+grep_check "product-finalize forbids git push from cycle-close commit" "skills/product-finalize/SKILL.md"     "Do NOT \`git push\`"          1
 grep_check "session-store-learning folds learning into HEAD via amend" "skills/session-store-learning/SKILL.md" "git commit --amend --no-edit" 1
 grep_check "session-store-learning stages the learning file before amend" "skills/session-store-learning/SKILL.md" "git add <file-path"        1
 

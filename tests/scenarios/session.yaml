@@ -769,7 +769,6 @@ scenarios:
     expect:
       transition_id: S20
       contains_any:
-        - "--amend"
         - "git commit --amend"
         - "git add"
         - "HEAD"

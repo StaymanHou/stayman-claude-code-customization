@@ -101,9 +101,12 @@ For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 1. **One `**Product cycle complete:**` summary bullet** — composed from the cycle name and one-sentence summary of what the cycle delivered. Per-WP `**Milestone:**` lines are emitted by `feature-finalize` at WP-completion time and are not re-emitted here.
 2. **Zero or more `**Backlog resolved:**` bullets** — one per item that step 4 (Backlog Sweep) marked as resolved by this cycle's work. Each bullet leads with the SURFACE ID.
 
-**Operational sequence:** edit `CHANGELOG.md` before the file-move operations in step 6 are committed. Stage CHANGELOG together with the archive moves so the entire cycle-close lands in one commit (or a tightly grouped commit pair if 6 already commits separately).
+**Operational sequence:**
 
-**Do NOT `git push`.** The cycle-close commit(s) land locally only. Pushing is the operator's call — they may want to review the resynced durable docs, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
+1. Edit `CHANGELOG.md` per the convention above (one `**Product cycle complete:**` bullet + zero-or-more `**Backlog resolved:**` bullets under today's date).
+2. `git add CHANGELOG.md` together with the step-6 archive moves — stage them in one go so the entire cycle-close lands in one commit (or a tightly grouped commit pair if step 6 already commits separately).
+3. Commit. Single commit captures the CHANGELOG append + archive moves + any resynced durable docs.
+4. **Do NOT `git push`.** The cycle-close commit(s) land locally only. Pushing is the operator's call — they may want to review the resynced durable docs, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
 **Idempotency:** if a `**Product cycle complete:**` bullet for this cycle name already exists in CHANGELOG.md, skip the append (re-running product-finalize on an already-closed cycle is a no-op).
 

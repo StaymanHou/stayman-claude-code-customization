@@ -1861,4 +1861,5 @@ scenarios:
         - "do not push"
         - "operator"
         - "land locally"
+    # Part of the no-push family — keep contains_any in sync across F19/T10/I10/P13-no-auto-push
     max_retries: 2
