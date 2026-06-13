@@ -365,6 +365,97 @@ fi
 
 echo ""
 
+# ── Phase 3e: verify_result contains_required* semantics ─────────────────
+#
+# Pins the AND/ANY content-presence semantics added by the
+# verify-sh-contains-required feature (2026-06-13). Sources verify.sh and
+# invokes verify_result directly with crafted inputs, asserting both the
+# return code AND the VERIFY_DETAIL wording (the wording is part of the
+# contract — operators read it to debug failures).
+#
+# Backward-compat cases (A-F) protect the 2026-05-06 transition_id_any +
+# not_contains_strict semantics that the new args must preserve.
+# Forward cases (G-K) pin the new AND/ANY behavior.
+
+echo "[Phase 3e] verify_result contains_required* semantics (tests/lib/verify.sh)"
+
+# Source verify.sh in a subshell-safe way (verify.sh contains only function
+# definitions and no side effects, so sourcing is idempotent).
+# shellcheck disable=SC1091
+source tests/lib/verify.sh
+
+vr_check() {
+  local label="$1"
+  local expected_rc="$2"
+  local expected_detail_substr="$3"
+  local actual_rc="$4"
+  local actual_detail="$5"
+  if [ "$actual_rc" != "$expected_rc" ]; then
+    check "verify_result: $label" "fail" "rc=$actual_rc expected=$expected_rc detail='$actual_detail'"
+    return
+  fi
+  if [ -n "$expected_detail_substr" ] && ! echo "$actual_detail" | grep -qF "$expected_detail_substr"; then
+    check "verify_result: $label" "fail" "detail='$actual_detail' missing substring '$expected_detail_substr'"
+    return
+  fi
+  check "verify_result: $label" "pass"
+}
+
+# --- Backward-compat (A-F): existing args still work when new args are empty ---
+
+set +e
+verify_result "TRANSITION: F1" "F1" "" "" "" "false" "" ""
+vr_check "A (plain ID match, empty new args → PASS)" 0 "Structured match" $? "$VERIFY_DETAIL"
+
+verify_result "TRANSITION: F8b" "" "" "" "F8|F8b|F9" "false" "" ""
+vr_check "B (transition_id_any match → PASS)" 0 "any-of" $? "$VERIFY_DETAIL"
+
+verify_result "TRANSITION: F1 auto-chain blah" "F1" "" "auto-chain" "" "false" "" ""
+vr_check "C (not_contains lenient: ID match + negative hit → PASS warning)" 0 "also mentioned" $? "$VERIFY_DETAIL"
+
+verify_result "TRANSITION: F1 auto-chain blah" "F1" "" "auto-chain" "" "true" "" ""
+vr_check "D (not_contains_strict=true: ID match + negative hit → FAIL)" 2 "FAILED strict not_contains" $? "$VERIFY_DETAIL"
+
+verify_result "no transition token here, but mentions /feature-build" "F1" "/feature-build" "" "" "false" "" ""
+vr_check "E (no ID, contains_any fallback → SOFT_PASS)" 1 "no structured TRANSITION line" $? "$VERIFY_DETAIL"
+
+verify_result "totally unrelated output" "F1" "" "" "" "false" "" ""
+vr_check "F (no match anywhere → FAIL)" 2 "No transition signal found" $? "$VERIFY_DETAIL"
+
+# --- New behavior (G-K): contains_required (AND) + contains_required_any (ANY) ---
+
+# G: contains_required FAIL takes precedence over not_contains lenient warning
+verify_result "TRANSITION: F1 auto-chain blah" "F1" "" "auto-chain" "" "false" "ephemeral" ""
+vr_check "G (contains_required missing → FAIL, overrides lenient not_contains)" 2 "required content missing: ephemeral" $? "$VERIFY_DETAIL"
+
+# H: contains_required PASS then lenient not_contains warning surfaces
+verify_result "TRANSITION: F1 ephemeral auto-chain blah" "F1" "" "auto-chain" "" "false" "ephemeral" ""
+vr_check "H (contains_required present, then not_contains warning → PASS)" 0 "also mentioned" $? "$VERIFY_DETAIL"
+
+# I: contains_required_any case-insensitive match (grep -qi)
+verify_result "$(printf 'TRANSITION: P10\nRandomize host ports')" "P10" "" "" "" "false" "" "ephemeral|RANDOMIZE"
+vr_check "I (contains_required_any case-insensitive → PASS)" 0 "Structured match" $? "$VERIFY_DETAIL"
+
+# J: contains_required AND contains_required_any both set, both PASS
+verify_result "$(printf 'TRANSITION: P10\nephemeral 49152')" "P10" "" "" "" "false" "ephemeral" "49152|randomize"
+vr_check "J (both required + required_any set, both pass → PASS)" 0 "Structured match" $? "$VERIFY_DETAIL"
+
+# K: contains_required passes, contains_required_any fails → FAIL
+verify_result "$(printf 'TRANSITION: P10\nephemeral only')" "P10" "" "" "" "false" "ephemeral" "49152|randomize"
+vr_check "K (required passes, required_any all-miss → FAIL)" 2 "required-any content missing" $? "$VERIFY_DETAIL"
+
+# L: contains_required_any all-miss with no contains_required
+verify_result "TRANSITION: P10" "P10" "" "" "" "false" "" "ephemeral|49152"
+vr_check "L (required_any only, all-miss → FAIL with list)" 2 "ephemeral|49152" $? "$VERIFY_DETAIL"
+
+# M: contains_required two-miss reports BOTH missing strings by name
+verify_result "$(printf 'TRANSITION: P10\nephemeral only')" "P10" "" "" "" "false" "ephemeral|49152|randomize" ""
+vr_check "M (required two-miss names all missing strings)" 2 "49152, randomize" $? "$VERIFY_DETAIL"
+
+set -e
+
+echo ""
+
 # ── Phase 4: install.sh and symlinks ──────────────────────────────────────
 
 echo "[Phase 4] install.sh idempotence and symlink integrity"
@@ -930,6 +1021,26 @@ if [ -f runtimes.md ]; then
   grep_check "runtimes.md has at least one **Use timeout:** entry" \
     "runtimes.md" "^- \*\*Use timeout:\*\* [0-9]+" 1
 fi
+
+# Pilot-scenario pins for the verify-sh-contains-required feature (2026-06-13).
+# P10b is the load-bearing end-to-end regression test for `contains_required_any`
+# — a real haiku invocation that asserts the model surfaces randomize-host-ports
+# guidance from the symlinked product-context SKILL.md. Pin its existence and the
+# use of the new primitive (not the old contains_any) so a future refactor cannot
+# silently regress to soft-pass fallback semantics.
+grep_check "P10b scenario exists in product.yaml" \
+  "tests/scenarios/product.yaml" "^[[:space:]]+- id: P10b\b" 1
+grep_check "P10b uses contains_required_any (new hard-assert primitive)" \
+  "tests/scenarios/product.yaml" "contains_required_any:" 1
+
+# Convention-doc pin: CLAUDE.md `## Conventions` bullet about `expect:` fields
+# must document both new fields. The grep is split into two pins (one per field)
+# so a partial revert (e.g. someone removes contains_required_any but leaves
+# contains_required) is caught.
+grep_check "CLAUDE.md ## Conventions documents contains_required (AND-fanout)" \
+  "CLAUDE.md" "contains_required:.*AND-fanout|AND-fanout.*contains_required:" 1
+grep_check "CLAUDE.md ## Conventions documents contains_required_any (OR-fanout)" \
+  "CLAUDE.md" "contains_required_any:.*OR-fanout|OR-fanout.*contains_required_any:" 1
 
 echo ""
 

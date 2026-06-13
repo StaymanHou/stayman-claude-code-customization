@@ -57,3 +57,4 @@ Buried 2026-06-07:
 
 Buried 2026-06-12:
 - `SURFACE-2026-06-02-BEHAVIORAL-PRESSURE-TESTS-FOR-SKILL-LANGUAGE` — borrow obra/superpowers' behavioral pressure tests for skill rationalization-resistance.
+

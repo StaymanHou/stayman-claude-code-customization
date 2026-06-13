@@ -2,16 +2,22 @@
 # verify.sh — Verification functions for workflow transition tests
 # Sources by run-tests.sh; not invoked directly.
 
-# verify_result <result_text> <expected_id> <contains_any_csv> <not_contains_csv> [<expected_id_any_csv>] [<not_contains_strict>]
+# verify_result <result_text> <expected_id> <contains_any_csv> <not_contains_csv> [<expected_id_any_csv>] [<not_contains_strict>] [<contains_required_csv>] [<contains_required_any_csv>]
 # Returns: 0=PASS, 1=SOFT_PASS, 2=FAIL
 # Sets global: VERIFY_DETAIL with explanation
 #
 # Args:
-#   expected_id          single ID match (existing); may be empty when expected_id_any is used
-#   contains_any         pipe-separated content matchers (existing) — used as soft-pass fallback
-#   not_contains         pipe-separated negative content matchers (existing)
-#   expected_id_any      pipe-separated alternate IDs that all count as PASS (new — for dual-identity scenarios)
-#   not_contains_strict  "true" → any not_contains hit FAILs the test (new — opt-in; default lenient preserves prior behavior)
+#   expected_id            single ID match (existing); may be empty when expected_id_any is used
+#   contains_any           pipe-separated content matchers (existing) — used as soft-pass fallback only
+#   not_contains           pipe-separated negative content matchers (existing)
+#   expected_id_any        pipe-separated alternate IDs that all count as PASS (for dual-identity scenarios)
+#   not_contains_strict    "true" → any not_contains hit FAILs the test (opt-in; default lenient preserves prior behavior)
+#   contains_required      pipe-separated strings — ALL must appear in result_text (AND-fanout); enforced even on transition_id match
+#   contains_required_any  pipe-separated strings — AT LEAST ONE must appear in result_text (OR-fanout); enforced even on transition_id match
+#
+# contains_required* differs from contains_any: the latter is soft-pass fallback (only consulted when the structured
+# ID match is absent); the former are HARD assertions on content presence, evaluated after the ID match passes.
+# Empty defaults preserve all prior behavior — existing scenarios are unaffected.
 verify_result() {
   local result_text="$1"
   local expected_id="$2"
@@ -25,6 +31,8 @@ verify_result() {
   case "$(echo "$strict_raw" | tr '[:upper:]' '[:lower:]')" in
     true|yes|on|1) not_contains_strict="true" ;;
   esac
+  local contains_required="${7:-}"
+  local contains_required_any="${8:-}"
 
   VERIFY_DETAIL=""
   local found_transition=""
@@ -79,7 +87,43 @@ verify_result() {
     fi
   fi
 
-  # 4. Evaluate ID match
+  # 4. Required-content checks (hard assertions, evaluated after ID match)
+  # contains_required: every string must appear (AND). First miss → FAIL.
+  # contains_required_any: at least one string must appear (ANY). All miss → FAIL.
+  # Both run before PASS is returned, so a clean ID match alone is no longer authoritative
+  # when these are set. Takes precedence over the lenient not_contains warning path —
+  # missing required content is always FAIL, never SOFT_PASS.
+  if [ "$id_match" = true ]; then
+    if [ -n "$contains_required" ]; then
+      local missing_required=""
+      IFS='|' read -ra CR_ARRAY <<< "$contains_required"
+      for cr in "${CR_ARRAY[@]}"; do
+        if ! echo "$result_text" | grep -qi "$cr"; then
+          missing_required="${missing_required}${cr}, "
+        fi
+      done
+      if [ -n "$missing_required" ]; then
+        VERIFY_DETAIL="Structured match on $match_label but required content missing: ${missing_required%%, }"
+        return 2  # FAIL — required content absent
+      fi
+    fi
+    if [ -n "$contains_required_any" ]; then
+      local any_match=false
+      IFS='|' read -ra CRA_ARRAY <<< "$contains_required_any"
+      for cra in "${CRA_ARRAY[@]}"; do
+        if echo "$result_text" | grep -qi "$cra"; then
+          any_match=true
+          break
+        fi
+      done
+      if [ "$any_match" = false ]; then
+        VERIFY_DETAIL="Structured match on $match_label but required-any content missing — none of: $contains_required_any"
+        return 2  # FAIL — none of the required-any strings present
+      fi
+    fi
+  fi
+
+  # 5. Evaluate ID match
   if [ "$id_match" = true ]; then
     if [ -n "$negative_hits" ]; then
       if [ "$not_contains_strict" = "true" ]; then

@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-12
+updated: 2026-06-13
 ---
 
 
@@ -11,9 +11,12 @@ updated: 2026-06-12
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 31s (2026-06-12)
+- **Last:** 31s (2026-06-13)
 - **Use timeout:** 107000
 - **History:**
+  - 33s — 2026-06-13  <!-- verify-sh-contains-required Phase 2 verify-codify; 249/251 PASS, 2 baseline FAILs (unchanged). +4 PASS from prior 245: Phase 1 scenario YAML integrity got 4 new grep_check pins (P10b exists + contains_required_any used + CLAUDE.md documents both new fields). -->
+  - 33s — 2026-06-13  <!-- verify-sh-contains-required Phase 1 verify-codify; 245/247 PASS, 2 baseline FAILs (unchanged). +13 PASS from prior 232: Phase 3e added 13 vr_check unit cases (A-M) covering verify_result backward-compat + new contains_required/contains_required_any AND/ANY behavior. -->
+  - 31s — 2026-06-13  <!-- verify-sh-contains-required Phase 1 verify-auto; 232/234 PASS, 2 baseline FAILs (SURFACE-2026-06-12-PHASE-3D-REGEX-TEST-MISSES-TR-PREFIX, unchanged). +4 PASS from prior 228; likely the iterating cheat-sheet Phase 9 loop counting feature-* rows. No pins added by this feature. -->
   - 31s — 2026-06-12  <!-- post-debug-within-skill-structural-pins task; 228/228 PASS, 0 FAIL (was 214/214; +14 from Phase 3b extension: 7 new pins × 2 debug-* skills covering 6-required-sections, argument-hint frontmatter, Gate-Check-first-subheading, termination-token regex). Runtime unchanged from baseline — the new pins are all `grep_check` calls (no subprocess/loop overhead added). -->
   - 43s — 2026-06-12  <!-- post-subagent-dispatch-back-reference-pin task; 214/214 PASS, 0 FAIL (was 210/210; +4 from new Phase 10 (f) back-reference pin: 2 references × 2 dispatch-aware skills). Bump from 31s → 43s likely due to the new inner while-read loop per skill iterating subagent_type matches + per-match agent file read. -->
   - 31s — 2026-06-12  <!-- verify-self-and-review-quality-subagent-dispatch Phase 1 verify-auto; 200/200 PASS no FAILs (baseline unchanged — Phase 1 only adds new agent dirs, no pin changes yet). Bump from 18s → 31s likely due to 2 new agents/* entries iterating through Phase 3c structural pins. -->

@@ -119,6 +119,8 @@ run_test() {
   local contains_any; contains_any=$(parse_scenario_nested "$yaml_file" "$index" "expect" "contains_any")
   local not_contains; not_contains=$(parse_scenario_nested "$yaml_file" "$index" "expect" "not_contains")
   local not_contains_strict; not_contains_strict=$(parse_scenario_nested "$yaml_file" "$index" "expect" "not_contains_strict")
+  local contains_required; contains_required=$(parse_scenario_nested "$yaml_file" "$index" "expect" "contains_required")
+  local contains_required_any; contains_required_any=$(parse_scenario_nested "$yaml_file" "$index" "expect" "contains_required_any")
   local fixture_wip; fixture_wip=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "wip")
   local fixture_product_dir; fixture_product_dir=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "product_dir")
   local fixture_session; fixture_session=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "session")
@@ -237,7 +239,7 @@ ${extra_prompt}"
     # Verify — wrap with set +e/-e so verify_result's non-zero return doesn't
     # trip set -e, while still capturing the real return code into rc.
     set +e
-    verify_result "$result_text" "$expect_id" "$contains_any" "$not_contains" "$expect_id_any" "$not_contains_strict"
+    verify_result "$result_text" "$expect_id" "$contains_any" "$not_contains" "$expect_id_any" "$not_contains_strict" "$contains_required" "$contains_required_any"
     local rc=$?
     set -e
     detail="$VERIFY_DETAIL"

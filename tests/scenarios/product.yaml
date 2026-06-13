@@ -167,6 +167,32 @@ scenarios:
         - "/product-vision"
     max_retries: 2
 
+  # P10b is the pilot scenario for `contains_required_any` (added 2026-06-13 by
+  # verify-sh-contains-required). It exercises P10's transition AND hard-asserts
+  # that the model surfaces the randomize-host-ports guidance when generating
+  # the Docker Mandate (Variant A) CLAUDE.md content. The three OR-keywords are
+  # robust to phrasing variation; any one match is sufficient. Originally drafted
+  # 2026-06-06 in task codify-randomize-host-ports-test-coverage and reverted
+  # there because the harness lacked the primitive — restored here as the pilot
+  # use case once contains_required_any landed in tests/lib/verify.sh.
+  - id: P10b
+    name: "product:context Variant A output includes randomize-host-ports guidance"
+    skill: product-context
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/wbs-done
+    system_prompt_extra: |
+      The architecture decision is Docker Mandate (Variant A). Generate the
+      project's CLAUDE.md Dev Environment section using Variant A. Show the
+      full Variant A content you would write, including all bullets and rules.
+    expect:
+      transition_id: P10
+      contains_required_any:
+        - "ephemeral"
+        - "49152"
+        - "randomize"
+    max_retries: 2
+
   # P11 and P12 are SURFACE-IN transitions — tested by verifying source
   # workflow's SURFACE output. We test the receiving side here.
 
