@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-04-25
+updated: 2026-06-13
 ---
 
 # Architecture
@@ -192,6 +192,86 @@ Tasks are simpler — no per-phase verification loop, no observable outcomes sec
 - Incident-workflow skills — unaffected.
 - `session-*` skills — unaffected. The Work Tree is carried transparently through pause/resume because it lives in the WIP file.
 - `install.sh` — no new files, no new symlinks needed for Phases 1–2.
+
+## Revision 2026-06-13
+
+Architecturally significant additions since the 2026-05-02 revision. Each subsection points to the authoritative source rather than restating procedure — `docs/product/transitions.md` is the canonical state-machine reference, `CLAUDE.md` is the convention-doc home.
+
+### Drive modes (1–4) — orchestrator pause-policy contract
+
+The orchestrator now exposes four drive modes that control pause aggression: **Step-by-step**, **Orchestrated**, **Autopilot**, **Full-autopilot**. The selected mode is recorded as `drive_mode:` in the WIP frontmatter at first skill entry, honored across `/session-pause` + `/session-resume`, and re-checked after every Skill-tool return. Mode 3 (autopilot) auto-skips `verify-human` when no integration boundary is touched AND verify-self is all-PASS. Mode 4 (full-autopilot) skips verify-human entirely. Canonical pause-policy tables live in `docs/product/transitions.md` → "Drive modes". The `TRANSITION: <id>` token at skill exit is the only machine signal — `"Run /x"` prose and `**STOP**` directives in skill output are advisory for single-step users only.
+
+### Executable subagents vs reference-only orchestrator agents (`tools:` frontmatter marker)
+
+`agents/<name>/AGENTS.md` files split into two structural kinds, distinguished by frontmatter shape:
+- **Reference-only orchestrators** (frontmatter has `skills:`) — one per workflow group (product, feature, task, incident). Hold the state-machine view + Orchestration Procedure. NOT meant to be spawned via `Agent({subagent_type: ...})`.
+- **Executable subagents** (frontmatter has `tools:`) — spawned by skills that name them. Currently `feature-verify-self-runner` (spawned by `feature-verify-self`) and `code-quality-reviewer` (spawned by `feature-review-quality`). The `tools:` field declares the subagent's tool surface.
+
+The frontmatter shape is the structural marker, not documentation. `tests/check-structure.sh` Phase 10 ("Subagent dispatch wiring") enforces both directions: every `tools:`-bearing agent must be referenced by exactly one skill's `Agent({subagent_type: ...})` call, and every such skill call must point to a `tools:`-marked agent. Introduced 2026-06-12 by the `verify-self-and-review-quality-subagent-dispatch` feature.
+
+### `debug-*` skill category — agent-pulled sidebars, not workflow states
+
+A new skill category for ad-hoc debugging techniques that the orchestrator (or user) reaches for when standard debugging stalls inside an existing workflow state. Distinguishing properties:
+- Own no state node; emit descriptive `DEBUG-<TECHNIQUE>-<OUTCOME>` tokens **outside** the F/I/T/P/S transition namespace.
+- Always emit a `RETURN-TO: <caller-skill>` line so the caller workflow state resumes without consuming a transition ID.
+- Required SKILL.md sections enforced by `tests/check-structure.sh` Phase 3b: `## Category Context`, `## When to use`, `## When NOT to use`, `## Procedure` (with `### 1. Gate Check` as the first subheading), `## Pitfalls`, `## Termination`.
+- Three discoverability surfaces enforced by Phase 3c: caller-skill prose mentions, orchestrator AGENTS.md "Debug techniques" subsections, `transitions.md` "Sidebar skills" note.
+
+Current sidebars: `debug-bisect-known-good` (codified 2026-05-13), `debug-empirical-telemetry` (shipped 2026-06-10). Full category convention in `CLAUDE.md` → Architecture → "`debug-*` Skill Category".
+
+### Per-phase verify loop extended with `verify-self`
+
+The feature per-phase loop is now: **build → verify-auto → verify-self → verify-human → verify-codify**. `verify-self` (agent live-system observation) sits between automated checks and human review. Added in WP7 to close the gap where agents handed off to humans without ever observing the running system. Severity taxonomy: BLOCKING (back-loop to build, F9b) vs COSMETIC (forward to verify-human, F10b). In-place fix shortcut formalized 2026-06-09 in `skills/feature-verify-self/SKILL.md` §3 — narrow exception when three gates hold (trivial extension + fresh model invocation + audit-trail entry).
+
+### `task-verify` single-step gate (T5a / T5b / T5c)
+
+Every `task-act` now exits to `task-verify`, not directly to `task-close`. `task-verify` writes an observable into the WIP, runs the verification, and routes T5b (PASS → close) or T5c (FAIL → back-loop to act). Pure-docs tasks may declare `docs-only: true` in WIP frontmatter at plan time to auto-skip the gate. Mirrors `feature-verify-self`'s in-place fix shortcut shape. Shipped 2026-06-11 from `SURFACE-2026-06-09-TASK-WORKFLOW-NEEDS-LITE-VERIFY`. Full procedure in `skills/task-verify/SKILL.md`; transitions in `docs/product/transitions.md` → Task Workflow.
+
+### `feature-review-quality` — post-ship code-quality reviewer subagent
+
+A new state between `feature-ship` and `feature-finalize` invokes a one-shot `code-quality-reviewer` Agent subagent against the ship commit baseline. Severity-tier action matrix (advisory by default, operator-veto via WIP read):
+- **CRITICAL** → auto-invokes `feature-refactor` (F40, Modes 2–3)
+- **MAJOR** → Mode 2 pause-and-ask (F41) or Mode 3 auto-backlog (F39)
+- **MINOR** → auto-backlog (F39)
+- **Mode 4** (full-autopilot) skips the skill entirely; `feature-ship` emits F17b directly to finalize when `drive_mode: full-autopilot`
+
+Transitions: F38 (ship→review-quality), F39 (clean/MINOR/Mode-3-MAJOR forward), F40 (CRITICAL→refactor), F41 (Mode-2-MAJOR forward after pause), F17b (Mode-4 SKIP). F17 retired. Reviewer prompt body lives at `agents/code-quality-reviewer/AGENTS.md`. Findings flow forward into refactor or backlog (auto-backlogged findings collect in `workflow/backlog-quality-findings.md`, not the main backlog). Shipped 2026-06-11; subagent-dispatch wiring landed 2026-06-12.
+
+### `incident-codify` — incident-side regression coverage (I19)
+
+Incident workflow gains its own regression-securing step between mitigate and resolve: **mitigate → codify → resolve**. Adapts feature-verify-codify's discipline (highest-level test, integration-boundary check, six-case triage table) with two incident-context flips:
+1. A codify-time test failure means the mitigation didn't fix the bug → back-loop to mitigate (I19), not auto-fix the test.
+2. Speed-aware paths — Path A reuses an existing reproduce-artifact; Path B writes from scratch; a defer path (I9, with SURFACE→task:plan audit trail) is available when active incident pressure makes writing coverage now infeasible.
+
+Full procedure in `skills/incident-codify/SKILL.md`; transitions in `docs/product/transitions.md` → Incident Workflow.
+
+### `feature-reproduce` — red-green pre-spec/plan step (S18)
+
+Bug-shape features (user describes undesirable behavior — bug, regression, broken state, wrong output) route through `feature-reproduce` *before* spec/plan. The skill produces a failing test or a documented reason local reproduction is infeasible, then hands off to spec or plan. `/session-start` classification step adds bug-shape detection as the first axis of feature classification; ambiguous cases default to skipping reproduce (user can explicitly invoke `/feature-reproduce` if needed).
+
+### Close-commit discipline (workflow-system convention)
+
+The four terminal-close skills (`feature-finalize`, `task-close`, `incident-resolve`, `product-finalize`) commit locally and **never** auto-`git push` — pushing is the operator's call (review window for squash/amend/follow-up-learning before publishing). `session-store-learning` project-scope writes additionally `git add` + `git commit --amend --no-edit` after writing the learning file, folding the artifact into HEAD (typically the just-completed close commit). Global-scope learning writes (gitignored `.claude/learnings/`) opt out of the amend.
+
+Enforced by `tests/check-structure.sh` Phase 11 — 6 `grep_check` pins (4 no-push + 2 amend) + behavioral scenarios `F19`/`T10`/`I10`/`P13`-no-auto-push + `S20`-amend-head. Codifies pre-existing behavior as a load-bearing contract so future drift cannot silently reintroduce auto-push. Shipped 2026-06-12.
+
+### `CHANGELOG.md` convention — terminal-close auto-append contract
+
+Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at its root. The four terminal-close skills auto-append one-line entries on close with fixed entry-kind vocabulary: `**Feature shipped:**`, `**Task closed:**`, `**Incident resolved:**`, `**Backlog resolved:**`, `**Milestone:**`, `**Product cycle complete:**`. ISO-8601 `## YYYY-MM-DD` date headings, reverse-chronological across days, chronological within a day. Append must happen **before** `git mv` of the WIP file so both stage in the same commit (mitigates `SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV` — rename commits dropping unstaged content edits).
+
+Canonical procedure in `CLAUDE.snippet.md` → "CHANGELOG.md convention", injected into `~/.claude/CLAUDE.md` by `install.sh`. Resolved backlog items belong in CHANGELOG, not in a `## Resolved` section inside `workflow/backlog.md`.
+
+### Telegram Notification/Stop hook replaces the model-driven `notify-human` skill
+
+Telegram notifications are now wired via a Claude Code hook (`hooks/notify-telegram.sh`, symlinked into `~/.claude/hooks/` by `install.sh`) configured under `hooks.Notification` and `hooks.Stop` in `~/.claude/settings.json`. The harness fires the script on every Notification event (Claude blocked, awaiting input/permission) and Stop event (turn ended) — deterministic, no model involvement. Requires `CLAUDE_TELEGRAM_BOT_TOKEN` and `CLAUDE_TELEGRAM_CHAT_ID` in `~/.claude/settings.json` env; no-ops silently if either is unset.
+
+Replaces the earlier `notify-human` skill that relied on the model remembering to invoke it before each question (unreliable — model frequently forgot). Migration note in `docs/product/transitions.md` change-log.
+
+### Session orchestration runs in the parent conversation, not via Agent spawn
+
+`/session-start` classifies, presents the drive-mode menu, then **drives the workflow in the current conversation** by reading the matching `agents/<workflow>-workflow/AGENTS.md` Orchestration Procedure and invoking each skill via the Skill tool. It does NOT spawn an Agent subagent. Rationale: the Agent tool is one-shot — a subagent that pauses for human input can't be resumed, which would force each human pause to respawn a fresh subagent and lose mid-step state. Keeps user dialogue continuous. Experimental subagent-per-step design parked in `docs/product/transitions.md` → "Experiment: Subagent-Per-Step Orchestration" for future revisit if context growth becomes a problem.
+
+---
 
 ## Revision 2026-05-02
 
