@@ -18,18 +18,6 @@
 - **Status:** pending
 - **Pickup shape:** one combined task sweeping all 3 (~10 min) when convenient. Each is a single-line edit; none load-bearing.
 
-## SURFACE-2026-06-12-PHASE-3D-REGEX-TEST-MISSES-TR-PREFIX
-- **Source:** feature:verify-codify (close-commit-discipline Phase 1, 2026-06-12) — surfaced during `check-structure.sh` baseline run after Phase 1's `git commit`.
-- **Target level:** task:plan (small — 1-line test-scaffolding fix in `tests/check-structure.sh:320`).
-- **Type:** obsolete test / harness scaffolding drift
-- **Summary:** `tests/check-structure.sh` Phase 3d ("TRANSITION-line regex" property test) extracts ONLY the sed regex from `tests/lib/verify.sh:51` via `grep -oE 's/\.\*TRANSITION:[^/]*/\\1/p'` and runs each test case through `sed -n "$REGEX_PATTERN"` directly. But verify.sh's actual production pipeline is `tr -d '*' | sed -n '...'` — the `tr -d '*'` strip is what handles markdown-bold tolerance. The property test asserts the sed regex alone handles markdown bold; it doesn't (and wasn't designed to — the strip handles it). Result: 2 perpetual FAILs on `**TRANSITION:** F1` and `**TRANSITION:** DEBUG-BISECT-SKIP`. The production code is CORRECT; the property test is obsolete vis-à-vis the pipeline-not-regex fix that landed in commit `7e1b71c` (debug-telemetry-inconclusive-strict-pass close).
-- **Confirmed at:** HEAD~1 (before close-commit-discipline Phase 1 commit) — same 2 FAILs reproduce. Not introduced by this feature; baseline-pre-existing.
-- **Suggested action:** In `tests/check-structure.sh:326-336`, change `regex_test` to mirror the production pipeline: `actual=$(echo "$input" | tr -d '*' | sed -n "$REGEX_PATTERN")`. Re-run; both markdown-bold cases should PASS. Single-line fix in test scaffolding only.
-- **Priority:** low — production behavior is correct, only the property test is misaligned. Baseline check-structure.sh count drifts from 228 to 226 — interpret 226/226 as "all PASS" post-fix.
-- **Status:** pending
-
----
-
 ## MAYBE
 
 _(empty — both prior MAYBE items promoted to TODO 2026-06-12; SURFACE-2026-06-02-BEHAVIORAL-PRESSURE-TESTS-FOR-SKILL-LANGUAGE buried same day)_

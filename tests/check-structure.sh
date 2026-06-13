@@ -328,7 +328,7 @@ else
     local input="$2"
     local expected="$3"
     local actual
-    actual=$(echo "$input" | sed -n "$REGEX_PATTERN")
+    actual=$(echo "$input" | tr -d '*' | sed -n "$REGEX_PATTERN")
     if [ "$actual" = "$expected" ]; then
       check "regex: $label" "pass"
     else
@@ -352,7 +352,7 @@ else
     local label="$1"
     local input="$2"
     local actual
-    actual=$(echo "$input" | sed -n "$REGEX_PATTERN")
+    actual=$(echo "$input" | tr -d '*' | sed -n "$REGEX_PATTERN")
     if [ -z "$actual" ]; then
       check "regex no-match: $label" "pass"
     else
