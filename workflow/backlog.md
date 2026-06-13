@@ -12,16 +12,6 @@
 - **Status:** pending
 - **Pickup shape:** one combined task sweeping all 5 (~30 min) when convenient, or skip until the underlying SKILL.md prose is next touched.
 
-## SURFACE-2026-06-12-ADJUST-QUALITY-AGENT-USE-DEDICATED-FILE
-- **Source:** operator decision (2026-06-12) — main backlog grew by +5 entries from a single `feature-review-quality` pass; volume noise.
-- **Target level:** task:plan (small — `agents/code-quality-reviewer/AGENTS.md` prose edit; possibly also `skills/feature-review-quality/SKILL.md` to wire the new path).
-- **Type:** workflow-system convention / agent prose
-- **Summary:** When `feature-review-quality` auto-backlogs findings (MINOR per Mode 3, MAJOR per Mode 3, MINOR per Mode 2 dismissed), it currently appends each finding as a separate `## SURFACE-<date>-QUALITY-<slug>` entry to `workflow/backlog.md`. With 5 MINOR findings per feature being normal, the main backlog accumulates volume that drowns out higher-priority work. Adopt the pointer-file pattern: full SURFACE content in `workflow/backlog-quality-findings.md` (one section per source feature), main `backlog.md` gets a single pointer entry per feature naming the count + a one-line summary + the file reference.
-- **Reference precedent:** Established 2026-06-12 by manually collapsing the close-commit-discipline 5 QUALITY-* findings into the new file shape. See `workflow/backlog-quality-findings.md` → `# close-commit-discipline — 2026-06-12` for the canonical shape, and the parent backlog's `## Code-quality findings — close-commit-discipline (2026-06-12)` for the pointer-entry shape.
-- **Suggested action:** Edit `agents/code-quality-reviewer/AGENTS.md` (and/or `skills/feature-review-quality/SKILL.md` §5 Case-B/C auto-backlog sections) so the auto-backlog write goes to `workflow/backlog-quality-findings.md` (creating the file if absent, grouping by source feature). Main `backlog.md` gets exactly one pointer entry per feature with the count + pickup-shape hint. Bite-verify by re-running a review-quality pass on the next feature and confirming the volume in `backlog.md` is 1 entry, not N.
-- **Priority:** medium — every future feature ship is gated through `feature-review-quality`; without this fix the main backlog will keep accruing volume noise. The collapsed-pointer shape preserves all the information; just relocates it.
-- **Status:** pending
-
 ## SURFACE-2026-06-12-PHASE-3D-REGEX-TEST-MISSES-TR-PREFIX
 - **Source:** feature:verify-codify (close-commit-discipline Phase 1, 2026-06-12) — surfaced during `check-structure.sh` baseline run after Phase 1's `git commit`.
 - **Target level:** task:plan (small — 1-line test-scaffolding fix in `tests/check-structure.sh:320`).
