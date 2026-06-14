@@ -6,7 +6,16 @@
 
 ## TODO
 
-_(TODO empty — both code-quality findings groups resolved by the sweep-quality-findings-2026-06-13 task; see `CHANGELOG.md` for the 8 `**Backlog resolved:**` entries.)_
+## SURFACE-2026-06-13-CHECK-STRUCTURE-MISSING-YAML-PARSE-PIN
+- **Source:** feature:build (claude-md-compaction Phase 4 verify-auto)
+- **Order:** P1
+- **Target level:** product:wbs (small task — likely a single check-structure.sh phase addition)
+- **Type:** gap
+- **Summary:** `tests/check-structure.sh` does not validate that every SKILL.md / AGENTS.md frontmatter is parseable YAML. An invalid `argument-hint:` value (unquoted inner-colon string) in `skills/util-prune-claude-md/SKILL.md` slipped through the structural sweep (PASS 251/0) and would have broken the harness's skill registry at next session load. Caught manually by `python3 yaml.safe_load` during verify-auto, fixed in-line.
+- **Context:** Skill frontmatter is the harness's contract surface — an invalid frontmatter renders the skill non-invokable, but the failure mode is silent until the next session start. Mechanically pin-able: iterate `skills/*/SKILL.md` + `agents/*/AGENTS.md`, extract frontmatter (between `---` markers), pipe through `python3 -c "import sys, yaml; yaml.safe_load(sys.stdin.read())"`, fail the structural check on any non-zero exit.
+- **Suggested action:** Add a new Phase to `tests/check-structure.sh` ("[Phase N] Frontmatter YAML parseability") that runs the above check across all SKILL.md and AGENTS.md files. Estimated 10-line addition.
+- **Priority:** medium (silent failure mode + low fix cost)
+- **Status:** open
 
 ## MAYBE
 

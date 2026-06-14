@@ -3,6 +3,8 @@ stage: arch
 state: complete
 updated: 2026-06-13
 ---
+<!-- 2026-06-13 second edit (same day): added `### util-* skill category` subsection under Revision 2026-06-13. updated: unchanged (same calendar day). -->
+
 
 # Architecture
 
@@ -218,6 +220,21 @@ A new skill category for ad-hoc debugging techniques that the orchestrator (or u
 - Three discoverability surfaces enforced by Phase 3c: caller-skill prose mentions, orchestrator AGENTS.md "Debug techniques" subsections, `transitions.md` "Sidebar skills" note.
 
 Current sidebars: `debug-bisect-known-good` (codified 2026-05-13), `debug-empirical-telemetry` (shipped 2026-06-10). Full category convention in `CLAUDE.md` → Architecture → "`debug-*` Skill Category".
+
+### `util-*` skill category — standalone user-triggered utilities
+
+A third skill category for standalone utilities that the operator invokes manually outside any workflow. Distinguishing properties (vs workflow skills and `debug-*` sidebars):
+
+- **Own no state node** and emit **no transitions** — neither workflow F/I/T/P/S tokens nor `DEBUG-*` tokens. The skill runs, does its work, and ends.
+- **No `RETURN-TO:`** — unlike `debug-*` sidebars, util-* skills are not pulled by another workflow; they are entry points themselves.
+- **No `tools:` frontmatter** — they are not executable subagents spawned via `Agent()`; they are plain skills invoked via slash command.
+- **No `skills:` list** in frontmatter — they are not orchestrators.
+- **Frontmatter shape:** `name`, `description`, `argument-hint`. Same minimal shape as a workflow skill, minus all workflow integration.
+- **Mode menus are encouraged** for utilities that span an aggression spectrum (Step-by-step ↔ Autopilot). `util-prune-claude-md` mirrors the workflow drive-mode 1–4 spectrum at skill entry; the operator picks per-invocation rather than a persistent `drive_mode:` (no WIP file to persist into).
+
+Current util-* skills: `util-prune-claude-md` (shipped 2026-06-13 — compacts the project-root `CLAUDE.md` against the 40k-char harness threshold by extracting bulky bullets to `docs/lessons/<topic>.md` or `docs/product/arch.md`). The pre-existing Claude-Code-builtin utilities `init`, `review`, `security-review`, `update-config`, `simplify`, `loop`, `keybindings-help`, `statusline-setup`, `claude-api`, `fewer-permission-prompts` are retroactively considered part of the util-* concept but are NOT renamed (they ship with the Claude Code harness, not from this repo's `skills/` directory). File-based util-* skills authored in this repo use the `util-` prefix; harness-builtin utilities keep their original names.
+
+The category convention is forward-looking (no structural pin yet — `tests/check-structure.sh` would gain util-* pins only if a structural marker becomes load-bearing, mirroring the `debug-*` pin discipline at Phase 3b/3c). Until then, the category is doc-enforced via this section + the `util-` prefix.
 
 ### Per-phase verify loop extended with `verify-self`
 
