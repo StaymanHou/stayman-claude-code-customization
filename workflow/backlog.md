@@ -6,6 +6,13 @@
 
 ## TODO
 
+## Code-quality findings — claude-md-compaction (2026-06-13)
+- **Pointer:** 4 MINOR findings auto-backlogged by feature-review-quality against ship commit a96384a — heading drift on util-* skill `## Category` vs precedent `## Category Context`, lesson-file schema ambiguity (9 files / 3 heading shapes), redundant inline HTML comment in arch.md, and a placement-detail addendum for the YAML-parse-pin SURFACE. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Order:** P3
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** small task — each finding is a 1-line edit; bundle into a single `/task-plan` invocation when picked up.
+
 ## SURFACE-2026-06-13-CHECK-STRUCTURE-MISSING-YAML-PARSE-PIN
 - **Source:** feature:build (claude-md-compaction Phase 4 verify-auto)
 - **Order:** P1
