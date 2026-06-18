@@ -62,6 +62,8 @@ The incident workflow has its own regression-securing step: `mitigate → codify
 
 WIP files use the **Work Tree format** — a recursive tree with status-tagged nodes, `## Current Node` pointer, and `## Discoveries` section. The canonical schema and status vocabulary (`NOT-STARTED`, `in-progress`, `FAILED`, `BLOCKED`, `SURFACED`) live in `CLAUDE.snippet.md`, which `install.sh` injects into `~/.claude/CLAUDE.md`.
 
+**"Phase" vs. "Milestone" — two different artifacts, do not conflate.** The feature **Work Tree** uses **"Phase"** (`Phase 1`, `P1.1`) for the per-feature build-loop units — that schema is load-bearing and stays. The product **roadmap** uses **"Milestone"** (flat, singly-numbered) for its strategic decomposition unit; product-workflow skills treat "phase" as a backward-compat **read-alias** for "milestone" when reading older roadmaps. Renaming the roadmap unit to "Milestone" (shipped 2026-06-18, `docs/lessons/product-skills-milestone-terminology-and-wbs-scope.md`) deliberately did **not** touch the feature Work Tree's "Phase."
+
 Work Tree status vocabulary: `NOT-STARTED` → `in-progress` → `[x]` (complete); failure states: `FAILED`, `BLOCKED: depends on <node>`, `SURFACED: <summary>`. A parent node may only be checked `[x]` when ALL children are `[x]`.
 
 Key conventions:

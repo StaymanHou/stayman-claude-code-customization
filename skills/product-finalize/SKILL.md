@@ -46,10 +46,10 @@ Update `docs/product/arch.md` with any corrections. Bump `updated:` in its front
 
 ### 3. Roadmap Milestone Check
 
-Read `docs/product/roadmap.md`. For each phase/milestone defined there:
+Read `docs/product/roadmap.md`. For each milestone defined there (older roadmaps may label these "Phase" — treat "phase" as a read-alias for "milestone"):
 - Is it covered by completed WPs in the WBS? Mark it done.
 - Are there roadmap exit criteria? Confirm they are satisfied.
-- Are there any roadmap phases that remain incomplete?
+- Are there any roadmap milestones that remain incomplete?
 
 If all roadmap milestones map to completed WBS work: confirm this in a brief note and continue.
 

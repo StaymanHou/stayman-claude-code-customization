@@ -21,7 +21,7 @@ This is the **terminal state** of the product workflow.
 ### 1. Gather Inputs
 Read the product docs from `docs/product/`:
 - `vision.md` (purpose, audience, metrics)
-- `roadmap.md` (phases, milestones)
+- `roadmap.md` (milestones; older roadmaps may say "phases" — read-alias)
 - `research.md` (tech stack, trade-offs)
 - `arch.md` (system design, data flow)
 - `wbs.md` (work packages, dependencies)
@@ -85,8 +85,8 @@ Commands run directly on the host. Standard setup and tooling apply.
 ## Development Conventions
 <Code style, testing conventions, etc. Do NOT restate Docker rules here — they live in Dev Environment above.>
 
-## Current Phase
-<Active roadmap phase and its goals>
+## Current Milestone
+<Active roadmap milestone and its goals>
 
 ## Key Decisions
 <Important architectural and product decisions with rationale>
@@ -94,7 +94,7 @@ Commands run directly on the host. Standard setup and tooling apply.
 
 ### 3. Finalize Product Docs
 - Product docs stay in place under `docs/product/` — they are durable reference material, not ephemeral WIP, so they are **not** archived.
-- Create `docs/product/context.md` summarizing the generated root `CLAUDE.md` and noting the active roadmap phase:
+- Create `docs/product/context.md` summarizing the generated root `CLAUDE.md` and noting the active roadmap milestone:
 
 ```markdown
 ---
@@ -107,7 +107,7 @@ updated: <YYYY-MM-DD>
 
 Project CLAUDE.md generated at `CLAUDE.md` (project root).
 
-**Active phase:** <current roadmap phase>
+**Active milestone:** <current roadmap milestone>
 **First feature:** <first milestone to pick up>
 ```
 - Set `state: complete` on every other file in `docs/product/` that is still `in-progress`.

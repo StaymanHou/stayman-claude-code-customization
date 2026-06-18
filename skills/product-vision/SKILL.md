@@ -59,7 +59,7 @@ updated: <YYYY-MM-DD>
 
 ### 3. Hand Off
 - Set `state: complete` in the frontmatter
-- Tell user to run `/product-roadmap` to break the vision into phases
+- Tell user to run `/product-roadmap` to break the vision into milestones
 
 **Single-step mode only:** STOP here — do NOT start roadmapping. In orchestrated/autopilot/full-autopilot modes the orchestrator chains to roadmap automatically based on the drive mode's pause policy.
 

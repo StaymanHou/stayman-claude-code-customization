@@ -221,6 +221,58 @@ grep_check "CLAUDE.md Conventions section cites feature-review-quality" "CLAUDE.
 grep_check "feature-ship SKILL.md emits TRANSITION: F38 (default path)" "skills/feature-ship/SKILL.md" "TRANSITION: F38" 1
 grep_check "feature-ship SKILL.md emits TRANSITION: F17b (Mode 4 SKIP path)" "skills/feature-ship/SKILL.md" "TRANSITION: F17b" 1
 
+# Roadmap "milestone" terminology + flat numbering shipped 2026-06-18 (feature:
+# milestone-terminology-and-wbs-scope, from SURFACE-2026-06-18-PRODUCT-SKILLS-
+# MILESTONE-TERMINOLOGY-AND-WBS-SCOPE). product-roadmap now emits FLAT singly-
+# numbered "Milestone N" units (no dotted 1.1 hierarchy), with cosmetic "Group"
+# headings, and treats "phase" as a backward-compat read-alias. The feature Work
+# Tree's "Phase" schema (CLAUDE.snippet.md) is a DIFFERENT artifact and keeps its
+# name. These pins are prose-regression nets for the load-bearing anchors:
+#   1. roadmap template uses "### Milestone" heading (not "### Phase")
+#   2. no dotted milestone numbering survives in the roadmap skill
+#   3. cosmetic "Group" heading guidance present
+#   4. phase→milestone read-alias backward-compat note present
+#   5. feature Work Tree "Phase" schema still present in CLAUDE.snippet.md (un-renamed)
+grep_check "product-roadmap SKILL.md uses '### Milestone' template heading" "skills/product-roadmap/SKILL.md" "^### Milestone " 1
+grep_check "product-roadmap SKILL.md retains cosmetic 'Group' heading guidance" "skills/product-roadmap/SKILL.md" "Group" 1
+grep_check "product-roadmap SKILL.md retains phase read-alias backward-compat note" "skills/product-roadmap/SKILL.md" "alias" 1
+grep_check "CLAUDE.snippet.md feature Work Tree 'Phase' schema un-renamed" "CLAUDE.snippet.md" "Phase 1" 1
+# Negative pin: no dotted milestone numbering (e.g. "Milestone 1.1") in the roadmap skill.
+if grep -Eq "Milestone [0-9]+\.[0-9]" "skills/product-roadmap/SKILL.md"; then
+  check "product-roadmap SKILL.md has no dotted milestone numbering" "fail" \
+    "found dotted 'Milestone N.M' numbering — roadmap milestones must be flat single integers"
+else
+  check "product-roadmap SKILL.md has no dotted milestone numbering" "pass"
+fi
+
+# product-wbs next-milestone-only scope + milestone terminology (same feature/SURFACE).
+# product-wbs decomposes ONLY the immediate next milestone (not the whole roadmap) and
+# adopts "milestone" terminology with "phase" as a read-alias. Pins:
+#   1. next-milestone-only scope rule present
+#   2. milestone terminology adopted (WP template **Milestone:** field)
+#   3. phase read-alias / feature-Work-Tree-Phase-is-different terminology note present
+grep_check "product-wbs SKILL.md states next-milestone-only scope" "skills/product-wbs/SKILL.md" "immediate next milestone" 1
+grep_check "product-wbs SKILL.md WP template uses '**Milestone:**' field" "skills/product-wbs/SKILL.md" "\*\*Milestone:\*\*" 1
+grep_check "product-wbs SKILL.md retains phase read-alias terminology note" "skills/product-wbs/SKILL.md" "read-alias|alias" 1
+
+# Phase-vs-Milestone disambiguation note + downstream-consumer milestone terminology
+# (Phase 3 of the milestone-terminology-and-wbs-scope feature). The project CLAUDE.md
+# Work Tree Format section carries the disambiguation note (feature Work Tree "Phase"
+# kept; roadmap "Milestone" renamed; phase = read-alias). Downstream product skills +
+# the product-workflow orchestrator adopt milestone terminology. Pins:
+grep_check "CLAUDE.md carries Phase-vs-Milestone disambiguation note" "CLAUDE.md" "two different artifacts" 1
+# Token-specific milestone-forward pins (anchored on the actual renamed token in each
+# file, not bare substring "milestone" presence — sturdier against partial reverts).
+grep_check "product-finalize roadmap-loop renamed to milestone" "skills/product-finalize/SKILL.md" "For each milestone defined" 1
+grep_check "product-context uses 'Current Milestone' heading" "skills/product-context/SKILL.md" "## Current Milestone" 1
+grep_check "product-arch scope-definition renamed to milestone" "skills/product-arch/SKILL.md" "which milestone this architecture" 1
+grep_check "product-research uses 'Milestone Focus'" "skills/product-research/SKILL.md" "Milestone Focus" 1
+grep_check "product-vision hands off to break vision into milestones" "skills/product-vision/SKILL.md" "into milestones" 1
+grep_check "product-workflow AGENTS.md roadmap row is milestone-forward" "agents/product-workflow/AGENTS.md" "Flat milestones with exit criteria" 1
+# transitions.md P3 condition renamed (tripartite-sync — keep state-machine doc aligned
+# with AGENTS.md + product-roadmap SKILL.md per CLAUDE.md "state machine lives in three places").
+grep_check "transitions.md P3 condition is milestone-forward (tripartite sync)" "docs/product/transitions.md" "Roadmap has milestones defined" 1
+
 echo ""
 
 # ── Phase 3b: debug-* skill category invariants ────────────────────────────

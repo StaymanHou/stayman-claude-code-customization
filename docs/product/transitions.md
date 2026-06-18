@@ -245,7 +245,7 @@ Terminal: product-finalize (→ EXIT; docs archived, cycle closed)
 |----|------|----|-----------|
 | P1 | ENTRY | vision | Always |
 | P2 | vision | roadmap | Vision doc created |
-| P3 | roadmap | research | Roadmap has phases defined |
+| P3 | roadmap | research | Roadmap has milestones defined |
 | P4 | research | roadmap | Back-loop: research invalidates roadmap assumptions |
 | P5 | research | arch | Research complete, no roadmap changes needed |
 | P6 | arch | research | Back-loop: architecture reveals unknowns |

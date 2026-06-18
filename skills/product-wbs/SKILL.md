@@ -19,15 +19,30 @@ You are in the **product** workflow at the **wbs** state.
 Also entered via:
 - **P11 (SURFACE-IN):** Lower-level workflow discovers new work that should be in the WBS
 
+## Terminology — "milestone" is the roadmap unit; "phase" is a read-alias
+
+The roadmap decomposes the product into **milestones** (`Milestone 1`, `Milestone 2`, …). When *reading* an existing `roadmap.md` that uses "Phase", treat "phase" as a recognized alias for "milestone" — older roadmaps remain valid. When *writing* WBS content that references a roadmap unit, use "Milestone". (Note: the *feature Work Tree's* "Phase" — `Phase 1`, `P1.1` in feature WIP files — is a **different artifact** that keeps the "Phase" name; do not confuse it with the roadmap's milestone.)
+
+## Scope — decompose ONLY the immediate next milestone
+
+**The WBS details work packages for the immediate next milestone in the roadmap — not the whole roadmap.** Decomposing all future milestones up front is speculative waste: later milestones are contingent (gated, pivot-on-failure), depend on knowledge that does not exist yet, and re-planning is cheap precisely because you did not over-commit.
+
+- Detail WPs (probe + build, with tasks) for the **next milestone only**.
+- Future milestones are **already tracked in `roadmap.md`** — do NOT re-list them as decomposed WPs. At most keep a single-line pointer ("future milestones tracked in roadmap.md"), and only if a stub is genuinely useful.
+- On milestone completion the workflow loops back here (or to the next feature) to decompose the *next* milestone **just-in-time** — not all-at-once.
+
+This extends the learning-sequence-ordering discipline below ("resolve riskiest unknowns first, cheaply") with: *and don't decompose what you're not about to build.*
+
 ## Procedure
 
 ### 1. Review Inputs
 - Read `docs/product/vision.md`, `docs/product/roadmap.md`, `docs/product/research.md`, `docs/product/arch.md`
+- Identify the **immediate next milestone** in `roadmap.md` (the earliest milestone not yet complete) — this milestone is the entire scope of this WBS pass
 - If entering from SURFACE-IN (P11), read the surface note in `workflow/backlog.md` and integrate the new work item
 
 ### 2. Decompose into Work Packages
 
-Create `docs/product/wbs.md` (or update in place if returning via back-loop/SURFACE-IN).
+Create `docs/product/wbs.md` (or update in place if returning via back-loop/SURFACE-IN). **Decompose only the immediate next milestone** (see "Scope" above).
 
 **Two kinds of work packages exist — use the right template for each:**
 
@@ -36,7 +51,7 @@ Create `docs/product/wbs.md` (or update in place if returning via back-loop/SURF
 ```markdown
 ### WP<N>: <name>
 **Description:** <what this covers>
-**Phase:** <which roadmap phase>
+**Milestone:** <which roadmap milestone>
 **Dependencies:** <prerequisite WPs>
 **Size:** <T-shirt: XS/S/M/L/XL>
 **Tasks:**
@@ -51,7 +66,7 @@ Use this type when a WP's primary output is *knowledge*, not working software �
 ```markdown
 ### WP<N>: Probe — <what is being investigated>
 **Type:** probe
-**Phase:** <should appear BEFORE any WP that depends on this knowledge>
+**Milestone:** <should appear BEFORE any WP that depends on this knowledge>
 **Dependencies:** <prerequisite WPs>
 **Size:** <T-shirt: XS/S/M/L/XL>
 **Learning objective:** <what question are we answering? e.g. "What are the exact request/response shapes for Stripe's PaymentIntent API?">
@@ -70,18 +85,18 @@ Each standard work package should:
 
 ### 3. Learning-Sequence Ordering
 
-**Order phases by learning dependencies, not just build dependencies.** The riskiest unknowns should be resolved first, when the cost of discovery is lowest and the cost of re-planning is cheapest.
+**Order WPs (within the milestone) by learning dependencies, not just build dependencies.** The riskiest unknowns should be resolved first, when the cost of discovery is lowest and the cost of re-planning is cheapest.
 
-**Standard phase sequence (deviate only with written rationale):**
+**Standard ordering sequence (deviate only with written rationale):**
 1. **Environment / Docker** — prove the dev environment works before writing any application code
 2. **3rd-party probes** — one probe WP per external API/service/SDK before any build WP that assumes known shapes
 3. **UI mockups / frontend prototypes** — validate UX assumptions before building the backend that serves them
 4. **Backend synchronous path** — implement the core feature without async complexity
 5. **Orchestration / async as refactor** — add queues, workers, event systems on top of a working synchronous path
 
-**For each phase transition, write a brief ordering rationale:**
+**For each ordering transition, write a brief rationale:**
 ```markdown
-**Phase N → Phase N+1 rationale:** <why this phase before the next, in terms of risk reduction — e.g. "Stripe probe before payments WP so we don't design the data model around assumed API shapes">
+**WP N → WP N+1 rationale:** <why this WP before the next, in terms of risk reduction — e.g. "Stripe probe before payments WP so we don't design the data model around assumed API shapes">
 ```
 
 ### 4. 3rd-Party Integration Rules
@@ -94,7 +109,7 @@ Each standard work package should:
 
 ### 5. Orchestration Ordering Rule
 
-**Orchestration layers (message queues, background workers, event buses, async pipelines) must appear in a later phase than the synchronous path they will wrap.** If you find yourself planning async infrastructure in the same phase as the core synchronous logic, split them: implement the synchronous path first, then add the async wrapper in a subsequent phase.
+**Orchestration layers (message queues, background workers, event buses, async pipelines) must be ordered after the synchronous path they will wrap.** If you find yourself planning async infrastructure in the same WP as the core synchronous logic, split them: implement the synchronous path first, then add the async wrapper in a subsequent WP (and, if the async layer belongs to a later milestone, defer it there).
 
 Deviations from this rule require written rationale (e.g., "async is load-bearing from day 1 because the core operation is inherently unbounded in duration").
 

@@ -1,6 +1,6 @@
 ---
 name: product-research
-description: "Product workflow: research technical solutions, libraries, and frameworks for the next development phase"
+description: "Product workflow: research technical solutions, libraries, and frameworks for the next development milestone"
 argument-hint: <specific focus areas or constraints>
 ---
 
@@ -21,17 +21,17 @@ Also entered via:
 
 ## Procedure
 
-### 1. Identify Phase Focus
+### 1. Identify Milestone Focus
 - Read `docs/product/vision.md` and `docs/product/roadmap.md`
-- Determine the current/next active phase from the roadmap
-- Focus research on that specific phase's needs
+- Determine the current/next active milestone from the roadmap (older roadmaps may say "phase" — read-alias)
+- Focus research on that specific milestone's needs
 
 ### 2. Conduct Research
 - **MANDATORY: run web search.** Do NOT skip this step. Model training knowledge lags real-world library releases, deprecations, and best-practice shifts — and product research happens only once per project (plus rare revisions), so the cost of one extra search is trivial against the cost of recommending a stale stack. If you find yourself reasoning "I already know this space well," run the search anyway.
-- Search for libraries, tools, and frameworks relevant to the phase deliverables. Use multiple searches covering: current stable versions, recent alternatives/competitors, known issues / deprecations / abandonment.
-- **Phase-appropriate choices:** Prioritize simplicity for PoC, scalability for V1, etc.
+- Search for libraries, tools, and frameworks relevant to the milestone deliverables. Use multiple searches covering: current stable versions, recent alternatives/competitors, known issues / deprecations / abandonment.
+- **Milestone-appropriate choices:** Prioritize simplicity for PoC, scalability for V1, etc.
 - Evaluate options based on:
-  - Ease of implementation for the current phase
+  - Ease of implementation for the current milestone
   - Ecosystem support and community
   - Compatibility with long-term vision (avoid architectural dead-ends)
 - Online official docs override model knowledge when they conflict.
@@ -48,7 +48,7 @@ updated: <YYYY-MM-DD>
 
 # Research
 
-**Phase Focus:** <which phase this research supports>
+**Milestone Focus:** <which milestone this research supports>
 
 ### Recommended Stack
 - <technology>: <why chosen>

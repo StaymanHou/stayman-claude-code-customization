@@ -36,9 +36,9 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 | State | Skill | Purpose |
 |-------|-------|---------|
 | vision | `/product-vision` | Define purpose, audience, success metrics |
-| roadmap | `/product-roadmap` | Phase milestones with exit criteria |
+| roadmap | `/product-roadmap` | Flat milestones with exit criteria (older docs: "phases" — read-alias) |
 | research | `/product-research` | Technical solution evaluation |
-| arch | `/product-arch` | System design for current phase |
+| arch | `/product-arch` | System design for current milestone |
 | wbs | `/product-wbs` | Work breakdown into packages |
 | context | `/product-context` | Generate CLAUDE.md, transition to features |
 | product-finalize | `/product-finalize` | Resync durable docs, sweep backlog, archive cycle-scoped docs, append to CHANGELOG.md |
@@ -49,7 +49,7 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 |----|-----------|-----------|------|
 | P1 | ENTRY → vision | Always | entry |
 | P2 | vision → roadmap | Vision doc created | forward |
-| P3 | roadmap → research | Roadmap has phases | forward |
+| P3 | roadmap → research | Roadmap has milestones | forward |
 | P4 | research → roadmap | Research invalidates assumptions | back-loop |
 | P5 | research → arch | Research complete, roadmap holds | forward |
 | P6 | arch → research | Architecture reveals unknowns | back-loop |

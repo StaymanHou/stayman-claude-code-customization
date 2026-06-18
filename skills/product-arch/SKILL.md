@@ -1,6 +1,6 @@
 ---
 name: product-arch
-description: "Product workflow: define the technical architecture and system design for the current phase"
+description: "Product workflow: define the technical architecture and system design for the current milestone"
 argument-hint: <optional context or constraints>
 ---
 
@@ -28,9 +28,9 @@ Also entered via:
 - If entering from SURFACE-IN (P12), read the surface note in `workflow/backlog.md` for context
 
 ### 2. Scope Definition
-- Explicitly state which phase this architecture is for (PoC, MVP, V1, etc.)
-- **YAGNI:** Do not design for future phases not yet in scope
-- **Forward Compatibility:** Ensure current choices don't make future phases impossible
+- Explicitly state which milestone this architecture is for (PoC, MVP, V1, etc.) — older roadmaps may label these "phases"; treat "phase" as a read-alias for "milestone"
+- **YAGNI:** Do not design for future milestones not yet in scope
+- **Forward Compatibility:** Ensure current choices don't make future milestones impossible
 
 ### 3. Define Architecture
 Create `docs/product/arch.md` (or update it in place if returning via a back-loop — bump `updated:` and append a `## Revision <YYYY-MM-DD>` section):
@@ -44,7 +44,7 @@ updated: <YYYY-MM-DD>
 
 # Architecture
 
-**Phase:** <which phase>
+**Milestone:** <which milestone>
 
 ### Tech Stack
 - Language: <choice> — <why>
@@ -67,7 +67,7 @@ updated: <YYYY-MM-DD>
 <component descriptions or MermaidJS diagrams>
 
 ### Data Flow
-<how data moves through the system for this phase>
+<how data moves through the system for this milestone>
 
 ### Key Decisions
 - <decision>: <rationale>
