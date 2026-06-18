@@ -55,7 +55,7 @@
 - **Context:** Full draft (with How-to-apply detail per rule and a curation note on the Rule 1 backward-compat boundary) copied verbatim to [`docs/lessons/product-skills-milestone-terminology-and-wbs-scope.md`](../docs/lessons/product-skills-milestone-terminology-and-wbs-scope.md). The only real decision is whether to rename "Phase" in the feature Work Tree too or keep that load-bearing global schema as-is (recommendation in the doc: keep it, switch only the roadmap, alias-on-read).
 - **Suggested action:** Curate the draft into `product-roadmap`/`product-wbs` SKILL.md edits (and decide on the global Work Tree boundary) via a small feature or task.
 - **Priority:** medium
-- **Status:** open
+- **Status:** resolved 2026-06-18 by feature `milestone-terminology-and-wbs-scope` (commit ab5f7a2). All 3 rules applied across 9 product-workflow files + transitions.md tripartite-sync; feature Work Tree "Phase" kept with disambiguation note; +13 structural pins.
 
 ## MAYBE
 
