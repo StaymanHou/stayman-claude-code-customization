@@ -1,3 +1,9 @@
+## Environment & Infrastructure (GLOBAL)
+
+- **Docker Hard-Blocker — daemon-down vs. container-down.** This hard-blocker applies *only* when the Docker **daemon** is unreachable. Before assuming a block, check the daemon and the containers separately:
+  - **Daemon unreachable** (`docker ps` errors / cannot connect) in a project that requires Docker: STOP and ask the user to start it. Never run project-standard commands (migrations, tests, CLI tools, REPLs) on the host OS as a fallback.
+  - **Daemon reachable but the project's containers are down** (`docker ps` exits 0 but the service you need isn't running): do **not** pause and do **not** ask. Start the container(s) yourself (`docker compose up -d`, or `up --build` if images need building), wait until healthy, then resume the task. `docker` / `docker compose` commands run on the host are explicitly allowed (alongside `git` and read-only ops) — starting containers is the correct unblock, not a host-OS fallback. Read the trigger word literally: an **unreachable daemon** justifies a pause; a **stopped container** does not.
+
 ## Workflow System
 
 This machine has a state-machine-driven workflow system installed (skills + orchestrator agents). Projects that use it keep transient state in `workflow/` and strategic product docs in `docs/product/`.
