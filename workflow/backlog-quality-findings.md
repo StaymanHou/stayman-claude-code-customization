@@ -49,3 +49,15 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Suggested action:** Cross-reference this note inside the parent SURFACE's "Suggested action" field, or merge this finding into the parent SURFACE as a placement-detail addendum.
 - **Priority:** low
 - **Status:** pending
+
+# docker-daemon-vs-container-distinction — 2026-06-19
+
+## SURFACE-2026-06-19-QUALITY-CONTAINER-DOWN-PIN-OVER-BROAD
+- **Source:** feature-review-quality (docker-daemon-vs-container-distinction ship aef35a2)
+- **Target level:** workflow:task
+- **Type:** tech-debt
+- **Summary:** The container-down structural pin at `tests/check-structure.sh:176` matches `containers are down|docker compose up`, but `docker compose up` may also appear in unrelated allowed-list/bootstrap prose in the same Variant-A template. The OR-branch means the pin could pass on the wrong line if the new self-start clause is ever deleted while a stray `docker compose up` survives — a slightly leaky regression net.
+- **Context:** The pin's value is catching accidental removal of the new container-down branch specifically; the broad alternation weakens that guarantee. Low-stakes because the sibling daemon-unreachable pin still anchors the section's presence.
+- **Suggested action:** Tighten the pin to a more distinctive anchor such as `start the container\(s\) yourself`, tying it to the actual new clause. 1-line edit to the grep_check pattern.
+- **Priority:** low
+- **Status:** pending

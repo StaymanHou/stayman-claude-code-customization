@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-19
+
+- **Feature shipped:** `docker-daemon-vs-container-distinction` — refined the Variant-A generated-CLAUDE.md Docker rule in `skills/product-context/SKILL.md` to distinguish two cases the old single line conflated: daemon UNREACHABLE (`docker ps` errors → STOP and ask the user, no host-OS fallback — the hard-blocker, unchanged) versus daemon REACHABLE but the project's containers DOWN (`docker ps` exits 0 → start the container(s) yourself with `docker compose up -d` / `up --build`, wait for healthy, resume — do NOT pause), codified by two new `grep_check` structural pins mirroring the randomize-host-ports precedent (suite 269/0); the change originated from a 2026-06-19 replicator-1-0 learning where "container down" was misread as the daemon-unreachable hard-blocker, wasting a round-trip.
+
 ## 2026-06-18
 
 - **Feature shipped:** `milestone-terminology-and-wbs-scope` — the product roadmap's strategic decomposition unit is renamed from "Phase" to "Milestone" (flat singly-numbered, cosmetic "Group" headings, "phase" kept as a backward-compat read-alias), `product-wbs` now decomposes only the immediate next milestone instead of the whole roadmap, and the rename was applied across all 9 product-workflow files plus the tripartite-sync third leg in `transitions.md` while the feature Work Tree's separate "Phase" schema was deliberately left intact with a new disambiguation note in `CLAUDE.md`.

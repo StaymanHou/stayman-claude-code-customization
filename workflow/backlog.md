@@ -6,6 +6,12 @@
 
 ## TODO
 
+## Code-quality findings — docker-daemon-vs-container-distinction (2026-06-19)
+- **Pointer:** 1 MINOR finding auto-backlogged by feature-review-quality against ship commit aef35a2 — the container-down structural pin (`tests/check-structure.sh:176`) uses an over-broad `docker compose up` OR-branch that could match unrelated template prose; tighten to a more distinctive anchor. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low
+- **Status:** pending
+- **Pickup shape:** small task — 1-line edit to the grep_check pattern; can be bundled with other check-structure.sh pin polish.
+
 ## Code-quality findings — claude-md-compaction (2026-06-13)
 - **Pointer:** 4 MINOR findings auto-backlogged by feature-review-quality against ship commit a96384a — heading drift on util-* skill `## Category` vs precedent `## Category Context`, lesson-file schema ambiguity (9 files / 3 heading shapes), redundant inline HTML comment in arch.md, and a placement-detail addendum for the YAML-parse-pin SURFACE. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Order:** P3
