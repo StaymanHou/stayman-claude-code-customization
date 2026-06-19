@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-13
+updated: 2026-06-19
 ---
 
 
@@ -11,9 +11,11 @@ updated: 2026-06-13
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 31s (2026-06-13)
-- **Use timeout:** 107000
+- **Last:** 18s (2026-06-19)
+- **Use timeout:** 86000
 - **History:**
+  - 18s — 2026-06-19  <!-- docker-daemon-vs-container-distinction verify-codify; 269/0 PASS (+2 from prior 267: two new grep_check pins on skills/product-context/SKILL.md — daemon-unreachable hard-blocker + container-down self-start). -->
+  - 17s — 2026-06-19  <!-- docker-daemon-vs-container-distinction verify-auto; 267/0 PASS. No pins added (prose-only edit to skills/product-context/SKILL.md:70 daemon-vs-container clause). Faster wall-clock than prior runs (warm fs cache). -->
   - 33s — 2026-06-13  <!-- verify-sh-contains-required Phase 2 verify-codify; 249/251 PASS, 2 baseline FAILs (unchanged). +4 PASS from prior 245: Phase 1 scenario YAML integrity got 4 new grep_check pins (P10b exists + contains_required_any used + CLAUDE.md documents both new fields). -->
   - 33s — 2026-06-13  <!-- verify-sh-contains-required Phase 1 verify-codify; 245/247 PASS, 2 baseline FAILs (unchanged). +13 PASS from prior 232: Phase 3e added 13 vr_check unit cases (A-M) covering verify_result backward-compat + new contains_required/contains_required_any AND/ANY behavior. -->
   - 31s — 2026-06-13  <!-- verify-sh-contains-required Phase 1 verify-auto; 232/234 PASS, 2 baseline FAILs (SURFACE-2026-06-12-PHASE-3D-REGEX-TEST-MISSES-TR-PREFIX, unchanged). +4 PASS from prior 228; likely the iterating cheat-sheet Phase 9 loop counting feature-* rows. No pins added by this feature. -->

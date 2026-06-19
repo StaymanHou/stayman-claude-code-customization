@@ -167,6 +167,16 @@ grep_check "feature-plan SKILL.md has Step 0 section" "skills/feature-plan/SKILL
 grep_check "product-context SKILL.md retains 'Randomize host ports' bullet" "skills/product-context/SKILL.md" "Randomize host ports" 1
 grep_check "product-context SKILL.md cites ephemeral-port range with 49152 anchor" "skills/product-context/SKILL.md" "ephemeral range.*49152|49152.*ephemeral" 1
 
+# Docker daemon-vs-container distinction shipped to product-context Variant A
+# (feature: docker-daemon-vs-container-distinction, 2026-06-19, from learning
+# 2026-06-19-docker-daemon-up-container-down-just-start-it). The Variant-A template
+# must distinguish a hard-block (daemon unreachable → STOP and ask) from a self-unblock
+# (daemon up but containers down → start them yourself, don't pause). Pure prose, so the
+# regression net is presence of both load-bearing clauses. Two pins: the daemon-unreachable
+# hard-blocker (preserved) and the container-down self-start instruction (new).
+grep_check "product-context SKILL.md retains daemon-unreachable hard-blocker clause" "skills/product-context/SKILL.md" "[Dd]aemon ([Ii]s )?unreachable" 1
+grep_check "product-context SKILL.md adds container-down self-start instruction" "skills/product-context/SKILL.md" "containers are down|docker compose up" 1
+
 # Auto-skip gate shipped to feature-verify-human/SKILL.md §2 (feature:
 # verify-human-auto-skip-when-no-integration-boundary). The gate is prose-only
 # behavioral guidance — the regression net is presence of its load-bearing anchors.

@@ -67,7 +67,10 @@ This generated `CLAUDE.md` is the **primary enforcement mechanism** for the Dev 
 
 **Rule for agents and humans alike:** if you catch yourself about to run `pytest`, `npm test`, `pip install`, `python manage.py …`, `cargo …`, etc. directly on the host, STOP and prefix it with the command above. Running on the host bypasses the project environment and the results are not trustworthy. There is no "just this once" exception.
 
-If the Docker daemon is unreachable, STOP and ask the user to start it. Do not fall back to the host OS.
+**Docker down — two cases, two responses.** Before assuming a hard-block, check the daemon and the containers separately:
+
+- **Daemon unreachable** (`docker ps` errors / cannot connect): this is the hard-blocker. STOP and ask the user to start Docker. Do **not** fall back to the host OS.
+- **Daemon reachable but the project's containers are down** (`docker ps` exits 0 but the service you need isn't running): do **not** pause and do **not** ask. Start the container(s) yourself (`docker compose up -d`, or `up --build` if images need building), wait for them to be healthy, then resume the task. `docker` / `docker compose` commands are on the allowed list above — starting containers is the correct unblock, not a host-OS fallback.
 
 ### Variant B — Host-based (use ONLY if arch.md explicitly opted out)
 
