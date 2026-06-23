@@ -6,6 +6,12 @@
 
 ## TODO
 
+## Code-quality findings — debug-minimal-harness (2026-06-23)
+- **Pointer:** 2 MINOR findings auto-backlogged by feature-review-quality against ship commit efba0ca — (1) GATE-MET scenario uses `transition_id_any` while sibling GATE-MET scenarios assert strict single-START (idiom divergence), (2) SKILL.md "5+ rounds" traceability note vs "≥3 rounds" inconclusive threshold (cosmetic). Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** small task — each is a 1-line edit; bundle into a single `/task-plan` when picked up.
+
 ## Code-quality findings — docker-daemon-vs-container-distinction (2026-06-19)
 - **Pointer:** 1 MINOR finding auto-backlogged by feature-review-quality against ship commit aef35a2 — the container-down structural pin (`tests/check-structure.sh:176`) uses an over-broad `docker compose up` OR-branch that could match unrelated template prose; tighten to a more distinctive anchor. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low

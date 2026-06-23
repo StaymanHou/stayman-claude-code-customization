@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-23
+
+- **Feature shipped:** `debug-minimal-harness` — a third `debug-*` sidebar skill that, when a behavioral fix (drag/click/focus/keyboard, CLI under real argv/stdin, HTTP under a real client, a race under real concurrency) has been handed back untested ≥2× on the same behavior AND that behavior is drivable in a surface the agent controls (even when the shipping target is native), has the agent stop handing back and instead build a minimal standalone reproduction and drive it with REAL input — not synthetic dispatch, which false-passes by masking pointer-capture/focus/hit-test/re-render bugs — before re-presenting to the human; codifies the claudesk M4 WP3 drag-reorder learning, wired across all three caller skills + three orchestrator AGENTS.md + transitions.md with 16 new structural pins (check-structure.sh 297/1) and 3 behavioral scenarios.
+
 ## 2026-06-19
 
 - **Feature shipped:** `docker-daemon-vs-container-distinction` — refined the Variant-A generated-CLAUDE.md Docker rule in `skills/product-context/SKILL.md` to distinguish two cases the old single line conflated: daemon UNREACHABLE (`docker ps` errors → STOP and ask the user, no host-OS fallback — the hard-blocker, unchanged) versus daemon REACHABLE but the project's containers DOWN (`docker ps` exits 0 → start the container(s) yourself with `docker compose up -d` / `up --build`, wait for healthy, resume — do NOT pause), codified by two new `grep_check` structural pins mirroring the randomize-host-ports precedent (suite 269/0); the change originated from a 2026-06-19 replicator-1-0 learning where "container down" was misread as the daemon-unreachable hard-blocker, wasting a round-trip.

@@ -61,3 +61,21 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Suggested action:** Tighten the pin to a more distinctive anchor such as `start the container\(s\) yourself`, tying it to the actual new clause. 1-line edit to the grep_check pattern.
 - **Priority:** low
 - **Status:** pending
+
+# debug-minimal-harness — 2026-06-23
+
+## SURFACE-2026-06-23-QUALITY-MINHARNESS-GATEMET-IDIOM-DIVERGENCE
+- **Source:** feature:review-quality (debug-minimal-harness, ship commit efba0ca)
+- **Type:** tech-debt (idiom divergence)
+- **Summary:** `DEBUG-MINHARNESS-GATE-MET` in tests/scenarios/debug.yaml uses `transition_id_any: [START, COMPLETE]` while both sibling GATE-MET scenarios (DEBUG-TELEMETRY-GATE-MET, DEBUG-BISECT-GATE-MET) assert a strict single `*-START`. Justified + inline-commented, but a maintainer normalizing the three GATE-MET scenarios might not notice this one is intentionally looser.
+- **Suggested action:** Consider whether the two sibling GATE-MET scenarios should ALSO widen to `transition_id_any` (a capable model runs any of the three techniques to COMPLETE on a gates-met fixture) — would unify the idiom. Or leave as-is; the inline comment is the safeguard.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-06-23-QUALITY-MINHARNESS-ROUND-THRESHOLD-NOTE
+- **Source:** feature:review-quality (debug-minimal-harness, ship commit efba0ca)
+- **Type:** tech-debt (cosmetic prose)
+- **Summary:** skills/debug-minimal-harness/SKILL.md Termination note says "5+ rounds" for optional WIP traceability notes while §6/inconclusive keys on "≥3 rounds" — internally consistent with sibling precedent (telemetry uses the same 3-vs-5 split) but a reader may briefly trip on the differing thresholds.
+- **Suggested action:** Optional one-line clarification that the 3-round threshold is for inconclusive-escalation and the 5-round threshold is for optional traceability notes (two different purposes). Matches sibling precedent, so low value.
+- **Priority:** low
+- **Status:** pending
