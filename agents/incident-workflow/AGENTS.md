@@ -86,7 +86,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 ### How to advance
 
 1. **Invoke each skill via the Skill tool** in sequence: `incident-report` → `incident-triage` → `incident-investigate` → `incident-mitigate` → `incident-resolve`.
-2. **After each skill completes**, read the `TRANSITION: <id>` token and apply the pause policy below.
+2. **After each skill completes**, read the `TRANSITION: <id>` token and apply the pause policy below. At a transition the table marks `AUTO` (e.g. I14, I17, codify Path A), the next action is a `Skill` invocation — do NOT invoke `AskUserQuestion` or any user-input tool to "confirm" an AUTO handoff (see `agents/feature-workflow/AGENTS.md` → Precedence rule, P1 incident 2026-06-23). Pause only where the table marks `PAUSE`.
 3. **Urgency discipline:** incidents are time-sensitive. Keep pauses short and focused.
 4. **Do not skip triage.** Even if the user says "just fix it," run triage — the severity assessment shapes everything after.
 

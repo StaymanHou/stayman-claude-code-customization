@@ -146,6 +146,8 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 **Skill-level `**STOP**` directives and `"Run /x"` prose are never authoritative in orchestrated mode.** The orchestrator ignores them. The only machine signal the orchestrator acts on is the `TRANSITION: <id>` token at the end of a skill's output. After every `Skill` tool call, re-read the active drive mode and apply the pause-policy table below before deciding whether to chain or wait.
 
+**AUTO transitions may not invoke any user-input tool.** When the table below marks a transition `AUTO` for the active drive mode, the orchestrator's next action is a `Skill` invocation — full stop. It must NOT call `AskUserQuestion` (or any other interactive prompt/confirmation tool) at an AUTO transition, not even to "just confirm" the handoff: an inline question IS returning control to the user and defeats unattended chaining. A pause happens **only** at transitions the table explicitly marks `PAUSE`. This closes the regression where a more capable client/model reaches for `AskUserQuestion` at decision-shaped AUTO moments that prior prose only forbade as a passive narrative-summary turn-end (P1 incident, 2026-06-23 — autopilot-askuserquestion-pauses).
+
 ### How to advance
 
 1. **Invoke each skill via the Skill tool** in sequence, following the state machine and per-phase loop.

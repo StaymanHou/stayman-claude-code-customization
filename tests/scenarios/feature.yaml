@@ -136,6 +136,37 @@ scenarios:
         - "/feature-ship"
     max_retries: 2
 
+  # P1 incident 2026-06-23 (autopilot-askuserquestion-pauses): under autopilot,
+  # an AUTO build→verify-auto transition must NOT pause to ask the user via
+  # AskUserQuestion. NOTE (honest limitation): the harness only inspects the
+  # final `.result` text and does not disallow AskUserQuestion, so this scenario
+  # is a SECONDARY behavioral guard — it catches a model that *narrates* an
+  # AskUserQuestion-style pause, but the PRIMARY regression gate is the
+  # structural pin in check-structure.sh Phase 9 (every "Hard rule for AUTO
+  # exits" block + all 4 orchestrators must contain the AskUserQuestion clause).
+  # `not_contains_strict` is appropriate here: AskUserQuestion is a failure-proxy
+  # phrase in an AUTO-handoff result (per docs/lessons/test-scenario-strict-mode.md).
+  - id: F8-autopilot-no-askuser
+    name: "feature:build → verify-auto AUTO handoff does not invoke AskUserQuestion (autopilot)"
+    skill: feature-build
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-build-phase1-done-autopilot.md
+    system_prompt_extra: |
+      All Phase 1 build steps are complete; all code changes for this phase are
+      done. Current Node points at Phase 1 verify-auto. The WIP frontmatter shows
+      drive_mode: autopilot. F8 (build → verify-auto) is AUTO in autopilot — hand
+      off directly.
+    expect:
+      transition_id: F8
+      contains_any:
+        - "/feature-verify-auto"
+        - "verify-auto"
+      not_contains_strict:
+        - "AskUserQuestion"
+    max_retries: 2
+
   - id: F9
     name: "feature:verify-auto back-loops to build when tests fail"
     skill: feature-verify-auto

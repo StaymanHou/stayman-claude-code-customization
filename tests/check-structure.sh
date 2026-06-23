@@ -1387,6 +1387,32 @@ for f in "${PAUSE_POLICY_FILES[@]}"; do
     check "$f has pause-policy table with all 4 drive modes" "fail" \
       "no single line references all four modes (table row missing or malformed)"
   fi
+
+  # (4) AUTO-exit AskUserQuestion prohibition (P1 incident 2026-06-23,
+  # autopilot-askuserquestion-pauses). The "Hard rule for AUTO exits" block must
+  # explicitly forbid AskUserQuestion on AUTO transitions — the 2026-05-16 rule
+  # only named the passive narrative-summary stop, leaving the active
+  # tool-invocation stop unforbidden. Removing this clause reopens the regression.
+  if grep -qF "AskUserQuestion" "$f"; then
+    check "$f forbids AskUserQuestion on AUTO exits" "pass"
+  else
+    check "$f forbids AskUserQuestion on AUTO exits" "fail" \
+      "missing AskUserQuestion prohibition in 'Hard rule for AUTO exits' (P1 2026-06-23 regression)"
+  fi
+done
+
+# (3b) Tier-2: the canonical orchestrator pause-policy section and the three
+# other orchestrators must each carry the AUTO ⇒ no-user-input-tool rule.
+# (P1 incident 2026-06-23). feature-workflow holds the full statement; the
+# others cross-reference it.
+for af in agents/feature-workflow/AGENTS.md agents/task-workflow/AGENTS.md \
+          agents/product-workflow/AGENTS.md agents/incident-workflow/AGENTS.md; do
+  if grep -qF "AskUserQuestion" "$af"; then
+    check "$af carries AUTO-exit AskUserQuestion prohibition" "pass"
+  else
+    check "$af carries AUTO-exit AskUserQuestion prohibition" "fail" \
+      "missing AUTO ⇒ no-AskUserQuestion rule (P1 2026-06-23 regression)"
+  fi
 done
 
 # (4) Phase 9b: per-skill cheat-sheet VALUES match the canonical pause-policy

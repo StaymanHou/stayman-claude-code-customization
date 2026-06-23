@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-19
+updated: 2026-06-23
 ---
 
 
@@ -11,9 +11,10 @@ updated: 2026-06-19
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 18s (2026-06-19)
+- **Last:** 17s (2026-06-23)
 - **Use timeout:** 86000
 - **History:**
+  - 17s — 2026-06-23  <!-- incident autopilot-askuserquestion-pauses codify; 281 PASS / 1 baseline FAIL (unrelated live-settings claudesk-hook drift). +13 from prior 268: Phase 9 (4) AskUserQuestion-on-AUTO prohibition pin × 9 feature skills + Phase 9 (3b) AUTO-exit rule × 4 orchestrators. -->
   - 18s — 2026-06-19  <!-- docker-daemon-vs-container-distinction verify-codify; 269/0 PASS (+2 from prior 267: two new grep_check pins on skills/product-context/SKILL.md — daemon-unreachable hard-blocker + container-down self-start). -->
   - 17s — 2026-06-19  <!-- docker-daemon-vs-container-distinction verify-auto; 267/0 PASS. No pins added (prose-only edit to skills/product-context/SKILL.md:70 daemon-vs-container clause). Faster wall-clock than prior runs (warm fs cache). -->
   - 33s — 2026-06-13  <!-- verify-sh-contains-required Phase 2 verify-codify; 249/251 PASS, 2 baseline FAILs (unchanged). +4 PASS from prior 245: Phase 1 scenario YAML integrity got 4 new grep_check pins (P10b exists + contains_required_any used + CLAUDE.md documents both new fields). -->

@@ -76,7 +76,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 ### Precedence rule
 
-**Skill-level `**STOP**` directives and `"Run /x"` prose are never authoritative in orchestrated mode.** The only machine signal the orchestrator acts on is the `TRANSITION: <id>` token at the end of a skill's output. After every `Skill` tool call, re-read the active drive mode and apply the pause-policy table below.
+**Skill-level `**STOP**` directives and `"Run /x"` prose are never authoritative in orchestrated mode.** The only machine signal the orchestrator acts on is the `TRANSITION: <id>` token at the end of a skill's output. After every `Skill` tool call, re-read the active drive mode and apply the pause-policy table below. **AUTO transitions may not invoke `AskUserQuestion` or any user-input tool** — the next action at an AUTO step is a `Skill` invocation, never an inline confirmation; pause only where the table marks `PAUSE` (see `agents/feature-workflow/AGENTS.md` → Precedence rule for the canonical statement, P1 incident 2026-06-23).
 
 ### How to advance
 
