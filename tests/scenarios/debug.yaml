@@ -187,3 +187,98 @@ scenarios:
         - "alternative"
         - "ruled out"
     max_retries: 2
+
+  # debug-minimal-harness has TWO conjunctive gates. Same shape as the bisect /
+  # telemetry pairs: GATE-MET asserts the procedure activates (DEBUG-MINHARNESS-START);
+  # NOT-DRIVABLE asserts Gate-1 SKIP (no surface the agent can drive); INSUFFICIENT-
+  # HANDBACKS asserts Gate-2 SKIP (fewer than 2 hand-backs on the same behavior).
+
+  - id: DEBUG-MINHARNESS-GATE-MET
+    name: "debug-minimal-harness: both gates hold → procedure activates"
+    skill: debug-minimal-harness
+    args: >
+      Filmstrip tile drag-reorder won't reorder in the Tauri WKWebView native app
+      (I can't attach to it). Handed the fix back to the operator TWICE untested:
+      first "only moved right", then "still won't reorder, dies after one frame".
+      The same React/DOM drag logic runs under Vite at localhost:1420 — a browser
+      I can drive with a real Playwright mouse. I have not yet reduced it to a
+      standalone page and driven it myself. Need to find the cause before a 3rd
+      hand-back.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-minharness-gates-met.md
+    # No `not_contains` — entry-state scenario where the skill stays IN the
+    # procedure. Per CLAUDE.md "Test scenario design — routing-fork patterns",
+    # aggressive not_contains on entry-state scenarios is prose-leak fragile.
+    #
+    # transition_id_any [START, COMPLETE]: the scenario's intent is "both gates
+    # hold → the procedure ACTIVATES." A more capable model (observed on sonnet
+    # 2026-06-23) doesn't stop at the informational §1 START token — given a
+    # gates-met fixture it runs the whole technique (reduce → drive with real
+    # input → cleanup) and emits the terminal DEBUG-MINHARNESS-COMPLETE. The
+    # harness keys on the LAST TRANSITION line, so it sees COMPLETE. Both tokens
+    # prove activation, so accept either (same idiom as feature.yaml F16/F14 and
+    # session.yaml S9/F19). The SKIP scenarios below still assert the single
+    # DEBUG-MINHARNESS-SKIP token, so the gate-fail paths remain strict.
+    expect:
+      transition_id_any: [DEBUG-MINHARNESS-START, DEBUG-MINHARNESS-COMPLETE]
+      contains_any:
+        - "reproduction"
+        - "real input"
+        - "standalone"
+        - "harness"
+        - "Gate 1"
+        - "Gate 2"
+    max_retries: 2
+
+  - id: DEBUG-MINHARNESS-NOT-DRIVABLE
+    name: "debug-minimal-harness: behavior undrivable by the agent → SKIP"
+    skill: debug-minimal-harness
+    args: >
+      Warehouse handheld barcode scanner (physical Zebra device) intermittently
+      double-reads one physical scan as two. Handed back 3 times after firmware/
+      debounce guesses. The duplicate lives in the physical scanner hardware +
+      closed firmware debounce, triggered by a real trigger-pull under real RF/
+      lighting — there is NO DOM/CLI/HTTP surface I can drive that faithfully
+      reproduces it; a software stand-in would be synthetic and false-pass.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-minharness-gate1-fails.md
+    expect:
+      transition_id: DEBUG-MINHARNESS-SKIP
+      contains_any:
+        - "Gate 1"
+        - "undrivable"
+        - "cannot drive"
+        - "no surface"
+        - "hardware"
+      not_contains:
+        - "DEBUG-MINHARNESS-START"
+        - "DEBUG-MINHARNESS-COMPLETE"
+    max_retries: 2
+
+  - id: DEBUG-MINHARNESS-INSUFFICIENT-HANDBACKS
+    name: "debug-minimal-harness: only 1 attempt, no hand-back yet → SKIP"
+    skill: debug-minimal-harness
+    args: >
+      ⌘K command palette sometimes doesn't open on the first press after load; a
+      second press works. It's a web app I can drive with a real Playwright
+      keyboard (Gate 1 holds). But I've looked at it only ONCE — read the keydown
+      handler, formed a stale-closure hypothesis — and have NOT handed anything
+      back or attempted a fix yet. This is my first pass.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/debug-minharness-gate2-fails.md
+    expect:
+      transition_id: DEBUG-MINHARNESS-SKIP
+      contains_any:
+        - "Gate 2"
+        - "fewer than"
+        - "hand"
+        - "once"
+        - "first"
+        - "cheap"
+      not_contains:
+        - "DEBUG-MINHARNESS-START"
+        - "DEBUG-MINHARNESS-COMPLETE"
+    max_retries: 2

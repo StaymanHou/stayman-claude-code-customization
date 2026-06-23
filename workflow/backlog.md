@@ -86,3 +86,13 @@ Buried 2026-06-07:
 Buried 2026-06-12:
 - `SURFACE-2026-06-02-BEHAVIORAL-PRESSURE-TESTS-FOR-SKILL-LANGUAGE` — borrow obra/superpowers' behavioral pressure tests for skill rationalization-resistance.
 
+
+## SURFACE-2026-06-23-SETTINGS-FIXTURE-DRIFT-CLAUDESK-HOOK
+- **Source:** feature:build (debug-minimal-harness Phase 1 verify-auto)
+- **Target level:** product:wbs (small task — fixture update or INTENTIONAL_DIFFS entry)
+- **Type:** tech-debt
+- **Summary:** `tests/check-structure.sh` "settings fixture in sync with live" check FAILs because the live `~/.claude/settings.json` carries a `hooks.UserPromptSubmit` entry installed by the **claudesk app** (an external project), which `tests/fixtures/settings.json` doesn't model. Pre-existing drift, unrelated to the feature being built.
+- **Context:** The claudesk app installs `CLAUDESK_HOOK_SOCK=... perl .../claudesk-hook.pl` as a `UserPromptSubmit` hook in the user-global settings. The structural check compares live settings to the fixture and flags any non-INTENTIONAL_DIFFS delta. This is a cross-project pollution of the global settings file, not a regression in this repo.
+- **Suggested action:** Either (a) add the claudesk `UserPromptSubmit` hook to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` so the check tolerates externally-installed hooks, or (b) update `tests/fixtures/settings.json` to model it. Prefer (a) — the fixture shouldn't have to track every other app's hooks.
+- **Priority:** low
+- **Status:** pending

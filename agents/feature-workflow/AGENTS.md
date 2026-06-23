@@ -207,5 +207,6 @@ The following `debug-*` skills are available as sidebars from within feature wor
 |---------|-----------------|-----------------|
 | `/debug-bisect-known-good` | `feature-build` | Straight-line debugging has stalled (≥3 failed attempts) AND a structurally similar known-good path exists in the same environment |
 | `/debug-empirical-telemetry` | `feature-build` | Static-reasoning debug has stalled (≥2–3 failed attempts) AND the bug-shape requires runtime evidence (timing/race, intermittent, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line") |
+| `/debug-minimal-harness` | `feature-build` | A behavioral fix (drag/click/focus/keyboard, CLI, HTTP, race) has been handed back untested ≥2× on the same behavior AND that behavior is drivable in a surface the agent controls (browser/DOM, CLI, HTTP client, real concurrency) — even when the shipping target is native — so build a minimal standalone repro and drive it with real input before re-presenting |
 
 See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE.md`) for the category convention. The full procedure and gate-check for each sidebar lives in its own `SKILL.md`. New `debug-*` skills are added to this table when they ship.

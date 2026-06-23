@@ -345,15 +345,24 @@ for caller in skills/feature-build/SKILL.md skills/incident-investigate/SKILL.md
   grep_check "$caller_name mentions /debug-empirical-telemetry" "$caller" "/debug-empirical-telemetry" 1
 done
 
+# debug-minimal-harness: same callers (feature-build, incident-investigate, task-act)
+for caller in skills/feature-build/SKILL.md skills/incident-investigate/SKILL.md skills/task-act/SKILL.md; do
+  caller_name=$(basename "$(dirname "$caller")")
+  grep_check "$caller_name mentions /debug-minimal-harness" "$caller" "/debug-minimal-harness" 1
+done
+
 for orch in agents/feature-workflow/AGENTS.md agents/incident-workflow/AGENTS.md agents/task-workflow/AGENTS.md; do
   orch_name=$(basename "$(dirname "$orch")")
   grep_check "$orch_name has 'Debug techniques (agent-pulled sidebars)' subsection" "$orch" "Debug techniques \(agent-pulled sidebars\)" 1
   # Each orchestrator's Debug-techniques table must list debug-empirical-telemetry as a row
   grep_check "$orch_name lists debug-empirical-telemetry in Debug-techniques table" "$orch" "debug-empirical-telemetry" 1
+  # ...and debug-minimal-harness as a row
+  grep_check "$orch_name lists debug-minimal-harness in Debug-techniques table" "$orch" "debug-minimal-harness" 1
 done
 
 grep_check "transitions.md has 'Sidebar skills' subsection (under Cross-level mechanisms)" "docs/product/transitions.md" "^### Sidebar skills" 1
 grep_check "transitions.md 'Sidebar skills' mentions /debug-empirical-telemetry" "docs/product/transitions.md" "debug-empirical-telemetry" 1
+grep_check "transitions.md 'Sidebar skills' mentions /debug-minimal-harness" "docs/product/transitions.md" "debug-minimal-harness" 1
 
 echo ""
 

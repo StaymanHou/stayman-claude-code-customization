@@ -120,5 +120,6 @@ The following `debug-*` skills are available as sidebars from within incident wo
 |---------|-----------------|-----------------|
 | `/debug-bisect-known-good` | `incident-investigate` | Straight-line investigation has stalled (≥3 failed attempts to localize) AND a structurally similar known-good path exists in the same environment |
 | `/debug-empirical-telemetry` | `incident-investigate` | Static-reasoning investigation has stalled (≥2–3 failed attempts) AND the incident-shape demands runtime evidence (timing/race, intermittent failure, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line in production") |
+| `/debug-minimal-harness` | `incident-investigate` | A behavioral symptom (drag/click/focus/keyboard, CLI, HTTP, race) has had a candidate fix handed back untested ≥2× on the same behavior AND that behavior is drivable in a surface the agent controls (browser/DOM, CLI, HTTP client, real concurrency) — even when production runs in a native/closed shell — so build a minimal standalone repro and drive it with real input before re-presenting |
 
 See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE.md`) for the category convention. The full procedure and gate-check for each sidebar lives in its own `SKILL.md`. New `debug-*` skills are added to this table when they ship.

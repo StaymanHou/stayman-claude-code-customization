@@ -219,7 +219,7 @@ A new skill category for ad-hoc debugging techniques that the orchestrator (or u
 - Required SKILL.md sections enforced by `tests/check-structure.sh` Phase 3b: `## Category Context`, `## When to use`, `## When NOT to use`, `## Procedure` (with `### 1. Gate Check` as the first subheading), `## Pitfalls`, `## Termination`.
 - Three discoverability surfaces enforced by Phase 3c: caller-skill prose mentions, orchestrator AGENTS.md "Debug techniques" subsections, `transitions.md` "Sidebar skills" note.
 
-Current sidebars: `debug-bisect-known-good` (codified 2026-05-13), `debug-empirical-telemetry` (shipped 2026-06-10). Full category convention in `CLAUDE.md` → Architecture → "`debug-*` Skill Category".
+Current sidebars: `debug-bisect-known-good` (codified 2026-05-13), `debug-empirical-telemetry` (shipped 2026-06-10), `debug-minimal-harness` (shipped 2026-06-23 — build a minimal self-driven reproduction and drive it with real input when a behavioral fix has been handed back ≥2× and is drivable in a surface you control). Full category convention in `CLAUDE.md` → Architecture → "`debug-*` Skill Category".
 
 ### `util-*` skill category — standalone user-triggered utilities
 

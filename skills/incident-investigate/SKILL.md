@@ -42,6 +42,8 @@ If straight-line investigation has stalled (≥3 self-loop iterations without co
 
 If instead the incident-shape demands runtime evidence (timing/race, intermittent failure, DB query plan or timing, perf regression, env-dependent state, "wrong value at this line in production") and static reasoning across the available logs and code has stalled, consider `/debug-empirical-telemetry` as the sidebar. It walks the agent through smallest-discriminating-observable → instrument → run → read → cleanup, and emits a `RETURN-TO: incident-investigate` token on completion. Same same-state round-trip discipline — no transition ID. See `agents/incident-workflow/AGENTS.md` → "Debug techniques (agent-pulled sidebars)" for the full list.
 
+If instead the incident centers on a **behavioral** symptom (a drag/click/focus/keyboard interaction, a CLI under real argv/stdin, an HTTP endpoint under a real client, a race under real concurrency) and you've **handed a candidate fix back untested ≥2 times** on the same behavior, AND that behavior is drivable in a surface you control — even when production runs in a native/closed shell you can't attach to, the same DOM/CLI/HTTP logic usually runs in a browser/process you *can* drive — consider `/debug-minimal-harness`. It has you build a minimal standalone reproduction and drive it yourself with **real input** (`page.mouse`, real argv, a real request) rather than synthetic dispatch, until the behavior is understood, before re-presenting. Emits a `RETURN-TO: incident-investigate` token on completion. Same same-state round-trip discipline — no transition ID.
+
 ### 4. Update Report
 Append to the incident file:
 
