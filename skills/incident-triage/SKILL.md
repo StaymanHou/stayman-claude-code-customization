@@ -32,7 +32,7 @@ This is a **new state** not present in the original Gemini workflow — added to
 - If `{{args}}` specifies an incident, use that
 
 ### 2. Assess Severity
-Severity assessment requires human input — pause for the user (the harness's Notification hook will alert them via Telegram automatically).
+Severity assessment requires human input — pause for the user.
 
 Present the incident summary and ask the human to assess impact:
 

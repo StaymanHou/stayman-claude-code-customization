@@ -56,7 +56,7 @@ This marks the skill as having completed its single-turn job (classification + p
 
 ### 4. Get Confirmation
 
-**STOP** and ask the user for confirmation or feedback. Do NOT execute changes yet. (The harness's Notification hook will alert the user via Telegram if they have stepped away.)
+**STOP** and ask the user for confirmation or feedback. Do NOT execute changes yet.
 
 Present:
 - The proposed storage location

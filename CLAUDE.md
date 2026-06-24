@@ -129,10 +129,6 @@ The `## When to use` and `## When NOT to use` sections are checked by `tests/che
 
 **Where to find the list of available techniques.** Each orchestrator AGENTS.md has a "Debug techniques (agent-pulled sidebars)" subsection naming the available `debug-*` skills and the states from which they may be invoked. See also: `docs/product/transitions.md` → "Sidebar skills (`debug-*` category)" under Cross-level mechanisms.
 
-### Telegram notifications
-
-Telegram notifications are wired via a Claude Code hook (`hooks/notify-telegram.sh`, symlinked into `~/.claude/hooks/` by `install.sh`) configured under `hooks.Notification` and `hooks.Stop` in `~/.claude/settings.json`. The harness fires the script on every Notification event (Claude is blocked, awaiting input/permission) and Stop event (turn ended) — deterministic, no model involvement. Requires `CLAUDE_TELEGRAM_BOT_TOKEN` and `CLAUDE_TELEGRAM_CHAT_ID` in `~/.claude/settings.json` env; the hook no-ops silently if either is unset. This replaced an earlier `notify-human` skill that relied on the model remembering to invoke it before each question — see `docs/product/transitions.md` change-log for the migration.
-
 ## Product Workflow Notes
 
 This repo dogfoods the product workflow but **skips `/product-context`** — the project already has a hand-maintained `CLAUDE.md` (this file) that serves the same purpose. The product workflow is considered complete after `/product-wbs` and `/product-finalize`.

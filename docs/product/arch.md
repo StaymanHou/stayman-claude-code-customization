@@ -278,11 +278,9 @@ Every project that uses this workflow system maintains a human-readable `CHANGEL
 
 Canonical procedure in `CLAUDE.snippet.md` → "CHANGELOG.md convention", injected into `~/.claude/CLAUDE.md` by `install.sh`. Resolved backlog items belong in CHANGELOG, not in a `## Resolved` section inside `workflow/backlog.md`.
 
-### Telegram Notification/Stop hook replaces the model-driven `notify-human` skill
+### Human-in-the-loop alerting (no longer wired)
 
-Telegram notifications are now wired via a Claude Code hook (`hooks/notify-telegram.sh`, symlinked into `~/.claude/hooks/` by `install.sh`) configured under `hooks.Notification` and `hooks.Stop` in `~/.claude/settings.json`. The harness fires the script on every Notification event (Claude blocked, awaiting input/permission) and Stop event (turn ended) — deterministic, no model involvement. Requires `CLAUDE_TELEGRAM_BOT_TOKEN` and `CLAUDE_TELEGRAM_CHAT_ID` in `~/.claude/settings.json` env; no-ops silently if either is unset.
-
-Replaces the earlier `notify-human` skill that relied on the model remembering to invoke it before each question (unreliable — model frequently forgot). Migration note in `docs/product/transitions.md` change-log.
+There is **no notification hook** in the system. An earlier `notify-human` skill (model-driven, unreliable — the model frequently forgot to invoke it) was replaced 2026-05-06 by a deterministic `hooks/notify-telegram.sh` harness hook on `Notification`/`Stop` events; that hook was then removed entirely on 2026-06-24 as no longer needed. Human-input moments (verify-human, triage severity, plan review) still pause the conversation; the operator is simply expected to be watching the session rather than alerted out-of-band. Migration history in `docs/product/transitions.md` change-log.
 
 ### Session orchestration runs in the parent conversation, not via Agent spawn
 

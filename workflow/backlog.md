@@ -47,17 +47,6 @@
 - **Priority:** medium (autopilot quality gate; cost of miss is silently-shipped misdiagnosis)
 - **Status:** open
 
-## SURFACE-2026-06-16-TELEGRAM-NOTIFY-FIRES-ON-BACKGROUND-AUTOBACKGROUND
-- **Source:** operator observation (2026-06-16)
-- **Order:** P5
-- **Target level:** task:plan (likely a `hooks/notify-telegram.sh` filter — single file edit)
-- **Type:** regression (after recent Claude Code harness update)
-- **Summary:** Since a recent Claude Code update, the agent now auto-backgrounds long-running commands and returns control to the user immediately. The harness fires a `Notification` (or `Stop`) event at that handoff point, which `hooks/notify-telegram.sh` translates into a Telegram ping. That defeats the purpose of the notification (which is meant to fire when the operator's attention is actually required) — auto-background is exactly the case where attention is NOT required.
-- **Context:** `hooks/notify-telegram.sh` currently sends on every `Notification` and `Stop` event without inspecting payload semantics. The auto-background case appears to surface as one of these events; the fix likely involves inspecting the event payload (`message_field`, or a new `reason`/`subtype` field if the harness emits one) and skipping the Telegram send when the trigger is "command auto-backgrounded, control returned" rather than "blocked, awaiting input". Need to first capture a sample payload from a real auto-background event to identify the discriminator field, then add a `case` filter in the `Notification`/`Stop` branches.
-- **Suggested action:** (1) Trigger an auto-background scenario and log the raw stdin payload the hook receives (temporarily add `printf '%s' "$payload" >> /tmp/telegram-hook-debug.log` near the top of the script). (2) Identify the discriminator field. (3) Add a filter — skip the curl POST when the event is auto-background. (4) Remove the debug log line.
-- **Priority:** medium (notification fatigue erodes the signal; user-reported)
-- **Status:** open
-
 ## SURFACE-2026-06-18-PRODUCT-SKILLS-MILESTONE-TERMINOLOGY-AND-WBS-SCOPE
 - **Source:** repo-owner learning captured during AlphaFun product-workflow run (turn-based-ai-test-proto-1), 2026-06-18
 - **Order:** P5

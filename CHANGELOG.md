@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-24
+
+- **Task closed:** Removed the Telegram notification hook — deleted `hooks/notify-telegram.sh`, unwired it from live `~/.claude/settings.json` (hook entry, env vars, curl permission), stripped its `install.sh`/`check-structure.sh`/`run-tests.sh`/fixture wiring, and dropped the Telegram mentions from `CLAUDE.md`, `README.md`, and three SKILL.md prose hints; claudesk and claude-time hooks left intact.
+- **Backlog resolved:** SURFACE-2026-06-16-TELEGRAM-NOTIFY-FIRES-ON-BACKGROUND-AUTOBACKGROUND — removing the hook eliminates the spurious Telegram pings on auto-background entirely, so the payload-discriminator filter is no longer needed.
+- **Task closed:** Phase 7 settings-drift check now strips host-specific claudesk hooks from both live and fixture before diffing (via `strip_host_specific()`) instead of excluding whole hook events, restoring full drift detection on the repo-owned claude-time hook (`UserPromptSubmit` is now exactly diffed; a broken claude-time command FAILs Phase 7 — verified) while keeping the test harness and the claudesk wrapper app fully decoupled.
+
 ## 2026-06-23
 
 - **Feature shipped:** `debug-minimal-harness` — a third `debug-*` sidebar skill that, when a behavioral fix (drag/click/focus/keyboard, CLI under real argv/stdin, HTTP under a real client, a race under real concurrency) has been handed back untested ≥2× on the same behavior AND that behavior is drivable in a surface the agent controls (even when the shipping target is native), has the agent stop handing back and instead build a minimal standalone reproduction and drive it with REAL input — not synthetic dispatch, which false-passes by masking pointer-capture/focus/hit-test/re-render bugs — before re-presenting to the human; codifies the claudesk M4 WP3 drag-reorder learning, wired across all three caller skills + three orchestrator AGENTS.md + transitions.md with 16 new structural pins (check-structure.sh 297/1) and 3 behavioral scenarios.

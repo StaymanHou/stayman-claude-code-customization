@@ -570,73 +570,8 @@ echo ""
 
 echo "[Phase 5] Hook script integrity"
 
-# notify-telegram.sh exists in repo
-if [ -f hooks/notify-telegram.sh ]; then
-  check "hooks/notify-telegram.sh exists in repo" "pass"
-else
-  check "hooks/notify-telegram.sh exists in repo" "fail" "file missing"
-fi
-
-# notify-telegram.sh is executable
-if [ -x hooks/notify-telegram.sh ]; then
-  check "hooks/notify-telegram.sh is executable" "pass"
-else
-  check "hooks/notify-telegram.sh is executable" "fail" "missing executable bit"
-fi
-
-# notify-telegram.sh passes bash syntax check
-if bash -n hooks/notify-telegram.sh 2>/dev/null; then
-  check "hooks/notify-telegram.sh passes bash syntax check" "pass"
-else
-  check "hooks/notify-telegram.sh passes bash syntax check" "fail" "bash -n failed"
-fi
-
-# Hook symlink in ~/.claude/hooks/ resolves into this repo (only after install.sh)
-hook_link_target=$(readlink ~/.claude/hooks/notify-telegram.sh 2>/dev/null || echo "")
-if echo "$hook_link_target" | grep -q "my-claude-code-customization"; then
-  check "~/.claude/hooks/notify-telegram.sh symlink resolves to this repo" "pass"
-else
-  check "~/.claude/hooks/notify-telegram.sh symlink resolves to this repo" "fail" \
-    "target: ${hook_link_target:-missing}"
-fi
-
-# Hook is silent no-op when env vars missing (must exit 0)
-if (unset CLAUDE_TELEGRAM_BOT_TOKEN CLAUDE_TELEGRAM_CHAT_ID; \
-    echo '{"hook_event_name":"Notification","message":"x"}' \
-    | hooks/notify-telegram.sh > /dev/null 2>&1); then
-  check "hook exits 0 with missing env vars (silent no-op)" "pass"
-else
-  check "hook exits 0 with missing env vars (silent no-op)" "fail" "non-zero exit"
-fi
-
-# Hook tolerates malformed JSON on stdin (must exit 0)
-if (unset CLAUDE_TELEGRAM_BOT_TOKEN CLAUDE_TELEGRAM_CHAT_ID; \
-    echo "not json at all" | hooks/notify-telegram.sh > /dev/null 2>&1); then
-  check "hook exits 0 with malformed JSON stdin" "pass"
-else
-  check "hook exits 0 with malformed JSON stdin" "fail" "non-zero exit"
-fi
-
-# Hook tolerates empty stdin (must exit 0)
-if (unset CLAUDE_TELEGRAM_BOT_TOKEN CLAUDE_TELEGRAM_CHAT_ID; \
-    echo "" | hooks/notify-telegram.sh > /dev/null 2>&1); then
-  check "hook exits 0 with empty stdin" "pass"
-else
-  check "hook exits 0 with empty stdin" "fail" "non-zero exit"
-fi
-
-# settings.json (global) is valid JSON and contains the Notification hook
-# (Stop hook was removed 2026-05-10 — was firing on every turn end, too noisy.)
-if command -v python3 &>/dev/null; then
-  if python3 -c "import json; d=json.load(open('$HOME/.claude/settings.json')); \
-      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'" 2>/dev/null; then
-    check "~/.claude/settings.json has Notification hook" "pass"
-  else
-    err=$(python3 -c "import json; d=json.load(open('$HOME/.claude/settings.json')); \
-      assert 'Notification' in d.get('hooks',{}), 'Notification hook missing'" 2>&1)
-    check "~/.claude/settings.json has Notification hook" "fail" "$err"
-  fi
-fi
+# (The notify-telegram.sh hook was removed 2026-06-24 — no longer needed.
+#  claude-time hook integrity is covered by Phase 5b below.)
 
 echo ""
 
@@ -1120,11 +1055,22 @@ echo ""
 # tests/fixtures/settings.json is loaded by run-tests.sh via --settings (with
 # --setting-sources project,local) so test invocations don't inherit the
 # developer's live ~/.claude/settings.json. We want the fixture to mirror live
-# settings closely so tests run under near-realistic conditions, BUT we have
-# a documented set of intentional differences (Telegram hooks disabled, Telegram
-# env vars absent). This check FAILs if any field outside the documented diff
-# set has drifted — telling the developer to either update the fixture or
-# document a new exception.
+# settings closely so tests run under near-realistic conditions, BUT:
+#
+#   1. Host-specific hooks are FILTERED, not compared. The developer's claudesk
+#      wrapper app (com.claudesk.app[.dev]) installs its own busy/idle-monitoring
+#      hooks into live settings via absolute ~/Library paths. Those are not part
+#      of this repo and mutate on claudesk's own schedule, so any hook GROUP whose
+#      command mentions "claudesk" is stripped from BOTH live and fixture before
+#      comparison. The harness must not police claudesk, and claudesk must not
+#      break the harness — the filter keeps the two fully decoupled.
+#   2. After filtering, a small documented set of INTENTIONAL_DIFFS remains
+#      (Notification/Stop are emptied in the fixture so tests never fire the
+#      claude-time notification hooks). The repo-owned claude-time hook IS still
+#      diffed exactly on every other event.
+#
+# This check FAILs if any field outside the documented diff set has drifted —
+# telling the developer to either update the fixture or document a new exception.
 
 echo "[Phase 7] Settings fixture drift"
 
@@ -1137,15 +1083,36 @@ FIXTURE = "tests/fixtures/settings.json"
 
 # Documented intentional diffs. Format: list of (path, expected_live, expected_fixture).
 # `path` is a tuple of nested keys; `MISSING` is a sentinel meaning the key is absent.
+# NOTE: these are evaluated AFTER host-specific (claudesk) hooks are stripped from
+# both sides — so the live expectations describe the claude-time-only shape.
 MISSING = object()
 INTENTIONAL_DIFFS = [
-    # Telegram hook is wired in live, absent in fixture
+    # The fixture empties Notification/Stop so test runs never fire the claude-time
+    # notification hooks; live legitimately runs claude-time on both. (claudesk
+    # already stripped from both sides — see strip_host_specific below.)
     (("hooks", "Notification"), "non-empty-list", []),
     (("hooks", "Stop"), "any", []),
-    # Telegram env vars present in live, absent in fixture
-    (("env", "CLAUDE_TELEGRAM_BOT_TOKEN"), "present", MISSING),
-    (("env", "CLAUDE_TELEGRAM_CHAT_ID"), "present", MISSING),
+    # UserPromptSubmit is NOT listed: after stripping claudesk, both sides reduce to
+    # the single claude-time hook and must match exactly — it is fully drift-checked.
 ]
+
+# Host-specific hooks installed by the developer's claudesk wrapper app are not
+# part of this repo and must not participate in drift detection. Drop any hook
+# GROUP whose command mentions "claudesk" from both live and fixture before diffing.
+def strip_host_specific(settings):
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        return
+    for event, groups in list(hooks.items()):
+        if not isinstance(groups, list):
+            continue
+        hooks[event] = [
+            g for g in groups
+            if not any(
+                "claudesk" in h.get("command", "")
+                for h in g.get("hooks", [])
+            )
+        ]
 
 def get_path(d, path):
     cur = d
@@ -1171,6 +1138,10 @@ with open(FIXTURE) as f:
 
 # Strip fixture-only metadata fields from comparison
 fixture = {k: v for k, v in fixture.items() if not k.startswith("_")}
+
+# Strip host-specific (claudesk) hooks from both sides before any comparison
+strip_host_specific(live)
+strip_host_specific(fixture)
 
 # Verify each intentional diff is present and matches expectation
 diff_violations = []

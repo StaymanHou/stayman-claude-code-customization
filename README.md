@@ -21,7 +21,6 @@ Lower-level workflows can **surface** discoveries upward (e.g., a task discovers
 |-----------|-------|-------------|
 | **Skills** | 31 | One per workflow step |
 | **Agents** | 4 | Orchestrators: product, feature, task, incident |
-| **Hooks** | 1 | `notify-telegram.sh` — fires on Notification + Stop events |
 | **Transitions** | 63 | Defined in `docs/product/transitions.md` |
 | **Install script** | 1 | Idempotent symlink setup |
 
@@ -32,14 +31,12 @@ Lower-level workflows can **surface** discoveries upward (e.g., a task discovers
 - **Task (3):** plan, act, close
 - **Incident (5):** report, triage, investigate, mitigate, resolve
 - **Session (5):** start, pause, resume, reflect, store-learning
-- **Telegram notifications:** wired via the `hooks/notify-telegram.sh` harness hook (no skill — fires automatically on Notification + Stop events)
 
 ## Installation
 
 ### Prerequisites
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed
-- A Telegram bot token (create via [@BotFather](https://t.me/BotFather)) and your chat ID
 
 ### Setup
 
@@ -64,17 +61,12 @@ Add to `~/.claude/settings.json`:
 
 ```json
 {
-  "env": {
-    "CLAUDE_TELEGRAM_BOT_TOKEN": "<your-bot-token>",
-    "CLAUDE_TELEGRAM_CHAT_ID": "<your-chat-id>"
-  },
   "permissions": {
     "allow": [
       "Read(~/.claude/**)",
       "Edit(~/.claude/**)",
       "Read(~/Personal/projects/my-claude-code-customization/**)",
-      "Edit(~/Personal/projects/my-claude-code-customization/**)",
-      "Bash(curl -s -X POST https://api.telegram.org/*)"
+      "Edit(~/Personal/projects/my-claude-code-customization/**)"
     ]
   }
 }
@@ -136,7 +128,6 @@ During any workflow, if you discover something that belongs at a higher level:
 - **Advisory enforcement:** State machines are encoded in skill prompts, not hard-blocked by hooks. This allows flexibility while maintaining structure.
 - **Per-phase verification loop:** Features go through `build → verify-auto → verify-self → verify-human → verify-codify` for each implementation phase.
 - **File-based state:** `workflow/wip/` files are the canonical record — inspectable, git-trackable, and persistent across sessions.
-- **Telegram notifications:** The `notify-telegram.sh` hook fires automatically on `Notification` (Claude is blocked, awaiting input) and `Stop` (turn ended) events — deterministic, not model-driven.
 
 ## Per-Project State
 

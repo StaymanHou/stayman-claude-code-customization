@@ -132,7 +132,7 @@ For each leaf item (after filtering), present as:
 ```
 
 ### 5. Pause for the human
-Present the checklist and wait. The harness's Notification hook will alert the user via Telegram automatically — they may have stepped away during the automated phase.
+Present the checklist and wait.
 
 ### 6. Record Results
 As the human works through each item, record their result per leaf:

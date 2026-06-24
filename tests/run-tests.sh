@@ -174,8 +174,9 @@ ${extra_prompt}"
   # --settings *merges on top of* the user's ~/.claude/settings.json (it does
   # not replace it). We rely on this merge to override only the fields where
   # tests want different behaviour from the developer's live config — primarily
-  # the Telegram hook entries, which we set to empty arrays here so test runs
-  # don't ping Telegram. We deliberately do NOT pass --setting-sources project,local
+  # the live runtime hook entries (claude-time, claudesk), which we empty or
+  # trim here so test runs don't fire host-specific machinery. We deliberately
+  # do NOT pass --setting-sources project,local
   # to fully replace user settings: that path also strips access to user-level
   # skills (~/.claude/skills/), and the skills under test live there. The drift
   # check in check-structure.sh enforces that the fixture stays a near-clone of
