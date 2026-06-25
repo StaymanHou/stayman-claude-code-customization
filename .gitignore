@@ -20,4 +20,3 @@ __pycache__/
 # Per-machine Claude Code state (not shared between developers):
 # - settings.local.json: project-local permission allowlist, machine-specific
 # - memory/: auto-memory store with personal notes that persist across conversations
-.claude/

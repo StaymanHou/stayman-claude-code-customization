@@ -3,6 +3,7 @@
 ## 2026-06-25
 
 - **Incident resolved:** Autopilot AUTO transitions intermittently paused via `AskUserQuestion` after the Opus 4.8 upgrade — root cause was an incomplete AUTO-exit prohibition (the Hard rule named only the passive narrative-summary stop, not the active `AskUserQuestion` stop); mitigated by explicitly forbidding `AskUserQuestion` and any user-input tool on AUTO transitions across 11 SKILL.md cheat-sheets + 4 orchestrator AGENTS.md, codified with 13 structural pins + the `F8-autopilot-no-askuser` scenario (check-structure 290/0).
+- **Backlog resolved:** SURFACE-2026-06-23-SETTINGS-FIXTURE-DRIFT-CLAUDESK-HOOK — closed by commit 93677f0, which strips host-specific claudesk hooks from both live and fixture via `strip_host_specific()` before the Phase 7 drift diff, keeping the repo-owned claude-time hook fully checked.
 
 ## 2026-06-24
 

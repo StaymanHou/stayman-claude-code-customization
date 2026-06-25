@@ -90,7 +90,7 @@ Buried 2026-06-12:
 - **Context:** The claudesk app installs `CLAUDESK_HOOK_SOCK=... perl .../claudesk-hook.pl` as a `UserPromptSubmit` hook in the user-global settings. The structural check compares live settings to the fixture and flags any non-INTENTIONAL_DIFFS delta. This is a cross-project pollution of the global settings file, not a regression in this repo.
 - **Suggested action:** Either (a) add the claudesk `UserPromptSubmit` hook to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` so the check tolerates externally-installed hooks, or (b) update `tests/fixtures/settings.json` to model it. Prefer (a) — the fixture shouldn't have to track every other app's hooks.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-06-25 by commit 93677f0 — Phase 7 now strips host-specific claudesk hooks from both live and fixture via `strip_host_specific()` before diffing (cleaner than the proposed INTENTIONAL_DIFFS approach: the repo-owned claude-time hook stays fully drift-checked). check-structure 290/0.
 
 ## SURFACE-2026-06-25-AUDIT-PROMPT-LATITUDE-NEWER-CLIENT-MODEL
 - **Source:** incident:resolve (incident-autopilot-askuserquestion-pauses)
@@ -100,3 +100,22 @@ Buried 2026-06-12:
 - **Context:** See `workflow/archive/incident-autopilot-askuserquestion-pauses.md` (Root Cause + F5) — two data points established the class.
 - **Priority:** medium
 - **Status:** pending
+
+## SURFACE-2026-06-25-TRACK-CLAUDE-DIR-AND-LEARNINGS-MEMORIES-CONVENTIONS
+- **Source:** operator directive (incident-resolve session, 2026-06-25)
+- **Target level:** feature:spec (touches skill prose across multiple close/learning skills + a global convention doc; sizing TBD at pickup — could be a task if it stays prose-only)
+- **Type:** enhancement (durable convention)
+- **Summary:** Two related conventions to codify: (1) **`.gitignore` policy — default to tracking, ignore only sensitive/PII files.** `.claude/` should be tracked, not gitignored. The general rule: ignore a file *only* if it contains sensitive information (secrets, credentials) or PII — everything else (including `.claude/learnings/`, project-local config, etc.) is tracked by default. (2) **Explicit folder/file conventions for learnings and memories** — define canonical locations + naming for learning artifacts (currently `.claude/learnings/<date>-<slug>.md` for global drafts vs `docs/lessons/<topic>.md` for curated project lessons — the split is real but under-documented) and for the auto-memory store, so the agent stops guessing destinations (cf. the two-step file-copy confusion earlier this session where the destination directory had to be asked).
+- **Context:** Triggered when the operator un-ignored `.claude/` mid-session and stated the policy: "`.claude` should be tracked; we should only ignore files that contain sensitive information or PII." The learnings/memories destination ambiguity surfaced earlier the same session (a learning copy required an AskUserQuestion to disambiguate `.claude/learnings/` vs `docs/learnings/` vs the repo's own `.claude/learnings/`). Candidate landing surfaces: `CLAUDE.snippet.md` (global convention, injected by install.sh) for the gitignore policy + the folder/file map; possibly `session-store-learning` SKILL.md (which already branches global-scope `.claude/learnings/` gitignored vs project-scope — note that branch ASSUMES `.claude/` is gitignored, which now conflicts with the new track-by-default policy and must be reconciled).
+- **Suggested action:** At pickup, reconcile `session-store-learning`'s "global-scope writes to gitignored `.claude/learnings/`" assumption with the new track-`.claude/`-by-default policy (these now conflict — the gitignore-based global/project scope split needs a new discriminator). Then document the gitignore policy + the learnings/memories folder map as a global convention. Likely `/feature-spec`.
+- **Priority:** medium
+- **Status:** pending
+
+---
+
+## Session Pause — 2026-06-25 18:42
+Paused. Two queued items to tackle over the next two sessions, in this order (operator-delegated):
+1. `SURFACE-2026-06-25-TRACK-CLAUDE-DIR-AND-LEARNINGS-MEMORIES-CONVENTIONS` (live conflict — go first)
+2. `SURFACE-2026-06-25-AUDIT-PROMPT-LATITUDE-NEWER-CLIENT-MODEL` (proactive — second)
+
+See `workflow/.session.md` to resume.
