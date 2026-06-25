@@ -91,3 +91,12 @@ Buried 2026-06-12:
 - **Suggested action:** Either (a) add the claudesk `UserPromptSubmit` hook to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` so the check tolerates externally-installed hooks, or (b) update `tests/fixtures/settings.json` to model it. Prefer (a) — the fixture shouldn't have to track every other app's hooks.
 - **Priority:** low
 - **Status:** pending
+
+## SURFACE-2026-06-25-AUDIT-PROMPT-LATITUDE-NEWER-CLIENT-MODEL
+- **Source:** incident:resolve (incident-autopilot-askuserquestion-pauses)
+- **Target level:** task:plan
+- **Type:** tech-debt
+- **Summary:** The AskUserQuestion-on-AUTO regression and the earlier auto-branching regression (commit 73e97e2) are two instances of one class: a newer client / Opus 4.8 acting on latitude the prompts never explicitly closed. Each was fixed reactively after biting. A proactive audit of the instruction surface (SKILL.md + AGENTS.md + CLAUDE.snippet.md) for other "implicitly-forbidden-but-never-named" behaviors a more capable/agentic model might reach for (e.g. unrequested branching, spawning subagents, web fetches, file deletions on AUTO paths) would close the class instead of waiting for the next instance.
+- **Context:** See `workflow/archive/incident-autopilot-askuserquestion-pauses.md` (Root Cause + F5) — two data points established the class.
+- **Priority:** medium
+- **Status:** pending

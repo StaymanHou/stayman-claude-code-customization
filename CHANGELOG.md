@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-25
+
+- **Incident resolved:** Autopilot AUTO transitions intermittently paused via `AskUserQuestion` after the Opus 4.8 upgrade — root cause was an incomplete AUTO-exit prohibition (the Hard rule named only the passive narrative-summary stop, not the active `AskUserQuestion` stop); mitigated by explicitly forbidding `AskUserQuestion` and any user-input tool on AUTO transitions across 11 SKILL.md cheat-sheets + 4 orchestrator AGENTS.md, codified with 13 structural pins + the `F8-autopilot-no-askuser` scenario (check-structure 290/0).
+
 ## 2026-06-24
 
 - **Task closed:** Removed the Telegram notification hook — deleted `hooks/notify-telegram.sh`, unwired it from live `~/.claude/settings.json` (hook entry, env vars, curl permission), stripped its `install.sh`/`check-structure.sh`/`run-tests.sh`/fixture wiring, and dropped the Telegram mentions from `CLAUDE.md`, `README.md`, and three SKILL.md prose hints; claudesk and claude-time hooks left intact.

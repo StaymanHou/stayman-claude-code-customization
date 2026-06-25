@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-24
+updated: 2026-06-25
 ---
 
 
@@ -11,9 +11,10 @@ updated: 2026-06-24
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 17s (2026-06-24)
+- **Last:** 17s (2026-06-25)
 - **Use timeout:** 86000
 - **History:**
+  - 17s — 2026-06-25  <!-- incident autopilot-askuserquestion-pauses resolve (I18); 290/0 PASS, fully green. Confirmed the codify-era "1 baseline FAIL" caveat is stale (fixed 2026-06-24 commit 93677f0). No pins added at resolve. -->
   - 17s — 2026-06-24  <!-- phase7-filter-claudesk follow-on; 290/0 PASS. Phase 7 now strips claudesk hooks from both sides via strip_host_specific() before diffing (replaced the stopgap that parked all 3 events in INTENTIONAL_DIFFS); UserPromptSubmit fully drift-checked again, only Notification/Stop remain documented diffs. Negative test verified (broken claude-time cmd → Phase 7 FAIL). PASS count unchanged. -->
   - 17s — 2026-06-24  <!-- remove-telegram-hook task; 290/0 PASS (was 289/1 — the prior baseline FAIL was the live-settings claudesk-hook drift, now resolved by adding hooks.UserPromptSubmit to INTENTIONAL_DIFFS + removing the telegram permission from the fixture). Phase 5 telegram hook-integrity block (~8 assertions) removed; net PASS count near-flat. -->
   - 17s — 2026-06-23  <!-- incident autopilot-askuserquestion-pauses codify; 281 PASS / 1 baseline FAIL (unrelated live-settings claudesk-hook drift). +13 from prior 268: Phase 9 (4) AskUserQuestion-on-AUTO prohibition pin × 9 feature skills + Phase 9 (3b) AUTO-exit rule × 4 orchestrators. -->
