@@ -79,3 +79,49 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Suggested action:** Optional one-line clarification that the 3-round threshold is for inconclusive-escalation and the 5-round threshold is for optional traceability notes (two different purposes). Matches sibling precedent, so low value.
 - **Priority:** low
 - **Status:** pending
+
+# design-priors — 2026-06-26
+
+## SURFACE-2026-06-26-QUALITY-CONSULT-SCENARIOS-PROMPT-LEAKAGE
+- **Source:** feature:review-quality (design-priors, ship commit 6542e57)
+- **Target level:** workflow:task (test-harness coverage)
+- **Type:** tech-debt (test coverage)
+- **Summary:** The DP-consult-* scenarios in `tests/scenarios/product.yaml` encode the expected answer in `system_prompt_extra` (e.g. "do NOT cite or stretch an audience prior onto a copy-tone decision"; "surface this as a PROPOSAL ... do NOT silently add ... do NOT silently drop"). This tests "does the model obey an instruction just handed to it" more than "does the consult contract in the SKILL.md produce the behavior." The over-infer guard is the feature's headline anti-overfit claim; a scenario that pre-states the guard's conclusion could pass even if the skill prose were deleted.
+- **Context:** Residual signal survives — the model must still emit/withhold the `PRIOR: P` disclosure correctly and strict `not_contains` catches over-firing — so this is a coverage weakness, not a broken test. NOTE: the operator independently raised this exact concern at P2 verify-human ("scenarios are what really matters rather than me eyeballing"); the prompt-leakage limits how much the scenarios deliver on that.
+- **Suggested action:** Strengthen the consult scenarios to present the decision context *neutrally* (state the open product-design question + that a design-priors.md exists, WITHOUT pre-stating whether/how a prior should fire) and let the loaded SKILL.md consult contract drive the outcome. Pairs naturally with the `SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE` harness work. Property-test per docs/lessons/test-harness-primitives.md.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-06-26-QUALITY-STEP0-ON-NON-ENTRY-SKILLS
+- **Source:** feature:review-quality (design-priors, ship commit 6542e57)
+- **Target level:** workflow:task
+- **Type:** tech-debt (doc-surface consistency)
+- **Summary:** `product-roadmap` and `product-wbs` gained `## Step 0: Available product context` sections, but neither is an entry-point skill — the `transitions.md` entry-point list and the `check-structure.sh` Phase-3 Step-0-presence pins enumerate only `task-plan, feature-spec, feature-plan, feature-reproduce, incident-report, product-vision`. The new Step-0 headings are unguarded by the Step-0-presence pin and overload the "Step 0 = entry-point product-context load" convention to also mean "any consult point." The CLAUDE.snippet.md per-skill mapping now lists product-roadmap/product-wbs as eager-read consulters without the transitions.md entry-point prose being updated to match.
+- **Context:** Phase 13 pins the `design-priors.md` substring in both files, so the consult block won't silently vanish; the gap is narrowly the `## Step 0` heading-convention overload + the transitions.md/snippet mapping mismatch. Two fixes: (a) rename the design-priors consult block in roadmap/wbs to a non-"Step 0" heading (e.g. `## Design-priors consult`), keeping "Step 0" reserved for entry points; or (b) broaden the documented "Step 0" convention in transitions.md + CLAUDE.snippet.md to explicitly include mid-workflow consult points.
+- **Suggested action:** Prefer (a) for minimal convention disruption — rename to a distinct heading; update the Phase-13 pins to match. Small task.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-06-26-QUALITY-PROPOSE-PIN-TOO-LOOSE
+- **Source:** feature:review-quality (design-priors, ship commit 6542e57)
+- **Type:** tech-debt (cosmetic / pin precision)
+- **Summary:** The Phase-13 `propose` pins in `tests/check-structure.sh` grep the bare lowercased substring `propose` (min_count 1), firing on any occurrence — so they cannot detect a capture block that kept the word but lost the `never-auto-write` qualifier. The adjacent comment calls it "the load-bearing over-capture guard," which the pin under-delivers on.
+- **Suggested action:** Pin `propose-never-auto-write` (the actual contract phrase, present in all 6 capture skills) instead of bare `propose`. 6 one-line pattern edits.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-06-26-QUALITY-CORPUS-OPEN-QUESTIONS-STALE
+- **Source:** feature:review-quality (design-priors, ship commit 6542e57)
+- **Type:** tech-debt (cosmetic doc)
+- **Summary:** `docs/lessons/design-priors-corpus.md` ships its "Open questions for Stayman" section with Q1/Q2 as open prompts ("My lean: …") even though the curated preamble states Q1/Q2 were resolved by the operator. A future reader sees questions the doc's own header says are closed.
+- **Suggested action:** Mark Q1 (arch-boundary → ARCH) and Q2 (preserve why-gap → yes) RESOLVED inline. Trivial edit.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-06-26-QUALITY-FIXTURE-USES-PHASE-ALIAS
+- **Source:** feature:review-quality (design-priors, ship commit 6542e57)
+- **Type:** tech-debt (cosmetic)
+- **Summary:** `tests/fixtures/product/design-priors-consult/roadmap.md` uses "Phase 1/2/3" (the backward-compat read-alias) for the roadmap unit rather than the current "Milestone" terminology. Cosmetic and consistent with the pre-existing `roadmap-done` fixture it was copied from (so not new drift), but new fixtures could model current terminology.
+- **Suggested action:** Optionally rename to "Milestone" in the new fixture; or bundle with a broader fixture-terminology refresh. Lowest priority.
+- **Priority:** low
+- **Status:** pending

@@ -6,6 +6,12 @@
 
 ## TODO
 
+## Code-quality findings — design-priors (2026-06-26)
+- **Pointer:** 5 findings auto-backlogged by feature-review-quality against ship commit 6542e57 — 2 MAJOR (consult scenarios encode the answer in `system_prompt_extra` → test obedience > skill-prose-driven behavior, esp. the over-infer guard; `## Step 0` added to non-entry-point product-roadmap/wbs overloads the convention + transitions.md/snippet mapping mismatch) + 3 MINOR (loose `propose` pin, stale corpus Open-questions, fixture uses "Phase" alias). Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** medium (2 MAJOR), low (3 MINOR)
+- **Status:** pending
+- **Pickup shape:** small task — the 2 MAJOR (scenario-neutrality + Step-0-heading) pair with `SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE`; the 3 MINOR are 1-line edits bundlable into a check-structure/doc polish task.
+
 ## Code-quality findings — debug-minimal-harness (2026-06-23)
 - **Pointer:** 2 MINOR findings auto-backlogged by feature-review-quality against ship commit efba0ca — (1) GATE-MET scenario uses `transition_id_any` while sibling GATE-MET scenarios assert strict single-START (idiom divergence), (2) SKILL.md "5+ rounds" traceability note vs "≥3 rounds" inconclusive threshold (cosmetic). Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)

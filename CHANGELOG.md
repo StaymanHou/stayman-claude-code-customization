@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-26
+
+- **Feature shipped:** Design Priors — a per-project `docs/product/design-priors.md` recording the operator's product-design decision leans (focus-vs-breadth, perf-vs-ship, anti-persona, …) with an inferred-why + corrected-why gap; planning skills (product-roadmap/wbs, feature-spec) consult it under five weighting rules including an over-infer guard so the 90% common-sense path stays untouched, and six checkpoints + a session-reflect backstop propose new priors (propose-never-auto-write, operator reviews the why), enforced by `check-structure.sh [Phase 13]` (+33 pins, 303→334) and 7 behavioral scenarios `tests/scenarios/product.yaml::DP-*`, with a `pre-design-priors` git tag + grep-enumerable revert recipe as an easy-rollback net.
+
 ## 2026-06-25
 
 - **Incident resolved:** Autopilot AUTO transitions intermittently paused via `AskUserQuestion` after the Opus 4.8 upgrade — root cause was an incomplete AUTO-exit prohibition (the Hard rule named only the passive narrative-summary stop, not the active `AskUserQuestion` stop); mitigated by explicitly forbidding `AskUserQuestion` and any user-input tool on AUTO transitions across 11 SKILL.md cheat-sheets + 4 orchestrator AGENTS.md, codified with 13 structural pins + the `F8-autopilot-no-askuser` scenario (check-structure 290/0).
