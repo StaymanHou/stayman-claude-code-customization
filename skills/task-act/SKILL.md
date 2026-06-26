@@ -28,7 +28,7 @@ You are in the **task** workflow at the **act** state.
 - **Read `## Current Node` first** — this is the authoritative position pointer; resume from where it points
 
 ### 2. Environment Check
-- Read the project `CLAUDE.md` at the root for environment rules (also `.claude/CLAUDE.md` if present)
+- Read the project `CLAUDE.md` at the root for environment rules (also `<proj-dir>/.claude/CLAUDE.md` if present)
 - **Docker Rule:** If the project mandates Docker, ALL commands (pip, python, npm, etc.) MUST run inside the container. Only git commands and basic file operations run on the host.
 
 ### 2b. Problem Statement Re-Check (back-loop re-entry only)

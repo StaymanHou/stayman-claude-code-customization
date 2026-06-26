@@ -59,9 +59,11 @@ Format as:
 - <improvement area>
 
 ### Key Learnings
-1. <learning 1> — Scope: global | project
-2. <learning 2> — Scope: global | project
+1. [GLOBAL] <learning 1>
+2. [PROJECT] <learning 2>
 ```
+
+**Scope label leads, by design.** Each Key Learning starts with a bracketed `[GLOBAL]` or `[PROJECT]` label (uppercased, matching the `[SHORTCUT-...]` / `[SURFACED-...]` audit-marker style used elsewhere in this system) so the scope is visible at a glance, not buried mid-sentence. `[GLOBAL]` = reusable across all projects; `[PROJECT]` = relevant only to this repo. This is the same scope vocabulary `session-store-learning` consumes when routing the learning to its destination.
 
 ### 4. Prompt Store-Learning
 For each key learning, assess whether it's worth persisting:

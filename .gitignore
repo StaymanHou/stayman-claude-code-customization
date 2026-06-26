@@ -17,6 +17,14 @@ tmp/
 __pycache__/
 *.pyc
 
-# Per-machine Claude Code state (not shared between developers):
-# - settings.local.json: project-local permission allowlist, machine-specific
-# - memory/: auto-memory store with personal notes that persist across conversations
+# Per-machine Claude Code state (not shared between developers)
+.claude/settings.local.json
+
+# Transient session pointer (recreated by /session-pause, deleted on /session-resume)
+workflow/.session.md
+
+# NOTE — artifact tracking overrides (see CLAUDE.md → "## Artifact tracking overrides"):
+# This repo IS the learning-assets/source repo, so .claude/learnings/ AND .claude/memory/
+# are TRACKED (not ignored) — they are curated content here, not drafts. Do NOT add ignore
+# patterns for them. Any individual memory carrying secrets/PII is redacted in place or added
+# to this .gitignore file-by-file (expected rare), per the policy's PII clause.

@@ -773,3 +773,23 @@ scenarios:
         - "git add"
         - "HEAD"
     max_retries: 2
+
+  - id: S20-global-canonical-path
+    name: "session:store-learning global-scope routes to the canonical <proj-dir>/.claude/learnings/ path"
+    skill: session-store-learning
+    args: >
+      I learned a general workflow lesson that applies to ALL my projects, not
+      just this one: when an autopilot run hits a verify-self FAIL whose shape
+      is surprising for that class of system, probe one more cycle before
+      shipping. This is a global, cross-project insight — classify it global
+      scope and propose where to persist it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S20
+      contains_required:
+        - ".claude/learnings/"
+      not_contains:
+        - "~/.claude/learnings"
+        - "docs/learnings"
+    max_retries: 2

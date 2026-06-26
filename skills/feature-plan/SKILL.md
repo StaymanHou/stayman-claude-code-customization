@@ -74,7 +74,7 @@ Mention any relevant items to the user.
 - Read the spec in `workflow/wip/` (if complex feature)
 - Review research findings (if any)
 - Examine existing codebase structure and patterns
-- Read the project `CLAUDE.md` at the root for project rules (also `.claude/CLAUDE.md` if present)
+- Read the project `CLAUDE.md` at the root for project rules (also `<proj-dir>/.claude/CLAUDE.md` if present)
 
 ### 3. 3rd-Party Probe Check
 

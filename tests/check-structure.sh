@@ -1799,6 +1799,79 @@ grep_check "session-store-learning stages the learning file before amend" "skill
 
 echo ""
 
+# ── Phase 12: Path-qualification — no bare .claude/ in prompt prose ─────────
+# Every `.claude/` reference in a skill/agent prompt or the global snippet MUST be
+# explicitly qualified as `~/.claude/` (home/global config) or `<proj-dir>/.claude/`
+# (project-local). Bare `.claude/` is forbidden because the agent must otherwise
+# infer home-vs-project at read time, and infers inconsistently across sessions —
+# the root cause of the non-deterministic learning-destination bug fixed by the
+# artifact-tracking-policy feature (2026-06-25).
+#
+# Allowed (NOT violations), excluded before matching:
+#   - lines inside ``` fenced code blocks (literal .gitignore patterns are repo-relative
+#     and MUST be bare — `<proj-dir>/` prefix would be invalid gitignore syntax);
+#   - the exact backtick-quoted generic token `.claude/` (the notation being *discussed*,
+#     e.g. "Bare `.claude/` is forbidden" — a meta-reference, not a path instruction).
+# The regex matches a `.claude/` not preceded by `~`, `/`, `.`, or a word char, then
+# subtracts the two qualified forms and the two allowances above.
+echo "[Phase 12] Artifact tracking policy + path-qualification"
+
+# strip_fences: drop every line that sits inside a ```...``` block (and the fence lines).
+strip_fences() { awk '/^[[:space:]]*```/{f=!f; next} !f'; }
+
+bare_claude=""
+for f in CLAUDE.snippet.md $(find skills agents -name '*.md' 2>/dev/null); do
+  hits=$( (strip_fences < "$f" | grep -nE "(^|[^/~.a-zA-Z_-])\.claude/" 2>/dev/null || true) \
+    | grep -vE "~/\.claude|<proj-dir>/\.claude" \
+    | grep -vE '`\.claude/`' || true )
+  [ -n "$hits" ] && bare_claude="${bare_claude}${f}: ${hits}"$'\n'
+done
+bare_claude=$(printf '%s' "$bare_claude" | grep -c . || true)
+if [ "$bare_claude" -eq 0 ]; then
+  check "no bare .claude/ in skills/ agents/ CLAUDE.snippet.md (all qualified ~/ or <proj-dir>/)" "pass"
+else
+  check "no bare .claude/ in skills/ agents/ CLAUDE.snippet.md (all qualified ~/ or <proj-dir>/)" "fail" "found $bare_claude bare mention(s) outside code fences / notation tokens"
+fi
+
+# The authoritative artifact tracking policy lives as a GLOBAL section in CLAUDE.snippet.md
+# (injected into ~/.claude/CLAUDE.md by install.sh). Pin its presence + the track-by-default
+# rule + the override mechanism so the policy can't silently drift away.
+grep_check "CLAUDE.snippet.md defines 'Artifact tracking policy (GLOBAL)'" "CLAUDE.snippet.md" "^## Artifact tracking policy \(GLOBAL\)" 1
+grep_check "Artifact tracking policy states track-by-default rule" "CLAUDE.snippet.md" "[Tt]rack by default" 1
+grep_check "Artifact tracking policy defines the per-project override mechanism" "CLAUDE.snippet.md" "Artifact tracking overrides" 1
+
+# session-store-learning is a policy-FOLLOWER, not a gitignore-inspector:
+# (1) it names the single canonical global-draft destination;
+# (2) its git behavior is keyed on the artifact tracking policy, NOT on inspecting/editing .gitignore;
+# (3) it explicitly forbids using .gitignore inspection to decide a learning's git fate.
+grep_check "session-store-learning names the canonical learnings destination" "skills/session-store-learning/SKILL.md" "<proj-dir>/\.claude/learnings/<YYYY-MM-DD>-<slug>\.md" 1
+grep_check "session-store-learning keys git behavior on the artifact tracking policy, not gitignore inspection" "skills/session-store-learning/SKILL.md" "[Aa]rtifact tracking policy|Artifact tracking overrides" 1
+grep_check "session-store-learning explicitly forbids gitignore-inspection for git fate" "skills/session-store-learning/SKILL.md" "Do NOT inspect or edit" 1
+# product-context owns .gitignore reconciliation (the once-per-project owner).
+grep_check "product-context owns .gitignore reconciliation step" "skills/product-context/SKILL.md" "Reconcile .?\.gitignore.? to the artifact tracking policy" 1
+# session-reflect emits the scope label as a LEADING [GLOBAL]/[PROJECT] bracket, not a trailing "— Scope:".
+grep_check "session-reflect Key Learnings use leading [GLOBAL]/[PROJECT] label" "skills/session-reflect/SKILL.md" "\[GLOBAL\]|\[PROJECT\]" 1
+# The retired trailing form must be gone (regression guard).
+trailing_scope=$( (grep -cE "Scope: global \| project" skills/session-reflect/SKILL.md 2>/dev/null || true) | head -1 )
+trailing_scope="${trailing_scope:-0}"
+if [ "$trailing_scope" -eq 0 ]; then
+  check "session-reflect no longer uses the trailing '— Scope: global | project' form" "pass"
+else
+  check "session-reflect no longer uses the trailing '— Scope: global | project' form" "fail" "found $trailing_scope trailing-form line(s)"
+fi
+# This repo declares its artifact tracking override (it IS the learning-assets repo).
+grep_check "CLAUDE.md declares the Artifact tracking overrides section" "CLAUDE.md" "^## Artifact tracking overrides" 1
+# The superseded false 'gitignored .claude/learnings' claim must not return.
+false_claim=$( (grep -cE "Global-scope writes \(gitignored" CLAUDE.md 2>/dev/null || true) | head -1 )
+false_claim="${false_claim:-0}"
+if [ "$false_claim" -eq 0 ]; then
+  check "CLAUDE.md does not carry the superseded 'gitignored .claude/learnings' claim" "pass"
+else
+  check "CLAUDE.md does not carry the superseded 'gitignored .claude/learnings' claim" "fail" "found $false_claim stale-claim line(s)"
+fi
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

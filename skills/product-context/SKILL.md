@@ -27,7 +27,7 @@ Read the product docs from `docs/product/`:
 - `wbs.md` (work packages, dependencies)
 
 ### 2. Generate Project CLAUDE.md
-Create or update **`CLAUDE.md` at the project root** with the content below. This file is project documentation — it's checked in, visible in the file tree, and read by both humans and Claude Code. Do NOT write it to `.claude/CLAUDE.md` (that path is reserved for agent-only overrides a user may add separately).
+Create or update **`CLAUDE.md` at the project root** with the content below. This file is project documentation — it's checked in, visible in the file tree, and read by both humans and Claude Code. Do NOT write it to `<proj-dir>/.claude/CLAUDE.md` (that path is reserved for agent-only overrides a user may add separately).
 
 If a `CLAUDE.md` already exists at the project root, preserve any user-authored sections and merge — don't overwrite.
 
@@ -93,7 +93,48 @@ Commands run directly on the host. Standard setup and tooling apply.
 
 ## Key Decisions
 <Important architectural and product decisions with rationale>
+
+## Artifact tracking overrides
+<OPTIONAL — include ONLY if this project deviates from the default artifact tracking MAP
+in `~/.claude/CLAUDE.md` → `## Artifact tracking policy (GLOBAL)`. Omit the section entirely
+when the project uses the defaults. The common override: a repo that IS the learning-assets /
+workflow-system source repo tracks its learnings first-class instead of ignoring them, e.g.:
+  - Track `<proj-dir>/.claude/learnings/` (this repo IS the source repo — learnings are content, not drafts).
+Name each overridden path and whether it flips to track or ignore.>
 ```
+
+### 2b. Reconcile `.gitignore` to the artifact tracking policy
+
+`product-context` is the once-per-project owner of `.gitignore` reconciliation. The policy it reconciles against lives in `~/.claude/CLAUDE.md` → `## Artifact tracking policy (GLOBAL)` (the track-by-default rule + canonical MAP + override mechanism). The canonical ignore set and the per-project reconciliation procedure — the *implementation* of that policy — live here, not in the snippet. After writing the root `CLAUDE.md` (which may now carry an `## Artifact tracking overrides` section):
+
+1. Start from the canonical ignore block below.
+2. Read this project's `## Artifact tracking overrides` (if any) from the root `CLAUDE.md` just written.
+3. Compute the effective ignore set = `[canonical ignores] minus [paths the overrides flip to track]`. For example, a source repo that overrides `<proj-dir>/.claude/learnings/` to **track** drops that line from its `.gitignore`.
+4. Reconcile the project's `.gitignore`: add any missing canonical ignore lines, and remove any line the overrides flip to track. Preserve all unrelated project-specific entries (build artifacts, language caches, etc.) — only manage the artifact-tracking-policy lines. Show the user the diff before writing; do not silently rewrite `.gitignore`.
+
+**Canonical `.gitignore` block** (the artifact-tracking-policy lines this step manages — paths are project-relative, as `.gitignore` patterns must be):
+
+```gitignore
+# Machine-local / regenerable
+.DS_Store
+__pycache__/
+*.pyc
+tmp/
+tests/results/*.json
+.playwright-mcp/
+
+# Per-machine Claude Code state (NOT shared between developers)
+.claude/settings.local.json
+
+# Transient session pointer (deleted on resume)
+workflow/.session.md
+
+# Global-scope learning DRAFTS — parked for hand-porting to a source repo.
+# OMIT this line in a repo that IS the learning-assets/source repo (track them instead).
+.claude/learnings/
+```
+
+**`install.sh` does NOT do this** — it is machine-setup with no notion of "current project." This step is the project-scoped reconciliation. Projects that skip `product-context` maintain `.gitignore` by hand (or invoke `product-context` manually to reconcile).
 
 ### 3. Finalize Product Docs
 - Product docs stay in place under `docs/product/` — they are durable reference material, not ephemeral WIP, so they are **not** archived.

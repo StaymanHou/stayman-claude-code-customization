@@ -63,7 +63,7 @@ Before implementing anything, answer this question in writing and record the ans
 This check must be completed before proceeding to implement. Its purpose: prevent the agent from fixing symptoms while the root cause has shifted.
 
 ### 2. Environment Check
-- Read the project `CLAUDE.md` at the root for environment rules (also `.claude/CLAUDE.md` if present)
+- Read the project `CLAUDE.md` at the root for environment rules (also `<proj-dir>/.claude/CLAUDE.md` if present)
 - **Docker Rule:** If the project mandates Docker, ALL commands MUST run inside the container
 
 ### 3. Implement

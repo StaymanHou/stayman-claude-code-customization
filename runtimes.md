@@ -11,9 +11,13 @@ updated: 2026-06-25
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 17s (2026-06-25)
-- **Use timeout:** 86000
+- **Last:** 20s (2026-06-25)
+- **Use timeout:** 90000
 - **History:**
+  - 21s — 2026-06-25  <!-- artifact-tracking-policy Phase 4 verify-auto; 302/0 PASS (+4 from 298: Phase 12 gained reflect leading-label + no-trailing-form + CLAUDE.md override-section + no-stale-gitignored-claim pins). -->
+  - 20s — 2026-06-25  <!-- artifact-tracking-policy Phase 3 verify-auto; 298/0 PASS (+4 from 294: Phase 12 gained 4 skill-reconciliation pins — session-store-learning canonical-path + policy-keyed git + forbids-gitignore-inspection + product-context reconcile-owner). -->
+  - 20s — 2026-06-25  <!-- artifact-tracking-policy Phase 2 verify-auto; 294/0 PASS (+3 from 291: Phase 12 gained 3 artifact-tracking-policy pins — GLOBAL section exists + track-by-default rule + override mechanism. Phase 1 pin also refined to strip fences/allow notation token). -->
+  - 20s — 2026-06-25  <!-- artifact-tracking-policy Phase 1 verify-auto; 291/0 PASS (+1 from prior 290: new Phase 12 path-qualification pin — no bare .claude/ in prompts). -->
   - 17s — 2026-06-25  <!-- incident autopilot-askuserquestion-pauses resolve (I18); 290/0 PASS, fully green. Confirmed the codify-era "1 baseline FAIL" caveat is stale (fixed 2026-06-24 commit 93677f0). No pins added at resolve. -->
   - 17s — 2026-06-24  <!-- phase7-filter-claudesk follow-on; 290/0 PASS. Phase 7 now strips claudesk hooks from both sides via strip_host_specific() before diffing (replaced the stopgap that parked all 3 events in INTENTIONAL_DIFFS); UserPromptSubmit fully drift-checked again, only Notification/Stop remain documented diffs. Negative test verified (broken claude-time cmd → Phase 7 FAIL). PASS count unchanged. -->
   - 17s — 2026-06-24  <!-- remove-telegram-hook task; 290/0 PASS (was 289/1 — the prior baseline FAIL was the live-settings claudesk-hook drift, now resolved by adding hooks.UserPromptSubmit to INTENTIONAL_DIFFS + removing the telegram permission from the fixture). Phase 5 telegram hook-integrity block (~8 assertions) removed; net PASS count near-flat. -->

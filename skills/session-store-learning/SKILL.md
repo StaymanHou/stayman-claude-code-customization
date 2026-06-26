@@ -1,6 +1,6 @@
 ---
 name: session-store-learning
-description: "Session operation: classify a learning and persist it — project-scope writes to .claude/ as before; global-scope writes a draft to .claude/learnings/ (gitignored) for the user to curate by hand"
+description: "Session operation: classify a learning and persist it — project-scope writes to <proj-dir>/.claude/ as before; global-scope writes a draft to the canonical <proj-dir>/.claude/learnings/ path. Git behavior (commit vs leave-uncommitted) follows the artifact tracking policy + project overrides, not gitignore inspection."
 argument-hint: <the learning or insight to store>
 ---
 
@@ -12,7 +12,7 @@ You are an expert at knowledge engineering. Persist a learning so it's useful fo
 
 This is a **session meta-operation** typically invoked after `/session-reflect`.
 
-**Important boundary:** this skill writes only to the **current project**, never to `~/.claude/`. Project-scope learnings go into the project's own `.claude/` directory as before. Global-scope learnings — ones that would have previously been written into `~/.claude/CLAUDE.md` / `~/.claude/projects/*/memory/` / `~/.claude/skills/` — are instead drafted to `.claude/learnings/<YYYY-MM-DD>-<slug>.md` (a gitignored local file), so the user can review and manually port them into the appropriate source repo (e.g. `my-claude-code-customization`) when warranted. The skill never mutates global Claude Code configuration directly.
+**Important boundary:** this skill writes only to the **current project**, never to `~/.claude/`. Project-scope learnings go into the project's own `<proj-dir>/.claude/` directory as before. Global-scope learnings — ones that would have previously been written into `~/.claude/CLAUDE.md` / `~/.claude/projects/*/memory/` / `~/.claude/skills/` — are instead drafted to `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md`, so the user can review and manually port them into the appropriate source repo (e.g. `my-claude-code-customization`) when warranted. The skill never mutates global Claude Code configuration directly.
 
 ## Procedure
 
@@ -22,8 +22,8 @@ Evaluate the input learning from `{{args}}` or from the most recent reflection.
 ### 2. Classify & Route
 
 **Scope:**
-- **Global** — reusable across all projects → draft to **`.claude/learnings/<YYYY-MM-DD>-<slug>.md`** in the current project (gitignored). Never writes to `~/.claude/`.
-- **Project-specific** — relevant only to this project → store in `.claude/` (project root) as before.
+- **Global** — reusable across all projects → draft to **`<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md`** in the current project. Never writes to `~/.claude/`.
+- **Project-specific** — relevant only to this project → store in `<proj-dir>/.claude/` (project root) as before.
 
 **Storage Type:**
 
@@ -31,8 +31,8 @@ Evaluate the input learning from `{{args}}` or from the most recent reflection.
 |------|------|------------------------|-----------------------|
 | **Ignore** | Trivial, one-off, or already known | Don't store | Don't draft |
 | **Context Rule** | Critical convention or constraint | Project: `CLAUDE.md` (root) | Draft entry under `## Suggested change` describes the CLAUDE.md rule to add manually |
-| **Memory** | Reusable insight about user, project, or approach | Project: `.claude/memory/` | Draft entry under `## Suggested change` describes the memory to add manually |
-| **Skill** | Complex procedural expertise worth codifying | Project: `.claude/skills/<name>/` | Draft entry under `## Suggested change` describes the skill (sketch / name / when-to-use) |
+| **Memory** | Reusable insight about user, project, or approach | Project: `<proj-dir>/.claude/memory/` | Draft entry under `## Suggested change` describes the memory to add manually |
+| **Skill** | Complex procedural expertise worth codifying | Project: `<proj-dir>/.claude/skills/<name>/` | Draft entry under `## Suggested change` describes the skill (sketch / name / when-to-use) |
 
 Project-scope learnings are persisted to their permanent home immediately, as before. Global-scope learnings are *documented* — never installed — so the user can review and port them by hand.
 
@@ -42,8 +42,8 @@ Present clearly:
 - **Scope:** Global vs Project
 - **Type:** Context Rule / Memory / Skill / Ignore
 - **Location:** Exact file path
-  - For project-scope: the permanent path (e.g. `.claude/CLAUDE.md`, `.claude/memory/<name>.md`, `.claude/skills/<name>/SKILL.md`)
-  - For global-scope: `.claude/learnings/<YYYY-MM-DD>-<slug>.md` — explicitly note this is a *draft for later curation*, not a permanent install
+  - For project-scope: the permanent path (e.g. `<proj-dir>/.claude/CLAUDE.md`, `<proj-dir>/.claude/memory/<name>.md`, `<proj-dir>/.claude/skills/<name>/SKILL.md`)
+  - For global-scope: `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md` — explicitly note this is a *draft for later curation*, not a permanent install
 - **Content:** What will be written (draft it)
 
 After presenting the proposal, end this step's output with the terminal signal line — exactly:
@@ -61,7 +61,7 @@ This marks the skill as having completed its single-turn job (classification + p
 Present:
 - The proposed storage location
 - The drafted content
-- For global-scope: a one-line reminder — "this is a draft to `.claude/learnings/`; if useful, port to the source repo (e.g. `my-claude-code-customization`) by hand."
+- For global-scope: a one-line reminder — "this is a draft to `<proj-dir>/.claude/learnings/`; if useful, port to the source repo (e.g. `my-claude-code-customization`) by hand."
 - Ask: "Should I save this? Any changes?"
 
 ### 5. Execute
@@ -69,7 +69,7 @@ Present:
 **ONLY** after receiving user confirmation:
 
 **Project-scope:**
-- Write or append to the existing project file (CLAUDE.md, memory, skill) at the proposed `.claude/` path
+- Write or append to the existing project file (CLAUDE.md, memory, skill) at the proposed `<proj-dir>/.claude/` path
 - If updating an existing file, append or merge rather than overwrite
 - **Amend the learning into HEAD (required).** After the write, fold the learning into the most recent commit so it lives in the same commit as the work it describes (the just-completed close commit, in the typical post-reflect cadence):
   - `git add <file-path-just-written>`
@@ -81,10 +81,17 @@ Present:
 
 **Global-scope:**
 
-(No amend. Global-scope drafts live in `.claude/learnings/` which is gitignored — `git add` would no-op without `-f`, and forcing-add a gitignored file defeats the purpose of the local-curation workflow. The draft stays as a working-tree-only file until the operator hand-ports it.)
+Global-scope drafts always go to the single canonical destination **`<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md`** — never `~/.claude/`, never `<proj-dir>/docs/learnings/`, never anywhere else. Do not infer the destination; it is fixed.
 
-- Ensure `.claude/learnings/` exists; create it if not
-- Write the drafted file to `.claude/learnings/<YYYY-MM-DD>-<slug>.md` using this schema:
+**Git behavior follows the artifact tracking policy, not gitignore inspection.** Per `~/.claude/CLAUDE.md` → `## Artifact tracking policy (GLOBAL)`, `<proj-dir>/.claude/learnings/` is **ignore by default**, overridable per the project's root `CLAUDE.md` `## Artifact tracking overrides`. Decide once, deterministically:
+
+- **If the project's policy IGNORES `<proj-dir>/.claude/learnings/`** (the default — no override): leave the draft uncommitted. It is a working-tree-only parking spot the operator hand-ports to a source repo later. Do NOT `git add`, do NOT amend, do NOT force-add.
+- **If the project's root `CLAUDE.md` OVERRIDES to TRACK `<proj-dir>/.claude/learnings/`** (e.g. this repo IS the learning-assets/source repo): the draft is a first-class tracked artifact — `git add` it and `git commit --amend --no-edit` into HEAD, exactly as the project-scope path does (same rationale: fold into the close commit, prevent loss in the next destructive git op).
+
+To determine which branch applies: read the project's root `CLAUDE.md` for an `## Artifact tracking overrides` section naming `<proj-dir>/.claude/learnings/` as tracked. Absent that override, the default (ignore → leave uncommitted) holds. This is the deterministic discriminator — the gitignore file's contents are downstream of the policy, not the source of truth.
+
+- Ensure `<proj-dir>/.claude/learnings/` exists; create it if not
+- Write the drafted file to `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md` using this schema:
 
   ```markdown
   ---
@@ -111,11 +118,12 @@ Present:
   ```
 
 - If a same-slug file exists for today, append `-2`, `-3`, etc.
-- Confirm to the user: print the final path. Add a one-liner: "Drafted to `.claude/learnings/`. If you decide it's worth keeping globally, port it to the source repo by hand."
+- Confirm to the user: print the final path. Add a one-liner: "Drafted to `<proj-dir>/.claude/learnings/`. If you decide it's worth keeping globally, port it to the source repo by hand."
 
 ### 6. Verify
 - Read back the file to confirm it was written correctly
 - If it's a project-scope memory file, ensure the memory index is updated
-- For global-scope drafts, ensure `.claude/learnings/` is listed in the project's `.gitignore` — if not, suggest adding it (one-line confirmation; do not edit `.gitignore` without asking)
+- **Memory PII audit (any scope, when the artifact is a memory file).** Per `~/.claude/CLAUDE.md` → `## Artifact tracking policy (GLOBAL)`, memories are tracked by default. After writing a memory, audit it for secrets/PII: **redact in place** if redaction preserves the memory's usefulness (preferred), or **add that specific file to `.gitignore`** if the sensitive content is load-bearing and must be kept verbatim (expected rare). Do not blanket-ignore the whole `<proj-dir>/.claude/memory/` directory.
+- **Do NOT inspect or edit `.gitignore` to decide a learning's git fate.** Git behavior is already decided in §5 by the artifact tracking policy + the project's `## Artifact tracking overrides`. `.gitignore` reconciliation across a project is owned by `product-context` (see its `.gitignore` reconciliation step), not by this skill.
 
 **Learning to Store:** {{args}}

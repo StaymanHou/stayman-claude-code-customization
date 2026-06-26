@@ -170,6 +170,33 @@ The four terminal-close skills append to it automatically:
 - **Project root detection.** "Project root" = `git rev-parse --show-toplevel` if the working dir is in a git repo; otherwise the current working directory.
 - **No backdating.** The skill always writes today's date, regardless of when the WIP was created or when work actually finished.
 
+## Artifact tracking policy (GLOBAL)
+
+Workflow skills produce many artifacts (learnings, memories, session pointers, WIP files, product docs). Which of these git-tracks vs. ignores — and **where each is written** — must be deterministic, not inferred at runtime. This section is the authoritative answer. Skills **follow** this policy; they do not re-derive it by inspecting `.gitignore` state.
+
+### The rule: track by default
+
+**Track by default. Ignore a path only if it (a) contains secrets/PII, or (b) is machine-local or trivially regenerable.** Everything a future session or another developer would want — learnings, lessons, product docs, changelog, runtime registry, backlog — is tracked. The ignore list is the *exception* list, and every entry on it earns its place by one of the two reasons above.
+
+### Canonical MAP (per-project defaults)
+
+All paths are project-local (`<proj-dir>/`) unless noted. "Default" is overridable per §Override below.
+
+| Artifact | Default | Reason |
+|---|---|---|
+| `<proj-dir>/docs/lessons/`, `<proj-dir>/docs/product/` (+ `archive/`), `<proj-dir>/docs/case-studies/` | **track** | shared project knowledge |
+| `<proj-dir>/CHANGELOG.md`, `<proj-dir>/runtimes.md` | **track** | shared narrative / measurements |
+| `<proj-dir>/workflow/backlog*.md`, `workflow/archive/`, `workflow/wip/` | **track** | shared work state & history |
+| `<proj-dir>/.claude/memory/`, `<proj-dir>/.claude/memory/MEMORY.md` | **track + PII-audit** | tracked by default; any skill that writes a memory MUST audit the file for secrets/PII after writing — **redact in place** if redaction preserves the memory's usefulness, else **add that specific file to `.gitignore`** (expected rare) |
+| `<proj-dir>/.claude/learnings/` | **ignore** (overridable) | global-scope learning *drafts* parked for hand-porting to a source repo; a project that IS the learning-assets repo overrides this to **track** (see §Override) |
+| `<proj-dir>/.claude/settings.local.json` | **ignore** | machine-local permission allowlist (usually also covered by `~/.config/git/ignore`) |
+| `<proj-dir>/workflow/.session.md` | **ignore** | transient single-file session pointer, deleted on resume |
+| `<proj-dir>/tests/results/`, `.playwright-mcp/`, `tmp/`, generated screenshots, `__pycache__/`, `*.pyc`, `.DS_Store` | **ignore** | machine-local / trivially regenerable |
+
+### Override (per-project exceptions)
+
+A project's root `CLAUDE.md` may declare a `## Artifact tracking overrides` section naming exceptions to the MAP defaults. The most common case: a repo that **is** the global learning-assets / workflow-system source repo tracks `<proj-dir>/.claude/learnings/` (and possibly `<proj-dir>/.claude/memory/`) first-class instead of ignoring them. An override flips the default for the named paths only. (How a project's `.gitignore` is reconciled to the MAP + its overrides is a workflow-system implementation concern — see the `product-context` skill — not part of this policy.)
+
 ## Long-running commands (GLOBAL)
 
 **Before running a long command** — full test suite (`pytest`, `npm test` / `npx jest`, `cargo test`, `go test ./...`, `bundle exec rspec`, `mix test`, Playwright, etc.), full build (`npm run build`, `cargo build --release`, webpack/Vite production build), big migration, large codemod, or bulk data import — read the project's runtime registry (or estimate if absent) and pass an explicit `timeout` to the Bash tool. The default 2-min Bash timeout silently auto-backgrounds, producing a stale tool result that looks like a failure and tempts re-invocation in the foreground. The wrap-around is what causes the damage; the timeout decision is the prevention.
