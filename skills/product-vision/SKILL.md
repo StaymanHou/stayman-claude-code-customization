@@ -57,6 +57,17 @@ updated: <YYYY-MM-DD>
 <guiding values>
 ```
 
+### 2b. Capture a design prior (if the operator reveals one)
+
+While defining the vision, the operator often states **identity, non-goals, or an anti-persona** ("this is a single-operator tool", "not for people who love spreadsheets") — these are exactly the **design priors** that should steer later roadmap/WBS/spec decisions. If the operator's input meets the **capture discriminant** (a product-design tradeoff or identity/non-goal/anti-persona stated with a *transferable why*), propose recording it to `docs/product/design-priors.md`:
+
+- **Propose, never auto-write.** Present the inferred prior + inferred why; let the operator review, correct, and enrich the why before anything is written. Preserve the inferred-why/corrected-why gap when they differ.
+- **Dedup/conflict-check** existing priors first; surface a contradiction rather than silently appending.
+- **Exclusions:** technical/stack tradeoffs → `arch.md`, not a prior; bare preferences / scope-adds → not a prior.
+- Vision is **capture-only** (it does not consult priors — it is their source).
+
+Full discriminant, weighting, and exclusions: `CLAUDE.snippet.md` → "Design priors (GLOBAL)".
+
 ### 3. Hand Off
 - Set `state: complete` in the frontmatter
 - Tell user to run `/product-roadmap` to break the vision into milestones

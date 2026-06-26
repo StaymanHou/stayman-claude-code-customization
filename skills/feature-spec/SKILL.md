@@ -45,13 +45,18 @@ Before eliciting requirements, ground the spec in current strategic context. Run
 
 - `docs/product/arch.md` — architectural decisions and system design
 - `docs/product/wbs.md` — active work breakdown structure (current cycle)
+- `docs/product/design-priors.md` — the operator's product-design decision leans
 - `docs/product/vision.md` — high-level product vision
 - `docs/product/roadmap.md` — strategic roadmap
 - `docs/product/research.md` — cycle-scoped research findings
 
-**Eager read — `arch.md` AND `wbs.md`:** spec is the most upstream complex-feature decision point, and divergence from architecture or the active WBS cycle is expensive to unwind downstream. Read both files (when present) at the start of step 1 below.
+**Eager read — `arch.md`, `wbs.md`, AND `design-priors.md`:** spec is the most upstream complex-feature decision point, and divergence from architecture or the active WBS cycle is expensive to unwind downstream. Read all three (when present) at the start of step 1 below.
 
-**Size guard:** if either `arch.md` or `wbs.md` exceeds ~300 lines, read only the first 100 lines of that file (via the `Read` tool's `limit:` parameter) plus a `Grep` for `^#+ ` headings to capture structure. Append one line to the WIP file's `## Discoveries` section: `[SURFACED-<date>] feature-spec — <doc>.md exceeds size guard (N lines), truncated to first 100. Consider summarizing.`
+**Consult `design-priors.md` (product-design gaps):** when the spec leaves a product-design tradeoff open (focus-vs-breadth, perf-vs-ship, defaults-vs-config, anti-persona, …), apply the consult-weighting rules: (1) no prior governs → common sense untouched; (2) prior agrees → take it, higher confidence; (3) prior breaks a genuine tie → lean + disclose; (4) clear default *contradicts* a strong prior → surface as a proposal, never silently steer; (5) a prior only fires on the axis it is actually about (**over-infer guard**). Disclose a firing prior with `[PRIOR: <slug>] leaning <x> — flag if wrong`; priors are overridable by strong common-sense evidence (disclose the override).
+
+**Capture a design prior (if the operator reveals one):** spec elicitation is also a capture checkpoint — operator answers about scope/persona/tradeoffs often reveal a transferable product-design lean. If the operator's input meets the **capture discriminant** (product-design tradeoff or identity/non-goal/anti-persona + a *transferable why*), **propose** recording it to `design-priors.md` (propose-never-auto-write; operator reviews/enriches the why; dedup/conflict-check first). **Exclusions:** technical/stack tradeoffs → `arch.md`; bare preferences / scope-adds → not a prior. See `CLAUDE.snippet.md` → "Design priors (GLOBAL)".
+
+**Size guard:** if `arch.md`, `wbs.md`, or `design-priors.md` exceeds ~300 lines, read only the first 100 lines of that file (via the `Read` tool's `limit:` parameter) plus a `Grep` for `^#+ ` headings to capture structure. Append one line to the WIP file's `## Discoveries` section: `[SURFACED-<date>] feature-spec — <doc>.md exceeds size guard (N lines), truncated to first 100. Consider summarizing.`
 
 **`vision.md`, `roadmap.md`, `research.md`:** pointer-only. These are too high-level (vision/roadmap) or too cycle-scoped (research) to mechanically constrain a spec. If your reasoning surfaces a question they'd answer, read them on your own initiative.
 

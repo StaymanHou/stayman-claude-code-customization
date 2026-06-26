@@ -18,6 +18,26 @@ You are in the **product** workflow at the **roadmap** state.
 Also entered via:
 - **P4 (research → roadmap back-loop):** Research invalidates roadmap assumptions — revise the roadmap
 
+## Step 0: Available product context
+
+Run `ls docs/product/` to see which docs exist. Relevant here:
+
+- `docs/product/vision.md` — pointer-only; you read it in §1 below.
+- `docs/product/design-priors.md` — **eager-read (consult)** when present. This is the per-project record of the operator's product-design decision leans (focus-vs-breadth, perf-vs-ship, anti-persona, …). Roadmap milestone decomposition is shot through with product-design tradeoffs, so consult it before deciding milestone scope/sequencing.
+
+**Consult-weighting rules (apply when a recorded prior bears on a milestone decision):**
+1. **No prior governs → decide from common sense** (the 90% path — untouched; do not invent a prior).
+2. **Prior agrees with the common-sense default → take it, higher confidence,** brief note.
+3. **Prior breaks a genuine tie → lean the prior + disclose.**
+4. **Clear common-sense default *contradicts* a strong prior → surface as a proposal; never silently steer** (neither auto-adopt nor auto-ignore).
+5. **A prior only fires on the axis it is actually about** (the **over-infer guard**) — never stretch a prior to a decision it does not govern.
+
+When a prior fires (rules 3/4), disclose with: `[PRIOR: <slug>] leaning <x> — flag if wrong`. Priors are **overridable** by strong common-sense evidence — when overriding, disclose it. Absent file = silent no-op. **Size guard:** if `design-priors.md` exceeds ~300 lines, read first 100 lines + `^#+ ` headings.
+
+**Capture a design prior (if the operator reveals one):** roadmap is also a capture checkpoint — milestone scoping/sequencing decisions often reveal a transferable product-design lean. If the operator's input meets the **capture discriminant** (product-design tradeoff or identity/non-goal/anti-persona + a *transferable why*), **propose** recording it to `design-priors.md` (propose-never-auto-write; operator reviews/enriches the why; dedup/conflict-check first). **Exclusions:** technical/stack tradeoffs → `arch.md`; bare preferences / scope-adds / sequencing-by-dependency → not a prior.
+
+See `CLAUDE.snippet.md` → "Design priors (GLOBAL)" for the full contract (consult weighting + capture discriminant).
+
 ## Procedure
 
 ### 1. Review Vision

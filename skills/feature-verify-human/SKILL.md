@@ -140,6 +140,12 @@ As the human works through each item, record their result per leaf:
 - Fail → mark leaf `<!-- status: FAILED -->`, note what was observed
 - Blocked → keep `BLOCKED` status until its dependency resolves
 
+### 6b. Capture a design prior (if the operator's correction reveals one)
+
+A human **correction or rejection** at this gate is a high-signal capture moment — but only when it carries a *transferable product-design why*, not a one-off fix. "Make this button blue" or "fix this label" is a bare fact (→ not a prior). "Don't add that — this product stays focused on solo founders" is a **design prior** (a transferable lean). When the correction meets the **capture discriminant** (product-design tradeoff or identity/non-goal/anti-persona + a *transferable why*), **propose** recording it to `docs/product/design-priors.md` (propose-never-auto-write; operator reviews/enriches the why; dedup/conflict-check first).
+
+**Exclusions:** technical/stack tradeoffs → `arch.md`; bare label/copy/color fixes and pure scope-adds → not a prior. This capture runs at an already-PAUSE human-input point, so it adds no new autopilot stop. See `CLAUDE.snippet.md` → "Design priors (GLOBAL)".
+
 ### 7. Evaluate Results
 
 **All leaves [x] (F13 — human approves):**

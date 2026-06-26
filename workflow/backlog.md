@@ -92,6 +92,16 @@ Buried 2026-06-12:
 - **Priority:** low
 - **Status:** resolved 2026-06-25 by commit 93677f0 — Phase 7 now strips host-specific claudesk hooks from both live and fixture via `strip_host_specific()` before diffing (cleaner than the proposed INTENTIONAL_DIFFS approach: the repo-owned claude-time hook stays fully drift-checked). check-structure 290/0.
 
+## SURFACE-2026-06-26-SETTINGS-FIXTURE-DRIFT-DISABLECLAUDEAICONNECTORS
+- **Source:** feature:build (design-priors Phase 4 verify-auto)
+- **Target level:** task:plan (small — extend strip_host_specific or add INTENTIONAL_DIFFS)
+- **Type:** tech-debt
+- **Summary:** `tests/check-structure.sh` Phase 7 "settings fixture in sync with live" FAILs because the live `~/.claude/settings.json` carries a `disableClaudeAiConnectors: true` key (a machine-local Claude Code connector toggle set outside this repo) that `tests/fixtures/settings.json` doesn't model. Same class as the resolved SURFACE-2026-06-23-SETTINGS-FIXTURE-DRIFT-CLAUDESK-HOOK — a host-specific live key the `strip_host_specific()` filter doesn't yet strip. Pre-existing/environmental, NOT caused by the design-priors feature (which did not touch the settings fixture).
+- **Context:** `strip_host_specific()` (added 2026-06-25, commit 93677f0) strips claudesk hooks before diffing but does not strip top-level machine-local connector/UI keys like `disableClaudeAiConnectors`. As more such keys appear in the live global settings, the fixture-drift check will keep flagging them.
+- **Suggested action:** Extend `strip_host_specific()` to also drop a small allowlist of known machine-local top-level keys (`disableClaudeAiConnectors`, and any future connector/UI toggles) from BOTH sides before diffing — same pattern as the claudesk-hook strip. Keep repo-owned keys fully drift-checked.
+- **Priority:** low
+- **Status:** pending
+
 ## SURFACE-2026-06-25-AUDIT-PROMPT-LATITUDE-NEWER-CLIENT-MODEL
 - **Source:** incident:resolve (incident-autopilot-askuserquestion-pauses)
 - **Target level:** task:plan

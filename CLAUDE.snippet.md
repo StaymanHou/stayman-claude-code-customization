@@ -99,11 +99,15 @@ Entry-point skills may consult `docs/product/*.md` at start to ground planning i
 | Skill | Load mode | Eager reads | Pointer-only mentions |
 |-------|-----------|-------------|-----------------------|
 | `task-plan` | conditional-read | `arch.md` *only if* the task touches a public API, data shape, cross-module boundary, or workflow state machine | `wbs.md`, `vision.md`, `roadmap.md` |
-| `feature-spec` | eager-read | `arch.md`, `wbs.md` | `vision.md`, `roadmap.md`, `research.md` |
-| `feature-plan` | eager-read with context-skip | `wbs.md` — **skipped if already in conversation context** (e.g., loaded earlier by `feature-spec`) | `arch.md`, `vision.md`, `roadmap.md`, `research.md` |
+| `feature-spec` | eager-read | `arch.md`, `wbs.md`, `design-priors.md` | `vision.md`, `roadmap.md`, `research.md` |
+| `feature-plan` | eager-read with context-skip | `wbs.md` — **skipped if already in conversation context** (e.g., loaded earlier by `feature-spec`) | `arch.md`, `vision.md`, `roadmap.md`, `research.md`, `design-priors.md` (already applied by `feature-spec`) |
 | `feature-reproduce` | pointer-only | (none) | All `docs/product/*.md` |
 | `incident-report` | conditional-read | `arch.md` *only if* the incident involves cross-component or system-architecture-level effects | `wbs.md`, `vision.md`, `roadmap.md` |
-| `product-vision` | excluded | (none — it writes `vision.md`) | (none) |
+| `product-roadmap` | eager-read | `design-priors.md` (consult for milestone-level product-design leans) | `vision.md` |
+| `product-wbs` | eager-read | `design-priors.md` (consult for WP-level product-design leans) | `wbs.md`, `roadmap.md`, `vision.md` |
+| `product-vision` | excluded for consult; **capture-only** | (none — it writes `vision.md`; it may *propose* identity/anti-persona priors) | (none) |
+
+`design-priors.md` is consulted by the three planning skills that make product-design tradeoffs (`product-roadmap`, `product-wbs`, `feature-spec`) and proposed-to by the capture checkpoints — see "Design priors (GLOBAL)" below for the full capture/consult contract.
 
 ### Rules
 
@@ -112,6 +116,42 @@ Entry-point skills may consult `docs/product/*.md` at start to ground planning i
 3. **No `context.md`.** Excluded everywhere — `CLAUDE.md` is the harness-loaded equivalent.
 
 `tests/check-structure.sh` enforces that each entry-point SKILL.md has its `## Step 0` section.
+
+## Design priors (GLOBAL)
+
+**Design priors** are terse, transferable, *per-project* statements of how the operator resolves recurring **product-design** tradeoffs (focus-vs-breadth, perf-vs-ship, opinionated-defaults-vs-config, an anti-persona, etc.), each paired with its *why*. They live in `docs/product/design-priors.md` (schema in `arch.md` → "File Schema: Design Priors Format"). The operator deliberately leaves product-design gaps and lets CC fill them; ~90% of the time common sense is right. Design priors capture the remaining ~10% — the project-specific lean — so CC fills *those* the operator's way without being re-taught each feature. **They are directional and overridable, never decisive.** This doc is per-project state (lives in the consuming project, not the skill repo).
+
+### Consult contract (planning skills: `product-roadmap`, `product-wbs`, `feature-spec`)
+
+When filling a product-design gap the operator left open, load `design-priors.md` (absent file = silent no-op) and apply these **weighting rules** — they exist to keep the 90% common-sense path untouched and to prevent over-inference:
+
+1. **No prior governs the decision → fill from common sense.** (The 90% path — untouched. Do NOT invent a prior.)
+2. **A prior *agrees* with the common-sense default → take it, higher confidence,** with a brief note.
+3. **A prior breaks a *genuine tie* between defensible options → lean the prior + disclose.**
+4. **A clear common-sense default *contradicts* a strong prior → the 10% case → surface as a proposal; never silently steer** (neither auto-adopt the prior nor auto-ignore it).
+5. **A prior only fires on the axis it is actually about** (the **over-infer guard**) — never stretch a prior to a decision it does not govern. *Tone of an error message* is not governed by a prior about *option-count*.
+
+**Disclosure form** when a prior fires (rules 3/4): `[PRIOR: <slug>] leaning <x> — flag if wrong`, emitted into the roadmap/WBS/spec output.
+
+**Overridability:** when strong common-sense evidence says a recorded prior does not apply here, fill from common sense and **disclose the override** — do not blindly obey the prior. (Tunable over time.)
+
+### Capture contract (checkpoints: `product-vision`, `product-roadmap`, `product-arch`, `product-wbs`, `feature-spec`, `feature-verify-human`; backstop: `session-reflect`)
+
+**Capture discriminant** — propose a prior only when BOTH hold:
+- the operator **made or corrected a *product-design* tradeoff** (or stated an identity / non-goal / anti-persona), AND
+- a **transferable why** is stated or implied (a why that will recur on future decisions of that kind).
+
+**On fire:** CC **proposes** the prior (inferred lean + inferred why) → the operator **reviews, corrects, and enriches the why** (and may reject) → only then is it written. **Propose, never auto-write.** Preserve the *gap* between inferred-why and the operator's corrected-why as distinct fields when they differ (the gap is the learning signal). Before proposing, **read existing priors and dedup/conflict-check**: a duplicate is not re-added; a *contradicting* new prior is surfaced as a conflict, not silently appended.
+
+**Exclusions (NOT design priors):**
+- **Technical/architecture tradeoffs** (stack choice, operational mechanics) → these belong in `arch.md`, NOT `design-priors.md`. (Low per-project frequency; avoids over-infer risk. Revisitable.)
+- **Bare one-off preferences, label/copy fixes, pure scope additions, dependency-driven sequencing** → FACT/NOTHING; session-reflect / WIP territory, not a prior.
+
+**Reversal probe (optional):** a decision reversal with no stated why may trigger at most one probe ("is there a principle behind this?"); a "no" captures nothing.
+
+**Backstop:** `session-reflect` asks once per session whether any decision revealed a durable design prior, catching the less-likely checkpoints.
+
+`tests/check-structure.sh` (Phase 13) pins the consult block in the planning skills, the capture move in the checkpoint skills, the schema in `arch.md`, and this mapping.
 
 ## CHANGELOG.md convention (GLOBAL)
 

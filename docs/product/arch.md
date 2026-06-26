@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-06-13
+updated: 2026-06-26
 ---
 <!-- 2026-06-13 second edit (same day): added `### util-* skill category` subsection under Revision 2026-06-13. updated: unchanged (same calendar day). -->
 
@@ -142,6 +142,44 @@ Tasks are simpler — no per-phase verification loop, no observable outcomes sec
 
 ---
 
+## File Schema: Design Priors Format (`docs/product/design-priors.md`)
+
+A per-project, durable product doc recording the operator's **design priors** — terse, transferable statements of how the operator resolves recurring *product-design* tradeoffs for this project, each paired with its *why*. Planning skills **consult** it to fill product-design gaps the operator's way; capture-checkpoint skills **propose** new priors (operator reviews before write). Priors are **directional and overridable**, never decisive — see "Design priors (GLOBAL)" in `CLAUDE.snippet.md` for the consult-weighting rules and capture discriminant.
+
+**This doc lives in *consuming* projects, never in this repo's own `docs/product/`** — the skill repo ships the schema + skill contracts (behavior), not state (vision.md §6). Absent file = silent no-op at consult time. Created lazily on the first approved capture.
+
+```markdown
+---
+stage: design-priors
+state: in-progress        # priors accrete over time; rarely "complete"
+updated: <YYYY-MM-DD>
+---
+
+# Design Priors — <project>
+
+<!-- Each prior is terse (a few lines). Fields:
+  - slug:          short kebab-case ID, e.g. P-FOCUS (used in [PRIOR: <slug>] disclosures)
+  - axis:          the tradeoff axis OR an identity/non-goal/anti-persona statement
+  - lean:          the direction the operator leans on that axis, for THIS project
+  - inferred-why:  the why CC could infer from the operator's choice alone
+  - corrected-why: the operator's true why — PRESERVED as a distinct field WHEN it differs
+                   from inferred-why (the gap is the signal this feature exists to capture).
+                   Omit only when operator confirms inferred-why is already correct.
+  - date:          capture date (YYYY-MM-DD)
+-->
+
+## P-FOCUS — audience breadth
+- **axis:** laser-focus on one use-case vs. broad applicability
+- **lean:** focus — solo founders only; resist breadth toward agencies/teams
+- **inferred-why:** operator rejected the agency generalization
+- **corrected-why:** the product's bet is depth-for-one-demographic; breadth dilutes the wedge
+- **date:** 2026-06-26
+```
+
+**Size guard:** consistent with the 300-line product-doc rule (consult-load reads first 100 lines + `^#+ ` headings if exceeded). Priors are terse precisely so this is rarely hit.
+
+---
+
 ## Skill Contract Changes
 
 ### Skills that write the Work Tree
@@ -194,6 +232,12 @@ Tasks are simpler — no per-phase verification loop, no observable outcomes sec
 - Incident-workflow skills — unaffected.
 - `session-*` skills — unaffected. The Work Tree is carried transparently through pause/resume because it lives in the WIP file.
 - `install.sh` — no new files, no new symlinks needed for Phases 1–2.
+
+## Revision 2026-06-26
+
+### Design priors — learned product-design decision principles (`docs/product/design-priors.md`)
+
+A new durable product-doc schema (see "File Schema: Design Priors Format" above) plus a capture/consult skill contract. Planning skills (`product-roadmap`, `product-wbs`, `feature-spec`) **consult** the doc at their `## Step 0` product-context load to fill product-design gaps the operator's way; capture-checkpoint skills (`product-vision`, `product-roadmap`, `product-arch`, `product-wbs`, `feature-spec`, `feature-verify-human`) and the `session-reflect` backstop **propose** new priors (operator reviews the why before write). Priors are directional/overridable, never decisive — the consult-weighting rules, capture discriminant, arch-boundary exclusion (technical/stack tradeoffs stay in *this* file, not design-priors), and the `[PRIOR: <slug>] leaning <x> — flag if wrong` disclosure form are documented in `CLAUDE.snippet.md` → "Design priors (GLOBAL)". **No new transition IDs** — this is behavior within existing states. Shipped by the `design-priors` feature, 2026-06-26.
 
 ## Revision 2026-06-13
 

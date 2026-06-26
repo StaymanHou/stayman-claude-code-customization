@@ -73,6 +73,12 @@ updated: <YYYY-MM-DD>
 - <decision>: <rationale>
 ```
 
+### 3b. Capture a design prior (if the operator reveals one)
+
+Architecture decisions are mostly technical and **belong in this file (`arch.md`), not in `design-priors.md`** — that is the deliberate arch-boundary exclusion. But the operator occasionally states a *product*-design lean while discussing architecture (e.g. "keep it dead simple, this audience won't tolerate a learning curve" — a defaults/approachability prior, not a stack choice). When the operator's input meets the **capture discriminant** (a *product*-design tradeoff or identity/non-goal/anti-persona + a *transferable why* — distinct from the technical decision itself), **propose** recording it to `design-priors.md` (propose-never-auto-write; operator reviews/enriches the why; dedup/conflict-check first).
+
+**The boundary is the discipline here:** technical/stack/operational tradeoffs are **not a prior** — they stay in `arch.md`; only product-design leans → `design-priors.md`. Bare facts and one-off decisions are also **not a prior**. If you cannot cleanly separate the product lean from the technical decision, it is a technical decision — keep it in `arch.md`. See `CLAUDE.snippet.md` → "Design priors (GLOBAL)".
+
 ### 4. Evaluate Next Step
 - If architecture is solid → set `state: complete` in the frontmatter, recommend `/product-wbs` (P7)
 - If unknowns emerged → document them, recommend `/product-research` (P6). The research skill will bump `docs/product/research.md` back to `state: in-progress`.

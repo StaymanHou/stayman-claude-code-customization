@@ -56,7 +56,7 @@ Before planning, align phasing with the active WBS cycle. Run `ls docs/product/`
 
 **Size guard:** if `wbs.md` exceeds ~300 lines, read only the first 100 lines (via the `Read` tool's `limit:` parameter) plus a `Grep` for `^#+ ` headings. Append one line to the WIP file's `## Discoveries` section: `[SURFACED-<date>] feature-plan — wbs.md exceeds size guard (N lines), truncated to first 100. Consider summarizing.`
 
-**`arch.md`, `vision.md`, `roadmap.md`, `research.md`:** pointer-only. `arch.md` is spec's concern (constraints already in the spec by the time plan runs). The others are too coarse to constrain phase-level planning.
+**`arch.md`, `vision.md`, `roadmap.md`, `research.md`, `design-priors.md`:** pointer-only. `arch.md` and `design-priors.md` are spec's concern — by plan time, `feature-spec` has already consulted `design-priors.md` and applied any firing priors (disclosed as `[PRIOR: …]` in the spec), so plan inherits those decisions rather than re-deciding. The others are too coarse to constrain phase-level planning.
 
 **Absent files:** silent no-op. No warning, no prompt.
 

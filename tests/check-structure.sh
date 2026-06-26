@@ -1884,6 +1884,50 @@ fi
 
 echo ""
 
+echo "[Phase 13] Design priors (capture + consult contract)"
+
+# The design-priors feature (2026-06-26) adds a per-project design-priors.md doc
+# that planning skills CONSULT and capture-checkpoint skills PROPOSE-to. The contract
+# is prose across 9 skills + 2 global docs; these pins keep it from silently drifting
+# away. The canonical contract lives in CLAUDE.snippet.md → "Design priors (GLOBAL)".
+
+# (1) Canonical schema + global contract.
+grep_check "arch.md documents the Design Priors file schema" "docs/product/arch.md" "File Schema: Design Priors" 1
+grep_check "arch.md design-priors schema preserves inferred-why vs corrected-why gap" "docs/product/arch.md" "inferred-why" 1
+grep_check "arch.md design-priors schema names corrected-why field" "docs/product/arch.md" "corrected-why" 1
+grep_check "CLAUDE.snippet.md defines 'Design priors (GLOBAL)'" "CLAUDE.snippet.md" "^## Design priors \(GLOBAL\)" 1
+grep_check "Design priors contract states the over-infer guard" "CLAUDE.snippet.md" "over-infer guard" 1
+grep_check "Design priors contract names the disclosure form" "CLAUDE.snippet.md" "\[PRIOR: <slug>\]" 1
+
+# (2) Consult block present in the 3 planning skills.
+grep_check "product-roadmap consults design-priors.md" "skills/product-roadmap/SKILL.md" "design-priors\.md" 1
+grep_check "product-wbs consults design-priors.md" "skills/product-wbs/SKILL.md" "design-priors\.md" 1
+grep_check "feature-spec consults design-priors.md" "skills/feature-spec/SKILL.md" "design-priors\.md" 1
+grep_check "product-roadmap carries the over-infer guard" "skills/product-roadmap/SKILL.md" "over-infer guard" 1
+grep_check "product-wbs carries the over-infer guard" "skills/product-wbs/SKILL.md" "over-infer guard" 1
+grep_check "feature-spec carries the over-infer guard" "skills/feature-spec/SKILL.md" "over-infer guard" 1
+
+# (3) Capture move present in the 6 capture-checkpoint skills (+ propose-never-auto-write guard).
+for s in product-vision product-roadmap product-arch product-wbs feature-spec feature-verify-human; do
+  grep_check "$s carries the capture-a-design-prior move" "skills/$s/SKILL.md" "[Cc]apture a design prior" 1
+done
+# Propose-never-auto-write is the load-bearing over-capture guard — pin it in every capture skill.
+for s in product-vision product-roadmap product-arch product-wbs feature-spec feature-verify-human; do
+  grep_check "$s capture move is propose-never-auto-write" "skills/$s/SKILL.md" "propose" 1
+done
+# arch-boundary + FACT exclusions ("not a prior") present in every capture skill.
+for s in product-vision product-roadmap product-arch product-wbs feature-spec feature-verify-human; do
+  grep_check "$s capture move states the not-a-prior exclusions" "skills/$s/SKILL.md" "not a (design )?prior" 1
+done
+
+# (4) session-reflect backstop sweep.
+grep_check "session-reflect carries the design-priors backstop sweep" "skills/session-reflect/SKILL.md" "design prior" 1
+
+# (5) No new transition IDs introduced (design priors is behavior-within-states).
+grep_check "transitions.md documents design priors as behavior-within-states (no new IDs)" "docs/product/transitions.md" "[Dd]esign prior" 1
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

@@ -394,3 +394,177 @@ scenarios:
         - "land locally"
     # Part of the no-push family — keep contains_any in sync across F19/T10/I10/P13-no-auto-push
     max_retries: 2
+
+  # ── Design priors — CONSULT side (product-roadmap / product-wbs) ──────────────
+  # These exercise the design-priors consult contract added 2026-06-26. The fixture
+  # design-priors-consult/ carries vision + roadmap + a design-priors.md with priors
+  # P-FOCUS (audience=solo-founders, resist breadth) and P-ANTI (anti-persona=spreadsheet-lovers).
+
+  # NB: these scenarios assert CONTENT (does a design prior fire / not fire), which is
+  # orthogonal to WHICH transition the planning skill picks. So they use transition_id_any
+  # (the skill's plausible exits) to anchor an ID match, then contains_required_any /
+  # not_contains_strict do the real behavioral assertion. not_contains_strict:true makes a
+  # spurious prior-firing a HARD FAIL — that strictness is the anti-overfit proof the operator
+  # mandated. The disclosure token is matched as "PRIOR:" (no leading "[", which is a BRE
+  # bracket-expression and breaks grep in verify.sh).
+
+  - id: DP-consult-changes
+    name: "design-priors: a governing prior CHANGES a product-design gap-fill (cites the prior)"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/design-priors-consult
+    system_prompt_extra: |
+      Decompose the next milestone into WPs. One open product-design question:
+      should the import feature also serve agencies/teams (multi-seat), or stay
+      single-operator? This is on the SAME axis as a recorded design prior
+      (P-FOCUS: solo founders only, resist breadth toward agencies/teams).
+      Consult design-priors.md and apply the consult-weighting rules; disclose the
+      firing prior.
+    expect:
+      transition_id_any: [P7, P8, P9, P9b, P11, P12]
+      contains_required_any:
+        - "PRIOR: P"
+        - "P-FOCUS"
+      contains_any:
+        - "solo"
+        - "focus"
+        - "resist breadth"
+    max_retries: 2
+
+  - id: DP-consult-nochange-overinfer
+    name: "design-priors: B6 over-infer trap — prior on a DIFFERENT axis does NOT fire"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/design-priors-consult
+    system_prompt_extra: |
+      Decompose the next milestone into WPs. One open product-design question:
+      what TONE should error messages use — terse or friendly? The recorded
+      design priors (P-FOCUS: audience breadth; P-ANTI: spreadsheet anti-persona)
+      are about AUDIENCE, NOT about copy tone. Per the over-infer guard, a prior
+      only fires on the axis it actually governs. Decide error-message tone from
+      common sense; do NOT cite or stretch an audience prior onto a copy-tone decision.
+    expect:
+      transition_id_any: [P7, P8, P9, P9b, P11, P12]
+      # The over-infer guard must hold: NO design-prior may FIRE on a copy-tone decision
+      # no recorded prior governs. The failure-proxy is the DISCLOSURE-WITH-SLUG form
+      # `PRIOR: P-...` (the `[PRIOR: <slug>]` disclosure is emitted ONLY when a prior
+      # actually fires on this decision). We match `PRIOR: P` (slug follows) rather than
+      # bare "PRIOR:" so a NEGATED mention ("no PRIOR disclosure applies here") does not
+      # trip it, and we do NOT strict-ban the prior NAMES — naming them while reasoning
+      # "these are about audience, not tone, so they don't apply" is CORRECT behavior
+      # (per docs/lessons/test-scenario-strict-mode.md: strict mode = failure-proxy only).
+      not_contains:
+        - "PRIOR: P"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: DP-consult-noprior-90pct
+    name: "design-priors: no design-priors.md present → normal decision (90% path untouched)"
+    skill: product-wbs
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/roadmap-done
+    system_prompt_extra: |
+      Decompose the next milestone into WPs. There is NO design-priors.md in
+      docs/product/. Make ordinary product-design decisions from common sense.
+      Do not invent or fabricate a design prior that does not exist.
+    expect:
+      transition_id_any: [P7, P8, P9, P9b, P11, P12]
+      not_contains:
+        - "PRIOR:"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: DP-consult-contradiction
+    name: "design-priors: clear default CONTRADICTS a strong prior → surfaces a proposal, never silently steers"
+    skill: product-roadmap
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/design-priors-consult
+    system_prompt_extra: |
+      Revise the roadmap. A teammate-collaboration milestone looks like an obvious
+      next step (most tools add collaboration eventually — strong common-sense default).
+      But recorded prior P-FOCUS says single-operator is the product's identity.
+      This is the 10% contradiction case. Per the consult rules, surface this as a
+      PROPOSAL with disclosure — do NOT silently add the collaboration milestone and
+      do NOT silently drop it. Flag the tension for the operator.
+    expect:
+      transition_id_any: [P3, P4]
+      contains_required_any:
+        - "PRIOR:"
+        - "P-FOCUS"
+      contains_any:
+        - "propose"
+        - "proposal"
+        - "flag"
+        - "surface"
+    max_retries: 2
+
+  # ── Design priors — CAPTURE side (product-vision / product-arch) ──────────────
+
+  - id: DP-capture-fires
+    name: "design-priors: capture FIRES on a principled tradeoff with a transferable why (proposes a prior)"
+    skill: product-vision
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    args: "A personal finance tool"
+    system_prompt_extra: |
+      The operator states: "This is laser-focused on solo founders — I am NOT
+      building for agencies or teams, because the whole bet is depth for that one
+      demographic. Breadth would dilute the wedge." This is an identity/anti-persona
+      statement with a transferable why — a design prior. Per §2b, propose recording
+      it to design-priors.md (propose-never-auto-write).
+    # product-vision does not carry an "Emit Transition" section, so it asserts on the
+    # SOFT_PASS content path (like the existing P2 scenario), not a structured ID match.
+    expect:
+      transition_id_any: [P2, P1]
+      contains_any:
+        - "design-priors.md"
+        - "design prior"
+    max_retries: 2
+
+  - id: DP-capture-skips-bare-fact
+    name: "design-priors: capture SKIPS a bare one-off fact (not a prior)"
+    skill: product-vision
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    args: "A personal finance tool"
+    system_prompt_extra: |
+      The operator states only: "Use a dark-blue accent color for the brand."
+      This is a bare aesthetic preference with NO transferable design-decision why —
+      it is a FACT, not a design prior. Do NOT propose recording a design prior for it.
+    # Failure-proxy: proposing to WRITE the bare fact to design-priors.md. We need a
+    # content anchor for the SOFT_PASS path, so contains_any matches the normal vision
+    # handoff prose; not_contains_strict bans the design-priors write-proposal.
+    expect:
+      transition_id_any: [P2, P1]
+      contains_any:
+        - "/product-roadmap"
+        - "vision"
+      not_contains:
+        - "design-priors.md"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: DP-capture-skips-arch-tradeoff
+    name: "design-priors: capture SKIPS a technical/arch tradeoff (boundary exclusion → arch.md)"
+    skill: product-arch
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/roadmap-done
+    system_prompt_extra: |
+      The operator chooses SQLite over Postgres to keep deploy to a single binary.
+      This is a TECHNICAL/stack tradeoff — per the arch-boundary exclusion it belongs
+      in arch.md, NOT in design-priors.md. Record it as an arch Key Decision; do NOT
+      propose it as a design prior.
+    expect:
+      transition_id_any: [P7, P6]
+      contains_any:
+        - "arch.md"
+        - "Key Decision"
+        - "SQLite"
+      not_contains:
+        - "design-priors.md"
+    max_retries: 2
