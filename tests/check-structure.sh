@@ -1869,6 +1869,18 @@ if [ "$false_claim" -eq 0 ]; then
 else
   check "CLAUDE.md does not carry the superseded 'gitignored .claude/learnings' claim" "fail" "found $false_claim stale-claim line(s)"
 fi
+# Tripartite-sync guard: the AUTHORITATIVE state-machine surface (transitions.md) must not carry
+# the superseded "learnings ... gitignored" framing in its store-learning / S20 ROW DEFINITIONS.
+# Scope to live markdown TABLE ROWS only (lines beginning with `|`) — the dated changelog bullets
+# at the bottom of the file (lines beginning with `- **<date>`) are historical records that
+# correctly keep their as-of wording, so they are excluded.
+stale_transition=$( (grep -nE "^\|.*(store-learning|S20 )" docs/product/transitions.md 2>/dev/null || true) \
+  | grep -iE "project-local, gitignored|learnings/.*gitignored" || true )
+if [ -z "$stale_transition" ]; then
+  check "transitions.md store-learning/S20 rows carry no superseded 'gitignored learnings' framing" "pass"
+else
+  check "transitions.md store-learning/S20 rows carry no superseded 'gitignored learnings' framing" "fail" "stale framing in a live transition row: $(printf '%s' "$stale_transition" | head -1)"
+fi
 
 echo ""
 

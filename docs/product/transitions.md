@@ -422,7 +422,7 @@ Not a state machine — meta-operations that attach to any workflow state.
 | `pause` | Manual | Save current workflow + state + step to `workflow/wip/` file |
 | `resume` | Manual | Read state file, summarize where left off, suggest resume command |
 | `reflect` | Auto: after feature:finalize, feature:refactor, incident:resolve. Optional: after task:close. | Analyze session for wrong assumptions. Strongly prompt user to run store-learning. |
-| `store-learning` | Manual (prompted by reflect) | Classify learning (global vs project), propose storage location, execute after human confirmation. **Project-scope** writes to the project's own `.claude/` (CLAUDE.md / memory / skills) as before. **Global-scope** drafts to `.claude/learnings/<YYYY-MM-DD>-<slug>.md` (project-local, gitignored) for manual curation into a source repo — never writes to `~/.claude/`. |
+| `store-learning` | Manual (prompted by reflect) | Classify learning (global vs project), propose storage location, execute after human confirmation. **Project-scope** writes to the project's own `<proj-dir>/.claude/` (CLAUDE.md / memory / skills) as before. **Global-scope** drafts to the canonical `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md` — never `~/.claude/`. Git behavior follows the artifact tracking policy + project overrides (commit/amend iff the project tracks `<proj-dir>/.claude/learnings/`, else leave uncommitted for hand-porting), NOT gitignore inspection. See `CLAUDE.snippet.md` → `## Artifact tracking policy (GLOBAL)`. |
 
 ### Session transitions (dispatcher outputs)
 
@@ -448,7 +448,7 @@ Session entry skills (`session-start`, `session-resume`, `session-pause`) are di
 | S16 | session-resume | (mode change) | User selects different drive mode on resume — update WIP frontmatter |
 | S17 | session-pause | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |
 | S18 | session-start | feature:reproduce | Classified as bug-shape feature (user describes undesirable behavior) — route to optional pre-spec/pre-plan red-green reproduction |
-| S20 | session-store-learning | (terminal) | Learning persisted: project-scope to `.claude/<dest>`, or global-scope drafted to `.claude/learnings/<date>-<slug>.md` for manual curation; never writes to `~/.claude/` |
+| S20 | session-store-learning | (terminal) | Learning persisted: project-scope to `<proj-dir>/.claude/<dest>`, or global-scope drafted to the canonical `<proj-dir>/.claude/learnings/<date>-<slug>.md`; never `~/.claude/`. Git behavior keyed on the artifact tracking policy + project overrides, not gitignore inspection. |
 
 ---
 

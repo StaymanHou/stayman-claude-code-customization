@@ -110,3 +110,12 @@ Buried 2026-06-12:
 - **Suggested action:** At pickup, reconcile `session-store-learning`'s "global-scope writes to gitignored `.claude/learnings/`" assumption with the new track-`.claude/`-by-default policy (these now conflict — the gitignore-based global/project scope split needs a new discriminator). Then document the gitignore policy + the learnings/memories folder map as a global convention. Likely `/feature-spec`.
 - **Priority:** medium
 - **Status:** pending
+
+## SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE
+- **Source:** feature:refactor (artifact-tracking-policy review-quality MAJOR #2)
+- **Target level:** task:plan (test-harness enhancement)
+- **Type:** gap (test coverage)
+- **Summary:** `session-store-learning`'s NEW override→track→`git commit --amend` branch (the one governing repos that track `<proj-dir>/.claude/learnings/`, like THIS repo) has zero behavioral coverage. The existing scenario `S20-global-canonical-path` only exercises the default no-override→leave-uncommitted branch. Per the routing-fork convention, variant routing needs a dedicated fixture per branch — but the test runner (`tests/run-tests.sh:171`) hard-copies `fixtures/CLAUDE.md` for every scenario and does NOT parse the `claude_md:` scenario key, so there's no way today to give one scenario an override-declaring CLAUDE.md. Adding that support is test-harness *new functionality* (out of refactor scope), hence backlogged.
+- **Context:** Reviewer finding on ship commit 2596c87. Fix requires: (a) make `run-tests.sh` honor a per-scenario `claude_md:` fixture key (copy the named fixture instead of the fixed default); (b) add `tests/fixtures/CLAUDE-with-tracking-override.md` declaring `## Artifact tracking overrides`; (c) add scenario `S20-global-override-tracked` asserting the proposal mentions commit/amend (tracked branch). NB: property-test the new fixture-key path per the test-harness-primitives lesson.
+- **Priority:** medium
+- **Status:** pending
