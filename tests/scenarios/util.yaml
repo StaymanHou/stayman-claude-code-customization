@@ -1,0 +1,117 @@
+group: util
+# Behavioral scenarios for util-backlog-paydown.
+#
+# Disposition cases are GENERALIZED/REDACTED from two real regression sessions (a debt
+# sweep + a five-sweep family) — the fixture tests/fixtures/backlog/sweep-mixed.md carries
+# no real file paths, component names, SURFACE IDs, or project identifiers. These two
+# sessions are the disposition model's regression suite (see
+# docs/lessons/between-milestone-debt-paydown-sweep.md): the model must predict the
+# include/exclude calls those sessions actually made.
+#
+# util-backlog-paydown is a util-* skill — it emits NO workflow transition token. So the
+# four disposition scenarios assert via contains_any only (verify.sh enforces
+# contains_required only inside a transition match; with no transition the path is the
+# contains_any SOFT_PASS branch). SOFT_PASS counts as passing. We pin each scenario to its
+# fixture in Dry-run (mode 4) so the run is deterministic and side-effect-free, and assert
+# the model lands the EXPECTED action on the probe item while NOT mislabeling it.
+#
+# The fifth scenario exercises the product-finalize advisory-pointer integration boundary:
+# product-finalize DOES emit a transition (P13/P14), so that one is a hard PASS with a
+# contains_required pin that the /util-backlog-paydown pointer prose is present.
+
+scenarios:
+  - id: UTIL-PAYDOWN-CHEAP-SAFE-SWEEP
+    name: "util-backlog-paydown: cheap+safe item → Sweep (Rule 1, no exception)"
+    skill: util-backlog-paydown
+    args: >
+      Mode 4 (dry-run). Run the between-milestone backlog-paydown sweep over the standing
+      backlog. Focus your reported disposition on item CQ-1 (the unused dependency + stale
+      comments — verified dead, XS effort, XS risk). What action does the disposition model
+      assign it, and why?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      backlog: fixtures/backlog/sweep-mixed.md
+    expect:
+      contains_any:
+        - "Sweep"
+        - "Rule 1"
+        - "cheap"
+      # No not_contains: the model legitimately names other actions (Bury/Defer/…) while
+      # explaining the disposition vocabulary — an informational mention, not a failure
+      # proxy. Per docs/lessons/test-scenario-strict-mode.md, not_contains on informational
+      # phrases is fragile; the contains_any on the EXPECTED action is the real assertion.
+    max_retries: 2
+
+  - id: UTIL-PAYDOWN-HIGH-EFFORT-HIGH-IMPACT-DISCUSS
+    name: "util-backlog-paydown: high-effort + high-impact (and high-risk) item → Discuss"
+    skill: util-backlog-paydown
+    args: >
+      Mode 4 (dry-run). Run the backlog-paydown sweep. Focus your reported disposition on
+      item DEC-1 (the auth-boundary hardening for a privileged shell — high impact, high
+      effort for the full fix, high risk; the doc-comments overstate the guarantee). What
+      action does the disposition model assign it, and what do you surface to the operator?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      backlog: fixtures/backlog/sweep-mixed.md
+    expect:
+      contains_any:
+        - "Discuss"
+        - "make the code honest"
+        - "surface to"
+    max_retries: 2
+
+  - id: UTIL-PAYDOWN-GATED-DEFER
+    name: "util-backlog-paydown: gated-on-precondition item → Defer (anchored)"
+    skill: util-backlog-paydown
+    args: >
+      Mode 4 (dry-run). Run the backlog-paydown sweep. Focus your reported disposition on
+      item GATE-1 (deprecate a legacy source pipeline — blocked on the operator precondition
+      that the replacement must soak in production for several weeks first). What action does
+      the model assign it?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      backlog: fixtures/backlog/sweep-mixed.md
+    expect:
+      contains_any:
+        - "Defer"
+        - "gated"
+        - "anchor"
+    max_retries: 2
+
+  - id: UTIL-PAYDOWN-OUT-OF-SCOPE-VETO-DELETE
+    name: "util-backlog-paydown: out-of-scope-by-design item → operator-veto Delete"
+    skill: util-backlog-paydown
+    args: >
+      Mode 4 (dry-run). Run the backlog-paydown sweep. Focus your reported disposition on
+      item OOS-1 (a host-only build failure; the project is containerized-by-design and
+      running on the host is explicitly unsupported). The operator considers this not a real
+      problem. What action does the model assign it, and is operator-veto in play?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      backlog: fixtures/backlog/sweep-mixed.md
+    expect:
+      contains_any:
+        - "Delete"
+        - "operator veto"
+        - "out of scope"
+    max_retries: 2
+
+  - id: UTIL-PAYDOWN-FINALIZE-POINTER-ADVISORY
+    name: "product-finalize: advisory /util-backlog-paydown pointer present but stays advisory (no divert)"
+    skill: product-finalize
+    args: >
+      All WBS work packages are complete. Run the product cycle finalize. During the backlog
+      sweep you find several deferred code-quality / refactor items that this cycle did not
+      address. Proceed through resync, roadmap check, backlog sweep, archive, and CHANGELOG.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/wbs-complete
+    # product-finalize DOES emit a transition. With an all-[x] WBS it emits P13 (cycle close).
+    # The advisory pointer must be PRESENT (contains_required) but must NOT divert the skill's
+    # own exit — it still emits P13. This is the integration-boundary codify test for the
+    # product-finalize edit (P2.2): the pointer stays advisory and does not auto-chain.
+    expect:
+      transition_id: "P13"
+      contains_required:
+        - "util-backlog-paydown"
+    max_retries: 2

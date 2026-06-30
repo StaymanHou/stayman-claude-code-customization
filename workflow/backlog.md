@@ -135,3 +135,10 @@ Buried 2026-06-12:
 - **Context:** Reviewer finding on ship commit 2596c87. Fix requires: (a) make `run-tests.sh` honor a per-scenario `claude_md:` fixture key (copy the named fixture instead of the fixed default); (b) add `tests/fixtures/CLAUDE-with-tracking-override.md` declaring `## Artifact tracking overrides`; (c) add scenario `S20-global-override-tracked` asserting the proposal mentions commit/amend (tracked branch). NB: property-test the new fixture-key path per the test-harness-primitives lesson.
 - **Priority:** medium
 - **Status:** pending
+
+## SURFACE-2026-06-30-SETTINGS-FIXTURE-DISABLECLAUDEAICONNECTORS-DRIFT
+- **Surfaced by:** util-backlog-paydown feature, Phase 3 structural sweep (2026-06-30).
+- **Type:** tech-debt
+- **Priority:** low
+- **Status:** pending
+- **Summary:** `tests/check-structure.sh` Phase 7 reports settings-fixture drift: live `~/.claude/settings.json` has `disableClaudeAiConnectors: true` but `tests/fixtures/settings.json` is missing the key. Host-environment artifact (toggled outside this repo), NOT caused by the util-backlog-paydown feature. Fix = add the key to the fixture OR add to `INTENTIONAL_DIFFS` in check-structure.sh. Pre-existing; surfaced (note-and-continue) during this feature's sweep.

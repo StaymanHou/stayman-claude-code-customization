@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-25
+updated: 2026-06-30
 ---
 
 
@@ -11,9 +11,10 @@ updated: 2026-06-25
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 20s (2026-06-25)
+- **Last:** ~22s (2026-06-30)
 - **Use timeout:** 90000
 - **History:**
+  - ~22s — 2026-06-30  <!-- util-backlog-paydown Phase 3; 334 PASS / 1 FAIL (pre-existing host settings-fixture drift `disableClaudeAiConnectors`, unrelated — SURFACE-2026-06-30-SETTINGS-FIXTURE-DISABLECLAUDEAICONNECTORS-DRIFT). No new pins added (B1: util-* keeps documented no-pin status quo). -->
   - 21s — 2026-06-25  <!-- artifact-tracking-policy Phase 4 verify-auto; 302/0 PASS (+4 from 298: Phase 12 gained reflect leading-label + no-trailing-form + CLAUDE.md override-section + no-stale-gitignored-claim pins). -->
   - 20s — 2026-06-25  <!-- artifact-tracking-policy Phase 3 verify-auto; 298/0 PASS (+4 from 294: Phase 12 gained 4 skill-reconciliation pins — session-store-learning canonical-path + policy-keyed git + forbids-gitignore-inspection + product-context reconcile-owner). -->
   - 20s — 2026-06-25  <!-- artifact-tracking-policy Phase 2 verify-auto; 294/0 PASS (+3 from 291: Phase 12 gained 3 artifact-tracking-policy pins — GLOBAL section exists + track-by-default rule + override mechanism. Phase 1 pin also refined to strip fences/allow notation token). -->

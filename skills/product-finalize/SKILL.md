@@ -68,6 +68,12 @@ Evaluate each against one of three outcomes:
 
 Present a summary of all backlog items and their disposition before proceeding.
 
+**Advisory pointer (not a gate, not a transition):** if this sweep leaves a sizable pile of `deferred`
+code-quality / refactor / hygiene items — the rolled-forward `/feature-refactor` batch that never ran —
+consider invoking `/util-backlog-paydown` to actually pay it down in a focused between-milestone sweep.
+`product-finalize` *records* dispositions; `/util-backlog-paydown` *does* the deferred work. This is a soft
+suggestion surfaced to the operator only — it emits no transition and does not auto-chain into the sweep.
+
 ### 5. Determine Archive Name
 
 If `{{args}}` provides a cycle name, use it as the archive directory name (slugified).
