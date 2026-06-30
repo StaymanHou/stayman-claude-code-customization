@@ -78,6 +78,24 @@ scenarios:
         - "anchor"
     max_retries: 2
 
+  - id: UTIL-PAYDOWN-MEH-BURY
+    name: "util-backlog-paydown: low-impact + medium-effort + low-risk item → Bury (the meh zone)"
+    skill: util-backlog-paydown
+    args: >
+      Mode 4 (dry-run). Run the backlog-paydown sweep. Focus your reported disposition on item
+      MEH-1 (a component test-infra build-out — low feature value, medium effort to stand up,
+      low risk; not cheap enough to be free, not valuable enough to prioritize). What action
+      does the disposition model assign it?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      backlog: fixtures/backlog/sweep-mixed.md
+    expect:
+      contains_any:
+        - "Bury"
+        - "meh"
+        - "archived backlog"
+    max_retries: 2
+
   - id: UTIL-PAYDOWN-OUT-OF-SCOPE-VETO-DELETE
     name: "util-backlog-paydown: out-of-scope-by-design item → operator-veto Delete"
     skill: util-backlog-paydown

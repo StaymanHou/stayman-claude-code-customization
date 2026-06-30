@@ -312,7 +312,7 @@ the spec's intent, not a contradiction of it, so no F6 back-loop is warranted.
 - (none)
 
 **MAJOR**
-- [tests/scenarios/util.yaml] The four disposition scenarios cover Sweep / Discuss / Defer / Delete but **not Bury** — the fifth action — even though the fixture deliberately authors `MEH-1` (`impact: low · effort: medium · risk: low`) as the exact canonical Bury case. Bury is the most easily-confabulated disposition (the "meh middle"); it has zero behavioral coverage. Cost to close: one scenario (fixture item already exists). → auto-backlogged (Mode 3).
+- [tests/scenarios/util.yaml] [RESOLVED-2026-06-30] The four disposition scenarios cover Sweep / Discuss / Defer / Delete but **not Bury**. → **Fixed post-review**: added `UTIL-PAYDOWN-MEH-BURY` over the existing `MEH-1` fixture item; SOFT_PASS confirmed (run-2026-06-30-140726). Backlog entry resolved.
 
 **MINOR**
 - [skills/util-backlog-paydown/SKILL.md] Grammar slip: `An "carve out an exception…"` should be `A "carve out…"`. Cosmetic, but it's the parenthetical guarding the load-bearing Rule-1-no-exception why. → auto-backlogged.

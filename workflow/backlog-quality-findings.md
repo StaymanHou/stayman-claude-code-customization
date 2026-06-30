@@ -129,6 +129,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 # util-backlog-paydown — 2026-06-30
 
 ## SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-BURY-SCENARIO-MISSING
+- **Status:** RESOLVED 2026-06-30 — added `UTIL-PAYDOWN-MEH-BURY` scenario (SOFT_PASS, run-2026-06-30-140726).
 - **Priority:** medium
 - **Severity:** MAJOR (feature-review-quality, ship aa5c831)
 - **Finding:** `tests/scenarios/util.yaml` covers Sweep / Discuss / Defer / Delete but not **Bury** (the 5th action), despite the fixture `tests/fixtures/backlog/sweep-mixed.md` authoring `MEH-1` (`impact: low · effort: medium · risk: low`) as the exact canonical Bury case. Bury is the most-confabulated "meh middle" disposition and has zero behavioral coverage.
