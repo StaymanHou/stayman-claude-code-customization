@@ -1,8 +1,10 @@
 # Feature: Codify the between-milestone backlog-sweep as a product workflow skill
 
 **Workflow:** feature
-**State:** build
+**State:** finalize (complete) — archived
+**Ship commit:** aa5c831 (committed to main, NOT pushed — operator's call per close-commit discipline)
 **Created:** 2026-06-30
+**Completed:** 2026-06-30
 **drive_mode:** autopilot
 **Plan approved:** 2026-06-30 (operator: proceed in autopilot; test scenarios MUST derive from the actual session logs — replicator + Claudesk real backlog items — REDACTED/generalized to strip sensitive/project-specific detail)
 **Entry:** spec (complex feature — new skill + state surface + cross-cutting structural pins)
@@ -293,6 +295,40 @@ the spec's intent, not a contradiction of it, so no F6 back-loop is warranted.
   - [x] verify-self  <!-- status: complete (fresh-subprocess run validates product-finalize edit past bootstrap-skip) -->
   - [x] verify-human  <!-- status: AUTO-SKIP (Mode-3: integration boundary covered by the fresh-subprocess pointer scenario; verify-self all-PASS) -->
   - [x] verify-codify  <!-- status: complete (tests/scenarios/util.yaml + fixture; disposition model + pointer-advisory boundary codified) -->
+
+## Code-Quality Review — util-backlog-paydown
+
+*(feature-review-quality against ship commit aa5c831, drive_mode=autopilot/Mode-3. 0 CRITICAL, 1 MAJOR, 2 MINOR. MAJOR + MINORs auto-backlogged per Mode 3; F39 → finalize.)*
+
+### Strengths
+- Disposition model transcribed from the learning doc with high fidelity — all three axes, five actions, six rules, ordering rules, and crucially Rule 1's *no-exception* clause + its de-clutter-is-impact why survive intact.
+- `## Category` block matches the `util-prune-claude-md` precedent exactly (no F/I/T/P/S tokens, no `RETURN-TO:`, points to arch.md util-* convention).
+- The scenario YAML header correctly reasons about its own pass mechanics (util-* emits no transition → `contains_any` SOFT_PASS is the only achievable pass; verified against `tests/lib/verify.sh`).
+- The product-finalize advisory pointer is genuinely non-chaining: prose only, no transition, and the FINALIZE-POINTER-ADVISORY scenario hard-asserts both pointer presence AND that the skill still emits P13 — a real integration-boundary codify test.
+- Pre-existing host settings-fixture drift correctly surfaced as note-and-continue, not silently absorbed.
+
+### Issues
+**CRITICAL**
+- (none)
+
+**MAJOR**
+- [tests/scenarios/util.yaml] The four disposition scenarios cover Sweep / Discuss / Defer / Delete but **not Bury** — the fifth action — even though the fixture deliberately authors `MEH-1` (`impact: low · effort: medium · risk: low`) as the exact canonical Bury case. Bury is the most easily-confabulated disposition (the "meh middle"); it has zero behavioral coverage. Cost to close: one scenario (fixture item already exists). → auto-backlogged (Mode 3).
+
+**MINOR**
+- [skills/util-backlog-paydown/SKILL.md] Grammar slip: `An "carve out an exception…"` should be `A "carve out…"`. Cosmetic, but it's the parenthetical guarding the load-bearing Rule-1-no-exception why. → auto-backlogged.
+- [skills/util-backlog-paydown/SKILL.md] Ordering-rules list nests the cross-cutting "Risk outranks impact in ordering" clarification under rule 5 ("Effort is NOT an ordering key"); faithful to the lesson's structure but a literal reader may be momentarily confused. Consider promoting to a top-level note. → auto-backlogged.
+
+### Assessment
+Well-built, disciplined codification of a real operator pattern; fidelity to the load-bearing rules + their why is excellent. Follows the util-* category convention rather than inventing state-machine surface, takes the documented no-new-pin status quo (B1), and adds a genuinely advisory finalize pointer the suite proves does not auto-chain. The one substantive gap is the missing Bury scenario — a one-scenario follow-up, not a structural problem.
+
+### If you disagree
+Dismiss any finding by marking it `[DISMISSED]` in this section before `feature-finalize` archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** The "two regression sessions" the hand-off doc referenced turned out to be a *family of five* sweeps in replicator-1-0 (waves 1/2/3 + keepers + a gated defer), not one — and they ran in a single grooming sitting. That directly answered the doc's "one skill or two?" open question (one skill; debt-vs-feature is emergent from scoring, not a mode). The disposition model predicted ~100% of replicator's real includes/excludes, validating it as a regression suite.
+- **Assumptions that held:** Category resolution to `util-*` (option B) was clean — the skill matched the util-* contract on every behavioral axis; the "it emits a WBS like product-wbs" tension dissolved (producing an artifact ≠ being a state). B1 (no new structural pin) matched the documented util-* status quo exactly.
+- **Assumptions that were wrong:** None major. Minor: initially set the finalize-pointer scenario's `product_dir` to the parent fixtures/product (wrong — needed the wbs-complete subdir); caught at first run. The disposition scenarios can only reach SOFT_PASS (util-* emits no transition) — anticipated and acknowledged in the YAML header, not a surprise.
+- **Approach delta:** Implementation matched the plan's three phases exactly. One scoped addition mid-flight: reconciled the spec's AC#4/#5/#6 text to option-B after research narrowed them (kept the feature internally consistent). The review-quality MAJOR (missing Bury scenario) is a real, honestly-backlogged gap — the fixture item for it already exists, so it's a ~5-min follow-up rather than rework.
 
 ## Current Node
 - **Path:** Feature > all phases complete

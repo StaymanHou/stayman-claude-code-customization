@@ -142,3 +142,9 @@ Buried 2026-06-12:
 - **Priority:** low
 - **Status:** pending
 - **Summary:** `tests/check-structure.sh` Phase 7 reports settings-fixture drift: live `~/.claude/settings.json` has `disableClaudeAiConnectors: true` but `tests/fixtures/settings.json` is missing the key. Host-environment artifact (toggled outside this repo), NOT caused by the util-backlog-paydown feature. Fix = add the key to the fixture OR add to `INTENTIONAL_DIFFS` in check-structure.sh. Pre-existing; surfaced (note-and-continue) during this feature's sweep.
+
+## Code-quality findings — util-backlog-paydown (2026-06-30)
+- **Pointer:** 3 findings auto-backlogged by feature-review-quality against ship commit aa5c831 — 1 MAJOR (missing Bury disposition scenario; fixture item MEH-1 already exists) + 2 MINOR (Rule-1 parenthetical grammar `An`→`A`; ordering-rules nesting clarity). Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** medium (the MAJOR) / low (the 2 MINOR)
+- **Status:** pending
+- **Pickup shape:** the MAJOR is a ~5-min one-scenario add (`UTIL-PAYDOWN-MEH-BURY` over the existing MEH-1 fixture item); the MINORs are one-word/structure edits. Natural candidates for the next `/util-backlog-paydown` dogfood pass or a small `/task-plan`.

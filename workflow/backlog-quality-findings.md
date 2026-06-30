@@ -125,3 +125,23 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Suggested action:** Optionally rename to "Milestone" in the new fixture; or bundle with a broader fixture-terminology refresh. Lowest priority.
 - **Priority:** low
 - **Status:** pending
+
+# util-backlog-paydown — 2026-06-30
+
+## SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-BURY-SCENARIO-MISSING
+- **Priority:** medium
+- **Severity:** MAJOR (feature-review-quality, ship aa5c831)
+- **Finding:** `tests/scenarios/util.yaml` covers Sweep / Discuss / Defer / Delete but not **Bury** (the 5th action), despite the fixture `tests/fixtures/backlog/sweep-mixed.md` authoring `MEH-1` (`impact: low · effort: medium · risk: low`) as the exact canonical Bury case. Bury is the most-confabulated "meh middle" disposition and has zero behavioral coverage.
+- **Pickup shape:** add one scenario `UTIL-PAYDOWN-MEH-BURY` to `tests/scenarios/util.yaml` focusing the disposition on `MEH-1`, `contains_any: [Bury, meh, archived backlog]`. Fixture item already exists — ~5 min. Run `./tests/run-tests.sh --group util`.
+
+## SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-GRAMMAR-AN-A
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship aa5c831)
+- **Finding:** `skills/util-backlog-paydown/SKILL.md` Rule-1 parenthetical reads `An "carve out an exception…"` — should be `A "carve out…"`. Cosmetic; sits on the load-bearing Rule-1-no-exception why.
+- **Pickup shape:** one-word edit.
+
+## SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-ORDERING-NESTING
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship aa5c831)
+- **Finding:** `skills/util-backlog-paydown/SKILL.md` ordering-rules list nests the cross-cutting "Risk outranks impact in ordering" clarification under rule 5 ("Effort is NOT an ordering key"). Faithful to the learning doc's structure but a literal reader may be momentarily confused. Consider promoting to a top-level note (would also be worth fixing in `docs/lessons/between-milestone-debt-paydown-sweep.md` for consistency).
+- **Pickup shape:** restructure the ordering list (skill + lesson).

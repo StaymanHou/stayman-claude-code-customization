@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-30
+
+- **Feature shipped:** `util-backlog-paydown` — a standalone `util-*` operator skill that runs a between-milestone backlog-paydown sweep, scoring the standing code-quality/debt backlog on a 3-axis disposition model (Impact / Effort / Risk) and assigning one of five actions (Sweep / Discuss / Defer / Bury / Delete) with operator-veto as a first-class trigger, then emitting a priority/risk-ordered `shape: temporary-wbs` (fold-back-and-delete, no roadmap slot); resolved via cross-validation against two real sessions (Claudesk debt sweep; replicator-1-0 five-sweep family) whose dispositions the model predicted ~100% of, wired as a util-* skill (no transition, no orchestrator change, no new structural pin per the documented status quo) with an advisory non-chaining pointer from `product-finalize` and a new `tests/scenarios/util.yaml`.
+
 ## 2026-06-26
 
 - **Feature shipped:** Design Priors — a per-project `docs/product/design-priors.md` recording the operator's product-design decision leans (focus-vs-breadth, perf-vs-ship, anti-persona, …) with an inferred-why + corrected-why gap; planning skills (product-roadmap/wbs, feature-spec) consult it under five weighting rules including an over-infer guard so the 90% common-sense path stays untouched, and six checkpoints + a session-reflect backstop propose new priors (propose-never-auto-write, operator reviews the why), enforced by `check-structure.sh [Phase 13]` (+33 pins, 303→334) and 7 behavioral scenarios `tests/scenarios/product.yaml::DP-*`, with a `pre-design-priors` git tag + grep-enumerable revert recipe as an easy-rollback net.
