@@ -26,7 +26,7 @@ You are in the **task** workflow at the **verify** state. This is a single-step 
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for verify's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | T5b (verify → close, PASS) | PAUSE | AUTO | AUTO | AUTO |
 | T5c (verify → act, FAIL back-loop) | PAUSE | AUTO | AUTO | AUTO |

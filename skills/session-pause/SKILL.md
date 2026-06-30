@@ -33,7 +33,7 @@ workflow: <product|feature|task|incident>
 step: <current step name>
 resume_skill: /<workflow>-<step>
 state_file: <path to the active state file, e.g. workflow/wip/<feature>.md or docs/product/roadmap.md>
-drive_mode: <step-by-step|orchestrated|autopilot|full-autopilot>  # omit if WIP has no drive_mode
+drive_mode: <stepping|orchestrated|autopilot|fsd>  # omit if WIP has no drive_mode
 ---
 
 # Session Pause

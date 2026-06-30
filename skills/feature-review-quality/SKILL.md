@@ -27,13 +27,13 @@ You are in the **feature** workflow at the **review-quality** state.
 - **F40 → refactor:** Review surfaced CRITICAL finding → auto-invoke `feature-refactor` (Modes 2-3) → tell user to run `/feature-refactor`
 - **F41 → finalize:** Mode-2 MAJOR finding after operator pause-and-ask, operator chose backlog or defer-refactor → tell user to run `/feature-finalize`
 
-**Mode 4 (full-autopilot) does NOT invoke this skill** — `feature-ship` emits F17b directly to `feature-finalize` when `drive_mode: full-autopilot` is set in the WIP frontmatter.
+**Mode 4 (fsd) does NOT invoke this skill** — `feature-ship` emits F17b directly to `feature-finalize` when `drive_mode: fsd` is set in the WIP frontmatter.
 
 ## Orchestrator Pause Policy (cheat-sheet)
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for review-quality's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | Skill invocation (entry) | PAUSE | AUTO | AUTO | **SKIP** (entire skill — ship emits F17b direct to finalize) |
 | F39 (clean / MINOR / Mode-3 MAJOR auto-backlogged → finalize) | PAUSE | AUTO | AUTO | n/a (skipped) |

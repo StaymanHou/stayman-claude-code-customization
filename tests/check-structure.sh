@@ -1456,7 +1456,7 @@ def parse_agents_table(path):
     if not rows:
         return {}
     header = rows[0]
-    # Expected header: ["Step", "Mode 1 — Step-by-step", ...]; data rows have label in col 0.
+    # Expected header: ["Step", "Mode 1 — Stepping", ...]; data rows have label in col 0.
     # Drop the header row and any further rows whose first cell doesn't look like a step name.
     table = {}
     for row in rows[1:]:

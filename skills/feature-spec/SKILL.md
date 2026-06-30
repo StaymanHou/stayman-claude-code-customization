@@ -29,13 +29,13 @@ This state is the entry point for **complex** features — those that fail the s
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for spec's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | Skill invocation (entry — spec review point) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
 | F3 (spec → research, unknowns exist) | PAUSE | (pause already taken at entry) | (pause already taken at entry) | AUTO |
 | F4 (spec → plan, spec is clear) | PAUSE | (pause already taken at entry) | (pause already taken at entry) | AUTO |
 
-**Hard rule for AUTO exits.** In Mode 4 (Full-autopilot), spec is AUTO — when this skill's emitted transition is `F3` or `F4` in Mode 4, the orchestrator **must immediately invoke the next skill** (`feature-research` or `feature-plan`) **via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F4` followed by a polite narrative summary ("Spec complete; ready to run plan") in Mode 4 is the regression mode this block exists to prevent (P1 incident, 2026-05-16, scope-extended 2026-05-17): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. **This explicitly includes the `AskUserQuestion` tool (and any other user-input/confirmation prompt): invoking it on an AUTO transition IS "returning control to the user" and is the same regression class as the narrative-summary stop above — do NOT call it to "just confirm" the handoff. The only thing that pauses an AUTO transition is the human-input points the active drive mode's pause policy explicitly marks PAUSE.**
+**Hard rule for AUTO exits.** In Mode 4 (FSD), spec is AUTO — when this skill's emitted transition is `F3` or `F4` in Mode 4, the orchestrator **must immediately invoke the next skill** (`feature-research` or `feature-plan`) **via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F4` followed by a polite narrative summary ("Spec complete; ready to run plan") in Mode 4 is the regression mode this block exists to prevent (P1 incident, 2026-05-16, scope-extended 2026-05-17): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. **This explicitly includes the `AskUserQuestion` tool (and any other user-input/confirmation prompt): invoking it on an AUTO transition IS "returning control to the user" and is the same regression class as the narrative-summary stop above — do NOT call it to "just confirm" the handoff. The only thing that pauses an AUTO transition is the human-input points the active drive mode's pause policy explicitly marks PAUSE.**
 
 In Modes 1–3 the user reviews the spec before plan — that pause is taken at skill *entry* (the spec presentation is the pause). After the user's response, exits F3/F4 then chain forward without a second pause. See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
 
@@ -122,6 +122,6 @@ What are we solving?
 - If there are open questions or unknowns → recommend `/feature-research` (F3)
 - If the spec is clear and complete → recommend `/feature-plan` (F4)
 
-**Single-step mode only:** STOP after creating the spec — do NOT start planning or implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator decides whether to pause or chain per the **Orchestrator Pause Policy (cheat-sheet)** block at the top of this SKILL. The hard rule for AUTO exits applies — see that block.
+**Single-step mode only:** STOP after creating the spec — do NOT start planning or implementing. In orchestrated/autopilot/fsd modes the orchestrator decides whether to pause or chain per the **Orchestrator Pause Policy (cheat-sheet)** block at the top of this SKILL. The hard rule for AUTO exits applies — see that block.
 
 **User Request:** {{args}}

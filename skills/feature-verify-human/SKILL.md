@@ -29,7 +29,7 @@ This skill is the **one forced human-pause** in the per-phase loop for Modes 1�
 
 Once the human has responded (or in Mode 3 auto-skip, immediately) and this skill emits an exit transition, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | Skill invocation (entry — present checklist) | PAUSE | **PAUSE** (await human) | **PAUSE** (await human) — or AUTO-SKIP when §2 Auto-skip gate clean (no boundary + verify-self all-PASS) | **SKIP** (orchestrator chains verify-self → verify-codify directly) |
 | F13 (human approves → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
@@ -64,11 +64,11 @@ The skip path is gated by the affirmation, not by the agent's general judgment t
 
 #### Auto-skip gate (Mode 3+ + no boundary + verify-self all-PASS)
 
-In drive_mode `autopilot` (Mode 3) or `full-autopilot` (Mode 4), the human "do you agree to skip?" prompt is redundant when the objective gate is already clean — the operator has opted into autopilot, and the affirmation rules above provide an objective check. The auto-skip elides the prompt but **still prints the affirmation block in chat** so the operator retains a read-time veto.
+In drive_mode `autopilot` (Mode 3) or `fsd` (Mode 4), the human "do you agree to skip?" prompt is redundant when the objective gate is already clean — the operator has opted into autopilot, and the affirmation rules above provide an objective check. The auto-skip elides the prompt but **still prints the affirmation block in chat** so the operator retains a read-time veto.
 
-**Read `drive_mode`** from the WIP file's YAML frontmatter (`drive_mode: autopilot` or `drive_mode: full-autopilot`). Then evaluate all four conditions:
+**Read `drive_mode`** from the WIP file's YAML frontmatter (`drive_mode: autopilot` or `drive_mode: fsd`). Then evaluate all four conditions:
 
-1. **(a) drive_mode is `autopilot` or `full-autopilot`** — read from WIP frontmatter. If frontmatter has no `drive_mode` field, treat as Mode 2 (orchestrated) and do NOT auto-skip.
+1. **(a) drive_mode is `autopilot` or `fsd`** — read from WIP frontmatter. If frontmatter has no `drive_mode` field, treat as Mode 2 (orchestrated) and do NOT auto-skip.
 2. **(b) verify-self all-PASS** — scan the current phase's `verify-self` subtree in the Work Tree. Every leaf must be `[x]` (no `UNVERIFIED`, no `FAILED`, no `FAILED-cosmetic`, no `NOT-STARTED`). If verify-self itself is `NOT-STARTED` or any leaf is non-PASS, do NOT auto-skip.
 3. **(c) No integration boundary applies** — the 5-condition check above returned "no boundary." If a boundary applies, auto-skip is irrelevant (the F11 skip path is forbidden entirely).
 4. **(d) No observable outcome cites a consuming surface by name** — re-read the phase's Observable Outcomes block. If any outcome line names an existing endpoint, UI route, CLI command, job, or external system that the phase modifies (rather than adds fresh), this is a boundary signal that (c) may have missed. Be conservative: if you cannot affirm "none of the outcomes references a consuming surface this phase touches," do NOT auto-skip.

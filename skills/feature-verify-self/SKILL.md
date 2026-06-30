@@ -26,7 +26,7 @@ This is the second step of the per-phase verification loop: `build → verify-au
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for verify-self's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | F10b (verify-self → verify-human) | PAUSE | AUTO (chain into verify-human, which itself PAUSEs) | AUTO (chain into verify-human, which itself PAUSEs) | AUTO — **skip verify-human entirely**, chain directly to `feature-verify-codify` |
 | F9b (back-loop to build) | PAUSE | AUTO | AUTO | AUTO |

@@ -3,6 +3,7 @@
 ## 2026-06-30
 
 - **Feature shipped:** `util-backlog-paydown` — a standalone `util-*` operator skill that runs a between-milestone backlog-paydown sweep, scoring the standing code-quality/debt backlog on a 3-axis disposition model (Impact / Effort / Risk) and assigning one of five actions (Sweep / Discuss / Defer / Bury / Delete) with operator-veto as a first-class trigger, then emitting a priority/risk-ordered `shape: temporary-wbs` (fold-back-and-delete, no roadmap slot); resolved via cross-validation against two real sessions (Claudesk debt sweep; replicator-1-0 five-sweep family) whose dispositions the model predicted ~100% of, wired as a util-* skill (no transition, no orchestrator change, no new structural pin per the documented status quo) with an advisory non-chaining pointer from `product-finalize` and a new `tests/scenarios/util.yaml`.
+- **Task closed:** Renamed the two drive-mode names across the state machine — `full-autopilot` → `fsd` (display "FSD") and `step-by-step` → `stepping` (display "Stepping") — touching `drive_mode:` frontmatter values, Mode 1/Mode 4 table headers, menu/prose display names, scenario assertions, and the renamed `feature-shipped-fsd.md` fixture; old names kept as accepted input synonyms in `session-start` and generic "step-by-step recipe" prose left untouched, with util-* skills' separate Step-by-step label deliberately unchanged.
 
 ## 2026-06-26
 

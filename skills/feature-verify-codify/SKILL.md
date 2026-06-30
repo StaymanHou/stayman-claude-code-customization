@@ -22,7 +22,7 @@ This is the final step of the per-phase verification loop: `build → verify-aut
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for verify-codify's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | F15 (verify-codify → build, next phase) | PAUSE | AUTO | AUTO | AUTO |
 | F16 (verify-codify → ship, all phases complete) | PAUSE | AUTO | AUTO | AUTO |

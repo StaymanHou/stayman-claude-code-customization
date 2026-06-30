@@ -107,4 +107,4 @@ Note: Task Work Tree has no Observable Outcomes and no verify loop — tasks are
 After creating the plan:
 - Present a high-level summary
 - Tell the user to run `/task-act` to begin implementation
-- **Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator chains to act automatically based on the drive mode's pause policy.
+- **Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/fsd modes the orchestrator chains to act automatically based on the drive mode's pause policy.

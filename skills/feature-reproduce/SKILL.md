@@ -29,7 +29,7 @@ This state is the **optional** entry point for **bug-fix features** — features
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for reproduce's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | F32 (reproduce → spec, reproduced cleanly + complex) | PAUSE | AUTO | AUTO | AUTO |
 | F33 (reproduce → plan, reproduced cleanly + simple) | PAUSE | AUTO | AUTO | AUTO |
@@ -160,7 +160,7 @@ Emit the transition ID at the end of your output (the orchestrator reads `TRANSI
 - `TRANSITION: F37` — F36-entry, reproduced cleanly mid-build → return to build with artifact
 - `TRANSITION: F37b` — F36-entry, could-not-reproduce mid-build → return to build with Discovery (F34/F35 disallowed in F36-entry mode)
 
-**Single-step mode only:** STOP after writing the reproduction artifact and emitting the transition — do NOT continue into spec/plan/build. In orchestrated/autopilot/full-autopilot modes the orchestrator chains based on the drive mode's pause policy:
+**Single-step mode only:** STOP after writing the reproduction artifact and emitting the transition — do NOT continue into spec/plan/build. In orchestrated/autopilot/fsd modes the orchestrator chains based on the drive mode's pause policy:
 - F32, F33 (reproduced cleanly) → AUTO in modes 2, 3, 4
 - F34 (preventive hardening) → AUTO in mode 4 only; PAUSE in modes 1, 2, 3
 - F35 (terminate) → PAUSE in all modes (terminating a workflow without a reproduce signal deserves human confirmation)

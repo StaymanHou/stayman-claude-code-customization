@@ -26,7 +26,7 @@ If this is a REDIRECT, note the source workflow/state so you can hand back corre
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for research's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | Skill invocation (entry — research review point) | PAUSE | **PAUSE** | AUTO | AUTO |
 | F5 (research → plan, findings clear) | PAUSE | (pause already taken at entry) | AUTO | AUTO |

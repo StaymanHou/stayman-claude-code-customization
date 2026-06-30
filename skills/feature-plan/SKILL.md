@@ -28,7 +28,7 @@ Also entered via:
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for plan's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | Skill invocation (entry — plan review point) | PAUSE | **PAUSE** | AUTO | AUTO |
 | F7 (plan → build, Phase 1) | PAUSE | (pause already taken at entry) | AUTO | AUTO |
@@ -189,6 +189,6 @@ Set state to `plan (complete)` in the WIP file.
 ### 6. Hand Off
 Tell the user to run `/feature-build` to start Phase 1.
 
-**Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/full-autopilot modes the orchestrator decides whether to pause or chain per the **Orchestrator Pause Policy (cheat-sheet)** block at the top of this SKILL. The hard rule for AUTO exits applies — see that block.
+**Single-step mode only:** STOP here — do NOT start implementing. In orchestrated/autopilot/fsd modes the orchestrator decides whether to pause or chain per the **Orchestrator Pause Policy (cheat-sheet)** block at the top of this SKILL. The hard rule for AUTO exits applies — see that block.
 
 **User Request:** {{args}}

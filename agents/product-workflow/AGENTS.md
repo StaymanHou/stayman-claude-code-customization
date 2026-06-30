@@ -88,7 +88,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 Full policy tables are in `docs/product/transitions.md` → "Drive modes". Summary for product workflow:
 
-| Step | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Step | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |------|-----------------------|-----------------------|--------------------|------------------------|
 | `product-vision` scoping questions | PAUSE | **PAUSE** | **PAUSE** | AUTO |
 | After `product-roadmap` (review gate) | PAUSE | **PAUSE** | AUTO | AUTO |

@@ -2,7 +2,7 @@
 workflow: feature
 state: ship (complete)
 created: 2026-06-08
-drive_mode: full-autopilot
+drive_mode: fsd
 ---
 
 # Feature: User Notification Preferences

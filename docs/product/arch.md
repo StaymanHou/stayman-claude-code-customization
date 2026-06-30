@@ -245,7 +245,7 @@ Architecturally significant additions since the 2026-05-02 revision. Each subsec
 
 ### Drive modes (1–4) — orchestrator pause-policy contract
 
-The orchestrator now exposes four drive modes that control pause aggression: **Step-by-step**, **Orchestrated**, **Autopilot**, **Full-autopilot**. The selected mode is recorded as `drive_mode:` in the WIP frontmatter at first skill entry, honored across `/session-pause` + `/session-resume`, and re-checked after every Skill-tool return. Mode 3 (autopilot) auto-skips `verify-human` when no integration boundary is touched AND verify-self is all-PASS. Mode 4 (full-autopilot) skips verify-human entirely. Canonical pause-policy tables live in `docs/product/transitions.md` → "Drive modes". The `TRANSITION: <id>` token at skill exit is the only machine signal — `"Run /x"` prose and `**STOP**` directives in skill output are advisory for single-step users only.
+The orchestrator now exposes four drive modes that control pause aggression: **Stepping**, **Orchestrated**, **Autopilot**, **FSD**. The selected mode is recorded as `drive_mode:` in the WIP frontmatter at first skill entry, honored across `/session-pause` + `/session-resume`, and re-checked after every Skill-tool return. Mode 3 (autopilot) auto-skips `verify-human` when no integration boundary is touched AND verify-self is all-PASS. Mode 4 (fsd) skips verify-human entirely. Canonical pause-policy tables live in `docs/product/transitions.md` → "Drive modes". The `TRANSITION: <id>` token at skill exit is the only machine signal — `"Run /x"` prose and `**STOP**` directives in skill output are advisory for single-step users only.
 
 ### Executable subagents vs reference-only orchestrator agents (`tools:` frontmatter marker)
 
@@ -274,7 +274,7 @@ A third skill category for standalone utilities that the operator invokes manual
 - **No `tools:` frontmatter** — they are not executable subagents spawned via `Agent()`; they are plain skills invoked via slash command.
 - **No `skills:` list** in frontmatter — they are not orchestrators.
 - **Frontmatter shape:** `name`, `description`, `argument-hint`. Same minimal shape as a workflow skill, minus all workflow integration.
-- **Mode menus are encouraged** for utilities that span an aggression spectrum (Step-by-step ↔ Autopilot). `util-prune-claude-md` mirrors the workflow drive-mode 1–4 spectrum at skill entry; the operator picks per-invocation rather than a persistent `drive_mode:` (no WIP file to persist into).
+- **Mode menus are encouraged** for utilities that span an aggression spectrum (Stepping ↔ Autopilot). `util-prune-claude-md` mirrors the workflow drive-mode 1–4 spectrum at skill entry; the operator picks per-invocation rather than a persistent `drive_mode:` (no WIP file to persist into).
 
 Current util-* skills: `util-prune-claude-md` (shipped 2026-06-13 — compacts the project-root `CLAUDE.md` against the 40k-char harness threshold by extracting bulky bullets to `docs/lessons/<topic>.md` or `docs/product/arch.md`); `util-backlog-paydown` (shipped 2026-06-30 — between-milestone backlog-paydown sweep: scores the standing backlog on a 3-axis disposition model and emits a priority/risk-ordered `shape: temporary-wbs` to pay down deferred code-quality/debt; fold-back-and-delete on completion; see `docs/lessons/between-milestone-debt-paydown-sweep.md`). The pre-existing Claude-Code-builtin utilities `init`, `review`, `security-review`, `update-config`, `simplify`, `loop`, `keybindings-help`, `statusline-setup`, `claude-api`, `fewer-permission-prompts` are retroactively considered part of the util-* concept but are NOT renamed (they ship with the Claude Code harness, not from this repo's `skills/` directory). File-based util-* skills authored in this repo use the `util-` prefix; harness-builtin utilities keep their original names.
 
@@ -294,7 +294,7 @@ A new state between `feature-ship` and `feature-finalize` invokes a one-shot `co
 - **CRITICAL** → auto-invokes `feature-refactor` (F40, Modes 2–3)
 - **MAJOR** → Mode 2 pause-and-ask (F41) or Mode 3 auto-backlog (F39)
 - **MINOR** → auto-backlog (F39)
-- **Mode 4** (full-autopilot) skips the skill entirely; `feature-ship` emits F17b directly to finalize when `drive_mode: full-autopilot`
+- **Mode 4** (fsd) skips the skill entirely; `feature-ship` emits F17b directly to finalize when `drive_mode: fsd`
 
 Transitions: F38 (ship→review-quality), F39 (clean/MINOR/Mode-3-MAJOR forward), F40 (CRITICAL→refactor), F41 (Mode-2-MAJOR forward after pause), F17b (Mode-4 SKIP). F17 retired. Reviewer prompt body lives at `agents/code-quality-reviewer/AGENTS.md`. Findings flow forward into refactor or backlog (auto-backlogged findings collect in `workflow/backlog-quality-findings.md`, not the main backlog). Shipped 2026-06-11; subagent-dispatch wiring landed 2026-06-12.
 

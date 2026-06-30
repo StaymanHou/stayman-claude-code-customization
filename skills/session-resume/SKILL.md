@@ -45,10 +45,10 @@ When you finish, label your output with one of these IDs:
 
    ```
    Drive mode — press Enter to keep current, or pick a new one:
-     1  Step-by-step   pause after every skill, I'll tell you the next command
-     2  Orchestrated   standard policy
-     3  Autopilot      only pause at verify-human (default)
-     4  Full-autopilot no stops, verify-human skipped
+     1  Stepping      pause after every skill, I'll tell you the next command
+     2  Orchestrated  standard policy
+     3  Autopilot     only pause at verify-human (default)
+     4  FSD           no stops, verify-human skipped
    Current: <mode name>  [Enter = keep]
    ```
 

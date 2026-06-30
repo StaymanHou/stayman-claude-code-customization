@@ -881,13 +881,13 @@ scenarios:
     max_retries: 2
 
   - id: F17b
-    name: "feature:ship → finalize direct (Mode 4 full-autopilot SKIPs review-quality)"
+    name: "feature:ship → finalize direct (Mode 4 fsd SKIPs review-quality)"
     skill: feature-ship
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-shipped-full-autopilot.md
+      wip: fixtures/wip/feature-shipped-fsd.md
     system_prompt_extra: |
-      Cleanup done. Tests pass. The WIP frontmatter shows drive_mode: full-autopilot,
+      Cleanup done. Tests pass. The WIP frontmatter shows drive_mode: fsd,
       so review-quality is SKIPPED entirely — ship hands off directly to finalize.
     expect:
       transition_id: F17b

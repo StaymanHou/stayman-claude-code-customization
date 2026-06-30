@@ -38,10 +38,10 @@ When you finish dispatching, label your output with one of these IDs (the test h
 - **S8** — pause at verify-human (orchestration PAUSE step)
 - **S9** — pause at feature-finalize (orchestration PAUSE step)
 - **S10** — user asked for end-to-end driving but no mode picked yet — present the drive-mode menu (do NOT skip directly to build)
-- **S11** — Mode 4 (Full-autopilot): chain past plan into build without pausing
+- **S11** — Mode 4 (FSD): chain past plan into build without pausing
 - **S12** — Mode 3 (Autopilot): pause only at verify-human (and auto-skips it when no integration boundary + verify-self all-PASS)
-- **S13** — Mode 1 (Step-by-step): pause after every skill, tell the user the next slash command (do NOT auto-chain)
-- **S14** — Mode 4 (Full-autopilot): skip verify-human, chain to verify-codify
+- **S13** — Mode 1 (Stepping): pause after every skill, tell the user the next slash command (do NOT auto-chain)
+- **S14** — Mode 4 (FSD): skip verify-human, chain to verify-codify
 
 ## Drive modes
 
@@ -49,10 +49,10 @@ Four modes control how aggressively the orchestrator chains between steps. The f
 
 | Mode | Name | Pause behaviour |
 |------|------|----------------|
-| 1 | **Step-by-step** | Pause after every skill — you confirm each transition manually |
+| 1 | **Stepping** | Pause after every skill — you confirm each transition manually |
 | 2 | **Orchestrated** | Standard policy from AGENTS.md (spec, plan, verify-human, finalize pause; everything else auto) |
 | 3 | **Autopilot** | Only `verify-human` pauses (and auto-skips it when no integration boundary + verify-self all-PASS); all other steps auto-chain |
-| 4 | **Full-autopilot** | No pauses at all; `verify-human` is **skipped** (verify-self result is the acceptance gate); runs to completion |
+| 4 | **FSD** | No pauses at all; `verify-human` is **skipped** (verify-self result is the acceptance gate); runs to completion |
 
 **Precedence rule (critical — read before driving):**
 - In modes 2–4, skill-level `**STOP**` directives and `"Run /x"` prose are **never** authoritative. The orchestrator ignores them.
@@ -114,23 +114,23 @@ State your classification (1–2 sentences), then present the mode menu (the har
 
 > I'll drive the `<workflow>` workflow. Which drive mode do you want?
 >
->   1. Step-by-step   — pause after every skill; you confirm each transition
->   2. Orchestrated   — standard pauses (spec, plan, verify-human, finalize)
->   3. Autopilot      — only pauses at verify-human (and auto-skips it when no integration boundary); everything else chains automatically
->   4. Full-autopilot — no pauses; verify-human skipped; runs to completion
+>   1. Stepping     — pause after every skill; you confirm each transition
+>   2. Orchestrated — standard pauses (spec, plan, verify-human, finalize)
+>   3. Autopilot    — only pauses at verify-human (and auto-skips it when no integration boundary); everything else chains automatically
+>   4. FSD          — no pauses; verify-human skipped; runs to completion
 >
 > (Type 1–4 — or just press Enter for Autopilot)
 
 **Interpreting the reply:**
-- "1" / "step" / "step-by-step" / "manual" → **Mode 1** (pause after every skill; hand control back after each step)
+- "1" / "step" / "stepping" / "step-by-step" / "manual" → **Mode 1** (pause after every skill; hand control back after each step)
 - "2" / "orchestrated" → **Mode 2**
 - "3" / Enter / blank / "yes" / "autopilot" → **Mode 3**
-- "4" / "full" / "full-autopilot" / "no stops" / "end-to-end" / "drive it end-to-end" → **Mode 4**
+- "4" / "full" / "fsd" / "full-autopilot" / "no stops" / "end-to-end" / "drive it end-to-end" → **Mode 4**
 - "no" → tell the user which entry skill to run manually (e.g. `/feature-plan`). Stop. You're done.
 
 **Mode 1 behaviour:** after each skill completes, summarise what was done and tell the user which slash command to run next. Do not invoke the next skill automatically.
 
-**Record the selected mode** in the WIP file's frontmatter as `drive_mode: step-by-step | orchestrated | autopilot | full-autopilot` when the first skill creates or updates the file. Honour this value across any `/session-pause` + `/session-resume` cycle and across cross-workflow handoffs.
+**Record the selected mode** in the WIP file's frontmatter as `drive_mode: stepping | orchestrated | autopilot | fsd` when the first skill creates or updates the file. Honour this value across any `/session-pause` + `/session-resume` cycle and across cross-workflow handoffs.
 
 **Incident override:** regardless of the selected drive mode, the incident workflow always runs as Mode 2 (Orchestrated). Human judgment is non-negotiable during incidents.
 

@@ -26,7 +26,7 @@ You are in the **feature** workflow at the **build** state.
 
 When invoked by `/session-start` in orchestrated mode, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause. Per-skill rows for build's exits:
 
-| Transition | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
 | F8 (build → verify-auto) | PAUSE | AUTO | AUTO | AUTO |
 | F9b (back-loop re-verify passed → verify-auto) | PAUSE | AUTO | AUTO | AUTO |

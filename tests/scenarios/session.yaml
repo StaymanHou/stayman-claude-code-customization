@@ -183,7 +183,7 @@ scenarios:
   # S10: regression test — reproduces the original bug with NO coaching.
   #   Before implementation: session-start stops after plan (emits "Run /feature-build").
   #   After implementation: session-start shows a drive-mode selection prompt instead.
-  # S11/S12: implementation verification tests for full-autopilot and autopilot modes.
+  # S11/S12: implementation verification tests for fsd and autopilot modes.
   #   These use system_prompt_extra to simulate having drive mode already selected,
   #   and verify the chaining/pause behavior matches the spec.
 
@@ -201,10 +201,10 @@ scenarios:
       # are honest emissions when the menu is actually shown.
       transition_id_any: [S10, S3]
       contains_any:
-        - "Step-by-step"
+        - "Stepping"
         - "Orchestrated"
         - "Autopilot"
-        - "Full-autopilot"
+        - "FSD"
         - "drive mode"
         - "mode 1"
         - "mode 2"
@@ -216,19 +216,19 @@ scenarios:
     max_retries: 2
 
   - id: S11
-    name: "session:full-autopilot (mode 4) chains past plan into build without pausing"
+    name: "session:fsd (mode 4) chains past plan into build without pausing"
     skill: session-start
     args: "WP3 Input + Camera"
     fixtures:
       claude_md: fixtures/CLAUDE.md
       wip: fixtures/wip/feature-plan-complete.md
     system_prompt_extra: |
-      The user has selected drive mode 4 (Full-autopilot).
-      In full-autopilot mode, ALL steps are AUTO — the orchestrator must NOT pause
+      The user has selected drive mode 4 (FSD).
+      In fsd mode, ALL steps are AUTO — the orchestrator must NOT pause
       after feature-plan. It must immediately chain to feature-build (F7 transition)
       without asking the user to type "/feature-build" or confirm anything.
       The "Single-step mode only: STOP" directive in feature-plan/SKILL.md does NOT
-      apply in full-autopilot mode — it is a direct-invocation instruction only.
+      apply in fsd mode — it is a direct-invocation instruction only.
       Demonstrate that you chain to build automatically.
     expect:
       # Dual-identity: orchestrator chaining plan→build is genuinely emitting
@@ -279,22 +279,22 @@ scenarios:
     max_retries: 2
 
   - id: S13
-    name: "session:step-by-step (mode 1) pauses after every skill and tells user next slash command"
+    name: "session:stepping (mode 1) pauses after every skill and tells user next slash command"
     skill: session-start
     args: "Continue notification preferences feature — Phase 1 build is complete"
     fixtures:
       claude_md: fixtures/CLAUDE.md
       wip: fixtures/wip/feature-build-phase1-done.md
     system_prompt_extra: |
-      The user has selected drive mode 1 (Step-by-step).
-      In step-by-step mode, the orchestrator pauses after EVERY skill — including
+      The user has selected drive mode 1 (Stepping).
+      In stepping mode, the orchestrator pauses after EVERY skill — including
       AUTO steps like feature-build. After feature-build completes, the orchestrator
       must NOT automatically invoke feature-verify-auto. Instead it must stop,
       summarise what was done, and tell the user which slash command to run next
       (e.g. "Run /feature-verify-auto to continue").
     expect:
       # Dual-identity: orchestrator pausing after build is genuinely at the
-      # build → verify-auto transition (F8). Step-by-step pause is the
+      # build → verify-auto transition (F8). Stepping pause is the
       # session-level decoration on top.
       transition_id_any: [S13, F8]
       contains_any:
@@ -309,20 +309,20 @@ scenarios:
     max_retries: 2
 
   - id: S14
-    name: "session:full-autopilot (mode 4) skips verify-human and chains to verify-codify"
+    name: "session:fsd (mode 4) skips verify-human and chains to verify-codify"
     skill: session-start
     args: "Continue notification preferences feature — verify-self passed, ready to codify"
     fixtures:
       claude_md: fixtures/CLAUDE.md
       wip: fixtures/wip/feature-verify-self-passed.md
     system_prompt_extra: |
-      The user has selected drive mode 4 (Full-autopilot).
-      verify-self passed. In full-autopilot mode, verify-human is SKIPPED entirely —
+      The user has selected drive mode 4 (FSD).
+      verify-self passed. In fsd mode, verify-human is SKIPPED entirely —
       the orchestrator must NOT invoke feature-verify-human or pause for human review.
       It must chain directly to feature-verify-codify using verify-self's result as
       the acceptance gate.
     expect:
-      # Dual-identity: full-autopilot skipping verify-human and chaining to
+      # Dual-identity: fsd skipping verify-human and chaining to
       # verify-codify is genuinely the F11/F13 transition (verify-human →
       # verify-codify, either skip or approve path). S14 is the session-level
       # label for the same emission.
@@ -334,7 +334,7 @@ scenarios:
         - "skipped"
         - "skip"
       # S14 is one of the rare scenarios where presence of verify-human prose
-      # is genuinely a behavior bug (full-autopilot must skip it), so flip
+      # is genuinely a behavior bug (fsd must skip it), so flip
       # not_contains to strict — content-mismatch should FAIL not SOFT_PASS.
       not_contains:
         - "verify-human"
@@ -391,15 +391,15 @@ scenarios:
       wip: fixtures/wip/feature-build-phase1-done.md
     system_prompt_extra: |
       The session was paused in Autopilot mode (Mode 3).
-      The user has now selected Mode 4 (Full-autopilot) from the change-mode menu.
-      You must confirm the mode change to the user (e.g. "Switched to Full-autopilot mode")
-      and update the drive_mode field in the WIP file frontmatter to "full-autopilot".
+      The user has now selected Mode 4 (FSD) from the change-mode menu.
+      You must confirm the mode change to the user (e.g. "Switched to FSD mode")
+      and update the drive_mode field in the WIP file frontmatter to "fsd".
       Do NOT just say "keeping Autopilot" — the user explicitly picked a different mode.
     expect:
       transition_id: S16
       contains_any:
-        - "full-autopilot"
-        - "Full-autopilot"
+        - "fsd"
+        - "FSD"
         - "switched"
         - "Switched"
         - "changed"

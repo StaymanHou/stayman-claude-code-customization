@@ -37,26 +37,26 @@ The full pause policy per workflow and per drive mode is in the **Drive modes** 
 | # | Name | How selected | Description |
 |---|------|-------------|-------------|
 | 0 | **Direct** | Direct slash command (e.g. `/feature-plan`) — not via session-start | One skill runs, then stops. The skill's own "Hand Off" prose is authoritative. No chaining. |
-| 1 | **Step-by-step** | session-start option 1 | Pause after every skill. The orchestrator summarises what was done and tells the user which slash command to run next — but does not invoke it automatically. |
+| 1 | **Stepping** | session-start option 1 | Pause after every skill. The orchestrator summarises what was done and tells the user which slash command to run next — but does not invoke it automatically. |
 | 2 | **Orchestrated** | session-start option 2 | Follows the pause-policy table in `agents/<workflow>-workflow/AGENTS.md` exactly. Skill-level stop signals are ignored; `TRANSITION: <id>` tokens are the sole machine signal. |
 | 3 | **Autopilot** | session-start option 3 / default (Enter) | All steps AUTO except `verify-human` (conditional — AUTO-SKIPs when no integration boundary + verify-self all-PASS, else PAUSE) and ESCALATE (always PAUSE). |
-| 4 | **Full-autopilot** | session-start option 4 | All steps AUTO. `verify-human` is **skipped** — `verify-self` result is the acceptance gate. ESCALATE remains PAUSE. Runs until terminal state. |
+| 4 | **FSD** | session-start option 4 | All steps AUTO. `verify-human` is **skipped** — `verify-self` result is the acceptance gate. ESCALATE remains PAUSE. Runs until terminal state. |
 
 #### Mode precedence
 
 ```
 Direct (mode 0):         skill SKILL.md "Hand Off" / **STOP** is authoritative
-Step-by-step (mode 1):   orchestrator chains to next skill but pauses for user confirmation after each
+Stepping (mode 1):   orchestrator chains to next skill but pauses for user confirmation after each
 Orchestrated (mode 2):   AGENTS.md pause-policy table overrides skill-level stop signals
 Autopilot (mode 3):      simplified policy below overrides AGENTS.md
-Full-autopilot (mode 4): all-AUTO policy overrides AGENTS.md; verify-human is skipped
+FSD (mode 4): all-AUTO policy overrides AGENTS.md; verify-human is skipped
 ```
 
 Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes 2–4. The orchestrator ignores them and acts on `TRANSITION: <id>` tokens only.
 
 #### Pause policy by mode — feature workflow
 
-| Step | Mode 1 (Step-by-step) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (Full-autopilot) |
+| Step | Mode 1 (Stepping) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (FSD) |
 |------|-----------------------|-----------------------|--------------------|------------------------|
 | reproduce — F32/F33 (reproduced cleanly) | PAUSE | AUTO | AUTO | AUTO |
 | reproduce — F34 (could-not-reproduce → preventive hardening) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
@@ -86,7 +86,7 @@ Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes
 
 #### Pause policy by mode — task workflow
 
-| Step | Mode 1 (Step-by-step) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (Full-autopilot) |
+| Step | Mode 1 (Stepping) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (FSD) |
 |------|-----------------------|-----------------------|--------------------|------------------------|
 | plan | PAUSE | PAUSE | AUTO | AUTO |
 | act | PAUSE | AUTO | AUTO | AUTO |
@@ -96,7 +96,7 @@ Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes
 
 #### Pause policy by mode — product workflow
 
-| Step | Mode 1 (Step-by-step) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (Full-autopilot) |
+| Step | Mode 1 (Stepping) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (FSD) |
 |------|-----------------------|-----------------------|--------------------|------------------------|
 | vision scoping questions | PAUSE | PAUSE | PAUSE | AUTO |
 | roadmap review | PAUSE | PAUSE | AUTO | AUTO |
@@ -134,15 +134,15 @@ When `/session-start` confirms the work classification, it presents the mode cho
 ```
 I'll drive the <workflow> workflow. Which drive mode do you want?
 
-  1. Step-by-step   — pause after every skill; you confirm each transition
-  2. Orchestrated   — standard pauses (spec, plan, verify-human, finalize)
-  3. Autopilot      — only pauses at verify-human (and auto-skips it when no integration boundary); everything else chains automatically
-  4. Full-autopilot — no pauses; verify-human skipped; runs to completion
+  1. Stepping     — pause after every skill; you confirm each transition
+  2. Orchestrated — standard pauses (spec, plan, verify-human, finalize)
+  3. Autopilot    — only pauses at verify-human (and auto-skips it when no integration boundary); everything else chains automatically
+  4. FSD          — no pauses; verify-human skipped; runs to completion
 
 (Type 1–4 — or just press Enter for Autopilot)
 ```
 
-The selected mode is stored in `workflow/wip/<item>.md` frontmatter as `drive_mode: step-by-step | orchestrated | autopilot | full-autopilot` and honoured for the full workflow duration including cross-workflow handoffs. The mode persists across `/session-pause` and `/session-resume`.
+The selected mode is stored in `workflow/wip/<item>.md` frontmatter as `drive_mode: stepping | orchestrated | autopilot | fsd` and honoured for the full workflow duration including cross-workflow handoffs. The mode persists across `/session-pause` and `/session-resume`.
 
 ### Back-loop guard
 
@@ -320,7 +320,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 | F14 | verify-codify | verify-human | Back-loop: new tests reveal issues human missed |
 | F15 | verify-codify | build | Tests written, more phases remain (advance to next phase) |
 | F16 | verify-codify | ship | Tests written, all phases complete |
-| F17b | ship | finalize | Shipped, Mode 4 (full-autopilot) SKIPs review-quality — direct ship → finalize |
+| F17b | ship | finalize | Shipped, Mode 4 (fsd) SKIPs review-quality — direct ship → finalize |
 | F18 | finalize | refactor | Tech debt identified |
 | F19 | finalize | EXIT→reflect | No tech debt, feature done |
 | F20 | refactor | plan | Refactor needs a plan — CONSTRAINT: scoped to cleanup only, no new features |
@@ -348,7 +348,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 
 **Reproduce step (F31–F35):** Optional, opt-in. Triggered when the user describes undesirable behavior (bug, regression, broken state). For new-capability features (no bug language) reproduce is skipped — workflow enters at spec or plan as before. Red-green discipline: write a failing test (or deterministic manual recipe, or telemetry signature) capturing the bug *before* spec/plan. The reproduction artifact becomes the anchor verify-codify uses to confirm "fixed means this no longer happens." Drive-mode behavior in the Pause-policy section above: F32/F33 are AUTO in modes 2–4; F34 is AUTO in mode 4 only (PAUSE in 1–3 because preventive hardening is a meaningful divergence); F35 is PAUSE in all modes (terminating a workflow without a reproduce signal deserves human confirmation).
 
-**Code-quality reviewer step (F38–F41):** A per-feature post-ship review pass implemented by `feature-review-quality` that sits between `feature-ship` and `feature-finalize`. The ship commit creates a known-good baseline (green tests committed); the reviewer reads the feature's diff against that baseline plus the WIP file and emits a tripartite output (strengths / issues by severity / assessment). Severity is **advisory by default with per-tier action**: CRITICAL → auto-invoke `feature-refactor` (F40, Modes 2–3); MAJOR → Mode 2 pause-and-ask (F41) or Mode 3 auto-backlog (F39); MINOR → auto-backlog (F39). Mode 4 (full-autopilot) skips the review entirely via F17b (direct ship → finalize). The pass does NOT back-loop into already-shipped commits — its outputs flow forward into refactor or backlog. Diverges deliberately from `obra/superpowers`' per-task "all findings block" model: this repo's per-feature placement makes back-loops on shipped commits more expensive, so the read-time veto pattern (operator may dismiss findings by editing the WIP `## Code-Quality Review` section before finalize) is the recovery surface. See `skills/feature-review-quality/SKILL.md` for the full procedure and the reviewer subagent definition at `agents/code-quality-reviewer/AGENTS.md` (executable subagent — the skill invokes it via `Agent({subagent_type: 'code-quality-reviewer', ...})` per the verify-self-and-review-quality-subagent-dispatch feature, 2026-06-12; moved from `skills/feature-review-quality/reviewer-prompt.md` so the spawn has a real target).
+**Code-quality reviewer step (F38–F41):** A per-feature post-ship review pass implemented by `feature-review-quality` that sits between `feature-ship` and `feature-finalize`. The ship commit creates a known-good baseline (green tests committed); the reviewer reads the feature's diff against that baseline plus the WIP file and emits a tripartite output (strengths / issues by severity / assessment). Severity is **advisory by default with per-tier action**: CRITICAL → auto-invoke `feature-refactor` (F40, Modes 2–3); MAJOR → Mode 2 pause-and-ask (F41) or Mode 3 auto-backlog (F39); MINOR → auto-backlog (F39). Mode 4 (fsd) skips the review entirely via F17b (direct ship → finalize). The pass does NOT back-loop into already-shipped commits — its outputs flow forward into refactor or backlog. Diverges deliberately from `obra/superpowers`' per-task "all findings block" model: this repo's per-feature placement makes back-loops on shipped commits more expensive, so the read-time veto pattern (operator may dismiss findings by editing the WIP `## Code-Quality Review` section before finalize) is the recovery surface. See `skills/feature-review-quality/SKILL.md` for the full procedure and the reviewer subagent definition at `agents/code-quality-reviewer/AGENTS.md` (executable subagent — the skill invokes it via `Agent({subagent_type: 'code-quality-reviewer', ...})` per the verify-self-and-review-quality-subagent-dispatch feature, 2026-06-12; moved from `skills/feature-review-quality/reviewer-prompt.md` so the spawn has a real target).
 
 **Reproduce-as-REDIRECT-from-build (F36–F37b):** A second entry path into reproduce, used when an agent mid-`feature-build` realizes it cannot confirm the fix worked without first reproducing the bug. Mirrors F22 (build → research REDIRECT) in shape. Build emits F36, writes a `**Redirect source:** build (F36 — Phase N)` sentinel into `## Current Node` of the WIP file, and creates a placeholder `## Reproduction Artifact (mid-build, from F36)` section. Reproduce reads Current Node first per existing protocol, detects the sentinel, and on exit emits F37 (reproduced cleanly) or F37b (could-not-reproduce) instead of the normal F32/F33/F34/F35. F35 is **disallowed** from F36-entered reproduce — terminating a feature mid-build because the bug couldn't be re-reproduced is the wrong outcome; F37b is the always-available fallback that documents could-not-reproduce as a Discovery and resumes build. F34 (preventive-hardening framing reset to spec) is similarly disallowed — the feature is already past spec, so framing reset is meaningless. Drive-mode behavior in the Pause-policy section above: F36 mirrors F22 (PAUSE in modes 1–3, AUTO in mode 4 — REDIRECTs deserve human confirmation that diverting into another state is the right move); F37/F37b are back-loop-shaped (PAUSE in mode 1, AUTO in modes 2–4).
 
@@ -449,10 +449,10 @@ Session entry skills (`session-start`, `session-resume`, `session-pause`) are di
 | S8 | session-start | (pause) | Orchestrator pauses at verify-human (PAUSE step in policy) |
 | S9 | session-start | (pause) | Orchestrator pauses at feature-finalize (PAUSE step in policy) |
 | S10 | session-start | (drive-mode menu) | User wants end-to-end drive — present mode menu (do not skip to build) |
-| S11 | session-start | (auto-chain) | Mode 4 (Full-autopilot): chain past plan into build without pausing |
+| S11 | session-start | (auto-chain) | Mode 4 (FSD): chain past plan into build without pausing |
 | S12 | session-start | (pause) | Mode 3 (Autopilot): pause only at verify-human |
-| S13 | session-start | (pause-after-each) | Mode 1 (Step-by-step): pause after every skill, tell user next slash command |
-| S14 | session-start | (skip+chain) | Mode 4 (Full-autopilot): skip verify-human, chain to verify-codify |
+| S13 | session-start | (pause-after-each) | Mode 1 (Stepping): pause after every skill, tell user next slash command |
+| S14 | session-start | (skip+chain) | Mode 4 (FSD): skip verify-human, chain to verify-codify |
 | S15 | session-resume | (mode menu) | Surface `drive_mode` from `.session.md` and present change-mode menu |
 | S16 | session-resume | (mode change) | User selects different drive mode on resume — update WIP frontmatter |
 | S17 | session-pause | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |

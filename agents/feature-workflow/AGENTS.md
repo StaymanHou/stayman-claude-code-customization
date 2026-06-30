@@ -44,7 +44,7 @@ Entry (simple)  ─────────────────────�
                        └─→ finalize (F17b, Mode 4 SKIPs review-quality)
 ```
 
-**Order after verify-codify (final phase):** ship → review-quality → finalize, never reversed. Finalize archives the WIP file that ship reads from; reversing emits premature "shipped" claims. See `SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP`. The review-quality step sits between ship and finalize so the reviewer reads against the green-tests committed baseline; Mode 4 (full-autopilot) skips review-quality entirely via F17b.
+**Order after verify-codify (final phase):** ship → review-quality → finalize, never reversed. Finalize archives the WIP file that ship reads from; reversing emits premature "shipped" claims. See `SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP`. The review-quality step sits between ship and finalize so the reviewer reads against the green-tests committed baseline; Mode 4 (fsd) skips review-quality entirely via F17b.
 
 ### Small/Simple Criteria (skip spec, enter at plan)
 All must hold:
@@ -158,7 +158,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 Full policy tables for all workflows are in `docs/product/transitions.md` → "Drive modes". Summary for feature workflow:
 
-| Step | Mode 1 — Step-by-step | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — Full-autopilot |
+| Step | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |------|-----------------------|-----------------------|--------------------|------------------------|
 | `feature-reproduce` — F32/F33 (reproduced cleanly) | PAUSE | AUTO | AUTO | AUTO |
 | `feature-reproduce` — F34 (cannot-reproduce → preventive hardening) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
@@ -188,7 +188,7 @@ Full policy tables for all workflows are in `docs/product/transitions.md` → "D
 
 **SKIP** (verify-human in Mode 4): do not invoke `feature-verify-human` at all. Use the `verify-self` result as the acceptance gate and chain directly to `feature-verify-codify`.
 
-**AUTO-SKIP** (verify-human in Mode 3, conditional): invoke `feature-verify-human` as usual, but the skill itself checks an objective gate at §2 of `skills/feature-verify-human/SKILL.md` and emits `TRANSITION: F11` without prompting the human when **all four** of these hold: (a) `drive_mode` is `autopilot` or `full-autopilot` in the WIP frontmatter, (b) the current phase's `verify-self` subtree is all-PASS (no `UNVERIFIED`/`FAILED`/`FAILED-cosmetic`/`NOT-STARTED` leaves), (c) the 5-condition integration-boundary check returns "no boundary," and (d) no Observable Outcome cites a consuming surface by name. The affirmation block is still printed in chat as the operator's read-time veto. When any gate fails (most commonly: boundary applies, or verify-self has a non-PASS leaf), the existing F11-with-confirmation flow runs as before. Mode 4 is unaffected — it still SKIPs the skill entirely. The full gate definition and the known probe/decision-artifact false-positive limitation live in `skills/feature-verify-human/SKILL.md` §2 → "Auto-skip gate."
+**AUTO-SKIP** (verify-human in Mode 3, conditional): invoke `feature-verify-human` as usual, but the skill itself checks an objective gate at §2 of `skills/feature-verify-human/SKILL.md` and emits `TRANSITION: F11` without prompting the human when **all four** of these hold: (a) `drive_mode` is `autopilot` or `fsd` in the WIP frontmatter, (b) the current phase's `verify-self` subtree is all-PASS (no `UNVERIFIED`/`FAILED`/`FAILED-cosmetic`/`NOT-STARTED` leaves), (c) the 5-condition integration-boundary check returns "no boundary," and (d) no Observable Outcome cites a consuming surface by name. The affirmation block is still printed in chat as the operator's read-time veto. When any gate fails (most commonly: boundary applies, or verify-self has a non-PASS leaf), the existing F11-with-confirmation flow runs as before. Mode 4 is unaffected — it still SKIPs the skill entirely. The full gate definition and the known probe/decision-artifact false-positive limitation live in `skills/feature-verify-human/SKILL.md` §2 → "Auto-skip gate."
 
 ### Per-phase loop discipline
 
