@@ -1,6 +1,6 @@
 ---
 name: session-store-learning
-description: "Session operation: classify a learning and persist it — project-scope writes to <proj-dir>/.claude/ as before; global-scope writes a draft to the canonical <proj-dir>/.claude/learnings/ path. Git behavior (commit vs leave-uncommitted) follows the artifact tracking policy + project overrides, not gitignore inspection."
+description: "Session operation: classify a learning and persist it — project-scope Context Rules write to the project ROOT <proj-dir>/CLAUDE.md, memories/skills to <proj-dir>/.claude/; global-scope writes a draft to the canonical <proj-dir>/.claude/learnings/ path. Git behavior (commit vs leave-uncommitted) follows the artifact tracking policy + project overrides, not gitignore inspection."
 argument-hint: <the learning or insight to store>
 ---
 
@@ -12,7 +12,7 @@ You are an expert at knowledge engineering. Persist a learning so it's useful fo
 
 This is a **session meta-operation** typically invoked after `/session-reflect`.
 
-**Important boundary:** this skill writes only to the **current project**, never to `~/.claude/`. Project-scope learnings go into the project's own `<proj-dir>/.claude/` directory as before. Global-scope learnings — ones that would have previously been written into `~/.claude/CLAUDE.md` / `~/.claude/projects/*/memory/` / `~/.claude/skills/` — are instead drafted to `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md`, so the user can review and manually port them into the appropriate source repo (e.g. `my-claude-code-customization`) when warranted. The skill never mutates global Claude Code configuration directly.
+**Important boundary:** this skill writes only to the **current project**, never to `~/.claude/`. Project-scope learnings go into the current project: a **Context Rule** to the project **root** `<proj-dir>/CLAUDE.md`, a **Memory** to `<proj-dir>/.claude/memory/`, a **Skill** to `<proj-dir>/.claude/skills/` (see the storage-type table in §2 — the root vs `.claude/` distinction is load-bearing, not interchangeable). Global-scope learnings — ones that would have previously been written into `~/.claude/CLAUDE.md` / `~/.claude/projects/*/memory/` / `~/.claude/skills/` — are instead drafted to `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md`, so the user can review and manually port them into the appropriate source repo (e.g. `my-claude-code-customization`) when warranted. The skill never mutates global Claude Code configuration directly.
 
 ## Procedure
 
@@ -23,14 +23,16 @@ Evaluate the input learning from `{{args}}` or from the most recent reflection.
 
 **Scope:**
 - **Global** — reusable across all projects → draft to **`<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md`** in the current project. Never writes to `~/.claude/`.
-- **Project-specific** — relevant only to this project → store in `<proj-dir>/.claude/` (project root) as before.
+- **Project-specific** — relevant only to this project → store in the current project per the **storage-type table below**. Note the two distinct project-scope CLAUDE.md files, which are NOT interchangeable:
+  - **`<proj-dir>/CLAUDE.md`** (the project **root** CLAUDE.md) — the project's conventions / "Development Conventions" / gotcha doc. **This is the destination for a project-scope Context Rule** (a standing convention or code-contract constraint).
+  - **`<proj-dir>/.claude/CLAUDE.md`** (the project-**local agent-config** file, only present in some projects) — supplementary agent-config a project may maintain. **Do NOT default a Context Rule here.** Only target it if §3's destination check shows the project actually keeps conventions of this kind there *and* the project's root `CLAUDE.md` explicitly routes them there.
 
 **Storage Type:**
 
 | Type | When | Project-scope location | Global-scope behavior |
 |------|------|------------------------|-----------------------|
 | **Ignore** | Trivial, one-off, or already known | Don't store | Don't draft |
-| **Context Rule** | Critical convention or constraint | Project: `CLAUDE.md` (root) | Draft entry under `## Suggested change` describes the CLAUDE.md rule to add manually |
+| **Context Rule** | Critical convention or constraint | Project: **`<proj-dir>/CLAUDE.md`** (the project ROOT CLAUDE.md — NOT `<proj-dir>/.claude/CLAUDE.md`) | Draft entry under `## Suggested change` describes the CLAUDE.md rule to add manually |
 | **Memory** | Reusable insight about user, project, or approach | Project: `<proj-dir>/.claude/memory/` | Draft entry under `## Suggested change` describes the memory to add manually |
 | **Skill** | Complex procedural expertise worth codifying | Project: `<proj-dir>/.claude/skills/<name>/` | Draft entry under `## Suggested change` describes the skill (sketch / name / when-to-use) |
 
@@ -38,11 +40,21 @@ Project-scope learnings are persisted to their permanent home immediately, as be
 
 ### 3. Propose Storage
 
+**Ground the destination in what actually exists — READ before you propose.** Do NOT assert a destination from inference (e.g. "the project already collects this kind of rule in file X"). For a **project-scope** learning, before naming the location:
+- **Read the project ROOT `<proj-dir>/CLAUDE.md`** to confirm it exists and see where conventions of this kind already live (e.g. a `## Development Conventions` / `## Key Decisions` / gotcha section). A Context Rule's natural home is alongside the existing conventions there.
+- **Check whether `<proj-dir>/.claude/CLAUDE.md` exists** (`ls`/Read). If it does NOT exist, never propose it. If it does, only consider it when the root `CLAUDE.md` explicitly routes conventions of this kind there — otherwise the root file wins.
+- A claim like "X already collects this kind of thing" is only allowed *after* you have opened X and seen it. Never route a learning to a file you have not read.
+
+(For a Memory the destination is `<proj-dir>/.claude/memory/`; for a Skill it is `<proj-dir>/.claude/skills/<name>/`. Only **Context Rule** has the root-vs-`.claude/` ambiguity that requires the read above.)
+
 Present clearly:
 - **Scope:** Global vs Project
 - **Type:** Context Rule / Memory / Skill / Ignore
 - **Location:** Exact file path
-  - For project-scope: the permanent path (e.g. `<proj-dir>/.claude/CLAUDE.md`, `<proj-dir>/.claude/memory/<name>.md`, `<proj-dir>/.claude/skills/<name>/SKILL.md`)
+  - For project-scope: the permanent path, drawn from the storage-type table and grounded in the read above:
+    - **Context Rule → `<proj-dir>/CLAUDE.md`** (the project ROOT CLAUDE.md — NOT `<proj-dir>/.claude/CLAUDE.md`)
+    - Memory → `<proj-dir>/.claude/memory/<name>.md`
+    - Skill → `<proj-dir>/.claude/skills/<name>/SKILL.md`
   - For global-scope: `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md` — explicitly note this is a *draft for later curation*, not a permanent install
 - **Content:** What will be written (draft it)
 

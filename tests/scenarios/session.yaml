@@ -793,3 +793,45 @@ scenarios:
         - "~/.claude/learnings"
         - "docs/learnings"
     max_retries: 2
+
+  # Reproduction anchor for incident-store-learning-wrong-project-claude-md (2026-06-30, P2).
+  # A PROJECT-scope code-contract Context Rule must be proposed for the project-ROOT CLAUDE.md
+  # (<proj-dir>/CLAUDE.md — the "## Development Conventions" gotcha home), NOT the project-local
+  # agent-config file <proj-dir>/.claude/CLAUDE.md. The bug: SKILL.md prose (Scope bullet + the
+  # Propose-Storage example) pushed toward `.claude/CLAUDE.md` while the storage-type table said
+  # "CLAUDE.md (root)" — the model followed the prose example. This scenario fails RED until the
+  # SKILL.md prose is corrected to agree with the table. The args deliberately describe a code-
+  # contract invariant (the canonical Context-Rule-in-root-CLAUDE.md case), not an agent gotcha.
+  - id: S25-project-context-rule-root-claude-md
+    name: "session:store-learning project-scope Context Rule targets root CLAUDE.md, not .claude/CLAUDE.md"
+    # model: sonnet — PASSes deterministically on sonnet (confirmed 2026-06-30 twice, runs 200803/200049);
+    # on haiku it is FLAKY (structured S20 match arrives on retry — model-noise in the free-text proposal).
+    # Tagged per the recon discipline: proven haiku flakiness + proven sonnet-clean → tag, don't tag preemptively.
+    model: sonnet
+    skill: session-store-learning
+    args: >
+      I just learned a project-specific code-contract invariant: in this
+      project, the `status` column carries values from two independent writers
+      and a `WHERE status IS NULL` guard silently drops the other writer's
+      update. Any future writer must use `status IS NULL OR status IN
+      (<sentinel set>)`. Save this as a Context Rule (a standing convention) in
+      this project's CLAUDE.md so future sessions honor it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      transition_id: S20
+      # Must PROPOSE the project-ROOT CLAUDE.md as the destination. Assert this POSITIVELY:
+      # the corrected skill prose now legitimately MENTIONS `.claude/CLAUDE.md` to warn "not here",
+      # so a `not_contains: .claude/CLAUDE.md` strict assertion is structurally fragile — it can't
+      # tell "proposed .claude/CLAUDE.md" (the bug) from "named it to say don't use it" (correct).
+      # See docs/lessons/test-scenario-strict-mode.md: strict not_contains is only for failure-PROXY
+      # phrases, not informational ones. So we assert the right destination is present instead.
+      # NB: do NOT use "/CLAUDE.md" or "./CLAUDE.md" here — both are substrings of
+      # ".claude/CLAUDE.md", so they'd match the buggy output too. Only phrases that appear
+      # exclusively when the model correctly describes the ROOT destination.
+      contains_required_any:
+        - "root CLAUDE.md"
+        - "project root"
+        - "project-root"
+        - "root `CLAUDE.md`"
+    max_retries: 2

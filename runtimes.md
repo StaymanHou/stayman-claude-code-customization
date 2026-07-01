@@ -14,6 +14,7 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
 - **Last:** ~22s (2026-06-30)
 - **Use timeout:** 90000
 - **History:**
+  - ~22s — 2026-06-30  <!-- incident store-learning-wrong-project-claude-md mitigate verify; 334 PASS / 1 FAIL (same pre-existing settings-fixture drift, SURFACE-2026-06-30-SETTINGS-FIXTURE-DISABLECLAUDEAICONNECTORS-DRIFT — unrelated to the SKILL.md prose fix; path-qualification Phase 12 PASS). No new structure pins (behavioral fix covered by scenario S25). -->
   - ~22s — 2026-06-30  <!-- util-backlog-paydown Phase 3; 334 PASS / 1 FAIL (pre-existing host settings-fixture drift `disableClaudeAiConnectors`, unrelated — SURFACE-2026-06-30-SETTINGS-FIXTURE-DISABLECLAUDEAICONNECTORS-DRIFT). No new pins added (B1: util-* keeps documented no-pin status quo). -->
   - 21s — 2026-06-25  <!-- artifact-tracking-policy Phase 4 verify-auto; 302/0 PASS (+4 from 298: Phase 12 gained reflect leading-label + no-trailing-form + CLAUDE.md override-section + no-stale-gitignored-claim pins). -->
   - 20s — 2026-06-25  <!-- artifact-tracking-policy Phase 3 verify-auto; 298/0 PASS (+4 from 294: Phase 12 gained 4 skill-reconciliation pins — session-store-learning canonical-path + policy-keyed git + forbids-gitignore-inspection + product-context reconcile-owner). -->
