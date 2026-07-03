@@ -1,10 +1,17 @@
 # Feature: Reflect/store proposal filter rules
 
 **Workflow:** feature
-**State:** ship (complete)
+**State:** finalize (complete)
 **Created:** 2026-07-03
+**Completed:** 2026-07-03
 **Entry:** spec (complex feature)
 **Drive mode:** fsd
+
+## Retrospect
+- **What changed in our understanding:** The harness cannot hard-assert content (`contains_required`) on a skill that emits no TRANSITION token — that path is gated behind `id_match`, which `session-reflect` never satisfies. So a no-transition skill is testable only via `contains_any`→SOFT_PASS and `not_contains_strict`→FAIL. This constrained the Phase 3 scenario design and is worth remembering for any future token-less skill.
+- **Assumptions that held:** The 5 filter rules were operator-confirmed in discussion before any build, so no spec/plan churn. The prompt-only change had no architectural conflict (arch.md consulted, none found). The 15→0 global→project directional evidence made the scope-default rule high-confidence and it landed cleanly.
+- **Assumptions that were wrong:** (1) I initially wrote R1 with a strict `not_contains: [GLOBAL]` — but the new reflect prompt legitimately discusses the `[GLOBAL]` gate, so the model echoes `[GLOBAL]` in benign reasoning. That's the informational-vs-failure-proxy trap (test-scenario-strict-mode lesson) — fixed to a positive assertion. Caught by the real P3.2 run, exactly as intended. (2) Assumed I might give case-(b) a custom already-encoded CLAUDE.md; the runner hard-copies the default fixture (per-scenario `claude_md:` key unsupported, backlogged) — worked around by using the Docker fact already in the default fixture.
+- **Approach delta:** Implementation matched the plan's 3-phase structure exactly (rewrite reflect → structural pins + store-learning alignment → behavioral scenarios + doc sync). The only deviation was the R1 assertion fix mid-Phase-3, which is normal verify-codify-style test iteration, not a plan miss.
 
 ## Problem Statement
 

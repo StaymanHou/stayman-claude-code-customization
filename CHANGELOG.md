@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-03
+
+- **Feature shipped:** `session-reflect` filter rules — reflect now pre-filters and pre-scopes candidate learnings (drop workflow-commentary/single-observation/self-documenting; route already-captured insights to a cited "already-persisted" tier that carries no store decision; default surviving candidates to `[PROJECT]`, with `[GLOBAL]` gated behind a 3-part workflow-mechanism test and an mccc carve-out) and presents them in three tiers, so the operator stops manually pruning ~3–4× per session; derived from an audit of all 145 real `session-reflect` invocations across 8 projects, pinned by 6 structural `grep_check`s and behavioral scenarios R1/R2/R3 (R1 a real logged `[GLOBAL]`→`[PROJECT]` re-scope case).
+
 ## 2026-06-30
 
 - **Feature shipped:** `util-backlog-paydown` — a standalone `util-*` operator skill that runs a between-milestone backlog-paydown sweep, scoring the standing code-quality/debt backlog on a 3-axis disposition model (Impact / Effort / Risk) and assigning one of five actions (Sweep / Discuss / Defer / Bury / Delete) with operator-veto as a first-class trigger, then emitting a priority/risk-ordered `shape: temporary-wbs` (fold-back-and-delete, no roadmap slot); resolved via cross-validation against two real sessions (Claudesk debt sweep; replicator-1-0 five-sweep family) whose dispositions the model predicted ~100% of, wired as a util-* skill (no transition, no orchestrator change, no new structural pin per the documented status quo) with an advisory non-chaining pointer from `product-finalize` and a new `tests/scenarios/util.yaml`.
