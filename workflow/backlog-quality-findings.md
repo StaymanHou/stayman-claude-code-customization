@@ -146,3 +146,17 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Severity:** MINOR (feature-review-quality, ship aa5c831)
 - **Finding:** `skills/util-backlog-paydown/SKILL.md` ordering-rules list nests the cross-cutting "Risk outranks impact in ordering" clarification under rule 5 ("Effort is NOT an ordering key"). Faithful to the learning doc's structure but a literal reader may be momentarily confused. Consider promoting to a top-level note (would also be worth fixing in `docs/lessons/between-milestone-debt-paydown-sweep.md` for consistency).
 - **Pickup shape:** restructure the ordering list (skill + lesson).
+
+# memory-location-symlink — 2026-07-03
+
+## SURFACE-2026-07-03-QUALITY-DRYRUN-STRAY-CD-ERROR
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship d173bd7)
+- **Finding:** `tools/memory-link/ensure-memory-link.sh:64` — under `--dry-run`, when the repo target dir does not yet exist (its `mkdir -p` was only echoed) and the harness path is already a symlink, the symlink-target comparison's RHS `cd "$REPO_MEM"` emits a stray `cd: No such file or directory` on stderr. Behavior is still correct (exits 0, correct verdict); non-dry-run always has REPO_MEM present by line 64. Diagnostic noise only.
+- **Pickup shape:** guard the comparison's `cd` on `[ -d "$REPO_MEM" ]` in dry-run, or route the compare through the already-computed paths. ~2-line fix.
+
+## SURFACE-2026-07-03-QUALITY-SCOPE-RULE-PROSE-ONLY
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship d173bd7)
+- **Finding:** The migration scope rule ("any project with a `docs/product/` dir") is stated in prose only (`tools/memory-link/README.md` + `migrate-memory.sh` header); neither script enforces or checks it — `migrate-memory.sh` runs against any dir it's pointed at. Acceptable given the operator-confirmation gate (P2.2 hard checkpoint), but the prose implies a mechanical guard that doesn't exist.
+- **Pickup shape:** either add an optional `--require-product-dir` guard to `migrate-memory.sh`, or soften the README prose to "scope is operator-enforced at the confirmation gate, not by the script." Prefer the prose fix (the enumeration/confirmation already lives in the workflow, not the tool).

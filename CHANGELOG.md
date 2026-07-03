@@ -3,6 +3,8 @@
 ## 2026-07-03
 
 - **Feature shipped:** `session-reflect` filter rules — reflect now pre-filters and pre-scopes candidate learnings (drop workflow-commentary/single-observation/self-documenting; route already-captured insights to a cited "already-persisted" tier that carries no store decision; default surviving candidates to `[PROJECT]`, with `[GLOBAL]` gated behind a 3-part workflow-mechanism test and an mccc carve-out) and presents them in three tiers, so the operator stops manually pruning ~3–4× per session; derived from an audit of all 145 real `session-reflect` invocations across 8 projects, pinned by 6 structural `grep_check`s and behavioral scenarios R1/R2/R3 (R1 a real logged `[GLOBAL]`→`[PROJECT]` re-scope case).
+- **Feature shipped:** project-memory location symlink — a project's harness memory store (`~/.claude/projects/<slug>/memory`) is now a symlink to the git-tracked repo dir (`<proj-dir>/.claude/memory/`), so memories are both version-controlled and auto-loaded at session start from one physical copy; ships a reusable `tools/memory-link/` primitive (idempotent realpath-safe ensure-link + one-time merge/drift-keep-both/backup migration + 27-assertion test suite), wires the ensure-link check into both `product-context` and `session-start` (closing the non-product reachability gap), codifies a `.claude/`-tracked-by-default gitignore convention, and ran a one-time migration across 8 `docs/product/`-bearing projects (2 blanket-ignore projects fixed); 13 new check-structure Phase-14 pins.
+- **Backlog resolved:** SURFACE-2026-07-03-MEMORY-LOCATION-SYMLINK — closed by the memory-location-symlink feature (Direction A symlink shipped; spike passed; system-wide migration done; convention codified and wired into two hosts).
 
 ## 2026-06-30
 

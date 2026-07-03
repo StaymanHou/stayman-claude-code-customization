@@ -6,6 +6,12 @@
 
 ## TODO
 
+## Code-quality findings — memory-location-symlink (2026-07-03)
+- **Pointer:** 2 MINOR findings auto-backlogged by feature-review-quality against ship commit d173bd7 — (1) `ensure-memory-link.sh` dry-run emits a stray `cd: No such file` on stderr when repo target dir doesn't exist yet + harness already symlinked (diagnostic noise, verdict correct); (2) the "any project with docs/product/" migration scope rule is prose-only, not script-enforced (acceptable given the P2.2 operator-confirmation gate). The 2 MAJOR findings from the same review were fixed in-place (amended into the ship commit) — see the WIP `## Code-Quality Review` section. Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** small task — (1) is a ~2-line dry-run guard; (2) is a one-line README prose softening. Bundle into a `/task-plan` or the next `/util-backlog-paydown` sweep.
+
 ## Code-quality findings — design-priors (2026-06-26)
 - **Pointer:** 5 findings auto-backlogged by feature-review-quality against ship commit 6542e57 — 2 MAJOR (consult scenarios encode the answer in `system_prompt_extra` → test obedience > skill-prose-driven behavior, esp. the over-infer guard; `## Step 0` added to non-entry-point product-roadmap/wbs overloads the convention + transitions.md/snippet mapping mismatch) + 3 MINOR (loose `propose` pin, stale corpus Open-questions, fixture uses "Phase" alias). Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** medium (2 MAJOR), low (3 MINOR)
@@ -70,7 +76,7 @@
 - **Surfaced by:** reflect-store-filter-rules feature (Feature 1) finalize (2026-07-03). Decoupled sibling — Feature 2 of the two-feature split.
 - **Type:** feature (environment / workflow-system)
 - **Priority:** medium
-- **Status:** pending (spike-gated)
+- **Status:** resolved 2026-07-03 by feature `memory-location-symlink` (commit d173bd7). Direction A shipped: repo `<proj-dir>/.claude/memory/` is the git-tracked store, harness `~/.claude/projects/<slug>/memory` symlinks to it (durable + auto-loaded, one copy). Spike PASSED (WP1). Migration ran across 8 `docs/product/`-bearing projects (gospelherald excluded per operator); 2 blanket-ignore projects fixed to track-`.claude/`-by-default. Wired into product-context + session-start; convention codified in CLAUDE.snippet.md; 13 check-structure Phase-14 pins. `type:`-split moot under symlink.
 - **Summary:** Project memories are split across two dirs — the repo `<proj-dir>/.claude/memory/` (git-tracked, coupled to code, but NOT auto-loaded by the harness) and the harness store `~/.claude/projects/<slug>/memory/` (auto-loaded at session start, but machine-local, untracked, slug-brittle). Audit found 81 files in the harness store across 10 projects (provenance-confirmed store-learning outputs via `originSessionId` frontmatter). Neither location alone gives durability + auto-load. Proposed fix: symlink Direction A — repo dir is the real git-tracked store; `~/.claude/projects/<slug>/memory` becomes a symlink → repo dir (version-controlled AND auto-loaded, one physical copy, no drift).
 - **Scope (3 parts):** (a) SPIKE (BLOCKING GATE) — verify the harness tolerates a symlinked memory store (writer follows the link vs clobber/atomic-rename/recreate) before committing to the design; if it fails, fall back to split-by-type (project/reference→repo, user/feedback→harness) or dual-write. (b) One-time system-wide MIGRATION sweep — merge harness-store files into each repo dir, dedupe drift (needs a conflict rule), rebuild MEMORY.md, then replace harness dir with the link; decide active-only vs all (~10 projects). (c) FUTURE-project wiring — add link-creation to `product-context` (owns `.claude/` scaffolding + gitignore reconciliation) PLUS an idempotent "ensure link exists" check reachable from non-product entry points (task/feature-plan projects never hit product-context).
 - **Why NOT install.sh:** wrong scope (install.sh links THIS repo's skills into `~/.claude/`; the memory link is per-consuming-project) and wrong trigger (runs at machine setup, not new-project creation).
