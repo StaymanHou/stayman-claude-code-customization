@@ -835,3 +835,82 @@ scenarios:
         - "project-root"
         - "root `CLAUDE.md`"
     max_retries: 2
+
+  # ── session-reflect filter rules (reflect-store-filter-rules feature, 2026-07-03) ──
+  # session-reflect emits NO TRANSITION token — it recommends running /session-store-learning.
+  # So these scenarios assert on reflect's OUTPUT PROSE via contains_any (→ SOFT_PASS is the
+  # achievable positive signal) plus not_contains_strict (→ hard FAIL lever on a failure-proxy
+  # phrase). The TESTING-MODE system prompt forces a TRANSITION line, but reflect has none, so
+  # a structured-ID PASS is not expected; SOFT_PASS on the tier-marker prose is the pass state.
+  # Started UNTAGGED (haiku) per the recon discipline — tag model:sonnet only on PROVEN haiku
+  # model-noise, never preemptively.
+
+  - id: R1-reflect-scope-default-project
+    name: "session:reflect defaults a repo-discovered gotcha to [PROJECT], does not over-label [GLOBAL]"
+    skill: session-reflect
+    args: >
+      Reflect on this session. The one durable thing I learned: this project's
+      Pillow-based image renderer draws missing glyphs as visible letterform
+      substitutes instead of blank boxes, so pixel tests must assert on a 2D box
+      scan. Classify and scope the learning, then tell me whether to store it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # An empirical tool/rendering gotcha discovered while working in THIS repo → must default
+      # to [PROJECT] (§2b: "could apply elsewhere" is not sufficient for global). Reflect should
+      # label it [PROJECT] and present it as a store candidate. This is session eeb4d4c3 in the
+      # audit — a real STORE-DIFFERENT-SCOPE case (proposed global-flavored, operator re-scoped
+      # to project); the new default now labels it [PROJECT] up front.
+      #
+      # ASSERT POSITIVELY, not via strict not_contains [GLOBAL]: the new reflect prompt itself
+      # discusses the [GLOBAL] gate ("Label [GLOBAL] only when ALL THREE hold…"), so a model
+      # explaining WHY it chose [PROJECT] legitimately ECHOES "[GLOBAL]" in its reasoning. That
+      # makes [GLOBAL] an INFORMATIONAL phrase, not a failure-PROXY — strict not_contains on it
+      # is structurally fragile (docs/lessons/test-scenario-strict-mode.md). The real signal is
+      # that the gotcha is labeled [PROJECT]; we assert that presence instead.
+      contains_any:
+        - "[PROJECT]"
+        - "store candidate"
+    max_retries: 2
+
+  - id: R2-reflect-already-persisted-cited
+    name: "session:reflect routes an already-encoded fact to the already-persisted tier with a citation, not a store candidate"
+    skill: session-reflect
+    args: >
+      Reflect on this session. One thing that came up: all commands in this
+      project must run inside Docker via `docker compose exec app <cmd>`. Decide
+      whether that belongs in the store list, and if not, say why and where it
+      already lives.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # The Docker-in-container rule is ALREADY in the fixture CLAUDE.md (## Development
+      # Conventions). Per Rule 2, reflect must place it in the "Already persisted" tier WITH a
+      # cited location (the project CLAUDE.md / Development Conventions), NOT offer it as a store
+      # candidate. SOFT_PASS on either the tier name or an explicit "already"-in-CLAUDE.md pointer.
+      contains_any:
+        - "Already persisted"
+        - "already in"
+        - "already captured"
+        - "CLAUDE.md"
+    max_retries: 2
+
+  - id: R3-reflect-process-commentary-dropped
+    name: "session:reflect suppresses workflow/process commentary into the collapsed dropped tier"
+    skill: session-reflect
+    args: >
+      Reflect on this session. My main takeaway is a process observation: the
+      verify-self step passed all the structural checks but I still had to catch
+      a visual layout issue myself at verify-human, so verify-self clearly can't
+      see layout. Tell me what to store.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # "verify-self can't see layout" is workflow/process commentary (Rule 3) — almost never
+      # stored. Reflect should suppress it into the one-line "Considered and dropped" tier
+      # (reason: process-commentary), NOT present it as a [PROJECT]/[GLOBAL] store candidate.
+      contains_any:
+        - "Considered and dropped"
+        - "process-commentary"
+        - "process commentary"
+    max_retries: 2

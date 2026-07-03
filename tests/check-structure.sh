@@ -1851,6 +1851,19 @@ grep_check "session-store-learning explicitly forbids gitignore-inspection for g
 grep_check "product-context owns .gitignore reconciliation step" "skills/product-context/SKILL.md" "Reconcile .?\.gitignore.? to the artifact tracking policy" 1
 # session-reflect emits the scope label as a LEADING [GLOBAL]/[PROJECT] bracket, not a trailing "— Scope:".
 grep_check "session-reflect Key Learnings use leading [GLOBAL]/[PROJECT] label" "skills/session-reflect/SKILL.md" "\[GLOBAL\]|\[PROJECT\]" 1
+# session-reflect filter rules (reflect-store-filter-rules feature, 2026-07-03): candidate filter +
+# scope-default + 3-tier presentation. These pins guard the prose contracts that make reflect propose
+# fewer, better-scoped learnings so the operator stops pruning by hand.
+# Rule 1 (§2b): default every store candidate to [PROJECT]; [GLOBAL] must clear a 3-part gate.
+grep_check "session-reflect defaults store candidates to PROJECT scope" "skills/session-reflect/SKILL.md" "Default every tier-1 store candidate to" 1
+# Rule 2 (§2a): already-persisted candidates require a cited location (fail-safe: no cite → stays a candidate).
+grep_check "session-reflect requires a cited location for the already-persisted tier" "skills/session-reflect/SKILL.md" "MUST cite the location" 1
+# Rule 5 (§3): three-tier presentation — store candidates / already-persisted / collapsed dropped list.
+grep_check "session-reflect presents the store-candidates tier" "skills/session-reflect/SKILL.md" "Key Learnings — store candidates" 1
+grep_check "session-reflect presents the already-persisted tier" "skills/session-reflect/SKILL.md" "Already persisted \(no action needed\)" 1
+grep_check "session-reflect presents the collapsed dropped-candidates tier" "skills/session-reflect/SKILL.md" "Considered and dropped" 1
+# Rule 3 carve-out: this repo (mccc) — the workflow system IS the domain, so workflow-mechanism learnings are legit.
+grep_check "session-reflect carries the this-repo (workflow-is-domain) carve-out" "skills/session-reflect/SKILL.md" "workflow system IS the domain" 1
 # The retired trailing form must be gone (regression guard).
 trailing_scope=$( (grep -cE "Scope: global \| project" skills/session-reflect/SKILL.md 2>/dev/null || true) | head -1 )
 trailing_scope="${trailing_scope:-0}"

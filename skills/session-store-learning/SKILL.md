@@ -19,6 +19,8 @@ This is a **session meta-operation** typically invoked after `/session-reflect`.
 ### 1. Analyze the Learning
 Evaluate the input learning from `{{args}}` or from the most recent reflection.
 
+**Intake note (when invoked after `session-reflect`).** `session-reflect` now pre-filters and pre-scopes: only its **tier-1 store candidates** are handed here, already carrying a `[PROJECT]` / `[GLOBAL]` label from the reflect scope-default (§2b of `session-reflect`). Its "already persisted" and "considered and dropped" tiers are NOT routed to this skill — do not expect them, and do not re-surface them. **Respect the incoming scope label as the default** (it encodes the operator's revealed lean-project preference); only override it if the learning's content plainly contradicts the label, and disclose the override. Do not re-run the reflect filter here — this skill classifies storage *type* and *destination*, not whether the learning is worth keeping.
+
 ### 2. Classify & Route
 
 **Scope:**
