@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-06-30
+updated: 2026-07-03
 ---
 
 
@@ -11,9 +11,11 @@ updated: 2026-06-30
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** ~22s (2026-06-30)
+- **Last:** 17s (2026-07-03)
 - **Use timeout:** 90000
 - **History:**
+  - 17s — 2026-07-03  <!-- memory-location-symlink Phase 3 verify-auto; 353 PASS / 1 FAIL (+13 from Phase-2's 340: new [Phase 14] — 6 primitive-existence/exec + 1 realpath-slug-footgun guard + 3 snippet-convention + 2 both-hosts-wire-ensure-link + 1 store-learning-convergence). The 1 FAIL is the SAME pre-existing host settings-fixture drift (3 keys). Caught+fixed a self-introduced Phase-12 path-qualification regression mid-verify (2 bare .claude/ in the new snippet subsection → qualified <proj-dir>/). -->
+  - 17s — 2026-07-03  <!-- memory-location-symlink Phase 2 verify-codify; 340 PASS / 1 FAIL (SAME pre-existing host settings-fixture drift — now 3 keys: disableClaudeAiConnectors + cleanupPeriodDays=99999 + statusLine.padding; SURFACE-2026-06-26/06-30. Unrelated to this feature — Phase 2 was a migration run + tools/memory-link/ scripts, never touched tests/fixtures/settings.json). PASS jumped 334→340 vs 2026-06-30 baseline: likely env/host settings-check counting; no NEW structure pins added by Phase 2 (pins land in Phase 3). -->
   - ~22s — 2026-06-30  <!-- incident store-learning-wrong-project-claude-md mitigate verify; 334 PASS / 1 FAIL (same pre-existing settings-fixture drift, SURFACE-2026-06-30-SETTINGS-FIXTURE-DISABLECLAUDEAICONNECTORS-DRIFT — unrelated to the SKILL.md prose fix; path-qualification Phase 12 PASS). No new structure pins (behavioral fix covered by scenario S25). -->
   - ~22s — 2026-06-30  <!-- util-backlog-paydown Phase 3; 334 PASS / 1 FAIL (pre-existing host settings-fixture drift `disableClaudeAiConnectors`, unrelated — SURFACE-2026-06-30-SETTINGS-FIXTURE-DISABLECLAUDEAICONNECTORS-DRIFT). No new pins added (B1: util-* keeps documented no-pin status quo). -->
   - 21s — 2026-06-25  <!-- artifact-tracking-policy Phase 4 verify-auto; 302/0 PASS (+4 from 298: Phase 12 gained reflect leading-label + no-trailing-form + CLAUDE.md override-section + no-stale-gitignored-claim pins). -->

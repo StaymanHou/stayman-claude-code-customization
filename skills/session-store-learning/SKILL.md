@@ -14,6 +14,8 @@ This is a **session meta-operation** typically invoked after `/session-reflect`.
 
 **Important boundary:** this skill writes only to the **current project**, never to `~/.claude/`. Project-scope learnings go into the current project: a **Context Rule** to the project **root** `<proj-dir>/CLAUDE.md`, a **Memory** to `<proj-dir>/.claude/memory/`, a **Skill** to `<proj-dir>/.claude/skills/` (see the storage-type table in §2 — the root vs `.claude/` distinction is load-bearing, not interchangeable). Global-scope learnings — ones that would have previously been written into `~/.claude/CLAUDE.md` / `~/.claude/projects/*/memory/` / `~/.claude/skills/` — are instead drafted to `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md`, so the user can review and manually port them into the appropriate source repo (e.g. `my-claude-code-customization`) when warranted. The skill never mutates global Claude Code configuration directly.
 
+**Project-memory convergence (symlink):** write a project Memory to `<proj-dir>/.claude/memory/<name>.md` — the git-tracked repo dir. Per `~/.claude/CLAUDE.md` → `## Project-memory location — harness symlink (GLOBAL)`, that repo dir is symlinked to the harness store `~/.claude/projects/<slug>/memory`, so a write there IS auto-loaded at the next session start AND version-controlled — one physical copy, no drift. Do **not** write a project memory as a raw path under `~/.claude/projects/...` (write to the repo dir, which resolves through the link). Under the symlink the repo path and the harness path are the same files, so there is no location decision to make per `type:`.
+
 ## Procedure
 
 ### 1. Analyze the Learning

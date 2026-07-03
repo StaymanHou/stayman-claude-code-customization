@@ -233,9 +233,33 @@ All paths are project-local (`<proj-dir>/`) unless noted. "Default" is overridab
 | `<proj-dir>/workflow/.session.md` | **ignore** | transient single-file session pointer, deleted on resume |
 | `<proj-dir>/tests/results/`, `.playwright-mcp/`, `tmp/`, generated screenshots, `__pycache__/`, `*.pyc`, `.DS_Store` | **ignore** | machine-local / trivially regenerable |
 
+### The `.claude/` default is TRACK — deterministic, not per-session judgment
+
+The single most common ambiguity is **whether a new project's `.claude/` directory is git-tracked**. The answer is fixed, not a per-session call: **`.claude/` is TRACKED by default.** Only a short, named exception set is ignored:
+
+- `<proj-dir>/.claude/settings.local.json` — machine-local permission allowlist
+- `<proj-dir>/.claude/learnings/` — global-scope drafts, **unless the project IS a learning-assets/source repo** (then tracked; declared via `## Artifact tracking overrides`)
+
+Everything else under `<proj-dir>/.claude/` — `memory/` (+ `MEMORY.md`), `skills/`, `agents/`, `settings.json` — is **tracked**. This is a direct consequence of the track-by-default rule above; it is spelled out separately only because the `.claude/`-tracking decision was historically made inconsistently across projects (the enforcement gap: only `product-context` reconciled `.gitignore`, so task/feature-only projects drifted). Both `product-context` (§2b) **and** `session-start` (the once-per-session ensure-link check) now reconcile `<proj-dir>/.claude/` to this posture, so every project — product-workflow or not — converges on it. Never ignore `<proj-dir>/.claude/` wholesale.
+
 ### Override (per-project exceptions)
 
 A project's root `CLAUDE.md` may declare a `## Artifact tracking overrides` section naming exceptions to the MAP defaults. The most common case: a repo that **is** the global learning-assets / workflow-system source repo tracks `<proj-dir>/.claude/learnings/` (and possibly `<proj-dir>/.claude/memory/`) first-class instead of ignoring them. An override flips the default for the named paths only. (How a project's `.gitignore` is reconciled to the MAP + its overrides is a workflow-system implementation concern — see the `product-context` skill — not part of this policy.)
+
+## Project-memory location — harness symlink (GLOBAL)
+
+Project memories written by `session-store-learning` (and by the harness's own auto-memory mechanism) must be **both** git-tracked (durable, coupled to the code they describe, portable) **and** auto-loaded by the harness at session start. Those two properties used to live in two different directories:
+
+- **Repo store** `<proj-dir>/.claude/memory/` — git-tracked, but the harness does NOT auto-load it.
+- **Harness store** `~/.claude/projects/<slug>/memory/` — auto-loaded at session start (this is where `MEMORY.md` is read from), but machine-local, untracked, and keyed on a path-derived slug.
+
+**The convention: one physical store, symlinked.** The repo dir `<proj-dir>/.claude/memory/` is the single real, git-tracked store. The harness path `~/.claude/projects/<slug>/memory` is a **symlink** pointing at it. Result: memories are version-controlled AND auto-loaded from one physical copy, with no drift. Confirmed viable empirically (the harness writer follows the link without clobbering; reads and session-start auto-load both resolve through it).
+
+**Slug rule (the footgun):** `<slug>` is derived from the **physical (symlink-resolved) absolute path** of the project dir — `realpath(proj-dir)` (`pwd -P`) with every `/` and `.` replaced by `-`. NOT the raw `$PWD`. On macOS `/tmp` → `/private/tmp`, so a project at `/tmp/foo` has slug `-private-tmp-foo`. Any code that computes the slug MUST resolve the realpath first.
+
+**Tooling + wiring:** the reusable link/migration primitive lives in the workflow-system source repo at `tools/memory-link/` (`ensure-memory-link.sh`, `migrate-memory.sh`, sourced `lib-slug.sh`). The idempotent "ensure the link exists" check is invoked from two hosts so every project converges regardless of workflow: **`product-context`** (product-path projects, alongside its `.gitignore` reconciliation) and **`session-start`** (the once-per-session non-product path — task/feature-only projects never hit `product-context`). `install.sh` is NOT the vehicle — it links THIS source repo's skills into `~/.claude/`, whereas the memory link is per-consuming-project and created at project onset, not machine setup.
+
+**Destination rule (unchanged, now reinforced):** a project-scope Memory is written to `<proj-dir>/.claude/memory/` — which, being symlinked, IS the harness store. Never write a project memory as a raw path under `~/.claude/projects/...`. Under the symlink the repo path and the harness path resolve to the same files, so the historical `type:`-based location split is moot.
 
 ## Long-running commands (GLOBAL)
 

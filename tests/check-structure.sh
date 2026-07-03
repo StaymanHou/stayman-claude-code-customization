@@ -1941,6 +1941,33 @@ grep_check "transitions.md documents design priors as behavior-within-states (no
 
 echo ""
 
+echo "[Phase 14] Project-memory location — harness symlink + .claude/ track-by-default"
+
+# (1) The memory-link primitive exists and is executable.
+check "tools/memory-link/ensure-memory-link.sh exists" "$([ -f tools/memory-link/ensure-memory-link.sh ] && echo pass || echo fail)"
+check "tools/memory-link/migrate-memory.sh exists" "$([ -f tools/memory-link/migrate-memory.sh ] && echo pass || echo fail)"
+check "tools/memory-link/lib-slug.sh exists (shared slug helper)" "$([ -f tools/memory-link/lib-slug.sh ] && echo pass || echo fail)"
+check "ensure-memory-link.sh is executable" "$([ -x tools/memory-link/ensure-memory-link.sh ] && echo pass || echo fail)"
+check "migrate-memory.sh is executable" "$([ -x tools/memory-link/migrate-memory.sh ] && echo pass || echo fail)"
+check "memory-link permanent test suite exists" "$([ -f tools/memory-link/test/run-tests.sh ] && echo pass || echo fail)"
+
+# (2) The slug is realpath-derived (the footgun guard) — lib-slug uses pwd -P.
+grep_check "lib-slug.sh derives slug from realpath (pwd -P), not raw \$PWD" "tools/memory-link/lib-slug.sh" "pwd -P" 1
+
+# (3) The GLOBAL convention is codified in the snippet.
+grep_check "CLAUDE.snippet.md defines the memory-location symlink convention" "CLAUDE.snippet.md" "^## Project-memory location — harness symlink \(GLOBAL\)" 1
+grep_check "snippet convention names the realpath slug footgun" "CLAUDE.snippet.md" "realpath" 1
+grep_check "snippet codifies .claude/ TRACK-by-default posture" "CLAUDE.snippet.md" "The \`.claude/\` default is TRACK" 1
+
+# (4) Both hosts wire the ensure-link check (product-context + session-start).
+grep_check "product-context invokes ensure-memory-link.sh" "skills/product-context/SKILL.md" "ensure-memory-link\.sh" 1
+grep_check "session-start invokes ensure-memory-link.sh (non-product host)" "skills/session-start/SKILL.md" "ensure-memory-link\.sh" 1
+
+# (5) session-store-learning carries the convergence note (repo dir is symlinked; no raw ~/.claude/projects write).
+grep_check "session-store-learning documents the project-memory symlink convergence" "skills/session-store-learning/SKILL.md" "symlink" 1
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

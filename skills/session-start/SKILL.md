@@ -70,6 +70,16 @@ Briefly check for any active work and mention it if found:
 
 If active work exists, ask whether the user wants to resume or start something new.
 
+**Ensure the project-memory symlink (idempotent, once-per-session).** This is the non-product reachability path for the memory-link convention (`~/.claude/CLAUDE.md` → `## Project-memory location — harness symlink (GLOBAL)`) — task/feature-only projects never hit `product-context`, so `session-start` closes the gap. Run:
+
+```bash
+<workflow-system-repo>/tools/memory-link/ensure-memory-link.sh "$PWD"
+```
+
+`<workflow-system-repo>` is the checkout of this workflow-system source repo (the same repo `install.sh` symlinks skills from — `install.sh` does NOT symlink `tools/`, so reference it at its checkout path). Resolve it once: it is the `git rev-parse --show-toplevel` of the repo containing the real (symlink-resolved) target of `~/.claude/skills/session-start` — i.e. `dirname` up from `readlink -f ~/.claude/skills/session-start/SKILL.md` to the repo root. If that resolution fails (skills not symlink-installed, or the source repo not present on this machine), skip the ensure-link step silently — a machine without the source repo checked out can't create the link anyway, and the next session in a project that DOES reach `product-context` will create it. Do not block session-start on it.
+
+It is idempotent and realpath-safe — a clean no-op ("OK: already linked") when the link already exists, so it adds no friction on normal starts. Only act on non-zero output: exit `3` (`NEEDS-MIGRATION`, a pre-existing non-empty harness store) → mention it and suggest `tools/memory-link/migrate-memory.sh "$PWD"`; do NOT auto-migrate mid-session-start (it mutates memories — surface it, let the user run it). While here, if the project has a `.gitignore`, confirm `.claude/` follows the TRACK-by-default posture (the canonical ignore set is exactly `<proj-dir>/.claude/settings.local.json` and — for non-source-repos — `<proj-dir>/.claude/learnings/`; never a blanket `.claude/`); if a blanket `.claude/` ignore is present, flag it. This is a light check, not a rewrite — surface drift, don't silently edit.
+
 **If all three sources are empty AND `{{args}}` is empty**, also check `workflow/backlog.md` and surface open items as candidate work *before* asking the question in step 2. This turns the curated backlog into a useful starting menu.
 
 **Backlog surfacing rules:**

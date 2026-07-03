@@ -134,7 +134,19 @@ workflow/.session.md
 .claude/learnings/
 ```
 
-**`install.sh` does NOT do this** — it is machine-setup with no notion of "current project." This step is the project-scoped reconciliation. Projects that skip `product-context` maintain `.gitignore` by hand (or invoke `product-context` manually to reconcile).
+**`.claude/` is TRACKED by default** — this canonical block is the *complete* set of `.claude/`-related ignores; everything else under `.claude/` (`memory/` + `MEMORY.md`, `skills/`, `agents/`, `settings.json`) is tracked. Do NOT add a blanket `.claude/` ignore. See `~/.claude/CLAUDE.md` → `## Artifact tracking policy (GLOBAL)` → "The `.claude/` default is TRACK".
+
+**`install.sh` does NOT do this** — it is machine-setup with no notion of "current project." This step is the project-scoped reconciliation. Projects that skip `product-context` maintain `.gitignore` by hand — BUT the once-per-session ensure-link check in `session-start` (§2c below) also reconciles this posture, so non-product projects converge too.
+
+### 2c. Ensure the project-memory symlink exists
+
+Per `~/.claude/CLAUDE.md` → `## Project-memory location — harness symlink (GLOBAL)`, a project's harness memory store (`~/.claude/projects/<slug>/memory`) should be a symlink to the git-tracked repo dir (`<proj-dir>/.claude/memory/`) so memories are both version-controlled and auto-loaded. As the once-per-project scaffolding owner, `product-context` ensures this link at project onset:
+
+```bash
+<workflow-system-repo>/tools/memory-link/ensure-memory-link.sh "<proj-dir>"
+```
+
+The script is idempotent (no-op if already linked) and realpath-safe. If it exits `3` (`NEEDS-MIGRATION` — a pre-existing non-empty harness store), run `tools/memory-link/migrate-memory.sh "<proj-dir>"` first (it merges + backs up + links), then re-run ensure. The `<workflow-system-repo>` is wherever this skill's source repo is checked out (the same repo `install.sh` symlinks from).
 
 ### 3. Finalize Product Docs
 - Product docs stay in place under `docs/product/` — they are durable reference material, not ephemeral WIP, so they are **not** archived.
