@@ -59,29 +59,9 @@
 - **Priority:** medium (autopilot quality gate; cost of miss is silently-shipped misdiagnosis)
 - **Status:** open
 
-## SURFACE-2026-06-18-PRODUCT-SKILLS-MILESTONE-TERMINOLOGY-AND-WBS-SCOPE
-- **Source:** repo-owner learning captured during AlphaFun product-workflow run (turn-based-ai-test-proto-1), 2026-06-18
-- **Order:** P5
-- **Target level:** feature (touches `product-roadmap` + `product-wbs` SKILL.md prose, possibly `transitions.md` and global `~/.claude/CLAUDE.md`)
-- **Type:** enhancement (durable terminology + scoping preferences for the product workflow)
-- **Summary:** Three coherent corrections to the product workflow skills: (1) roadmap should use **"milestone"** not "phase" as its primary decomposition unit, with "phase" kept as a read-time alias and the feature Work Tree's "Phase" schema left intact; (2) `product-roadmap` should emit **flat singly-numbered milestones** with "Group" headings used only for cosmetic clustering (no dotted hierarchical numbering); (3) `product-wbs` should decompose **only the immediate next milestone**, not the whole roadmap — future milestones stay tracked in roadmap.md and are decomposed just-in-time on milestone completion.
-- **Context:** Full draft (with How-to-apply detail per rule and a curation note on the Rule 1 backward-compat boundary) copied verbatim to [`docs/lessons/product-skills-milestone-terminology-and-wbs-scope.md`](../docs/lessons/product-skills-milestone-terminology-and-wbs-scope.md). The only real decision is whether to rename "Phase" in the feature Work Tree too or keep that load-bearing global schema as-is (recommendation in the doc: keep it, switch only the roadmap, alias-on-read).
-- **Suggested action:** Curate the draft into `product-roadmap`/`product-wbs` SKILL.md edits (and decide on the global Work Tree boundary) via a small feature or task.
-- **Priority:** medium
-- **Status:** resolved 2026-06-18 by feature `milestone-terminology-and-wbs-scope` (commit ab5f7a2). All 3 rules applied across 9 product-workflow files + transitions.md tripartite-sync; feature Work Tree "Phase" kept with disambiguation note; +13 structural pins.
-
 ## MAYBE
 
-## SURFACE-2026-07-03-MEMORY-LOCATION-SYMLINK
-- **Surfaced by:** reflect-store-filter-rules feature (Feature 1) finalize (2026-07-03). Decoupled sibling — Feature 2 of the two-feature split.
-- **Type:** feature (environment / workflow-system)
-- **Priority:** medium
-- **Status:** resolved 2026-07-03 by feature `memory-location-symlink` (commit d173bd7). Direction A shipped: repo `<proj-dir>/.claude/memory/` is the git-tracked store, harness `~/.claude/projects/<slug>/memory` symlinks to it (durable + auto-loaded, one copy). Spike PASSED (WP1). Migration ran across 8 `docs/product/`-bearing projects (gospelherald excluded per operator); 2 blanket-ignore projects fixed to track-`.claude/`-by-default. Wired into product-context + session-start; convention codified in CLAUDE.snippet.md; 13 check-structure Phase-14 pins. `type:`-split moot under symlink.
-- **Summary:** Project memories are split across two dirs — the repo `<proj-dir>/.claude/memory/` (git-tracked, coupled to code, but NOT auto-loaded by the harness) and the harness store `~/.claude/projects/<slug>/memory/` (auto-loaded at session start, but machine-local, untracked, slug-brittle). Audit found 81 files in the harness store across 10 projects (provenance-confirmed store-learning outputs via `originSessionId` frontmatter). Neither location alone gives durability + auto-load. Proposed fix: symlink Direction A — repo dir is the real git-tracked store; `~/.claude/projects/<slug>/memory` becomes a symlink → repo dir (version-controlled AND auto-loaded, one physical copy, no drift).
-- **Scope (3 parts):** (a) SPIKE (BLOCKING GATE) — verify the harness tolerates a symlinked memory store (writer follows the link vs clobber/atomic-rename/recreate) before committing to the design; if it fails, fall back to split-by-type (project/reference→repo, user/feedback→harness) or dual-write. (b) One-time system-wide MIGRATION sweep — merge harness-store files into each repo dir, dedupe drift (needs a conflict rule), rebuild MEMORY.md, then replace harness dir with the link; decide active-only vs all (~10 projects). (c) FUTURE-project wiring — add link-creation to `product-context` (owns `.claude/` scaffolding + gitignore reconciliation) PLUS an idempotent "ensure link exists" check reachable from non-product entry points (task/feature-plan projects never hit product-context).
-- **Why NOT install.sh:** wrong scope (install.sh links THIS repo's skills into `~/.claude/`; the memory link is per-consuming-project) and wrong trigger (runs at machine setup, not new-project creation).
-- **Context:** Full design + rejected alternatives + debate in `tmp/temp-wbs-reflect-memory.md` (gitignored temp WBS). Started life as Feature 2 of the reflect/store work; Feature 1 (the filter rules) shipped 2026-07-03 (commit 090f5ba); Feature 2 deferred here rather than built. NB: `~/.claude/projects/*/memory/` is ALSO the harness's own auto-memory home by design — the fix targets where `session-store-learning` writes project memories, not the harness mechanism itself.
-- **Suggested action:** `/feature-spec` (multi-part, environment-touching, spike-gated). Start with the WP1 spike; do not design the migration or product-context wiring until the spike confirms Direction A is viable.
+_(no open items)_
 
 ---
 
@@ -103,16 +83,6 @@ Buried 2026-06-12:
 - `SURFACE-2026-06-02-BEHAVIORAL-PRESSURE-TESTS-FOR-SKILL-LANGUAGE` — borrow obra/superpowers' behavioral pressure tests for skill rationalization-resistance.
 
 
-## SURFACE-2026-06-23-SETTINGS-FIXTURE-DRIFT-CLAUDESK-HOOK
-- **Source:** feature:build (debug-minimal-harness Phase 1 verify-auto)
-- **Target level:** product:wbs (small task — fixture update or INTENTIONAL_DIFFS entry)
-- **Type:** tech-debt
-- **Summary:** `tests/check-structure.sh` "settings fixture in sync with live" check FAILs because the live `~/.claude/settings.json` carries a `hooks.UserPromptSubmit` entry installed by the **claudesk app** (an external project), which `tests/fixtures/settings.json` doesn't model. Pre-existing drift, unrelated to the feature being built.
-- **Context:** The claudesk app installs `CLAUDESK_HOOK_SOCK=... perl .../claudesk-hook.pl` as a `UserPromptSubmit` hook in the user-global settings. The structural check compares live settings to the fixture and flags any non-INTENTIONAL_DIFFS delta. This is a cross-project pollution of the global settings file, not a regression in this repo.
-- **Suggested action:** Either (a) add the claudesk `UserPromptSubmit` hook to `INTENTIONAL_DIFFS` in `tests/check-structure.sh` so the check tolerates externally-installed hooks, or (b) update `tests/fixtures/settings.json` to model it. Prefer (a) — the fixture shouldn't have to track every other app's hooks.
-- **Priority:** low
-- **Status:** resolved 2026-06-25 by commit 93677f0 — Phase 7 now strips host-specific claudesk hooks from both live and fixture via `strip_host_specific()` before diffing (cleaner than the proposed INTENTIONAL_DIFFS approach: the repo-owned claude-time hook stays fully drift-checked). check-structure 290/0.
-
 ## SURFACE-2026-06-26-SETTINGS-FIXTURE-DRIFT-DISABLECLAUDEAICONNECTORS
 - **Source:** feature:build (design-priors Phase 4 verify-auto)
 - **Target level:** task:plan (small — extend strip_host_specific or add INTENTIONAL_DIFFS)
@@ -132,16 +102,6 @@ Buried 2026-06-12:
 - **Priority:** medium
 - **Status:** pending
 
-## SURFACE-2026-06-25-TRACK-CLAUDE-DIR-AND-LEARNINGS-MEMORIES-CONVENTIONS
-- **Source:** operator directive (incident-resolve session, 2026-06-25)
-- **Target level:** feature:spec (touches skill prose across multiple close/learning skills + a global convention doc; sizing TBD at pickup — could be a task if it stays prose-only)
-- **Type:** enhancement (durable convention)
-- **Summary:** Two related conventions to codify: (1) **`.gitignore` policy — default to tracking, ignore only sensitive/PII files.** `.claude/` should be tracked, not gitignored. The general rule: ignore a file *only* if it contains sensitive information (secrets, credentials) or PII — everything else (including `.claude/learnings/`, project-local config, etc.) is tracked by default. (2) **Explicit folder/file conventions for learnings and memories** — define canonical locations + naming for learning artifacts (currently `.claude/learnings/<date>-<slug>.md` for global drafts vs `docs/lessons/<topic>.md` for curated project lessons — the split is real but under-documented) and for the auto-memory store, so the agent stops guessing destinations (cf. the two-step file-copy confusion earlier this session where the destination directory had to be asked).
-- **Context:** Triggered when the operator un-ignored `.claude/` mid-session and stated the policy: "`.claude` should be tracked; we should only ignore files that contain sensitive information or PII." The learnings/memories destination ambiguity surfaced earlier the same session (a learning copy required an AskUserQuestion to disambiguate `.claude/learnings/` vs `docs/learnings/` vs the repo's own `.claude/learnings/`). Candidate landing surfaces: `CLAUDE.snippet.md` (global convention, injected by install.sh) for the gitignore policy + the folder/file map; possibly `session-store-learning` SKILL.md (which already branches global-scope `.claude/learnings/` gitignored vs project-scope — note that branch ASSUMES `.claude/` is gitignored, which now conflicts with the new track-by-default policy and must be reconciled).
-- **Suggested action:** At pickup, reconcile `session-store-learning`'s "global-scope writes to gitignored `.claude/learnings/`" assumption with the new track-`.claude/`-by-default policy (these now conflict — the gitignore-based global/project scope split needs a new discriminator). Then document the gitignore policy + the learnings/memories folder map as a global convention. Likely `/feature-spec`.
-- **Priority:** medium
-- **Status:** resolved 2026-06-25 by feature `artifact-tracking-policy` (commits 2596c87 + 90a1b83). Codified `## Artifact tracking policy (GLOBAL)` (rule+MAP+override) in CLAUDE.snippet.md; reconciled session-store-learning to policy-follower (discriminator = CLAUDE.md override, not gitignore); path-qualification mandate + this-repo override declaration; session-reflect leading scope label. +13 Phase-12 pins, 303/0.
-
 ## SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE
 - **Source:** feature:refactor (artifact-tracking-policy review-quality MAJOR #2)
 - **Target level:** task:plan (test-harness enhancement)
@@ -150,13 +110,6 @@ Buried 2026-06-12:
 - **Context:** Reviewer finding on ship commit 2596c87. Fix requires: (a) make `run-tests.sh` honor a per-scenario `claude_md:` fixture key (copy the named fixture instead of the fixed default); (b) add `tests/fixtures/CLAUDE-with-tracking-override.md` declaring `## Artifact tracking overrides`; (c) add scenario `S20-global-override-tracked` asserting the proposal mentions commit/amend (tracked branch). NB: property-test the new fixture-key path per the test-harness-primitives lesson.
 - **Priority:** medium
 - **Status:** pending
-
-## SURFACE-2026-06-30-SETTINGS-FIXTURE-DISABLECLAUDEAICONNECTORS-DRIFT
-- **Surfaced by:** util-backlog-paydown feature, Phase 3 structural sweep (2026-06-30).
-- **Type:** tech-debt
-- **Priority:** low
-- **Status:** pending
-- **Summary:** `tests/check-structure.sh` Phase 7 reports settings-fixture drift: live `~/.claude/settings.json` has `disableClaudeAiConnectors: true` but `tests/fixtures/settings.json` is missing the key. Host-environment artifact (toggled outside this repo), NOT caused by the util-backlog-paydown feature. Fix = add the key to the fixture OR add to `INTENTIONAL_DIFFS` in check-structure.sh. Pre-existing; surfaced (note-and-continue) during this feature's sweep.
 
 ## Code-quality findings — util-backlog-paydown (2026-06-30)
 - **Pointer:** 3 findings from feature-review-quality (ship aa5c831). 1 MAJOR **RESOLVED 2026-06-30** (missing Bury scenario → `UTIL-PAYDOWN-MEH-BURY` added). 2 MINOR still pending (Rule-1 parenthetical grammar `An`→`A`; ordering-rules nesting clarity). Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
