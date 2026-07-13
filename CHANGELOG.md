@@ -12,6 +12,10 @@
 - **Backlog resolved:** SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-ORDERING-NESTING — promoted the "risk outranks impact in ordering" clarification to a top-level note in both the skill and the lesson.
 - **Backlog resolved:** SURFACE-2026-06-23-QUALITY-MINHARNESS-ROUND-THRESHOLD-NOTE — clarified the 3-round (inconclusive-escalation) vs 5-round (optional traceability) threshold distinction in debug-minimal-harness.
 - **Backlog resolved:** SURFACE-2026-06-26-QUALITY-FIXTURE-USES-PHASE-ALIAS — renamed "Phase 1/2/3" to "Milestone 1/2/3" in the design-priors-consult roadmap fixture.
+- **Task closed:** WP2 of the backlog-paydown-2026-07-13 sweep — extended `check-structure.sh`'s `strip_host_specific()` with a path-specific machine-local-key allowlist (fixing the long-standing Phase-7 settings-fixture drift) and tightened the container-down and propose-never-auto-write pins to their actual contract phrases; structural suite now fully green (354/0), with a negative test confirming repo-owned keys stay drift-checked.
+- **Backlog resolved:** SURFACE-2026-06-26-SETTINGS-FIXTURE-DRIFT-DISABLECLAUDEAICONNECTORS — machine-local settings keys (`disableClaudeAiConnectors`, `tui`, `cleanupPeriodDays`, `statusLine.padding`, `env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`) are now stripped path-specifically from both sides before drift detection.
+- **Backlog resolved:** SURFACE-2026-06-19-QUALITY-CONTAINER-DOWN-PIN-OVER-BROAD — tightened the container-down structural pin from an over-broad OR-branch to the distinctive `Start the container(s) yourself` clause anchor.
+- **Backlog resolved:** SURFACE-2026-06-26-QUALITY-PROPOSE-PIN-TOO-LOOSE — the Phase-13 capture-move pin now requires the full "propose … never … auto-write" contract phrase (tolerant of both the hyphenated and comma surface forms) instead of bare "propose".
 
 ## 2026-07-03
 

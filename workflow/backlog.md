@@ -91,7 +91,7 @@ Buried 2026-06-12:
 - **Context:** `strip_host_specific()` (added 2026-06-25, commit 93677f0) strips claudesk hooks before diffing but does not strip top-level machine-local connector/UI keys like `disableClaudeAiConnectors`. As more such keys appear in the live global settings, the fixture-drift check will keep flagging them.
 - **Suggested action:** Extend `strip_host_specific()` to also drop a small allowlist of known machine-local top-level keys (`disableClaudeAiConnectors`, and any future connector/UI toggles) from BOTH sides before diffing — same pattern as the claudesk-hook strip. Keep repo-owned keys fully drift-checked.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP2). Extended `strip_host_specific()` with a `HOST_LOCAL_KEYS` path-allowlist (`disableClaudeAiConnectors`, `tui`, `cleanupPeriodDays`, `statusLine.padding`, `env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`) deleted from both sides before `walk()` — path-specific (not whole-key) so repo-owned siblings under env/statusLine stay drift-checked. Negative-tested: corrupting `env.CLAUDE_TIME_TRACKING` still FAILs. Suite 353/1 → 354/0.
 
 ## SURFACE-2026-06-25-AUDIT-PROMPT-LATITUDE-NEWER-CLIENT-MODEL
 - **Source:** incident:resolve (incident-autopilot-askuserquestion-pauses)

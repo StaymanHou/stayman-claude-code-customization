@@ -175,7 +175,7 @@ grep_check "product-context SKILL.md cites ephemeral-port range with 49152 ancho
 # regression net is presence of both load-bearing clauses. Two pins: the daemon-unreachable
 # hard-blocker (preserved) and the container-down self-start instruction (new).
 grep_check "product-context SKILL.md retains daemon-unreachable hard-blocker clause" "skills/product-context/SKILL.md" "[Dd]aemon ([Ii]s )?unreachable" 1
-grep_check "product-context SKILL.md adds container-down self-start instruction" "skills/product-context/SKILL.md" "containers are down|docker compose up" 1
+grep_check "product-context SKILL.md adds container-down self-start instruction" "skills/product-context/SKILL.md" "[Ss]tart the container\(s\) yourself" 1
 
 # Auto-skip gate shipped to feature-verify-human/SKILL.md §2 (feature:
 # verify-human-auto-skip-when-no-integration-boundary). The gate is prose-only
@@ -1096,10 +1096,38 @@ INTENTIONAL_DIFFS = [
     # the single claude-time hook and must match exactly — it is fully drift-checked.
 ]
 
+# Machine-local settings keys that are toggled OUTSIDE this repo (Claude Code
+# connector/UI preferences set per-machine, not committed here). These paths are
+# stripped from BOTH live and fixture before drift detection so they never flag —
+# while every repo-owned key stays fully drift-checked. Each entry is a key-PATH
+# (tuple of nested keys): we delete the specific leaf, never a whole container, so
+# repo-relevant siblings under env/statusLine (CLAUDE_TIME_TRACKING,
+# CLAUDE_CODE_ENABLE_TELEMETRY, statusLine.command) remain compared.
+HOST_LOCAL_KEYS = [
+    ("disableClaudeAiConnectors",),
+    ("tui",),
+    ("cleanupPeriodDays",),
+    ("statusLine", "padding"),
+    ("env", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"),
+]
+
+def delete_path(d, path):
+    """Delete a nested key-path from d if present; no-op if any segment is absent."""
+    cur = d
+    for k in path[:-1]:
+        if not isinstance(cur, dict) or k not in cur:
+            return
+        cur = cur[k]
+    if isinstance(cur, dict):
+        cur.pop(path[-1], None)
+
 # Host-specific hooks installed by the developer's claudesk wrapper app are not
 # part of this repo and must not participate in drift detection. Drop any hook
 # GROUP whose command mentions "claudesk" from both live and fixture before diffing.
+# Also strip the machine-local connector/UI keys enumerated in HOST_LOCAL_KEYS.
 def strip_host_specific(settings):
+    for path in HOST_LOCAL_KEYS:
+        delete_path(settings, path)
     hooks = settings.get("hooks")
     if not isinstance(hooks, dict):
         return
@@ -1926,7 +1954,10 @@ for s in product-vision product-roadmap product-arch product-wbs feature-spec fe
 done
 # Propose-never-auto-write is the load-bearing over-capture guard — pin it in every capture skill.
 for s in product-vision product-roadmap product-arch product-wbs feature-spec feature-verify-human; do
-  grep_check "$s capture move is propose-never-auto-write" "skills/$s/SKILL.md" "propose" 1
+  # Pin the full contract phrase, not bare "propose". Tolerates both surface forms:
+  # the hyphenated token "propose-never-auto-write" (5 skills) and product-vision's
+  # comma-form "Propose, never auto-write." — both express the same capture contract.
+  grep_check "$s capture move is propose-never-auto-write" "skills/$s/SKILL.md" "[Pp]ropose.{0,6}never.{0,6}auto-write" 1
 done
 # arch-boundary + FACT exclusions ("not a prior") present in every capture skill.
 for s in product-vision product-roadmap product-arch product-wbs feature-spec feature-verify-human; do

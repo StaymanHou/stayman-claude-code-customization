@@ -60,7 +60,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Context:** The pin's value is catching accidental removal of the new container-down branch specifically; the broad alternation weakens that guarantee. Low-stakes because the sibling daemon-unreachable pin still anchors the section's presence.
 - **Suggested action:** Tighten the pin to a more distinctive anchor such as `start the container\(s\) yourself`, tying it to the actual new clause. 1-line edit to the grep_check pattern.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP2). Tightened line-178 pin `"containers are down|docker compose up"` → `"[Ss]tart the container\(s\) yourself"` (matches the actual clause at product-context SKILL.md:73; the suggested lowercase anchor didn't literally exist — clause starts capital S).
 
 # debug-minimal-harness — 2026-06-23
 
@@ -108,7 +108,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Summary:** The Phase-13 `propose` pins in `tests/check-structure.sh` grep the bare lowercased substring `propose` (min_count 1), firing on any occurrence — so they cannot detect a capture block that kept the word but lost the `never-auto-write` qualifier. The adjacent comment calls it "the load-bearing over-capture guard," which the pin under-delivers on.
 - **Suggested action:** Pin `propose-never-auto-write` (the actual contract phrase, present in all 6 capture skills) instead of bare `propose`. 6 one-line pattern edits.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP2). Correction to the suggested action: the phrase is NOT present in all 6 skills as the hyphenated token — `product-vision` uses the comma-form "Propose, never auto-write." So pinned a both-forms-tolerant pattern `[Pp]ropose.{0,6}never.{0,6}auto-write` (single loop pattern, not 6 edits) that requires the full contract phrase while tolerating both surface forms. product-vision prose left unchanged (already correct).
 
 ## SURFACE-2026-06-26-QUALITY-CORPUS-OPEN-QUESTIONS-STALE
 - **Source:** feature:review-quality (design-priors, ship commit 6542e57)
