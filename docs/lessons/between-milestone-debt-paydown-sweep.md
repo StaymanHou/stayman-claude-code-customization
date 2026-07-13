@@ -119,9 +119,11 @@ Score every backlog item on **three axes**, assign **one of five actions**.
 4. **Co-location adjacency** — WPs touching the same files run adjacent (cheaper re-reads, less churn).
 5. **Effort is NOT an ordering key** — it gates inclusion, doesn't sort. (Avoids "do all the trivial
    stuff first, run out of steam before the items that mattered.")
-   - **Tension resolved: risk outranks impact in ordering.** That's why deletions (often low-impact)
-     still sort *first* — they're the lowest-risk thing there is, so the risk key fires before impact.
-     (Operator was indifferent on the exact tiebreak — "as long as we have a rule set, follow it.")
+
+**Cross-cutting note — risk outranks impact in ordering.** This is why deletions (often low-impact) still
+sort *first*: they're the lowest-risk thing there is, so the risk key (rule 2) fires before the impact key
+(rule 3). The precedence is risk → impact, not impact → risk. (Operator was indifferent on the exact
+tiebreak — "as long as we have a rule set, follow it.")
 
 ## The process (end-to-end)
 

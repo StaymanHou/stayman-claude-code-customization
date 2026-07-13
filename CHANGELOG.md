@@ -3,6 +3,15 @@
 ## 2026-07-13
 
 - **Task closed:** WP0 of the backlog-paydown-2026-07-13 sweep — removed 5 already-resolved SURFACE blocks from `workflow/backlog.md` and 1 from `workflow/backlog-quality-findings.md` (plus collapsed a duplicate `disableClaudeAiConnectors` drift SURFACE into its 06-26 twin), leaving only genuinely open items in the active backlog.
+- **Task closed:** WP1 of the backlog-paydown-2026-07-13 sweep — resolved 8 docs/skill-prose code-quality findings in one co-located bundle (arch.md util-*/debug-* heading-divergence note + stale-comment deletion, new `docs/lessons/README.md`, design-priors corpus Q1/Q2 marked resolved, a grammar fix, an ordering-note promotion, a debug-minimal-harness threshold clarification, and a fixture Phase→Milestone rename), with the structural suite confirming no pin regressed.
+- **Backlog resolved:** SURFACE-2026-06-13-QUALITY-CATEGORY-HEADING-DRIFT — documented the intentional util-*/debug-* `## Category` vs `## Category Context` divergence in arch.md rather than renaming (which would have erased the category distinction).
+- **Backlog resolved:** SURFACE-2026-06-13-QUALITY-LESSON-FILE-SCHEMA-AMBIGUOUS — wrote `docs/lessons/README.md` declaring the open lesson-file schema.
+- **Backlog resolved:** SURFACE-2026-06-13-QUALITY-ARCH-INLINE-COMMENT-REDUNDANT — deleted the redundant same-day-edit HTML comment from arch.md.
+- **Backlog resolved:** SURFACE-2026-06-26-QUALITY-CORPUS-OPEN-QUESTIONS-STALE — marked design-priors-corpus Q1/Q2 RESOLVED inline.
+- **Backlog resolved:** SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-GRAMMAR-AN-A — fixed the `An`→`A` grammar slip in the util-backlog-paydown Rule-1 parenthetical.
+- **Backlog resolved:** SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-ORDERING-NESTING — promoted the "risk outranks impact in ordering" clarification to a top-level note in both the skill and the lesson.
+- **Backlog resolved:** SURFACE-2026-06-23-QUALITY-MINHARNESS-ROUND-THRESHOLD-NOTE — clarified the 3-round (inconclusive-escalation) vs 5-round (optional traceability) threshold distinction in debug-minimal-harness.
+- **Backlog resolved:** SURFACE-2026-06-26-QUALITY-FIXTURE-USES-PHASE-ALIAS — renamed "Phase 1/2/3" to "Milestone 1/2/3" in the design-priors-consult roadmap fixture.
 
 ## 2026-07-03
 

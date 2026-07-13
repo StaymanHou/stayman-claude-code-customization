@@ -3,8 +3,6 @@ stage: arch
 state: complete
 updated: 2026-06-26
 ---
-<!-- 2026-06-13 second edit (same day): added `### util-* skill category` subsection under Revision 2026-06-13. updated: unchanged (same calendar day). -->
-
 
 # Architecture
 
@@ -279,6 +277,8 @@ A third skill category for standalone utilities that the operator invokes manual
 Current util-* skills: `util-prune-claude-md` (shipped 2026-06-13 — compacts the project-root `CLAUDE.md` against the 40k-char harness threshold by extracting bulky bullets to `docs/lessons/<topic>.md` or `docs/product/arch.md`); `util-backlog-paydown` (shipped 2026-06-30 — between-milestone backlog-paydown sweep: scores the standing backlog on a 3-axis disposition model and emits a priority/risk-ordered `shape: temporary-wbs` to pay down deferred code-quality/debt; fold-back-and-delete on completion; see `docs/lessons/between-milestone-debt-paydown-sweep.md`). The pre-existing Claude-Code-builtin utilities `init`, `review`, `security-review`, `update-config`, `simplify`, `loop`, `keybindings-help`, `statusline-setup`, `claude-api`, `fewer-permission-prompts` are retroactively considered part of the util-* concept but are NOT renamed (they ship with the Claude Code harness, not from this repo's `skills/` directory). File-based util-* skills authored in this repo use the `util-` prefix; harness-builtin utilities keep their original names.
 
 The category convention is forward-looking (no structural pin yet — `tests/check-structure.sh` would gain util-* pins only if a structural marker becomes load-bearing, mirroring the `debug-*` pin discipline at Phase 3b/3c). Until then, the category is doc-enforced via this section + the `util-` prefix.
+
+**Heading convention (intentional divergence from `debug-*`):** util-* SKILL.md files open their category-statement section with `## Category` — deliberately distinct from `debug-*` skills' `## Category Context` (which is a *pinned* debug-* structural requirement, enforced at `tests/check-structure.sh` Phase 3b). A grep-across-categories audit will therefore see two heading shapes; this is by design, not drift — util-* is a separate category with no pinned heading requirement, so the divergence is intentional and should not be "normalized" away.
 
 ### Per-phase verify loop extended with `verify-self`
 

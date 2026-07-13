@@ -18,7 +18,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Context:** The new util-* subsection in `docs/product/arch.md:224` doesn't formally require either shape; the drift is silent until a maintainer tries to grep across categories. Two acceptable fixes: (a) rename to `## Category Context` to match precedent, or (b) document the intentional difference in arch.md's util-* subsection.
 - **Suggested action:** Pick option (a) — rename to `## Category Context` for grep-symmetry. 1-line edit.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). Resolved via option (b) NOT (a): renaming would erase the intentional util-*/debug-* category distinction (`## Category Context` is a *pinned debug-* requirement*; util-* has no pinned heading). Instead documented the intentional divergence in `docs/product/arch.md` util-* subsection.
 
 ## SURFACE-2026-06-13-QUALITY-LESSON-FILE-SCHEMA-AMBIGUOUS
 - **Source:** feature-review-quality (claude-md-compaction ship a96384a)
@@ -28,7 +28,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Context:** Content shape may justify the variance, but the schema is now ambiguous. Two acceptable fixes: (a) conform new files to the precedent two-section shape, or (b) write a single-line schema statement at `docs/lessons/README.md` declaring "h1 title + topical sections, no YAML frontmatter, no strict schema".
 - **Suggested action:** Pick (b) — write `docs/lessons/README.md` with the open schema statement. Closes the ambiguity with minimal disruption to existing files.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). Wrote `docs/lessons/README.md` with the open-schema statement (h1 title + topical sections, no frontmatter, no strict schema).
 
 ## SURFACE-2026-06-13-QUALITY-ARCH-INLINE-COMMENT-REDUNDANT
 - **Source:** feature-review-quality (claude-md-compaction ship a96384a)
@@ -38,7 +38,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Context:** The audit-trail intent is fine, but the inline comment is redundant signal — any further same-day edit either has to nest or be removed. Weak signal.
 - **Suggested action:** Remove the line. 1-line deletion. Captures the convention going forward: "if you need to mark a same-day re-edit, use the Revision section itself, not file-top HTML comments."
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). Deleted the redundant same-day-edit HTML comment at `docs/product/arch.md:6`.
 
 ## SURFACE-2026-06-13-QUALITY-YAML-PIN-PLACEMENT-NOTE
 - **Source:** feature-review-quality (claude-md-compaction ship a96384a)
@@ -78,7 +78,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Summary:** skills/debug-minimal-harness/SKILL.md Termination note says "5+ rounds" for optional WIP traceability notes while §6/inconclusive keys on "≥3 rounds" — internally consistent with sibling precedent (telemetry uses the same 3-vs-5 split) but a reader may briefly trip on the differing thresholds.
 - **Suggested action:** Optional one-line clarification that the 3-round threshold is for inconclusive-escalation and the 5-round threshold is for optional traceability notes (two different purposes). Matches sibling precedent, so low value.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). Added the two-different-purposes note (3-round = inconclusive-escalation, 5-round = optional traceability) to `skills/debug-minimal-harness/SKILL.md`.
 
 # design-priors — 2026-06-26
 
@@ -116,7 +116,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Summary:** `docs/lessons/design-priors-corpus.md` ships its "Open questions for Stayman" section with Q1/Q2 as open prompts ("My lean: …") even though the curated preamble states Q1/Q2 were resolved by the operator. A future reader sees questions the doc's own header says are closed.
 - **Suggested action:** Mark Q1 (arch-boundary → ARCH) and Q2 (preserve why-gap → yes) RESOLVED inline. Trivial edit.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). Marked Q1/Q2 RESOLVED inline in `docs/lessons/design-priors-corpus.md`.
 
 ## SURFACE-2026-06-26-QUALITY-FIXTURE-USES-PHASE-ALIAS
 - **Source:** feature:review-quality (design-priors, ship commit 6542e57)
@@ -124,7 +124,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Summary:** `tests/fixtures/product/design-priors-consult/roadmap.md` uses "Phase 1/2/3" (the backward-compat read-alias) for the roadmap unit rather than the current "Milestone" terminology. Cosmetic and consistent with the pre-existing `roadmap-done` fixture it was copied from (so not new drift), but new fixtures could model current terminology.
 - **Suggested action:** Optionally rename to "Milestone" in the new fixture; or bundle with a broader fixture-terminology refresh. Lowest priority.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). Renamed "Phase 1/2/3" → "Milestone 1/2/3" in `tests/fixtures/product/design-priors-consult/roadmap.md` (no scenario asserts on those strings — verified).
 
 # util-backlog-paydown — 2026-06-30
 
@@ -133,12 +133,14 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Severity:** MINOR (feature-review-quality, ship aa5c831)
 - **Finding:** `skills/util-backlog-paydown/SKILL.md` Rule-1 parenthetical reads `An "carve out an exception…"` — should be `A "carve out…"`. Cosmetic; sits on the load-bearing Rule-1-no-exception why.
 - **Pickup shape:** one-word edit.
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). `An` → `A` fixed.
 
 ## SURFACE-2026-06-30-QUALITY-UTIL-PAYDOWN-ORDERING-NESTING
 - **Priority:** low
 - **Severity:** MINOR (feature-review-quality, ship aa5c831)
 - **Finding:** `skills/util-backlog-paydown/SKILL.md` ordering-rules list nests the cross-cutting "Risk outranks impact in ordering" clarification under rule 5 ("Effort is NOT an ordering key"). Faithful to the learning doc's structure but a literal reader may be momentarily confused. Consider promoting to a top-level note (would also be worth fixing in `docs/lessons/between-milestone-debt-paydown-sweep.md` for consistency).
 - **Pickup shape:** restructure the ordering list (skill + lesson).
+- **Status:** resolved 2026-07-13 (backlog-paydown WP1). Promoted "risk outranks impact in ordering" to a top-level cross-cutting note (out from under rule 5) in BOTH the skill and the lesson.
 
 # memory-location-symlink — 2026-07-03
 

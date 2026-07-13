@@ -117,7 +117,7 @@ statement: `docs/lessons/between-milestone-debt-paydown-sweep.md`.)
 1. **Rule 1 (cheap + safe → always Sweep) has NO exception.** Even if the code looks doomed/about-to-be-
    replaced — *you can never truly know when code dies* (the ~5% survivor) — and **closing the item de-clutters
    the backlog, which is itself an impact term.** A long backlog has carrying cost; closing an entry has value
-   independent of the fix's value. (An "carve out an exception for imminently-changing code" proposal was
+   independent of the fix's value. (A "carve out an exception for imminently-changing code" proposal was
    explicitly rejected for exactly this reason.)
 2. **Tiebreak: Rule 1 beats the impact calc.** Cheap + safe wins even at low value (de-clutter).
 3. **Severity (MAJOR/MINOR) is an INPUT to impact, not a parallel sort key.** A reviewer's MAJOR usually
@@ -160,8 +160,10 @@ design"; "defer: gated until the new pipeline soaks in prod for a few weeks".)*
 4. **Co-location adjacency** — WPs touching the same files run adjacent (cheaper re-reads, less churn).
 5. **Effort is NOT an ordering key** — it gates inclusion, doesn't sort (avoids "do all the trivial stuff
    first, run out of steam before the items that mattered").
-   - **Risk outranks impact in ordering** — that's why deletions (often low-impact) still sort *first*: they
-     are the lowest-risk thing there is, so the risk key fires before the impact key.
+
+**Cross-cutting note — risk outranks impact in ordering.** This is why deletions (often low-impact) still
+sort *first*: they are the lowest-risk thing there is, so the risk key (rule 2) fires before the impact key
+(rule 3). The precedence is risk → impact, not impact → risk.
 
 ## Procedure
 

@@ -87,7 +87,7 @@ Assume `design-priors.md` already contains:
 
 ## Open questions for Stayman (annotate inline)
 
-- **Q1 (A4/A12 boundary):** Tradeoff-with-why that's *architectural* — design-priors.md or arch.md? Where's the line? (My lean: product-values → priors; stack-mechanics → arch.)
-- **Q2 (schema):** Preserve the *gap* between inferred-why and your-corrected-why as two fields, or collapse to the final why? (My lean: preserve — it's the signal of "what CC couldn't infer.")
+- **Q1 (A4/A12 boundary):** Tradeoff-with-why that's *architectural* — design-priors.md or arch.md? Where's the line? (My lean: product-values → priors; stack-mechanics → arch.) — **RESOLVED:** the arch-boundary exclusion — technical/stack tradeoffs go to `arch.md`, product-design tradeoffs to `design-priors.md`. Shipped as the capture-contract "arch-boundary exclusion."
+- **Q2 (schema):** Preserve the *gap* between inferred-why and your-corrected-why as two fields, or collapse to the final why? (My lean: preserve — it's the signal of "what CC couldn't infer.") — **RESOLVED:** preserve the gap as distinct fields — the inferred-vs-corrected-why delta is the learning signal.
 - **Q3 (A14 probe):** Should "reversal with no why" trigger a one-time probe question, or stay silent? (My lean: probe once, gated.)
 - **Q4:** Any verdict above you disagree with? Mark it.
