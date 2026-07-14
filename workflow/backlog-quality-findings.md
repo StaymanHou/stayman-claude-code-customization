@@ -62,15 +62,8 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Priority:** low
 - **Status:** resolved 2026-07-13 (backlog-paydown WP2). Tightened line-178 pin `"containers are down|docker compose up"` → `"[Ss]tart the container\(s\) yourself"` (matches the actual clause at product-context SKILL.md:73; the suggested lowercase anchor didn't literally exist — clause starts capital S).
 
-# debug-minimal-harness — 2026-06-23
+<!-- SURFACE-2026-06-23-QUALITY-MINHARNESS-GATEMET-IDIOM-DIVERGENCE was BURIED 2026-07-13 by the backlog-paydown-2026-07-13 sweep (operator-ruled Bury) → moved to workflow/backlog-deferred-2026-05.md under "# Backlog — Deferred (2026-07)". -->
 
-## SURFACE-2026-06-23-QUALITY-MINHARNESS-GATEMET-IDIOM-DIVERGENCE
-- **Source:** feature:review-quality (debug-minimal-harness, ship commit efba0ca)
-- **Type:** tech-debt (idiom divergence)
-- **Summary:** `DEBUG-MINHARNESS-GATE-MET` in tests/scenarios/debug.yaml uses `transition_id_any: [START, COMPLETE]` while both sibling GATE-MET scenarios (DEBUG-TELEMETRY-GATE-MET, DEBUG-BISECT-GATE-MET) assert a strict single `*-START`. Justified + inline-commented, but a maintainer normalizing the three GATE-MET scenarios might not notice this one is intentionally looser.
-- **Suggested action:** Consider whether the two sibling GATE-MET scenarios should ALSO widen to `transition_id_any` (a capable model runs any of the three techniques to COMPLETE on a gates-met fixture) — would unify the idiom. Or leave as-is; the inline comment is the safeguard.
-- **Priority:** low
-- **Status:** pending
 
 ## SURFACE-2026-06-23-QUALITY-MINHARNESS-ROUND-THRESHOLD-NOTE
 - **Source:** feature:review-quality (debug-minimal-harness, ship commit efba0ca)

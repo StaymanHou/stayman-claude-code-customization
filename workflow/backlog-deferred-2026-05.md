@@ -105,3 +105,15 @@ Items buried 2026-06-12 by user decision.
 - **Suggested action:** Light spec when picked up. Sketch: add `tests/scenarios/pressure/` directory; each scenario is a YAML with a rationalization-shaped fixture + an expected-behavior assertion (must contain escalation language, must not emit transition-to-complete, etc.). Run on sonnet (haiku won't expose the failure mode reliably). Start with 3-5 high-value targets — verify-codify (Test Triage gate under "flaky test" pressure), feature-build (under "this is small just do it" pressure), incident-mitigate (under "ship the fix it's prod" pressure). Don't try to cover all 35 skills.
 - **Original priority:** low-medium — user-flagged as "maybe", not immediate; pickup signal is either a real wild failure tracing to weak prose, or a scoped test-infrastructure cycle.
 - **Status:** open (buried 2026-06-12)
+
+# Backlog — Deferred (2026-07)
+
+<!-- Buried 2026-07-13 by the backlog-paydown-2026-07-13 sweep (operator-ruled Bury; see docs/product/archive or the sweep's Scope table). Low-impact idiom divergence; the inline comment already safeguards it and the finding self-describes "leave-as-is acceptable." -->
+
+## SURFACE-2026-06-23-QUALITY-MINHARNESS-GATEMET-IDIOM-DIVERGENCE
+- **Source:** feature:review-quality (debug-minimal-harness, ship commit efba0ca)
+- **Type:** tech-debt (idiom divergence)
+- **Summary:** `DEBUG-MINHARNESS-GATE-MET` in tests/scenarios/debug.yaml uses `transition_id_any: [START, COMPLETE]` while both sibling GATE-MET scenarios (DEBUG-TELEMETRY-GATE-MET, DEBUG-BISECT-GATE-MET) assert a strict single `*-START`. Justified + inline-commented, but a maintainer normalizing the three GATE-MET scenarios might not notice this one is intentionally looser.
+- **Suggested action:** Consider whether the two sibling GATE-MET scenarios should ALSO widen to `transition_id_any` (a capable model runs any of the three techniques to COMPLETE on a gates-met fixture) — would unify the idiom. Or leave as-is; the inline comment is the safeguard.
+- **Original priority:** low
+- **Status:** open (buried 2026-07-13 — operator ruled Bury in the backlog-paydown-2026-07-13 sweep; the inline comment is the standing safeguard, pickup only if a maintainer normalizes the GATE-MET scenarios)
