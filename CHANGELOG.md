@@ -16,6 +16,9 @@
 - **Backlog resolved:** SURFACE-2026-06-26-SETTINGS-FIXTURE-DRIFT-DISABLECLAUDEAICONNECTORS — machine-local settings keys (`disableClaudeAiConnectors`, `tui`, `cleanupPeriodDays`, `statusLine.padding`, `env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`) are now stripped path-specifically from both sides before drift detection.
 - **Backlog resolved:** SURFACE-2026-06-19-QUALITY-CONTAINER-DOWN-PIN-OVER-BROAD — tightened the container-down structural pin from an over-broad OR-branch to the distinctive `Start the container(s) yourself` clause anchor.
 - **Backlog resolved:** SURFACE-2026-06-26-QUALITY-PROPOSE-PIN-TOO-LOOSE — the Phase-13 capture-move pin now requires the full "propose … never … auto-write" contract phrase (tolerant of both the hyphenated and comma surface forms) instead of bare "propose".
+- **Task closed:** WP3 of the backlog-paydown-2026-07-13 sweep — added a `[Phase 3a] Frontmatter YAML parseability` check to `check-structure.sh` that parses every SKILL.md/AGENTS.md frontmatter, which on its first run caught and drove the fix of a live latent bug (an unquoted inner-colon `argument-hint` in `feature-build/SKILL.md` that would have silently broken the skill registry); suite now 401/0.
+- **Backlog resolved:** SURFACE-2026-06-13-CHECK-STRUCTURE-MISSING-YAML-PARSE-PIN — the new Phase 3a check validates all 47 skill/agent frontmatter blocks against `yaml.safe_load`, property-tested against both valid and deliberately-broken input.
+- **Backlog resolved:** SURFACE-2026-06-13-QUALITY-YAML-PIN-PLACEMENT-NOTE — the check landed as Phase 3a (between Phase 3 and 3b), not a tail phase, keeping the Phase-11 close-commit block and PASS-count sequence undisturbed.
 
 ## 2026-07-03
 

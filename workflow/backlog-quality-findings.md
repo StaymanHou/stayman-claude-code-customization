@@ -48,7 +48,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Context:** Note for when the operator picks up SURFACE-2026-06-13-CHECK-STRUCTURE-MISSING-YAML-PARSE-PIN — placement matters for the structural-test PASS count sequence and for not visually orphaning the close-commit Phase 11 block.
 - **Suggested action:** Cross-reference this note inside the parent SURFACE's "Suggested action" field, or merge this finding into the parent SURFACE as a placement-detail addendum.
 - **Priority:** low
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP3). Honored — the YAML-parse check landed as `[Phase 3a]` (between Phase 3 and 3b), NOT a tail phase, so the Phase-11 close-commit block and PASS-count sequence stay undisturbed.
 
 # docker-daemon-vs-container-distinction — 2026-06-19
 

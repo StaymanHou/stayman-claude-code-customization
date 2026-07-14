@@ -285,6 +285,40 @@ grep_check "transitions.md P3 condition is milestone-forward (tripartite sync)" 
 
 echo ""
 
+# ── Phase 3a: Frontmatter YAML parseability ────────────────────────────────
+#
+# Every SKILL.md / AGENTS.md opens with a YAML frontmatter block. That block is
+# the harness's contract surface: an invalid value (e.g. an unquoted inner-colon
+# `argument-hint:` string) renders the skill non-invokable, but the failure mode
+# is SILENT until the next session-start reparses the skill registry. Caught by
+# hand on 2026-06-13 when an unquoted argument-hint slipped past the structural
+# sweep (SURFACE-2026-06-13-CHECK-STRUCTURE-MISSING-YAML-PARSE-PIN). Mechanically
+# pin-able: extract the frontmatter (between the first two `---` markers) and
+# assert `yaml.safe_load` accepts it. Placed here as 3a (not a tail phase) so the
+# PASS-count sequence and the Phase-11 close-commit block stay undisturbed.
+
+echo "[Phase 3a] Frontmatter YAML parseability"
+
+if command -v python3 &>/dev/null; then
+  for f in skills/*/SKILL.md agents/*/AGENTS.md; do
+    [ -f "$f" ] || continue
+    # Extract only the block between the FIRST and SECOND `---` (awk c==1),
+    # so body-level `---` horizontal rules are ignored. `|| true` keeps a parse
+    # failure (non-zero python exit) from aborting the script under `set -e`;
+    # the sentinel prefix distinguishes fail from a genuinely-empty (valid) block.
+    fm_err=$( { awk '/^---$/{c++; next} c==1' "$f" | python3 -c "import sys, yaml; yaml.safe_load(sys.stdin.read())" 2>&1 && echo "__YAML_OK__"; } || true )
+    if [[ "$fm_err" == *"__YAML_OK__"* ]]; then
+      check "$f frontmatter is parseable YAML" "pass"
+    else
+      check "$f frontmatter is parseable YAML" "fail" "$(echo "$fm_err" | tr '\n' ' ' | head -c 200)"
+    fi
+  done
+else
+  echo "  [SKIP] python3 not available — frontmatter YAML parse check skipped"
+fi
+
+echo ""
+
 # ── Phase 3b: debug-* skill category invariants ────────────────────────────
 #
 # `debug-*` skills are agent-pulled sidebars (not workflow states). The

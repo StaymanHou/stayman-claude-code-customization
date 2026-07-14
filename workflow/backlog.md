@@ -46,7 +46,7 @@
 - **Context:** Skill frontmatter is the harness's contract surface — an invalid frontmatter renders the skill non-invokable, but the failure mode is silent until the next session start. Mechanically pin-able: iterate `skills/*/SKILL.md` + `agents/*/AGENTS.md`, extract frontmatter (between `---` markers), pipe through `python3 -c "import sys, yaml; yaml.safe_load(sys.stdin.read())"`, fail the structural check on any non-zero exit.
 - **Suggested action:** Add a new Phase to `tests/check-structure.sh` ("[Phase N] Frontmatter YAML parseability") that runs the above check across all SKILL.md and AGENTS.md files. Estimated 10-line addition.
 - **Priority:** medium (silent failure mode + low fix cost)
-- **Status:** open
+- **Status:** resolved 2026-07-13 (backlog-paydown WP3). Added `[Phase 3a] Frontmatter YAML parseability` (placed between Phase 3 and 3b per the folded placement-note) — iterates all 47 SKILL.md/AGENTS.md, awk-extracts frontmatter, `yaml.safe_load`, reports per file. Property-tested against good+bad input (scratchpad, not committed). **On first run it caught a REAL latent bug:** `skills/feature-build/SKILL.md` had exactly this unquoted-inner-colon `argument-hint:` failure — fixed in-place by quoting. Suite 400/1 → 401/0.
 
 ## SURFACE-2026-06-16-ODD-SHAPE-FINDINGS-PROBE-MORE-HEURISTIC
 - **Source:** cross-project learning (claudesk WP2 PTY probe), captured at `.claude/learnings/2026-06-16-odd-shape-findings-deserve-one-more-cycle.md`

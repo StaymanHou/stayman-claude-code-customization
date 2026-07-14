@@ -1,7 +1,7 @@
 ---
 name: feature-build
 description: "Feature workflow: implement the current phase of the feature plan"
-argument-hint: <optional: scoped leaf IDs from verify-human back-loop, e.g. P1.verify-human.1,P1.verify-human.2 — or phase number / focus area>
+argument-hint: "<optional: scoped leaf IDs from verify-human back-loop, e.g. P1.verify-human.1,P1.verify-human.2 — or phase number / focus area>"
 ---
 
 # Feature Build
