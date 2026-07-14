@@ -67,7 +67,7 @@
 - **Context:** Two candidate landing surfaces — (a) **CLAUDE.md memory addition**: add the "odd-shape findings are a probe-more signal" heuristic as a global feedback-style rule the agent reads at session start; (b) **verify-self-runner prompt enhancement**: have the subagent ask itself "is this the shape you'd expect from a system of this class?" before reporting PASS, and surface any hedge as a `severity: COSMETIC` note into the verify-human checklist. The heuristic is judgment-shaped (definition of "odd" is not codifiable), so a hard gate is out — the pickup is choosing between memory-only vs. prompt-augmentation vs. both.
 - **Suggested action:** Read the full learning at `.claude/learnings/2026-06-16-odd-shape-findings-deserve-one-more-cycle.md`. Decide between (a)/(b)/(a+b) at pickup time; implement under `/task-plan` if memory-only, `/feature-plan` if it touches `agents/feature-verify-self-runner/AGENTS.md`.
 - **Priority:** medium (autopilot quality gate; cost of miss is silently-shipped misdiagnosis)
-- **Status:** open
+- **Status:** resolved 2026-07-13 (backlog-paydown WP5, option a memory-only). Wrote `.claude/memory/feedback_odd_shape_findings_probe_more.md` (feedback-type; the "this is the shape because…" self-applicable heuristic + claudesk-WP2 origin + Mode-3/4 rationale) + MEMORY.md pointer. Option (b) the verify-self-runner prompt-augmentation was DEFERRED per operator ruling — the memory records the deferral so it isn't re-proposed; revisit only if memory-only proves insufficient. PII-audit clean.
 
 ## MAYBE
 

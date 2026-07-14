@@ -21,6 +21,8 @@
 - **Backlog resolved:** SURFACE-2026-06-13-QUALITY-YAML-PIN-PLACEMENT-NOTE — the check landed as Phase 3a (between Phase 3 and 3b), not a tail phase, keeping the Phase-11 close-commit block and PASS-count sequence undisturbed.
 - **Task closed:** WP4 of the backlog-paydown-2026-07-13 sweep — renamed the design-priors consult heading in `product-roadmap`/`product-wbs` to `## Step 0: Product context + design-priors consult` (a distinct suffix, since the block does both product-doc-listing and the consult), reserving the pinned `## Step 0: Available product context` string for the six actual entry-point skills, and updated transitions.md to match; suite stays 401/0.
 - **Backlog resolved:** SURFACE-2026-06-26-QUALITY-STEP0-ON-NON-ENTRY-SKILLS — the `## Step 0` heading-convention overload on the two non-entry-point planning skills is resolved by a suffix rename (no Phase-13 pin edit needed — the pins anchor on the `design-priors.md` substring, not the heading).
+- **Task closed:** WP5 of the backlog-paydown-2026-07-13 sweep — captured the "odd-shape findings are a probe-more signal, not a ship signal" heuristic as a `feedback`-type project memory (with the self-applicable "this is the shape because…" test and its claudesk-WP2 origin), recording that the sibling verify-self-runner prompt-augmentation was intentionally deferred so it won't be re-proposed.
+- **Backlog resolved:** SURFACE-2026-06-16-ODD-SHAPE-FINDINGS-PROBE-MORE-HEURISTIC — landed as a memory-only implementation (option a); the verify-self-runner enhancement (option b) is deferred per operator ruling.
 
 ## 2026-07-03
 
