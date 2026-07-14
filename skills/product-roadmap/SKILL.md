@@ -18,7 +18,7 @@ You are in the **product** workflow at the **roadmap** state.
 Also entered via:
 - **P4 (research → roadmap back-loop):** Research invalidates roadmap assumptions — revise the roadmap
 
-## Step 0: Available product context
+## Step 0: Product context + design-priors consult
 
 Run `ls docs/product/` to see which docs exist. Relevant here:
 

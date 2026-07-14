@@ -100,7 +100,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Context:** Phase 13 pins the `design-priors.md` substring in both files, so the consult block won't silently vanish; the gap is narrowly the `## Step 0` heading-convention overload + the transitions.md/snippet mapping mismatch. Two fixes: (a) rename the design-priors consult block in roadmap/wbs to a non-"Step 0" heading (e.g. `## Design-priors consult`), keeping "Step 0" reserved for entry points; or (b) broaden the documented "Step 0" convention in transitions.md + CLAUDE.snippet.md to explicitly include mid-workflow consult points.
 - **Suggested action:** Prefer (a) for minimal convention disruption — rename to a distinct heading; update the Phase-13 pins to match. Small task.
 - **Priority:** medium
-- **Status:** pending
+- **Status:** resolved 2026-07-13 (backlog-paydown WP4, option a). Renamed the heading SUFFIX in product-roadmap + product-wbs → `## Step 0: Product context + design-priors consult` (the block does BOTH doc-listing AND the consult, so a pure `## Design-priors consult` would mislabel it — operator-clarified). Entry-point `## Step 0: Available product context` now unique to the 6 entry-point skills. NB the suggested "update the Phase-13 pins to match" was NOT needed — Phase-13 anchors on the `design-priors.md` substring, not the heading; Phase-3 pins only assert the entry-point string for the 6 entry points (both verified, suite 401/0). Fixed transitions.md:238 phrasing. Separate follow-up logged: SURFACE-2026-07-13-STEP0-PREAMBLE-VS-PROCEDURE-RENUMBER (the awkward Step-0-preamble-vs-procedure numbering).
 
 ## SURFACE-2026-06-26-QUALITY-PROPOSE-PIN-TOO-LOOSE
 - **Source:** feature:review-quality (design-priors, ship commit 6542e57)

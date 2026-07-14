@@ -19,6 +19,8 @@
 - **Task closed:** WP3 of the backlog-paydown-2026-07-13 sweep — added a `[Phase 3a] Frontmatter YAML parseability` check to `check-structure.sh` that parses every SKILL.md/AGENTS.md frontmatter, which on its first run caught and drove the fix of a live latent bug (an unquoted inner-colon `argument-hint` in `feature-build/SKILL.md` that would have silently broken the skill registry); suite now 401/0.
 - **Backlog resolved:** SURFACE-2026-06-13-CHECK-STRUCTURE-MISSING-YAML-PARSE-PIN — the new Phase 3a check validates all 47 skill/agent frontmatter blocks against `yaml.safe_load`, property-tested against both valid and deliberately-broken input.
 - **Backlog resolved:** SURFACE-2026-06-13-QUALITY-YAML-PIN-PLACEMENT-NOTE — the check landed as Phase 3a (between Phase 3 and 3b), not a tail phase, keeping the Phase-11 close-commit block and PASS-count sequence undisturbed.
+- **Task closed:** WP4 of the backlog-paydown-2026-07-13 sweep — renamed the design-priors consult heading in `product-roadmap`/`product-wbs` to `## Step 0: Product context + design-priors consult` (a distinct suffix, since the block does both product-doc-listing and the consult), reserving the pinned `## Step 0: Available product context` string for the six actual entry-point skills, and updated transitions.md to match; suite stays 401/0.
+- **Backlog resolved:** SURFACE-2026-06-26-QUALITY-STEP0-ON-NON-ENTRY-SKILLS — the `## Step 0` heading-convention overload on the two non-entry-point planning skills is resolved by a suffix rename (no Phase-13 pin edit needed — the pins anchor on the `design-priors.md` substring, not the heading).
 
 ## 2026-07-03
 

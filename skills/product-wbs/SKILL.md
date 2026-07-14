@@ -33,7 +33,7 @@ The roadmap decomposes the product into **milestones** (`Milestone 1`, `Mileston
 
 This extends the learning-sequence-ordering discipline below ("resolve riskiest unknowns first, cheaply") with: *and don't decompose what you're not about to build.*
 
-## Step 0: Available product context
+## Step 0: Product context + design-priors consult
 
 Run `ls docs/product/` to see which docs exist. Relevant here:
 
