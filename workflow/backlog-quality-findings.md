@@ -90,7 +90,7 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Context:** Residual signal survives — the model must still emit/withhold the `PRIOR: P` disclosure correctly and strict `not_contains` catches over-firing — so this is a coverage weakness, not a broken test. NOTE: the operator independently raised this exact concern at P2 verify-human ("scenarios are what really matters rather than me eyeballing"); the prompt-leakage limits how much the scenarios deliver on that.
 - **Suggested action:** Strengthen the consult scenarios to present the decision context *neutrally* (state the open product-design question + that a design-priors.md exists, WITHOUT pre-stating whether/how a prior should fire) and let the loaded SKILL.md consult contract drive the outcome. Pairs naturally with the `SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE` harness work. Property-test per docs/lessons/test-harness-primitives.md.
 - **Priority:** medium
-- **Status:** pending
+- **Status:** RESOLVED 2026-07-14 — WP6 of backlog-paydown-2026-07-13 (ship e2494f9). All 4 DP-consult-* scenarios rewritten neutrally; verified 4/4 PASS on haiku (attempts:1) driven by the loaded SKILL.md consult contract. See CHANGELOG.
 
 ## SURFACE-2026-06-26-QUALITY-STEP0-ON-NON-ENTRY-SKILLS
 - **Source:** feature:review-quality (design-priors, ship commit 6542e57)
@@ -155,3 +155,35 @@ _(empty — all queued findings resolved by the sweep-quality-findings-2026-06-1
 - **Severity:** MINOR (feature-review-quality, ship d173bd7)
 - **Finding:** The migration scope rule ("any project with a `docs/product/` dir") is stated in prose only (`tools/memory-link/README.md` + `migrate-memory.sh` header); neither script enforces or checks it — `migrate-memory.sh` runs against any dir it's pointed at. Acceptable given the operator-confirmation gate (P2.2 hard checkpoint), but the prose implies a mechanical guard that doesn't exist.
 - **Pickup shape:** either add an optional `--require-product-dir` guard to `migrate-memory.sh`, or soften the README prose to "scope is operator-enforced at the confirmation gate, not by the script." Prefer the prose fix (the enumeration/confirmation already lives in the workflow, not the tool).
+
+# wp6-per-scenario-claude-md-fixture-and-neutral-consult — 2026-07-14
+
+## SURFACE-2026-07-14-QUALITY-PROPTEST-MIRRORS-RUNNER
+- **Source:** feature-review-quality (WP6 ship e2494f9)
+- **Target level:** workflow:task
+- **Type:** tech-debt
+- **Summary:** `tests/check-structure.sh` [Phase 3f]'s `_resolve_claude_md` is a hand-transcribed COPY of the runner's `claude_md` honor-else-fallback branch, not the runner logic itself. The two can drift independently; the grep_check drift-pins only assert the runner's source line still EXISTS, not that the copy still MATCHES it.
+- **Context:** Shell can't easily source a mid-function fragment, so a mirror is a reasonable tradeoff — but the coupling is weak. A future runner-branch change that preserves the `if`-line text but alters fallback behavior would leave the property-test passing against stale semantics.
+- **Suggested action:** Add a comment in Phase 3f noting the mirror must be updated in lockstep with run-tests.sh's branch. (Verify against the actual code before applying — per the "review-finding suggested-actions are hypotheses" Context Rule.) Cheap + safe.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-14-QUALITY-PROPTEST-LINE-NUMBER-ROT
+- **Source:** feature-review-quality (WP6 ship e2494f9)
+- **Target level:** workflow:task
+- **Type:** tech-debt
+- **Summary:** Phase 3f comments cite `run-tests.sh:176-181` (claude_md) and `:236` (budget) for the mirrored one-liners; the reviewer flagged the claude_md branch as having shifted to ~183-187. Line-number references in comments rot on any edit above them.
+- **Context:** A future reader chasing "the exact one-liners" lands on the wrong lines. NB: the specific line numbers the reviewer cited were read off a diff, not the committed file — VERIFY the actual current line numbers before editing (per the "review-finding suggested-actions are hypotheses" Context Rule; the fix is real regardless, the exact numbers are the hypothesis).
+- **Suggested action:** Replace line-number refs in the Phase 3f comments with a stable string anchor (e.g. "the `fixture_claude_md` honor-else-fallback branch"). Cheap + safe.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-14-QUALITY-PROPTEST-GREP-UNANCHORED
+- **Source:** feature-review-quality (WP6 ship e2494f9)
+- **Target level:** workflow:task
+- **Type:** tech-debt
+- **Summary:** Phase 3f's `_pt_claude` uses `grep -q "$want"` with an unanchored, unescaped pattern. Fine for the current all-caps marker strings (`NAMED-FIXTURE-MARKER`, `DEFAULT-FIXTURE-MARKER`), but a future `want` value containing a regex metacharacter would misfire silently.
+- **Context:** Purely defensive hardening; no current bug.
+- **Suggested action:** Change `grep -q` → `grep -qF` (fixed-string match) in `_pt_claude`. 1-char edit, cheap + safe.
+- **Priority:** low
+- **Status:** pending

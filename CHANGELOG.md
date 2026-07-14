@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-14
+
+- **Feature shipped:** WP6 of the backlog-paydown-2026-07-13 sweep — `tests/run-tests.sh` now honors two per-scenario fixture keys (`fixtures.claude_md` to pick a scenario-specific CLAUDE.md, and `budget` to override `--max-budget-usd`), backed by a new `CLAUDE-with-tracking-override.md` fixture, an `S20-global-override-tracked` scenario, and a `check-structure.sh` [Phase 3f] property-test; the 4 `DP-consult-*` scenarios were also rewritten to present their decision context neutrally so they test the loaded SKILL.md consult contract rather than prompt obedience.
+- **Backlog resolved:** SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE — the runner now parses and honors the per-scenario `claude_md` key (with a `[-f]`-guarded fallback to the default fixture), unlocking per-scenario CLAUDE.md fixtures and the tracked-override behavioral test.
+- **Backlog resolved:** SURFACE-2026-06-26-QUALITY-CONSULT-SCENARIOS-PROMPT-LEAKAGE — the 4 DP-consult scenarios no longer recite the expected answer in their prompt; verified 4/4 PASS on haiku driven by the skill prose, closing the over-infer-guard coverage weakness.
+
 ## 2026-07-13
 
 - **Task closed:** WP0 of the backlog-paydown-2026-07-13 sweep — removed 5 already-resolved SURFACE blocks from `workflow/backlog.md` and 1 from `workflow/backlog-quality-findings.md` (plus collapsed a duplicate `disableClaudeAiConnectors` drift SURFACE into its 06-26 twin), leaving only genuinely open items in the active backlog.
