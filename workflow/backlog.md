@@ -126,3 +126,13 @@ Buried 2026-06-12:
 - **Priority:** low (the 2 remaining MINOR)
 - **Status:** pending
 - **Pickup shape:** the MAJOR is a ~5-min one-scenario add (`UTIL-PAYDOWN-MEH-BURY` over the existing MEH-1 fixture item); the MINORs are one-word/structure edits. Natural candidates for the next `/util-backlog-paydown` dogfood pass or a small `/task-plan`.
+
+## SURFACE-2026-07-14-HARNESS-BUDGET-EXHAUSTION-LAUNDERED-AS-FLAKY
+- **Source:** feature:verify-self (WP6 of backlog-paydown-2026-07-13)
+- **Target level:** product:wbs (test-harness improvement)
+- **Type:** gap
+- **Summary:** `tests/run-tests.sh` silently launders a per-attempt `Error: Exceeded USD budget (0.2)` into a generic FAIL→retry→FLAKY. The operator cannot distinguish "model is nondeterministic" (real FLAKY) from "this scenario is at the budget ceiling" (a cost/config issue). The runner already computes the string `"possibly budget exceeded or error"` (run-tests.sh:245) but only for *totally empty* output, and it is not surfaced in the FLAKY list or the results JSON.
+- **Context:** Discovered while diagnosing why the new `S20-global-override-tracked` scenario read FLAKY on sonnet. Raw-attempt capture showed attempt 1 returned only 32 bytes: `Error: Exceeded USD budget (0.2)`. At `--budget 0.50` the same attempt-1 completed cleanly (3799 bytes, `TRANSITION: S20` + all content assertions). So the FLAKY was a budget collision, not model noise — but nothing in the harness output said so. This is a general observability gap affecting any expensive scenario (heavy skills: session-store-learning full-policy-reasoning, product-* decomposition, etc.) on sonnet.
+- **Suggested action:** (a) Detect the `Error: Exceeded USD budget` sentinel in `result_text` and label it distinctly in the FLAKY/FAIL detail + results JSON (e.g. status `BUDGET_EXCEEDED` or a `budget_exceeded: true` field), so a retry-pass driven by budget is visibly different from a retry-pass driven by nondeterminism. (b) Consider a per-scenario `budget:` key (parsed like the other scenario fields) so an inherently-expensive scenario can declare the headroom it needs without a global `--budget` bump that inflates every cheap scenario's ceiling. (b) is the larger change; (a) is the cheap high-value one.
+- **Priority:** medium
+- **Status:** pending

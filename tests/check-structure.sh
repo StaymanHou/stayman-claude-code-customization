@@ -561,6 +561,79 @@ set -e
 
 echo ""
 
+# ── Phase 3f: per-scenario fixture-key resolution (tests/run-tests.sh) ────
+#
+# Pins the two per-scenario fixture-key paths added by the
+# per-scenario-claude-md-fixture feature (WP6 of backlog-paydown-2026-07-13):
+#   1. fixtures.claude_md — copy the named CLAUDE.md fixture; fall back to the
+#      default fixtures/CLAUDE.md when the key is absent / points at a missing
+#      file. (Latent-bug fix: 179 scenarios already declared the key but the
+#      runner ignored it and always copied the fixed default.)
+#   2. per-scenario budget — pass the scenario's budget as --max-budget-usd;
+#      fall back to the global $MAX_BUDGET when the key is absent. (Root-cause
+#      fix for heavy scenarios hitting the $0.20 ceiling and reading FLAKY.)
+#
+# Per docs/lessons/test-harness-primitives.md, a new harness input SHAPE needs
+# a permanent property-test across the FULL input namespace, not just the happy
+# path. Two guards below: (a) grep_check that the real resolution lines still
+# exist in run-tests.sh (catches removal/refactor drift); (b) an executable
+# property-test replicating the exact one-liners and asserting every input shape.
+
+echo "[Phase 3f] per-scenario fixture-key resolution (tests/run-tests.sh)"
+
+# (a) The actual resolution logic must be present in the runner.
+grep_check "run-tests.sh parses fixtures.claude_md key" "tests/run-tests.sh" 'fixture_claude_md=\$\(parse_scenario_nested .* "claude_md"\)' 1
+grep_check "run-tests.sh honors claude_md with [-f] guard + default fallback" "tests/run-tests.sh" 'if \[ -n "\$fixture_claude_md" \] && \[ -f "\$SCRIPT_DIR/\$fixture_claude_md" \]; then' 1
+grep_check "run-tests.sh parses per-scenario budget key" "tests/run-tests.sh" 'scenario_budget=\$\(parse_scenario_field .* "budget"\)' 1
+grep_check "run-tests.sh passes budget with global fallback" "tests/run-tests.sh" 'max-budget-usd "\$\{scenario_budget:-\$MAX_BUDGET\}"' 1
+
+# (b) Property-test the SEMANTICS across the full input namespace. Replicates
+# the exact one-liners from run-tests.sh:176-181 (claude_md) and :236 (budget).
+# Uses temp files so shape (a)/(b)/(c)/(d) resolution is observable.
+_pt_tmp=$(mktemp -d)
+mkdir -p "$_pt_tmp/named" "$_pt_tmp/default" "$_pt_tmp/dest"
+echo "NAMED-FIXTURE-MARKER" > "$_pt_tmp/named/CLAUDE.md"
+echo "DEFAULT-FIXTURE-MARKER" > "$_pt_tmp/default/CLAUDE.md"
+
+# Mirror of the runner's claude_md branch (SCRIPT_DIR→named dir, FIXTURES_DIR→default dir).
+_resolve_claude_md() {
+  local fixture_claude_md="$1"; local SCRIPT_DIR="$_pt_tmp/named"; local FIXTURES_DIR="$_pt_tmp/default"
+  local tmpdir="$_pt_tmp/dest"; rm -f "$tmpdir/CLAUDE.md"
+  # NB: named fixtures live directly at $SCRIPT_DIR/CLAUDE.md here, so a non-empty
+  # key resolves to that file; empty/missing keys fall through to the default.
+  if [ -n "$fixture_claude_md" ] && [ -f "$SCRIPT_DIR/$fixture_claude_md" ]; then
+    cp "$SCRIPT_DIR/$fixture_claude_md" "$tmpdir/CLAUDE.md" 2>/dev/null || true
+  else
+    cp "$FIXTURES_DIR/CLAUDE.md" "$tmpdir/CLAUDE.md" 2>/dev/null || true
+  fi
+  cat "$tmpdir/CLAUDE.md" 2>/dev/null
+}
+_pt_claude() {
+  local label="$1"; local key="$2"; local want="$3"; local got
+  got=$(_resolve_claude_md "$key")
+  if echo "$got" | grep -q "$want"; then check "claude_md shape: $label" "pass"
+  else check "claude_md shape: $label" "fail" "key='$key' want='$want' got='$got'"; fi
+}
+# 4 input shapes. "CLAUDE.md" is the named fixture's basename (present in named dir).
+_pt_claude "(a) present → named fixture copied"           "CLAUDE.md"        "NAMED-FIXTURE-MARKER"
+_pt_claude "(b) absent → default fixture copied"          ""                 "DEFAULT-FIXTURE-MARKER"
+_pt_claude "(c) malformed (whitespace) → default, no crash" "   "            "DEFAULT-FIXTURE-MARKER"
+_pt_claude "(d) nonexistent file → default fallback"      "DOES-NOT-EXIST.md" "DEFAULT-FIXTURE-MARKER"
+
+# Mirror of the runner's budget fallback (:236).
+_resolve_budget() { local scenario_budget="$1"; local MAX_BUDGET="0.20"; echo "${scenario_budget:-$MAX_BUDGET}"; }
+_pt_budget() {
+  local label="$1"; local key="$2"; local want="$3"; local got
+  got=$(_resolve_budget "$key")
+  if [ "$got" = "$want" ]; then check "budget shape: $label" "pass"
+  else check "budget shape: $label" "fail" "key='$key' want='$want' got='$got'"; fi
+}
+_pt_budget "present → scenario value" "0.50" "0.50"
+_pt_budget "absent → global default"  ""     "0.20"
+rm -rf "$_pt_tmp"
+
+echo ""
+
 # ── Phase 4: install.sh and symlinks ──────────────────────────────────────
 
 echo "[Phase 4] install.sh idempotence and symlink integrity"

@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-07-13
+updated: 2026-07-14
 ---
 
 
@@ -11,9 +11,10 @@ updated: 2026-07-13
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 21s (2026-07-13)
+- **Last:** 22s (2026-07-14)
 - **Use timeout:** 90000
 - **History:**
+  - 22s — 2026-07-14  <!-- backlog-paydown WP6 Phase 1 verify-codify; 411 PASS / 0 FAIL. +10 from WP3's 401 (new [Phase 3f] per-scenario fixture-key resolution: 4 grep_check drift-pins + 6 property-test shapes for the claude_md + budget runner keys). Negligible runtime delta (pure bash, no new subprocess spawns). Use timeout unchanged. -->
   - 21s — 2026-07-13  <!-- backlog-paydown WP3 verify; 401 PASS / 0 FAIL. +47 from WP2's 354 (new [Phase 3a] Frontmatter YAML parseability: one parse-check per SKILL.md/AGENTS.md). Runtime +4s (17→21s) from 47 python3 subprocess spawns — expected, still well under 90s timeout so Use timeout unchanged. The new check caught a REAL bug on first run: feature-build/SKILL.md had an unquoted-inner-colon argument-hint (fixed in-place, quoted). -->
   - 17s — 2026-07-13  <!-- backlog-paydown WP2 verify; 354 PASS / 0 FAIL. WP2 fixed the pre-existing Phase-7 settings drift (HOST_LOCAL_KEYS path-strip) + tightened 2 pins. Suite fully green (was 353/1). -->
   - 17s — 2026-07-13  <!-- backlog-paydown WP1 verify; 353 PASS / 1 FAIL. The 1 FAIL is the SAME pre-existing host settings-fixture drift (now 5 keys: disableClaudeAiConnectors, tui, cleanupPeriodDays=99999, statusLine.padding, env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC — SURFACE-2026-06-26, WP2's target). WP1 was docs/skill-prose only; touched no settings fixture. All Phase 3b debug-* Category-Context + Phase 13 design-priors pins green after the edits. PASS count flat vs Phase-3's 353 (no pins added/removed by WP1). -->

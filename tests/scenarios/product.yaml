@@ -415,12 +415,10 @@ scenarios:
       claude_md: fixtures/CLAUDE.md
       product_dir: fixtures/product/design-priors-consult
     system_prompt_extra: |
-      Decompose the next milestone into WPs. One open product-design question:
-      should the import feature also serve agencies/teams (multi-seat), or stay
-      single-operator? This is on the SAME axis as a recorded design prior
-      (P-FOCUS: solo founders only, resist breadth toward agencies/teams).
-      Consult design-priors.md and apply the consult-weighting rules; disclose the
-      firing prior.
+      Decompose the next milestone into WPs. There is one open product-design
+      question to resolve in the process: should the import feature also serve
+      agencies/teams (multi-seat), or stay single-operator? Resolve it as part of
+      scoping the WPs. (docs/product/design-priors.md is present in this project.)
     expect:
       transition_id_any: [P7, P8, P9, P9b, P11, P12]
       contains_required_any:
@@ -439,12 +437,10 @@ scenarios:
       claude_md: fixtures/CLAUDE.md
       product_dir: fixtures/product/design-priors-consult
     system_prompt_extra: |
-      Decompose the next milestone into WPs. One open product-design question:
-      what TONE should error messages use — terse or friendly? The recorded
-      design priors (P-FOCUS: audience breadth; P-ANTI: spreadsheet anti-persona)
-      are about AUDIENCE, NOT about copy tone. Per the over-infer guard, a prior
-      only fires on the axis it actually governs. Decide error-message tone from
-      common sense; do NOT cite or stretch an audience prior onto a copy-tone decision.
+      Decompose the next milestone into WPs. One open product-design question to
+      resolve while scoping: what TONE should the app's error messages use —
+      terse or friendly-and-chatty? Resolve it as part of the WP work.
+      (docs/product/design-priors.md is present in this project.)
     expect:
       transition_id_any: [P7, P8, P9, P9b, P11, P12]
       # The over-infer guard must hold: NO design-prior may FIRE on a copy-tone decision
@@ -467,9 +463,9 @@ scenarios:
       claude_md: fixtures/CLAUDE.md
       product_dir: fixtures/product/roadmap-done
     system_prompt_extra: |
-      Decompose the next milestone into WPs. There is NO design-priors.md in
-      docs/product/. Make ordinary product-design decisions from common sense.
-      Do not invent or fabricate a design prior that does not exist.
+      Decompose the next milestone into WPs. Resolve any small product-design
+      questions that come up while scoping (e.g. how much configurability the
+      first import screen should expose) as part of the work.
     expect:
       transition_id_any: [P7, P8, P9, P9b, P11, P12]
       not_contains:
@@ -484,12 +480,10 @@ scenarios:
       claude_md: fixtures/CLAUDE.md
       product_dir: fixtures/product/design-priors-consult
     system_prompt_extra: |
-      Revise the roadmap. A teammate-collaboration milestone looks like an obvious
-      next step (most tools add collaboration eventually — strong common-sense default).
-      But recorded prior P-FOCUS says single-operator is the product's identity.
-      This is the 10% contradiction case. Per the consult rules, surface this as a
-      PROPOSAL with disclosure — do NOT silently add the collaboration milestone and
-      do NOT silently drop it. Flag the tension for the operator.
+      Revise the roadmap. Consider adding a teammate-collaboration milestone —
+      most tools add collaboration eventually, so it looks like an obvious next
+      step. Decide whether it belongs on this roadmap.
+      (docs/product/design-priors.md is present in this project.)
     expect:
       transition_id_any: [P3, P4]
       contains_required_any:

@@ -102,6 +102,13 @@ run_test() {
   local extra_prompt; extra_prompt=$(parse_scenario_field "$yaml_file" "$index" "system_prompt_extra")
   local max_retries; max_retries=$(parse_scenario_field "$yaml_file" "$index" "max_retries")
   local scenario_model; scenario_model=$(parse_scenario_field "$yaml_file" "$index" "model")
+  # Per-scenario budget override (USD). Inherently-expensive scenarios (heavy skills
+  # that run a full reasoning path — e.g. session-store-learning's artifact-tracking-
+  # policy classification) can hit the global default $MAX_BUDGET (0.20) on attempt 1
+  # and get laundered into FLAKY on retry. A per-scenario `budget:` lets such a scenario
+  # declare the headroom it needs without inflating every cheap scenario's ceiling.
+  # Absent → falls back to the global $MAX_BUDGET below.
+  local scenario_budget; scenario_budget=$(parse_scenario_field "$yaml_file" "$index" "budget")
 
   # Effective model resolution:
   # - If --model was passed explicitly (MODEL_EXPLICIT=true), the global flag wins (overrides any scenario tag).
@@ -125,6 +132,7 @@ run_test() {
   local fixture_product_dir; fixture_product_dir=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "product_dir")
   local fixture_session; fixture_session=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "session")
   local fixture_backlog; fixture_backlog=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "backlog")
+  local fixture_claude_md; fixture_claude_md=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "claude_md")
 
   # Apply filters
   if [ -n "$FILTER_IDS" ]; then
@@ -168,7 +176,15 @@ ${extra_prompt}"
   # Build temp project dir with fixtures
   local tmpdir; tmpdir=$(mktemp -d)
   mkdir -p "$tmpdir/.claude" "$tmpdir/workflow/wip" "$tmpdir/docs/product"
-  cp "$FIXTURES_DIR/CLAUDE.md" "$tmpdir/CLAUDE.md" 2>/dev/null || true
+  # Honor a per-scenario fixtures.claude_md (path relative to tests/, like the other
+  # fixture keys) when it names an existing file; otherwise fall back to the default
+  # fixtures/CLAUDE.md. Guarded with [ -f ] like the sibling fixture keys so a missing
+  # or malformed value degrades to the default instead of copying nothing.
+  if [ -n "$fixture_claude_md" ] && [ -f "$SCRIPT_DIR/$fixture_claude_md" ]; then
+    cp "$SCRIPT_DIR/$fixture_claude_md" "$tmpdir/CLAUDE.md" 2>/dev/null || true
+  else
+    cp "$FIXTURES_DIR/CLAUDE.md" "$tmpdir/CLAUDE.md" 2>/dev/null || true
+  fi
 
   # Copy settings fixture into tmpdir/.claude/ and pass it via --settings.
   # --settings *merges on top of* the user's ~/.claude/settings.json (it does
@@ -217,7 +233,7 @@ ${extra_prompt}"
     output=$(cd "$tmpdir" && claude --print "/$skill $args" \
       --output-format json \
       --model "$effective_model" \
-      --max-budget-usd "$MAX_BUDGET" \
+      --max-budget-usd "${scenario_budget:-$MAX_BUDGET}" \
       --no-session-persistence \
       --permission-mode dontAsk \
       --disallowed-tools "Edit,Write,NotebookEdit" \

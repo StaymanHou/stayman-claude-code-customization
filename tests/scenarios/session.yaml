@@ -794,6 +794,52 @@ scenarios:
         - "docs/learnings"
     max_retries: 2
 
+  # Exercises the per-scenario `fixtures.claude_md` key (per-scenario-claude-md-fixture
+  # feature, WP6 of backlog-paydown-2026-07-13). The fixture CLAUDE.md declares an
+  # `## Artifact tracking overrides` section that TRACKS <proj-dir>/.claude/learnings/,
+  # so session-store-learning's §5 deterministic discriminator takes the TRACK branch:
+  # a GLOBAL-scope draft is git add-ed + `git commit --amend --no-edit` into HEAD, NOT
+  # left uncommitted. Contrast with S20-global-canonical-path (default fixtures/CLAUDE.md,
+  # no override → uncommitted parking spot). If this scenario used the default fixture
+  # the runner would (pre-WP6) have silently ignored the claude_md key and copied the
+  # default anyway — so it also serves as the behavioral proof that the runner now HONORS
+  # the key. Assert POSITIVELY that the proposal describes committing/amending.
+  # model: sonnet + budget: 0.50 — this is a session-store-learning free-text-PROPOSAL
+  # scenario (same family as S25). Root-caused during WP6 verify-self (2026-07-14): the
+  # observed FLAKY was NOT model noise — attempt 1 returned `Error: Exceeded USD budget
+  # (0.2)`. The scenario asks the skill to classify global scope AND decide git handling,
+  # which drives the full artifact-tracking-policy reasoning path; on sonnet that costs
+  # >$0.20 (the runner's global default). At budget 0.50 attempt 1 completes cleanly
+  # (verified: 3799-byte response, `TRANSITION: S20` + `.claude/learnings/` + amend). The
+  # per-scenario `budget:` key (added same feature) lets this legitimately-heavy scenario
+  # declare its headroom without inflating every cheap scenario's ceiling. Sonnet-tagged
+  # because the destination/scope reasoning is more reliable on sonnet than haiku (recon
+  # discipline, same as S25). Content bar is narrow-but-real: it discriminates the tracked-
+  # override branch (proposes commit/amend, because .claude/learnings/ is TRACKED here)
+  # from the default UNCOMMITTED branch (proposes "leave uncommitted"/"park").
+  - id: S20-global-override-tracked
+    name: "session:store-learning global-scope with tracking-override CLAUDE.md → proposes commit/amend into HEAD"
+    model: sonnet
+    budget: "0.50"
+    skill: session-store-learning
+    args: >
+      I learned a general workflow lesson that applies to ALL my projects, not
+      just this one: when an autopilot run hits a verify-self FAIL whose shape
+      is surprising for that class of system, probe one more cycle before
+      shipping. This is a global, cross-project insight — classify it global
+      scope and propose where to persist it and what git handling applies.
+    fixtures:
+      claude_md: fixtures/CLAUDE-with-tracking-override.md
+    expect:
+      transition_id: S20
+      contains_required:
+        - ".claude/learnings/"
+      contains_required_any:
+        - "git commit --amend"
+        - "amend"
+        - "git add"
+    max_retries: 2
+
   # Reproduction anchor for incident-store-learning-wrong-project-claude-md (2026-06-30, P2).
   # A PROJECT-scope code-contract Context Rule must be proposed for the project-ROOT CLAUDE.md
   # (<proj-dir>/CLAUDE.md — the "## Development Conventions" gotcha home), NOT the project-local
