@@ -52,6 +52,7 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
 ## ./tests/run-tests.sh
 - **Last:** 3097s (2026-06-07)
 - **Use timeout:** 600000
-- **Note:** computed timeout (`ceil(3097 * 1.5 + 60) * 1000 = 4706000 ms`) exceeds Bash tool hard cap of 600000 ms (10 min). Clamped to 600000. **This command WILL auto-background** when invoked via Bash; the agent MUST wait for the `BashOutput` completion notification per Rule 2 — do not re-invoke. Use `--group <name>` or `--filter-model default` partitions to keep individual invocations under the 10-min cap when possible.
+- **Note:** computed timeout (`ceil(3097 * 1.5 + 60) * 1000 = 4706000 ms`) exceeds Bash tool hard cap of 600000 ms (10 min). Clamped to 600000. **This command WILL auto-background** when invoked via Bash; the agent MUST wait for the `BashOutput` completion notification per Rule 2 — do not re-invoke. Use `--group <name>` or `--filter-model default` partitions to keep individual invocations under the 10-min cap when possible. **`--id <N-batch>` estimator:** the 4 untagged (haiku) DP-consult scenarios ran in 134s (~33s/scenario incl. temp-project setup) on 2026-07-13 — consistent with the ~25s/scenario historical figure plus fixture overhead.
 - **History:**
+  - 134s (4 scenarios, --id DP-consult-*) — 2026-07-13  <!-- backlog-paydown final verify; 4/4 PASS. Targeted behavioral check that WP4's ## Step 0 heading rename in product-wbs/product-roadmap didn't disturb the design-priors consult. ~33s/scenario (haiku). -->
   - 3097s — 2026-06-07

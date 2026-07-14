@@ -2,11 +2,18 @@
 shape: temporary-wbs
 cycle: backlog-paydown-2026-07-13
 created: 2026-07-13
-status: ready-to-drive
+status: in-progress (WP0-WP5 done; WP6 deferred to next session)
 parent-backlog: workflow/backlog.md + workflow/backlog-quality-findings.md
 ---
 
 # Backlog-Paydown Sweep — 2026-07-13
+
+> **PROGRESS (2026-07-13):** WP0 ✅ (44f4343) · WP1 ✅ (b89a120) · WP2 ✅ (16f61d6) ·
+> WP3 ✅ (e61e4bb — caught+fixed a live feature-build frontmatter bug) · WP4 ✅ (f7450b5) ·
+> WP5 ✅ (dc45c2d). **WP6 NOT STARTED — deferred to next session per operator.**
+> Final verify: `./tests/check-structure.sh` = **401/0**; targeted behavioral check of the
+> 4 DP-consult scenarios (WP4-edited skills) = **4/4 PASS**. Fold-back-and-delete happens
+> only after WP6 completes — do NOT delete this file yet.
 
 > **THIS IS NOT A ROADMAP MILESTONE.** It reserves no permanent roadmap slot and
 > milestone numbering is untouched. It is a **temporary WBS** produced by
