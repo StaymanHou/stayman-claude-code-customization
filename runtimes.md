@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-07-14
+updated: 2026-07-15
 ---
 
 
@@ -11,9 +11,12 @@ updated: 2026-07-14
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 22s (2026-07-14)
+- **Last:** 22s (2026-07-15)
 - **Use timeout:** 90000
 - **History:**
+  - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 4 verify-auto; 416 PASS / 0 FAIL. Phase 4 was the migration (deleted 5+13 resolved backlog blocks, rewrote 1 partial) — pure backlog markdown-data edits; check-structure.sh does not pin backlog.md content, so count flat at 416, no regression. -->
+  - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 3 verify-auto; 416 PASS / 0 FAIL. +5 from Phase 2's 411 (new Phase 11 delete-on-resolve pins: 4 close skills + 1 snippet invariant). Anchors grep-verified before pinning. Behavioral scenarios (F19/T10/I10/P13-delete-on-resolve) ran separately: 3 PASS + 1 SOFT_PASS (I10 prose-behavior shape), 0 FAIL. Runtime flat. -->
+  - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 2 verify-auto; 411 PASS / 0 FAIL. Phase 2 was prose edits to 5 close/util SKILL.md files (delete-on-resolve rule) — no NEW pins yet (Phase 11 delete-on-resolve pins land in Phase 3), so PASS count flat at 411. Confirmed no regression in Phase 9 (pause-policy), Phase 11 (close-commit), Phase 12 (path-qualification). -->
   - 22s — 2026-07-14  <!-- backlog-paydown WP6 Phase 1 verify-codify; 411 PASS / 0 FAIL. +10 from WP3's 401 (new [Phase 3f] per-scenario fixture-key resolution: 4 grep_check drift-pins + 6 property-test shapes for the claude_md + budget runner keys). Negligible runtime delta (pure bash, no new subprocess spawns). Use timeout unchanged. -->
   - 21s — 2026-07-13  <!-- backlog-paydown WP3 verify; 401 PASS / 0 FAIL. +47 from WP2's 354 (new [Phase 3a] Frontmatter YAML parseability: one parse-check per SKILL.md/AGENTS.md). Runtime +4s (17→21s) from 47 python3 subprocess spawns — expected, still well under 90s timeout so Use timeout unchanged. The new check caught a REAL bug on first run: feature-build/SKILL.md had an unquoted-inner-colon argument-hint (fixed in-place, quoted). -->
   - 17s — 2026-07-13  <!-- backlog-paydown WP2 verify; 354 PASS / 0 FAIL. WP2 fixed the pre-existing Phase-7 settings drift (HOST_LOCAL_KEYS path-strip) + tightened 2 pins. Suite fully green (was 353/1). -->

@@ -1918,12 +1918,17 @@ done
 
 echo ""
 
-# Phase 11: Close-commit discipline pins
+# Phase 11: Close-commit discipline + delete-on-resolve pins
 # Pins the no-auto-push clause across all four terminal-close skills + the amend-to-HEAD
 # clause in session-store-learning. Codifies SKILL.md prose contracts shipped 2026-06-12
 # (close-commit-discipline feature) to prevent silent drift toward auto-push or away
 # from learning-amend folding into HEAD.
-echo "[Phase 11] Close-commit discipline (no auto-push + amend learnings to HEAD)"
+# Also pins the delete-on-resolve (CHANGELOG-then-delete) convention across the four
+# close skills + the canonical snippet rule, shipped 2026-07-15
+# (delete-on-resolve-backlog-convention feature, SURFACE-2026-07-14-RESOLVED-ENTRY-AUDIT-TRAIL-CLUTTER):
+# a close deletes the resolved backlog entry in the same commit as the **Backlog resolved:**
+# CHANGELOG line — prevents drift back toward mark-and-retain (resolved-clutter regeneration).
+echo "[Phase 11] Close-commit discipline (no auto-push + amend) + delete-on-resolve"
 
 grep_check "feature-finalize forbids git push from close commit"   "skills/feature-finalize/SKILL.md"        "Do NOT \`git push\`"          1
 grep_check "task-close forbids git push from close commit"          "skills/task-close/SKILL.md"              "Do NOT \`git push\`"          1
@@ -1931,6 +1936,13 @@ grep_check "incident-resolve forbids git push from resolve commit"  "skills/inci
 grep_check "product-finalize forbids git push from cycle-close commit" "skills/product-finalize/SKILL.md"     "Do NOT \`git push\`"          1
 grep_check "session-store-learning folds learning into HEAD via amend" "skills/session-store-learning/SKILL.md" "git commit --amend --no-edit" 1
 grep_check "session-store-learning stages the learning file before amend" "skills/session-store-learning/SKILL.md" "git add <file-path"        1
+
+# delete-on-resolve (CHANGELOG-then-delete hard invariant) — 4 close skills + canonical snippet rule
+grep_check "feature-finalize deletes resolved backlog entry on close"  "skills/feature-finalize/SKILL.md"  "Delete-on-resolve \(CHANGELOG-then-delete" 1
+grep_check "task-close deletes resolved backlog entry on close"        "skills/task-close/SKILL.md"        "Delete-on-resolve \(CHANGELOG-then-delete" 1
+grep_check "incident-resolve deletes resolved backlog entry on close"  "skills/incident-resolve/SKILL.md"  "Delete-on-resolve \(CHANGELOG-then-delete" 1
+grep_check "product-finalize deletes resolved backlog entry on close"  "skills/product-finalize/SKILL.md"  "Delete-on-resolve \(CHANGELOG-then-delete" 1
+grep_check "CLAUDE.snippet.md defines the delete-on-resolve CHANGELOG-then-delete invariant" "CLAUDE.snippet.md" "CHANGELOG-then-delete hard invariant" 1
 
 echo ""
 

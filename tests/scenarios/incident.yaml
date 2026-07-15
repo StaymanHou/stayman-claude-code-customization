@@ -512,3 +512,29 @@ scenarios:
         - "land locally"
     # Part of the no-push family — keep contains_any in sync across F19/T10/I10/P13-no-auto-push
     max_retries: 2
+
+  - id: I10-delete-on-resolve
+    name: "incident:resolve deletes a resolved backlog entry (not mark) on close"
+    skill: incident-resolve
+    args: "api-500-errors"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/incident-mitigated.md
+      backlog: fixtures/backlog/with-one-resolvable.md
+    # NEUTRAL framing per the prompt-leakage Context Rule — state the situation, not the answer.
+    # Incidents rarely close backlog items; this exercises the rare valid case the §4b delete covers.
+    system_prompt_extra: |
+      Resolving this incident also closed the backlog item
+      SURFACE-2026-05-12-FIXTURE-RESOLVABLE (in workflow/backlog.md). The other item,
+      SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN, was not touched. When describing the
+      §4b operational sequence, state what happens to the resolved item's entry in
+      workflow/backlog.md and how it relates to the **Backlog resolved:** CHANGELOG line.
+    expect:
+      transition_id: I10
+      contains_any:
+        - "delete"
+        - "remove the entry"
+        - "no longer in the backlog"
+        - "same commit"
+    # Part of the delete-on-resolve family — keep contains_any in sync across F19/T10/I10/P13-delete-on-resolve
+    max_retries: 2

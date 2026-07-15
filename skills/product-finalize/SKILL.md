@@ -62,8 +62,8 @@ Update `docs/product/roadmap.md` to reflect completion status. Bump `updated:` i
 Read `workflow/backlog.md`. For every item with `**Status:** pending`:
 
 Evaluate each against one of three outcomes:
-- **Resolved** — the completed WBS work addressed it. Update status to `resolved — closed by <WP or feature>`.
-- **Deferred** — valid but not in scope for this cycle. Update status to `deferred — carry to next cycle`.
+- **Resolved** — the completed WBS work addressed it. Per the **delete-on-resolve** rule (`CLAUDE.snippet.md` → `## CHANGELOG.md convention` → `### Append discipline`), **delete** the item's entry from `workflow/backlog.md` (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding) — do **not** mark it `resolved — closed by …`. The deletion is committed in §6b under the CHANGELOG-then-delete invariant (delete staged in the same commit as the `**Backlog resolved:**` CHANGELOG line). **Fully-resolved** items are deleted; a **partially-resolved** item is **rewritten** to its remaining open work.
+- **Deferred** — valid but not in scope for this cycle. Update status to `deferred — carry to next cycle`. (Deferred is a different lifecycle — NOT delete-on-resolve; the entry stays.)
 - **Escalated** — requires immediate attention before archiving. Surface to user; do not archive until addressed.
 
 Present a summary of all backlog items and their disposition before proceeding.
@@ -105,14 +105,17 @@ Append closure entries to `<proj_root>/CHANGELOG.md` per the **CHANGELOG.md conv
 For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 
 1. **One `**Product cycle complete:**` summary bullet** — composed from the cycle name and one-sentence summary of what the cycle delivered. Per-WP `**Milestone:**` lines are emitted by `feature-finalize` at WP-completion time and are not re-emitted here.
-2. **Zero or more `**Backlog resolved:**` bullets** — one per item that step 4 (Backlog Sweep) marked as resolved by this cycle's work. Each bullet leads with the SURFACE ID.
+2. **Zero or more `**Backlog resolved:**` bullets** — one per item that step 4 (Backlog Sweep) identified as resolved by this cycle's work. Each bullet leads with the SURFACE ID.
+
+**Delete-on-resolve (CHANGELOG-then-delete hard invariant):** for each `**Backlog resolved:**` bullet you emit, also **delete** that item's entry from `workflow/backlog.md` in the **same commit** (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding). No backlog delete without the matching CHANGELOG line landing in that commit. **Partial resolutions** are **rewritten** to remaining open work, not deleted; deferred items (the other §4 outcome) keep their entries. See `CLAUDE.snippet.md` → `### Append discipline`.
 
 **Operational sequence:**
 
-1. Edit `CHANGELOG.md` per the convention above (one `**Product cycle complete:**` bullet + zero-or-more `**Backlog resolved:**` bullets under today's date).
-2. `git add CHANGELOG.md` together with the step-6 archive moves — stage them in one go so the entire cycle-close lands in one commit (or a tightly grouped commit pair if step 6 already commits separately).
-3. Commit. Single commit captures the CHANGELOG append + archive moves + any resynced durable docs.
-4. **Do NOT `git push`.** The cycle-close commit(s) land locally only. Pushing is the operator's call — they may want to review the resynced durable docs, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
+1. Edit `CHANGELOG.md` per the convention above (one `**Product cycle complete:**` bullet + zero-or-more `**Backlog resolved:**` bullets under today's date — write the `**Backlog resolved:**` lines **first**).
+2. **Delete each resolved item's entry** from `workflow/backlog.md` (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding); rewrite any partially-resolved entry to its remaining open work. Delete-on-resolve step — after the CHANGELOG lines, satisfying the hard invariant.
+3. `git add CHANGELOG.md workflow/backlog.md workflow/backlog-quality-findings.md` together with the step-6 archive moves — stage them in one go so the entire cycle-close (CHANGELOG + backlog delete/rewrite + archive moves) lands in one commit (or a tightly grouped commit pair if step 6 already commits separately).
+4. Commit. Single commit captures the CHANGELOG append + backlog delete/rewrite + archive moves + any resynced durable docs.
+5. **Do NOT `git push`.** The cycle-close commit(s) land locally only. Pushing is the operator's call — they may want to review the resynced durable docs, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
 **Idempotency:** if a `**Product cycle complete:**` bullet for this cycle name already exists in CHANGELOG.md, skip the append (re-running product-finalize on an already-closed cycle is a no-op).
 

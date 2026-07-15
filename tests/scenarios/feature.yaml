@@ -1894,3 +1894,29 @@ scenarios:
         - "land locally"
     # Part of the no-push family — keep contains_any in sync across F19/T10/I10/P13-no-auto-push
     max_retries: 2
+
+  - id: F19-delete-on-resolve
+    name: "feature:finalize deletes the resolved backlog entry (not mark) on close"
+    skill: feature-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-no-debt.md
+      backlog: fixtures/backlog/with-one-resolvable.md
+    # NEUTRAL framing per the prompt-leakage Context Rule: state the situation
+    # (a backlog item this feature closed) + ask what happens to it in workflow/backlog.md.
+    # Do NOT recite "delete it" — that would test obedience, not the skill's delete-on-resolve prose.
+    system_prompt_extra: |
+      This feature's work closed the backlog item SURFACE-2026-05-12-FIXTURE-RESOLVABLE
+      (in workflow/backlog.md). The other item, SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN,
+      was not touched. When describing §2 (Full Backlog Review) and §3c, state what happens
+      to the resolved item's entry in workflow/backlog.md and how it relates to the
+      **Backlog resolved:** CHANGELOG line.
+    expect:
+      transition_id: F19
+      contains_any:
+        - "delete"
+        - "remove the entry"
+        - "no longer in the backlog"
+        - "same commit"
+    # Part of the delete-on-resolve family — keep contains_any in sync across F19/T10/I10/P13-delete-on-resolve
+    max_retries: 2

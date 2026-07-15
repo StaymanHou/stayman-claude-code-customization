@@ -112,6 +112,8 @@ statement: `docs/lessons/between-milestone-debt-paydown-sweep.md`.)
 | **Bury** | Move to an **archived** backlog we'll likely never revisit; remove from active | low-impact + medium-effort + low-risk (the "meh" zone). |
 | **Delete** | Remove entirely | no longer relevant, or already resolved-along-the-way. |
 
+> **Note (delete-on-resolve, 2026-07-15):** the "already resolved-along-the-way" Delete trigger should now be **rare** — the four terminal-close skills delete a backlog entry *on resolve* (see `CLAUDE.snippet.md` → `## CHANGELOG.md convention` → `### Append discipline`), so resolved clutter no longer accumulates for a sweep to clean. If you find a pile of stale `Status: resolved` entries here, that's a signal a close skill skipped the delete — Delete them and note the gap; don't treat it as normal backlog state.
+
 ### Rules & their *why* (the why is the transferable part)
 
 1. **Rule 1 (cheap + safe → always Sweep) has NO exception.** Even if the code looks doomed/about-to-be-

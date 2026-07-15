@@ -39,7 +39,7 @@ Read the WIP file's `## Current Node`. If `**Path:**` contains `verify-codify` A
 Scan `workflow/backlog.md` for ALL unresolved items:
 - Items surfaced during this feature's development
 - Items from other workflows that may be affected
-- Update status of items resolved by this feature's work
+- **Identify items this feature's work resolved.** Per the **delete-on-resolve** rule (`CLAUDE.snippet.md` → `## CHANGELOG.md convention` → `### Append discipline`), a resolved item is **deleted** from the backlog — not marked `Status: resolved`. Note which items are resolved here; the actual deletion happens in §3c under the CHANGELOG-then-delete invariant (delete staged in the same commit as the `**Backlog resolved:**` CHANGELOG line). **Fully-resolved** items are deleted; **partially-resolved** items (open work remains) are **rewritten** to the remaining open work, not deleted. Buried/deferred items are a different lifecycle — never deleted here.
 - Present the full backlog summary to the user
 
 ### 3. Archive
@@ -76,19 +76,22 @@ Append closure entries to `<proj_root>/CHANGELOG.md` per the **CHANGELOG.md conv
 For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 
 1. **One `**Feature shipped:**` bullet** — composed from the feature's title and one-sentence problem statement.
-2. **Zero or more `**Backlog resolved:**` bullets** — one per backlog item that step 2 (Full Backlog Review) marked as resolved by this feature's work. Each bullet leads with the SURFACE ID (e.g. `**Backlog resolved:** SURFACE-2026-05-11-FOO — closed by <feature name>`).
+2. **Zero or more `**Backlog resolved:**` bullets** — one per backlog item that step 2 (Full Backlog Review) identified as resolved by this feature's work. Each bullet leads with the SURFACE ID (e.g. `**Backlog resolved:** SURFACE-2026-05-11-FOO — closed by <feature name>`).
 3. **Zero or one `**Milestone:**` bullet** — emit only if this feature completed a WBS work package. Compose from the WP name in `docs/product/wbs.md`.
+
+**Delete-on-resolve (CHANGELOG-then-delete hard invariant):** for each `**Backlog resolved:**` bullet you emit, you must also **delete** that item's entry from `workflow/backlog.md` in the **same commit** (for a code-quality finding, also delete the full body from `workflow/backlog-quality-findings.md` and its pointer stub in `backlog.md`). No backlog delete without the matching CHANGELOG line landing in that commit. **Partial resolutions** are **rewritten** to remaining open work, not deleted (the resolved sub-part still emits a `**Backlog resolved:**` line). See `CLAUDE.snippet.md` → `### Append discipline` for the full rule.
 
 **Operational sequence (must be in this order to avoid the SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV failure mode):**
 
-The §3 "Archive" step lists the `git mv` action but the actual execution order is: write retrospect (§3b) → append to CHANGELOG (§3c) → archive move (§3). Carry out the move as the last on-disk action:
+The §3 "Archive" step lists the `git mv` action but the actual execution order is: write retrospect (§3b) → append to CHANGELOG (§3c) → delete/rewrite resolved backlog entries → archive move (§3). Carry out the move as the last on-disk action:
 
 1. Retrospect already written into the WIP file by §3b.
-2. Edit `<proj_root>/CHANGELOG.md` per the convention above.
-3. `git add CHANGELOG.md <wip-file>` — stage CHANGELOG + the WIP file with retrospect together.
-4. `git mv <wip-file> workflow/archive/<wip-file>` — perform the move now (the §3 action).
-5. Single commit captures retrospect edit + CHANGELOG append + archive move.
-6. **Do NOT `git push`.** The close commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
+2. Edit `<proj_root>/CHANGELOG.md` per the convention above (write the `**Backlog resolved:**` line(s) **first**).
+3. **Delete each resolved item's entry** from `workflow/backlog.md` (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding); rewrite any partially-resolved entry to its remaining open work. This is the delete-on-resolve step — it happens *after* the CHANGELOG line is written, satisfying the hard invariant.
+4. `git add CHANGELOG.md <wip-file> workflow/backlog.md workflow/backlog-quality-findings.md` — stage CHANGELOG + the WIP file with retrospect + the backlog edits together (so the delete and its CHANGELOG record land in the same commit).
+5. `git mv <wip-file> workflow/archive/<wip-file>` — perform the move now (the §3 action).
+6. Single commit captures retrospect edit + CHANGELOG append + backlog delete/rewrite + archive move.
+7. **Do NOT `git push`.** The close commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
 **Idempotency:** if the WIP file is already inside `workflow/archive/`, the append is a no-op — skip it. (Re-running finalize on an already-archived item should not double-write the changelog.)
 

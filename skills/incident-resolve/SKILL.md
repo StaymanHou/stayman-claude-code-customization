@@ -56,15 +56,18 @@ For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 1. **One `**Incident resolved:**` bullet** — composed from the incident's title and one-sentence outcome (e.g. for fast-close: "false alarm — root cause was external service hiccup"; for normal resolve: one sentence summarizing the mitigation).
 2. **Zero or more `**Backlog resolved:**` bullets** — one per backlog item that prior steps closed. (Incidents rarely resolve backlog items, but if step 5 below escalates to I11/I12, those create *new* SURFACE entries — not resolutions, so they do NOT emit `**Backlog resolved:**`.)
 
+**Delete-on-resolve (CHANGELOG-then-delete hard invariant):** in the rare case a resolve path *does* close a backlog item, you must also **delete** that item's entry from `workflow/backlog.md` in the **same commit** as its `**Backlog resolved:**` CHANGELOG line (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding). This applies on **every** resolve path that closes a backlog item, including the fast-close paths (I4 false-alarm, I7 duplicate) — the §4b append already fires on every path, and the delete rides alongside it. **Partial resolutions** are **rewritten** to remaining open work, not deleted. Buried/deferred items are never deleted here. See `CLAUDE.snippet.md` → `### Append discipline`.
+
 **Operational sequence (mirrors feature-finalize to avoid the SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV failure mode):**
 
 §4 above lists the archive move; carry it out as the last on-disk action:
 
-1. Edit `<proj_root>/CHANGELOG.md` per the convention above.
-2. `git add CHANGELOG.md <incident-file>` — stage CHANGELOG + the finalized incident report together.
-3. `git mv <incident-file> workflow/archive/<incident-file>` — perform the §4 move now.
-4. Single commit captures the report's final edits + CHANGELOG append + archive move.
-5. **Do NOT `git push`.** The resolve commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
+1. Edit `<proj_root>/CHANGELOG.md` per the convention above (write any `**Backlog resolved:**` line **first**).
+2. **If a backlog item was resolved:** delete its entry from `workflow/backlog.md` (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding); rewrite any partially-resolved entry to its remaining open work. Delete-on-resolve step — after the CHANGELOG line, satisfying the hard invariant. (No-op if this resolve closed no backlog item.)
+3. `git add CHANGELOG.md <incident-file>` (add `workflow/backlog.md workflow/backlog-quality-findings.md` too if step 2 edited them) — stage CHANGELOG + the finalized incident report + any backlog edits together.
+4. `git mv <incident-file> workflow/archive/<incident-file>` — perform the §4 move now.
+5. Single commit captures the report's final edits + CHANGELOG append + any backlog delete/rewrite + archive move.
+6. **Do NOT `git push`.** The resolve commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
 **Idempotency:** if the incident file is already inside `workflow/archive/`, skip the append (re-running resolve on an already-archived incident is a no-op).
 

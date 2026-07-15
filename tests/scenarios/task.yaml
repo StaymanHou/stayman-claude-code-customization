@@ -392,3 +392,27 @@ scenarios:
         - "land locally"
     # Part of the no-push family — keep contains_any in sync across F19/T10/I10/P13-no-auto-push
     max_retries: 2
+
+  - id: T10-delete-on-resolve
+    name: "task:close deletes the resolved backlog entry (not mark) on close"
+    skill: task-close
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/task-act-complete.md
+      backlog: fixtures/backlog/with-one-resolvable.md
+    # NEUTRAL framing per the prompt-leakage Context Rule — state the situation, not the answer.
+    system_prompt_extra: |
+      This task's work closed the backlog item SURFACE-2026-05-12-FIXTURE-RESOLVABLE
+      (in workflow/backlog.md). The other item, SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN,
+      was not touched. When describing §3 (Full Backlog Review) and the §6 operational
+      sequence, state what happens to the resolved item's entry in workflow/backlog.md
+      and how it relates to the **Backlog resolved:** CHANGELOG line.
+    expect:
+      transition_id_any: [T10, T11]
+      contains_any:
+        - "delete"
+        - "remove the entry"
+        - "no longer in the backlog"
+        - "same commit"
+    # Part of the delete-on-resolve family — keep contains_any in sync across F19/T10/I10/P13-delete-on-resolve
+    max_retries: 2

@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-06-26
+updated: 2026-07-15
 ---
 
 # Architecture
@@ -320,7 +320,7 @@ Enforced by `tests/check-structure.sh` Phase 11 — 6 `grep_check` pins (4 no-pu
 
 Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at its root. The four terminal-close skills auto-append one-line entries on close with fixed entry-kind vocabulary: `**Feature shipped:**`, `**Task closed:**`, `**Incident resolved:**`, `**Backlog resolved:**`, `**Milestone:**`, `**Product cycle complete:**`. ISO-8601 `## YYYY-MM-DD` date headings, reverse-chronological across days, chronological within a day. Append must happen **before** `git mv` of the WIP file so both stage in the same commit (mitigates `SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV` — rename commits dropping unstaged content edits).
 
-Canonical procedure in `CLAUDE.snippet.md` → "CHANGELOG.md convention", injected into `~/.claude/CLAUDE.md` by `install.sh`. Resolved backlog items belong in CHANGELOG, not in a `## Resolved` section inside `workflow/backlog.md`.
+Canonical procedure in `CLAUDE.snippet.md` → "CHANGELOG.md convention", injected into `~/.claude/CLAUDE.md` by `install.sh`. **Delete-on-resolve (added 2026-07-15, `SURFACE-2026-07-14-RESOLVED-ENTRY-AUDIT-TRAIL-CLUTTER`):** CHANGELOG is the *sole* resolved-item record — a close **deletes** the resolved entry from `workflow/backlog.md` (and the coupled full body + stub in `workflow/backlog-quality-findings.md`) in the *same commit* as the `**Backlog resolved:**` append, under a CHANGELOG-then-delete hard invariant. The backlog files carry only open work; they never retain a `Status: resolved` line or a `## Resolved` section. Only fully-resolved items are deleted (partial resolutions are rewritten to remaining open work); buried/deferred items are a different lifecycle and are never deleted by this rule.
 
 ### Human-in-the-loop alerting (no longer wired)
 

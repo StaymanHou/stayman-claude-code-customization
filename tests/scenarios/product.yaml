@@ -395,6 +395,33 @@ scenarios:
     # Part of the no-push family — keep contains_any in sync across F19/T10/I10/P13-no-auto-push
     max_retries: 2
 
+  - id: P13-delete-on-resolve
+    name: "product:product-finalize deletes a swept-resolved backlog entry (not mark) on cycle close"
+    skill: product-finalize
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      product_dir: fixtures/product/wbs-complete
+      backlog: fixtures/backlog/with-one-resolvable.md
+    # NEUTRAL framing per the prompt-leakage Context Rule — state the situation, not the answer.
+    system_prompt_extra: |
+      You are running product-finalize for the "API Documentation Generator" cycle.
+      All WPs in wbs.md are marked [x]. arch.md is accurate. The cycle name is
+      "api-doc-generator-v1". In the §4 Backlog Sweep, the cycle's completed work
+      resolved SURFACE-2026-05-12-FIXTURE-RESOLVABLE (in workflow/backlog.md);
+      SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN is deferred to next cycle. When
+      describing §4 and the §6b operational sequence, state what happens to the
+      resolved item's entry in workflow/backlog.md and how it relates to the
+      **Backlog resolved:** CHANGELOG line.
+    expect:
+      transition_id: P13
+      contains_any:
+        - "delete"
+        - "remove the entry"
+        - "no longer in the backlog"
+        - "same commit"
+    # Part of the delete-on-resolve family — keep contains_any in sync across F19/T10/I10/P13-delete-on-resolve
+    max_retries: 2
+
   # ── Design priors — CONSULT side (product-roadmap / product-wbs) ──────────────
   # These exercise the design-priors consult contract added 2026-06-26. The fixture
   # design-priors-consult/ carries vision + roadmap + a design-priors.md with priors

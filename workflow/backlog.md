@@ -6,6 +6,16 @@
 
 ## TODO
 
+## SURFACE-2026-07-15-RUN-TESTS-ID-FILTER-PARSES-ALL-SCENARIOS-FIRST
+- **Source:** feature:build (delete-on-resolve-backlog-convention Phase 3 P3.3)
+- **Target level:** task:plan (test-harness perf/UX)
+- **Type:** tech-debt
+- **Summary:** `tests/run-tests.sh --id <ids>` parses **every** scenario in all group YAMLs before applying the `--id` filter, so even a `--dry-run` of 4 targeted IDs exceeds 60s (never printed within the timeout). The filter is applied post-parse (run-tests.sh:~155-164), so targeting a tiny subset gets no speedup over a full parse.
+- **Context:** Discovered while confirming the 4 delete-on-resolve scenarios. The real (model-executing) run of 4 scenarios took 105s and worked fine — the slowness is purely the parse-before-filter in `--dry-run` / setup. Low-value to fix (the real run works; dry-run is a convenience), but a short-circuit (skip parsing a scenario's body when its `id` doesn't match `--id`) would make `--dry-run --id` and small `--id` batches near-instant.
+- **Suggested action:** `/task-plan` — move the `--id` match to a cheap pre-parse `id:`-line scan so non-matching scenarios are skipped before full parse. Property-check against `--id` single/multi/none + `--group`.
+- **Priority:** low
+- **Status:** open
+
 ## SURFACE-2026-07-13-STEP0-PREAMBLE-VS-PROCEDURE-RENUMBER
 - **Source:** operator observation during backlog-paydown WP4 (2026-07-13)
 - **Target level:** task:plan (prose-only skill-structure cleanup; sizing TBD — may touch several skills)
@@ -21,53 +31,6 @@
 - **Priority:** low (all)
 - **Status:** pending
 - **Pickup shape:** small task — (1) is a ~2-line dry-run guard; (2) is a one-line README prose softening. Bundle into a `/task-plan` or the next `/util-backlog-paydown` sweep.
-
-## Code-quality findings — design-priors (2026-06-26)
-- **Pointer:** 5 findings auto-backlogged by feature-review-quality against ship commit 6542e57 — 2 MAJOR (consult scenarios encode the answer in `system_prompt_extra` → test obedience > skill-prose-driven behavior, esp. the over-infer guard; `## Step 0` added to non-entry-point product-roadmap/wbs overloads the convention + transitions.md/snippet mapping mismatch) + 3 MINOR (loose `propose` pin, stale corpus Open-questions, fixture uses "Phase" alias). Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** medium (2 MAJOR), low (3 MINOR)
-- **Status:** pending
-- **Pickup shape:** small task — the 2 MAJOR (scenario-neutrality + Step-0-heading) pair with `SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE`; the 3 MINOR are 1-line edits bundlable into a check-structure/doc polish task.
-
-## Code-quality findings — debug-minimal-harness (2026-06-23)
-- **Pointer:** 2 MINOR findings auto-backlogged by feature-review-quality against ship commit efba0ca — (1) GATE-MET scenario uses `transition_id_any` while sibling GATE-MET scenarios assert strict single-START (idiom divergence), (2) SKILL.md "5+ rounds" traceability note vs "≥3 rounds" inconclusive threshold (cosmetic). Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** low (all)
-- **Status:** pending
-- **Pickup shape:** small task — each is a 1-line edit; bundle into a single `/task-plan` when picked up.
-
-## Code-quality findings — docker-daemon-vs-container-distinction (2026-06-19)
-- **Pointer:** 1 MINOR finding auto-backlogged by feature-review-quality against ship commit aef35a2 — the container-down structural pin (`tests/check-structure.sh:176`) uses an over-broad `docker compose up` OR-branch that could match unrelated template prose; tighten to a more distinctive anchor. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** low
-- **Status:** pending
-- **Pickup shape:** small task — 1-line edit to the grep_check pattern; can be bundled with other check-structure.sh pin polish.
-
-## Code-quality findings — claude-md-compaction (2026-06-13)
-- **Pointer:** 4 MINOR findings auto-backlogged by feature-review-quality against ship commit a96384a — heading drift on util-* skill `## Category` vs precedent `## Category Context`, lesson-file schema ambiguity (9 files / 3 heading shapes), redundant inline HTML comment in arch.md, and a placement-detail addendum for the YAML-parse-pin SURFACE. Full content in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Order:** P3
-- **Priority:** low (all)
-- **Status:** pending
-- **Pickup shape:** small task — each finding is a 1-line edit; bundle into a single `/task-plan` invocation when picked up.
-
-## SURFACE-2026-06-13-CHECK-STRUCTURE-MISSING-YAML-PARSE-PIN
-- **Source:** feature:build (claude-md-compaction Phase 4 verify-auto)
-- **Order:** P1
-- **Target level:** product:wbs (small task — likely a single check-structure.sh phase addition)
-- **Type:** gap
-- **Summary:** `tests/check-structure.sh` does not validate that every SKILL.md / AGENTS.md frontmatter is parseable YAML. An invalid `argument-hint:` value (unquoted inner-colon string) in `skills/util-prune-claude-md/SKILL.md` slipped through the structural sweep (PASS 251/0) and would have broken the harness's skill registry at next session load. Caught manually by `python3 yaml.safe_load` during verify-auto, fixed in-line.
-- **Context:** Skill frontmatter is the harness's contract surface — an invalid frontmatter renders the skill non-invokable, but the failure mode is silent until the next session start. Mechanically pin-able: iterate `skills/*/SKILL.md` + `agents/*/AGENTS.md`, extract frontmatter (between `---` markers), pipe through `python3 -c "import sys, yaml; yaml.safe_load(sys.stdin.read())"`, fail the structural check on any non-zero exit.
-- **Suggested action:** Add a new Phase to `tests/check-structure.sh` ("[Phase N] Frontmatter YAML parseability") that runs the above check across all SKILL.md and AGENTS.md files. Estimated 10-line addition.
-- **Priority:** medium (silent failure mode + low fix cost)
-- **Status:** resolved 2026-07-13 (backlog-paydown WP3). Added `[Phase 3a] Frontmatter YAML parseability` (placed between Phase 3 and 3b per the folded placement-note) — iterates all 47 SKILL.md/AGENTS.md, awk-extracts frontmatter, `yaml.safe_load`, reports per file. Property-tested against good+bad input (scratchpad, not committed). **On first run it caught a REAL latent bug:** `skills/feature-build/SKILL.md` had exactly this unquoted-inner-colon `argument-hint:` failure — fixed in-place by quoting. Suite 400/1 → 401/0.
-
-## SURFACE-2026-06-16-ODD-SHAPE-FINDINGS-PROBE-MORE-HEURISTIC
-- **Source:** cross-project learning (claudesk WP2 PTY probe), captured at `.claude/learnings/2026-06-16-odd-shape-findings-deserve-one-more-cycle.md`
-- **Order:** P4
-- **Target level:** product:wbs (judgment-shaped — either a CLAUDE.md memory addition or a verify-self-runner prompt enhancement; sizing TBD at pickup)
-- **Type:** gap (autopilot quality gate)
-- **Summary:** When a verify-self / review-quality finding has a shape that diverges from the standard idiom for that class of system (e.g., "TUI requires Ctrl+D twice to exit" when `/exit + Enter` is the norm), the divergence is a signal to invest one more curiosity cycle before shipping. In autopilot modes (Mode 3, Mode 4) the objective gates can't catch this — the operator's gut-check fires post-finalize when the ship commit + CHANGELOG entry already exist. Real instance: claudesk WP2 originally accepted "Ctrl+D twice exits" as the observed behavior; operator probed further and discovered the load-bearing root cause was raw-mode CR-vs-LF (`\r` is Enter, not `\n`) — a finding that would have made WP7's `send_slash_command` silently broken.
-- **Context:** Two candidate landing surfaces — (a) **CLAUDE.md memory addition**: add the "odd-shape findings are a probe-more signal" heuristic as a global feedback-style rule the agent reads at session start; (b) **verify-self-runner prompt enhancement**: have the subagent ask itself "is this the shape you'd expect from a system of this class?" before reporting PASS, and surface any hedge as a `severity: COSMETIC` note into the verify-human checklist. The heuristic is judgment-shaped (definition of "odd" is not codifiable), so a hard gate is out — the pickup is choosing between memory-only vs. prompt-augmentation vs. both.
-- **Suggested action:** Read the full learning at `.claude/learnings/2026-06-16-odd-shape-findings-deserve-one-more-cycle.md`. Decide between (a)/(b)/(a+b) at pickup time; implement under `/task-plan` if memory-only, `/feature-plan` if it touches `agents/feature-verify-self-runner/AGENTS.md`.
-- **Priority:** medium (autopilot quality gate; cost of miss is silently-shipped misdiagnosis)
-- **Status:** resolved 2026-07-13 (backlog-paydown WP5, option a memory-only). Wrote `.claude/memory/feedback_odd_shape_findings_probe_more.md` (feedback-type; the "this is the shape because…" self-applicable heuristic + claudesk-WP2 origin + Mode-3/4 rationale) + MEMORY.md pointer. Option (b) the verify-self-runner prompt-augmentation was DEFERRED per operator ruling — the memory records the deferral so it isn't re-proposed; revisit only if memory-only proves insufficient. PII-audit clean.
 
 ## MAYBE
 
@@ -93,16 +56,6 @@ Buried 2026-06-12:
 - `SURFACE-2026-06-02-BEHAVIORAL-PRESSURE-TESTS-FOR-SKILL-LANGUAGE` — borrow obra/superpowers' behavioral pressure tests for skill rationalization-resistance.
 
 
-## SURFACE-2026-06-26-SETTINGS-FIXTURE-DRIFT-DISABLECLAUDEAICONNECTORS
-- **Source:** feature:build (design-priors Phase 4 verify-auto)
-- **Target level:** task:plan (small — extend strip_host_specific or add INTENTIONAL_DIFFS)
-- **Type:** tech-debt
-- **Summary:** `tests/check-structure.sh` Phase 7 "settings fixture in sync with live" FAILs because the live `~/.claude/settings.json` carries a `disableClaudeAiConnectors: true` key (a machine-local Claude Code connector toggle set outside this repo) that `tests/fixtures/settings.json` doesn't model. Same class as the resolved SURFACE-2026-06-23-SETTINGS-FIXTURE-DRIFT-CLAUDESK-HOOK — a host-specific live key the `strip_host_specific()` filter doesn't yet strip. Pre-existing/environmental, NOT caused by the design-priors feature (which did not touch the settings fixture).
-- **Context:** `strip_host_specific()` (added 2026-06-25, commit 93677f0) strips claudesk hooks before diffing but does not strip top-level machine-local connector/UI keys like `disableClaudeAiConnectors`. As more such keys appear in the live global settings, the fixture-drift check will keep flagging them.
-- **Suggested action:** Extend `strip_host_specific()` to also drop a small allowlist of known machine-local top-level keys (`disableClaudeAiConnectors`, and any future connector/UI toggles) from BOTH sides before diffing — same pattern as the claudesk-hook strip. Keep repo-owned keys fully drift-checked.
-- **Priority:** low
-- **Status:** resolved 2026-07-13 (backlog-paydown WP2). Extended `strip_host_specific()` with a `HOST_LOCAL_KEYS` path-allowlist (`disableClaudeAiConnectors`, `tui`, `cleanupPeriodDays`, `statusLine.padding`, `env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`) deleted from both sides before `walk()` — path-specific (not whole-key) so repo-owned siblings under env/statusLine stay drift-checked. Negative-tested: corrupting `env.CLAUDE_TIME_TRACKING` still FAILs. Suite 353/1 → 354/0.
-
 ## SURFACE-2026-06-25-AUDIT-PROMPT-LATITUDE-NEWER-CLIENT-MODEL
 - **Source:** incident:resolve (incident-autopilot-askuserquestion-pauses)
 - **Target level:** task:plan
@@ -112,30 +65,15 @@ Buried 2026-06-12:
 - **Priority:** medium
 - **Status:** pending
 
-## SURFACE-2026-06-25-PER-SCENARIO-CLAUDE-MD-FIXTURE
-- **Source:** feature:refactor (artifact-tracking-policy review-quality MAJOR #2)
-- **Target level:** task:plan (test-harness enhancement)
-- **Type:** gap (test coverage)
-- **Summary:** `session-store-learning`'s NEW override→track→`git commit --amend` branch (the one governing repos that track `<proj-dir>/.claude/learnings/`, like THIS repo) has zero behavioral coverage. The existing scenario `S20-global-canonical-path` only exercises the default no-override→leave-uncommitted branch. Per the routing-fork convention, variant routing needs a dedicated fixture per branch — but the test runner (`tests/run-tests.sh:171`) hard-copies `fixtures/CLAUDE.md` for every scenario and does NOT parse the `claude_md:` scenario key, so there's no way today to give one scenario an override-declaring CLAUDE.md. Adding that support is test-harness *new functionality* (out of refactor scope), hence backlogged.
-- **Context:** Reviewer finding on ship commit 2596c87. Fix requires: (a) make `run-tests.sh` honor a per-scenario `claude_md:` fixture key (copy the named fixture instead of the fixed default); (b) add `tests/fixtures/CLAUDE-with-tracking-override.md` declaring `## Artifact tracking overrides`; (c) add scenario `S20-global-override-tracked` asserting the proposal mentions commit/amend (tracked branch). NB: property-test the new fixture-key path per the test-harness-primitives lesson.
-- **Priority:** medium
-- **Status:** RESOLVED 2026-07-14 — WP6 of backlog-paydown-2026-07-13 (ship e2494f9). All three sub-fixes landed (a/b/c) + Phase 3f property-test. See CHANGELOG.
-
-## Code-quality findings — util-backlog-paydown (2026-06-30)
-- **Pointer:** 3 findings from feature-review-quality (ship aa5c831). 1 MAJOR **RESOLVED 2026-06-30** (missing Bury scenario → `UTIL-PAYDOWN-MEH-BURY` added). 2 MINOR still pending (Rule-1 parenthetical grammar `An`→`A`; ordering-rules nesting clarity). Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** low (the 2 remaining MINOR)
-- **Status:** pending
-- **Pickup shape:** the MAJOR is a ~5-min one-scenario add (`UTIL-PAYDOWN-MEH-BURY` over the existing MEH-1 fixture item); the MINORs are one-word/structure edits. Natural candidates for the next `/util-backlog-paydown` dogfood pass or a small `/task-plan`.
-
 ## SURFACE-2026-07-14-HARNESS-BUDGET-EXHAUSTION-LAUNDERED-AS-FLAKY
 - **Source:** feature:verify-self (WP6 of backlog-paydown-2026-07-13)
-- **Target level:** product:wbs (test-harness improvement)
+- **Target level:** task:plan (test-harness observability)
 - **Type:** gap
-- **Summary:** `tests/run-tests.sh` silently launders a per-attempt `Error: Exceeded USD budget (0.2)` into a generic FAIL→retry→FLAKY. The operator cannot distinguish "model is nondeterministic" (real FLAKY) from "this scenario is at the budget ceiling" (a cost/config issue). The runner already computes the string `"possibly budget exceeded or error"` (run-tests.sh:245) but only for *totally empty* output, and it is not surfaced in the FLAKY list or the results JSON.
-- **Context:** Discovered while diagnosing why the new `S20-global-override-tracked` scenario read FLAKY on sonnet. Raw-attempt capture showed attempt 1 returned only 32 bytes: `Error: Exceeded USD budget (0.2)`. At `--budget 0.50` the same attempt-1 completed cleanly (3799 bytes, `TRANSITION: S20` + all content assertions). So the FLAKY was a budget collision, not model noise — but nothing in the harness output said so. This is a general observability gap affecting any expensive scenario (heavy skills: session-store-learning full-policy-reasoning, product-* decomposition, etc.) on sonnet.
-- **Suggested action:** (a) Detect the `Error: Exceeded USD budget` sentinel in `result_text` and label it distinctly in the FLAKY/FAIL detail + results JSON (e.g. status `BUDGET_EXCEEDED` or a `budget_exceeded: true` field), so a retry-pass driven by budget is visibly different from a retry-pass driven by nondeterminism. (b) Consider a per-scenario `budget:` key (parsed like the other scenario fields) so an inherently-expensive scenario can declare the headroom it needs without a global `--budget` bump that inflates every cheap scenario's ceiling. (b) is the larger change; (a) is the cheap high-value one.
+- **Summary:** `tests/run-tests.sh` silently launders a per-attempt `Error: Exceeded USD budget` into a generic FAIL→retry→FLAKY, so the operator cannot distinguish "model is nondeterministic" (real FLAKY) from "scenario hit the budget ceiling" (a cost/config issue). The runner already computes the string `"possibly budget exceeded or error"` (run-tests.sh:~245) but only for *totally empty* output, and never surfaces it in the FLAKY list or results JSON.
+- **Context:** The per-scenario `budget:` key (the original (b) half) shipped in WP6 of backlog-paydown-2026-07-13 (see CHANGELOG). This entry now tracks only the remaining (a) half — the observability fix. Affects any expensive scenario (session-store-learning full-policy-reasoning, product-* decomposition, etc.) on sonnet.
+- **Suggested action:** Detect the `Error: Exceeded USD budget` sentinel in `result_text` and label it distinctly in the FLAKY/FAIL detail + results JSON (e.g. status `BUDGET_EXCEEDED` or a `budget_exceeded: true` field), so a budget-driven retry-pass is visibly different from a nondeterminism-driven one. Cheap, high-value.
 - **Priority:** medium
-- **Status:** PARTIALLY RESOLVED 2026-07-14 — the (b) per-scenario `budget:` key landed in WP6 of backlog-paydown-2026-07-13 (ship e2494f9): expensive scenarios can now declare their own `--max-budget-usd` headroom (S20-global-override-tracked uses `budget: "0.50"`). The (a) half — detecting the `Error: Exceeded USD budget` sentinel and labeling it distinctly from nondeterministic FLAKY in the runner output/results JSON — remains PENDING (the cheap high-value observability fix).
+- **Status:** open (remaining (a) observability half; the (b) per-scenario budget key already shipped — recorded in CHANGELOG)
 
 ## Code-quality findings — wp6-per-scenario-claude-md-fixture-and-neutral-consult (2026-07-14)
 - **Pointer:** 3 MINOR findings from feature-review-quality (WP6 ship e2494f9), all on the check-structure.sh [Phase 3f] property-test: (1) `_resolve_claude_md` mirrors the runner branch rather than exercising it — add lockstep-comment; (2) line-number refs in Phase 3f comments rot — anchor on a stable string; (3) `_pt_claude` `grep -q`→`grep -qF` hardening. Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
