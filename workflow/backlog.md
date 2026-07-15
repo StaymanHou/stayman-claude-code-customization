@@ -6,6 +6,16 @@
 
 ## TODO
 
+## SURFACE-2026-07-15-BACKLOG-POINTER-BODY-COUPLING-UNPINNED
+- **Source:** feature:review-quality (delete-on-resolve-backlog-convention MAJOR)
+- **Target level:** task:plan (test-harness / structural-check enhancement)
+- **Type:** gap
+- **Summary:** The `backlog.md` pointer-stub ↔ `backlog-quality-findings.md` body coupling has NO structural check. The delete-on-resolve feature's migration left 4 orphaned pointer stubs (bodies already swept) that green structural (416/0) + green scenarios + green verify-self all missed — only the review-quality reviewer caught them. A `check-structure.sh` pin asserting "every `## Code-quality findings — <feat>` pointer in backlog.md has a matching `# <feat>` group in backlog-quality-findings.md, and vice-versa" would catch this class mechanically.
+- **Context:** Also relevant: verify-self's nothing-open-lost check is one-directional; the inverse (nothing-resolved-retained) has no automated guard. The pointer↔body pin is the higher-value, more-mechanizable half.
+- **Suggested action:** `/task-plan` — add a structural check pinning bidirectional pointer↔body coupling for the two backlog files. Verify against the current 2 legit pointers (memory-location-symlink, wp6) before pinning.
+- **Priority:** low
+- **Status:** open
+
 ## SURFACE-2026-07-15-RUN-TESTS-ID-FILTER-PARSES-ALL-SCENARIOS-FIRST
 - **Source:** feature:build (delete-on-resolve-backlog-convention Phase 3 P3.3)
 - **Target level:** task:plan (test-harness perf/UX)
