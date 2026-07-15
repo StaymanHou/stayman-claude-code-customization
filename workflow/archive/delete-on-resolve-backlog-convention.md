@@ -1,8 +1,9 @@
 # Feature: Delete-on-resolve backlog convention
 
 **Workflow:** feature
-**State:** ship (complete)
+**State:** COMPLETED
 **Created:** 2026-07-15
+**Completed:** 2026-07-15
 **Entry:** spec (complex feature)
 **drive_mode:** autopilot
 
@@ -148,11 +149,22 @@ The feature is done when:
 
 
 ## Current Node
-- **Path:** Feature > ALL PHASES COMPLETE > ship
-- **Active scope:** all 4 phases [x]; verify-codify done; ready for /feature-ship (F16)
+- **Path:** Feature > review-quality COMPLETE > finalize
+- **Active scope:** shipped (commit 449df1c, amended); review-quality found 1 MAJOR (orphaned pointer stubs) → FIXED in-place per operator, amended into ship commit; ready for /feature-finalize (F39)
 - **Blocked:** none
 - **Unvisited:** none
 - **Open discoveries:** SURFACE-2026-07-15-RUN-TESTS-ID-FILTER-PARSES-ALL-SCENARIOS-FIRST logged to backlog (low)
+- **Review-quality outcome:** 1 MAJOR (migration left 4 orphaned coupled-pointer stubs — a violation of the feature's own two-coupled-files rule) fixed in-place (operator chose fix-now-amend); MINOR dissolved with the fix. No CRITICAL. No new backlog findings from this feature.
+
+## Retrospect
+- **What changed in our understanding:** The migration (Phase 4) turned out to be the riskiest part, not the convention design. Two things surfaced only at migration/review time that the plan didn't foresee: (1) a **partial-resolution** case (HARNESS-BUDGET, where (b) shipped but (a) is open) that needed *rewrite* not delete — caught at spec time and carved out; and (2) **orphaned coupled-pointer stubs** — 4 `Code-quality findings` pointers in backlog.md whose bodies had *already* been swept in the 2026-07-13 sweep, so they weren't in my body-driven deletion set but were still marked `pending`. The review-quality reviewer caught (2); the plan's audit only looked at bodies *present* in the quality file, not stubs whose bodies were already gone.
+- **Assumptions that held:** The core design (CHANGELOG-as-sole-record + CHANGELOG-then-delete hard invariant) was right and needed no revision. The close-commit-discipline precedent (behavior-within-close-states, Phase-11 pins + F/T/I/P scenarios, no transitions.md change) fit exactly. The prompt-leakage-neutral scenario shape worked (3 PASS + 1 acceptable SOFT_PASS on haiku, no re-tag needed).
+- **Assumptions that were wrong:** "The ~13 resolved entries" undercounted — the quality file had 13 resolved blocks (not ~11), and there were 4 *additional* orphaned stubs in backlog.md whose bodies were pre-swept. The real migration touched more than the spec's estimate. Also: a one-directional verify-self check (nothing-open-lost) can't catch nothing-resolved-*retained* — the inverse invariant. The coupling (pointer↔body) is unpinned, so green structural + green scenarios + green verify-self all passed while 4 stale stubs survived.
+- **Approach delta:** Matched the plan's 4-phase shape exactly. One in-place-fix shortcut fired at Phase-1 verify-self (reconciled a stale sibling CLAUDE.md sentence). One review-quality MAJOR fixed-in-place (operator chose fix-now-amend over Mode-3 auto-backlog, because it violated the feature's OWN convention on the ship commit). Feature dogfoods itself at finalize: its origin SURFACE is the first entry ever deleted-on-resolve by the new convention.
+
+## Communicate
+> **Feature complete:** Delete-on-resolve backlog convention has shipped. Terminal-close skills now delete a resolved backlog entry on resolve (gated by a CHANGELOG-then-delete hard invariant) rather than marking it `Status: resolved`, so `workflow/backlog.md` stays open-work-only and CHANGELOG.md is the sole resolved-item record. Verify via the delete-on-resolve pins in `tests/check-structure.sh` [Phase 11] and the `*-delete-on-resolve` scenarios; the ~18-entry migration + this feature's own origin-SURFACE deletion are the first live exercises.
+> Requester = operator — closure notice for self-record.
 
 ## Code-Quality Review — delete-on-resolve-backlog-convention
 

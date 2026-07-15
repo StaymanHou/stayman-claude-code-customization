@@ -81,12 +81,3 @@ Buried 2026-06-12:
 - **Status:** pending
 - **Pickup shape:** all 3 are cheap+safe 1-line edits (#1/#3 apply directly; #2's exact line numbers need verifying against the committed file first per the "review-finding suggested-actions are hypotheses" Context Rule). Natural candidates for the next `/util-backlog-paydown` sweep or a small `/task-plan`.
 
-## SURFACE-2026-07-14-RESOLVED-ENTRY-AUDIT-TRAIL-CLUTTER
-- **Source:** session (post-WP6 backlog audit, operator-flagged)
-- **Target level:** feature (discussion-first, then feature flow)
-- **Type:** process / convention gap
-- **Summary:** Resolved backlog items keep a `Status: resolved …` line in `workflow/backlog.md` + `workflow/backlog-quality-findings.md` rather than being deleted, so a resolved SURFACE still shows up as a `## SURFACE` heading. This means the same resolved-entry clutter WP0 deletes at the START of every backlog-paydown sweep keeps regenerating — ~13 resolved-status entries are sitting in the two files right now, immediately after the 2026-07-13 sweep completed. Tension: the CHANGELOG convention says CHANGELOG.md is the canonical resolved-item paper trail, yet the backlog files ALSO retain a resolved trail, duplicating the record and re-accreting clutter.
-- **Context:** Operator flagged 2026-07-14 immediately after the backlog-paydown-2026-07-13 sweep wrapped. Wants this addressed next session — **discussion FIRST** (understand the intended lifecycle: when should a resolved entry be deleted vs retained? is the backlog's resolved-status line redundant with CHANGELOG? should closing skills delete-on-resolve rather than mark-resolved? does WP0-of-sweep cleanup indicate the wrong layer is doing the deletion?), THEN drive a feature flow. NOT a mechanical cleanup — the operator explicitly wants to rethink the behavior/convention, not just delete the current entries.
-- **Suggested action:** Next session: open with a design discussion on the resolved-entry lifecycle across CHANGELOG vs backlog vs quality-findings; decide the convention (likely: closing skills delete the backlog entry on resolve since CHANGELOG already records it, OR a documented retention+periodic-sweep policy); then `/feature-spec` or `/feature-plan` the change. Touches the CHANGELOG.md convention (CLAUDE.snippet.md), the 4 terminal-close skills, and possibly util-backlog-paydown's WP0 role.
-- **Priority:** medium
-- **Status:** pending — scheduled for next session (discussion-first, then feature flow)

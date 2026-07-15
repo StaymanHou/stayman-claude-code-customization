@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-15
+
+- **Feature shipped:** Delete-on-resolve backlog convention — terminal-close skills (`feature-finalize`, `task-close`, `incident-resolve`, `product-finalize`) now DELETE a resolved backlog entry on resolve (gated by a CHANGELOG-then-delete hard invariant: no delete without the `**Backlog resolved:**` line landing in the same commit) rather than marking it `Status: resolved`, making `workflow/backlog.md` + `workflow/backlog-quality-findings.md` open-work-only and CHANGELOG.md the sole resolved-item record; landed with the convention in `CLAUDE.snippet.md` + `arch.md` + project `CLAUDE.md`, 5 `check-structure.sh` [Phase 11] pins, 4 `*-delete-on-resolve` behavioral scenarios + fixture, and a migration that deleted the ~18 already-resolved entries backlogged before the convention existed.
+- **Backlog resolved:** SURFACE-2026-07-14-RESOLVED-ENTRY-AUDIT-TRAIL-CLUTTER — closed by the delete-on-resolve-backlog-convention feature (the first entry ever deleted-on-resolve by the convention it shipped).
+
 ## 2026-07-14
 
 - **Feature shipped:** WP6 of the backlog-paydown-2026-07-13 sweep — `tests/run-tests.sh` now honors two per-scenario fixture keys (`fixtures.claude_md` to pick a scenario-specific CLAUDE.md, and `budget` to override `--max-budget-usd`), backed by a new `CLAUDE-with-tracking-override.md` fixture, an `S20-global-override-tracked` scenario, and a `check-structure.sh` [Phase 3f] property-test; the 4 `DP-consult-*` scenarios were also rewritten to present their decision context neutrally so they test the loaded SKILL.md consult contract rather than prompt obedience.
