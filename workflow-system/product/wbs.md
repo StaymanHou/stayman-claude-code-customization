@@ -71,17 +71,17 @@ The standard rule details WPs for the **next milestone only**, because later mil
 
 ## Milestone 8 — Standalone `uninstall.sh`
 
-### WP4: `uninstall.sh` — symmetric, defensive reversal of `install.sh`
+### WP4: `uninstall.sh` — symmetric, defensive reversal of `install.sh` ✅ SHIPPED 2026-07-21 (commit 74cbb7c)
 **Description:** Per AD-2, a standalone bash `uninstall.sh` (zero Claudesk dependency) reversing each of install.sh's setup actions, reusing the same `SOURCE_DIR`/`TARGET_DIR="$HOME/.claude"` derivation and idempotency/safety contract. Defensive invariants: only `rm` a symlink when it exists AND its resolved target points *into this repo* (mirror install's "exists but not a symlink → skip" guard); excise only the marker-delimited CLAUDE.md block via the same `awk` block-delete install uses (back up first; never delete `~/.claude/CLAUDE.md` wholesale); remove the per-project memory *symlink* only (never the real store it points at — reuse `tools/memory-link/lib-slug.sh` for realpath-safe slug); only *print* the settings.json perms reminder (install only prints them, so uninstall symmetrically only prints).
 **Milestone:** 8
 **Dependencies:** sequence after M7 (WP1–WP3-M7) so uninstall is written against the *settled* layout — if the M7 move changes any path install.sh references (or the migrate tool adds anything to reverse), uninstall reverses the final shape, not the pre-move one
 **Size:** M
 **Tasks:**
-- [ ] 4.1 Reverse the 4 symlink kinds (skills, agents, hooks, claude-time hook.pl + CLI bin) with the target-points-into-this-repo guard
-- [ ] 4.2 Excise the marker-delimited `<!-- BEGIN/END claude-workflow-system -->` block from `~/.claude/CLAUDE.md` (backup first; leave the rest of the file intact; handle "file has only the block" vs "block among other content")
-- [ ] 4.3 Remove the per-project memory symlink safely (symlink-only, realpath-safe slug, never touch `<proj>/.claude/memory`)
-- [ ] 4.4 Print (do not auto-edit) the settings.json perms the user may want to remove
-- [ ] 4.5 Verify: `install → uninstall → re-install` round-trips clean and idempotent (the AD-2 verification target); capture canonical install/uninstall command copy for M12
+- [x] 4.1 Reverse the 4 symlink kinds (skills, agents, hooks, claude-time hook.pl + CLI bin) with the target-points-into-this-repo guard
+- [x] 4.2 Excise the marker-delimited `<!-- BEGIN/END claude-workflow-system -->` block from `~/.claude/CLAUDE.md` (backup first; leave the rest of the file intact; handle "file has only the block" vs "block among other content")
+- [x] 4.3 Remove the per-project memory symlink safely (symlink-only, realpath-safe slug, never touch `<proj>/.claude/memory`) — `--project`-gated
+- [x] 4.4 Print (do not auto-edit) the settings.json perms the user may want to remove
+- [x] 4.5 Verify: `install → uninstall → re-install` round-trips clean and idempotent (the AD-2 verification target); capture canonical install/uninstall command copy for M12 — round-trip in test group 7; command copy in archived WIP `## Return Contract — M12 command copy`
 
 **WP4 verification is load-bearing for M12:** the exact install/uninstall command copy captured in 4.5 is a deliverable in the return contract (WP8).
 

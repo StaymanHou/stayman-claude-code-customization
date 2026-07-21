@@ -1,7 +1,8 @@
 # Feature: Standalone uninstall.sh (WP4 / Milestone 8)
 
 **Workflow:** feature
-**State:** refactor (complete) — MAJOR + sibling MINOR fixed; amended into ship commit on main, NOT pushed
+**State:** COMPLETED 2026-07-21 — shipped (74cbb7c), reviewed, refactored, finalized
+**Completion date:** 2026-07-21
 **Created:** 2026-07-21
 **drive_mode:** autopilot
 **WBS:** WP4 — Milestone 8 (Claudesk Handoff Cycle). Resolves `SURFACE-2026-07-20-CLAUDESK-STANDALONE-UNINSTALL`.
@@ -156,3 +157,13 @@ Operator chose **refactor-now** for the MAJOR (confirmed live safety bug in a de
 
 ### If you disagree
 Edit this section and mark a finding `[DISMISSED]` before `feature-finalize` archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** The single biggest surprise was a *test-method* hazard, not an implementation one — running the real `uninstall.sh` from a Bash-tool call that `export HOME=<sandbox>` at the top level briefly wiped the LIVE `~/.claude` (recovered via idempotent `install.sh`). This reframed the Phase-3 harness's load-bearing property from "test the reversal" to "test the reversal WITHOUT ever letting a HOME leak reach the real home" — encoded as `env HOME=<sandbox>` per-call + an outer-`$HOME`-unchanged assertion. Also confirmed: install.sh does NOT register hooks in settings.json (only prints perms), so the SURFACE's "settings.json hook registration" wording was reconciled to print-only per AD-2.
+- **Assumptions that held:** install.sh's structure (skills/agents/hooks/claude-time loops + marker-block awk) mapped cleanly to a symmetric reversal; `tools/memory-link/lib-slug.sh` was the right realpath-safe slug source; the migrate-doc-layout test harness was a faithful template; the into-repo guard (`readlink -f` under `$SOURCE_DIR`) behaved exactly as designed for foreign links + real files.
+- **Assumptions that were wrong:** (1) that build-smoke against a fake HOME was safe as written — the top-level `export HOME` leak was the counterexample. (2) that the arg parser's `--project) shift 2` was fine — the code-quality reviewer caught that `--project --dry-run` silently escalates a preview into a real uninstall (a confirmed-live safety bug in a *destructive* tool), fixed at refactor per operator's refactor-now call.
+- **Approach delta:** 3-phase plan executed as designed (core script → memory/settings → tests+pin+M12). The two deltas were both quality-driven, not scope-driven: the in-cycle HOME-hazard SURFACE (resolved by the shipped harness) and the post-review refactor of the arg parser (+5 harness assertions). No phase was re-planned; no scope expanded.
+
+## Closure
+**Requester = operator** — closure notice for self-record.
+**Feature complete:** the standalone `uninstall.sh` has shipped (WP4 / Milestone 8). It defensively reverses everything `install.sh` sets up — into-repo-guarded symlink removal, block-only `~/.claude/CLAUDE.md` excise (backup first), `--project`-gated memory-*symlink* removal (never the real store), and a print-only settings.json reminder — with zero Claudesk dependency and no residue. Verify: `./uninstall.sh --dry-run` (preview) then `./uninstall.sh`; the `install → uninstall → re-install` round-trip is asserted green in `tools/uninstall/test/run-tests.sh` (45/45).

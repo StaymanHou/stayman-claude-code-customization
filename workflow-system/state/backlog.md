@@ -122,16 +122,7 @@ Buried 2026-06-12:
 
 ## Inbound from Claudesk (handoff 2026-07-20 — not yet triaged into TODO order)
 
-> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding. **UPDATE 2026-07-21: #2 folder-unify (Milestone 7) SHIPPED** — its SURFACE (CLAUDESK-UNIFY-DOC-FOLDERS) is resolved + deleted per delete-on-resolve; see CHANGELOG. The remaining 4 (uninstall, pause, research, onboarding) are still open below.
-
-## SURFACE-2026-07-20-CLAUDESK-STANDALONE-UNINSTALL
-- **Source:** Claudesk handoff 2026-07-20 (secondary-non-workflow-user gate design).
-- **Target level:** product:roadmap / task (install tooling).
-- **Type:** gap (missing standalone uninstall; install must be single source of truth).
-- **Summary:** Add a standalone `uninstall.sh` (works with **zero** Claudesk dependency) that cleanly reverses everything `install.sh` sets up — the skill/agent symlinks into `~/.claude/`, the `~/.claude/settings.json` hook registration, the per-project memory symlink. Keep `install.sh` as the canonical single source of truth for the install steps (Claudesk's invite will *display* these, not hardcode them).
-- **Context:** Claudesk offers a one-click *disable* (its own UI flip) + an evangelistic invite to install this workflow system. De-frictioning "try the workflow system + Claudesk together, then cleanly remove it if not for me" needs a real standalone uninstall — the skill system must be removable without Claudesk in the loop, leaving no residue.
-- **Priority:** medium (unblocks Claudesk's invite + the try-and-back-out story).
-- **Status:** pending (inbound; not yet ordered).
+> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding. **UPDATE 2026-07-21: #2 folder-unify (Milestone 7) + #1 uninstall (Milestone 8) SHIPPED** — their SURFACEs (CLAUDESK-UNIFY-DOC-FOLDERS, CLAUDESK-STANDALONE-UNINSTALL) are resolved + deleted per delete-on-resolve; see CHANGELOG. The remaining 3 (pause, research, onboarding) are still open below.
 
 ## SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY
 - **Source:** Claudesk handoff 2026-07-20 (operator-observed).
@@ -159,16 +150,6 @@ Buried 2026-06-12:
 - **Context:** Claudesk will *render* the onboarding surface but the *content + flow* is this repo's — it's a property of the workflow system, not the app. Depends on the settled folder layout (#2) + install flow (#1) to build a coherent first-run story, so likely sequenced last. The onboarding flow spec is part of the return contract to Claudesk.
 - **Priority:** medium (the payoff of inviting users at all; do after layout + install settle).
 - **Status:** pending (inbound; brainstorm-first; not yet ordered).
-
-## SURFACE-2026-07-21-UNINSTALL-TEST-HOME-EXPORT-HAZARD
-- **Source:** feature:build (uninstall-sh WP4 Phase 1/2 build-smoke)
-- **Target level:** feature (Phase 3 test-harness design constraint — address in-cycle at P3.1)
-- **Type:** bug (test-method hazard; real live-system damage occurred + was recovered)
-- **Summary:** Running the real `uninstall.sh` from a Bash-tool call that did `export HOME="$SANDBOX"` at the top level damaged the LIVE `~/.claude/` (all 41 skill + 6 agent symlinks removed, CLAUDE.md workflow block excised). Recovered by re-running the idempotent `install.sh`. Root cause: a top-level `export HOME` in the persistent Bash-tool environment can point a subsequent real-script invocation at the actual `$HOME`, or an interrupted/failed sandbox setup leaves HOME exported while the script runs against real paths.
-- **Context:** uninstall.sh is *designed* to remove things from `$HOME/.claude`. Any test that exercises it MUST isolate HOME so a leak cannot reach the real home dir.
-- **Suggested action:** The Phase-3 `test/run-tests.sh` harness (P3.1) MUST scope HOME per-invocation — either `( export HOME=...; ... )` fully inside a subshell with a cleanup trap, or `env HOME="$SANDBOX" "$SCRIPT" ...` on each call — and NEVER `export HOME` at the harness's top level. Add an explicit guard/assertion that `$HOME` outside the subshell is unchanged. Mirror migrate-doc-layout's mktemp+trap isolation but add the HOME-scoping discipline.
-- **Priority:** high (this is the load-bearing safety property of the whole feature's test suite; a leak is destructive).
-- **Status:** pending
 
 ## Code-quality findings — uninstall-sh (2026-07-21)
 - **Pointer:** 1 MINOR finding auto-backlogged by feature-review-quality against ship commit d7e9075 — `remove_link` header comment lists outcome cases in reverse of the code's check order (harmless doc/read-order polish). The MAJOR (arg-parser `--project` flag-shaped-value → real uninstall) + its sibling MINOR (missing `--project` value → silent exit 1) were FIXED in the post-ship refactor per operator's refactor-now choice. Full body in [`backlog-quality-findings.md`](backlog-quality-findings.md).

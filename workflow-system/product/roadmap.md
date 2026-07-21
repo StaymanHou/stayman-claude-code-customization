@@ -144,8 +144,9 @@ updated: 2026-07-21
 - No skill references a stale path; `tests/check-structure.sh` passes
 - The settled layout (exact paths Claudesk M11's `docs_list` must discover) is written down for the return contract
 
-### Milestone 8: Standalone `uninstall.sh` + `install.sh` as single source of truth
+### Milestone 8: Standalone `uninstall.sh` + `install.sh` as single source of truth ✅ COMPLETE 2026-07-21
 **Origin:** SURFACE-2026-07-20-CLAUDESK-STANDALONE-UNINSTALL
+**Shipped as:** the `uninstall-sh` feature (WP4, commit 74cbb7c) — a standalone, defensive `uninstall.sh` reversing every install action (into-repo-guarded symlink removal, block-only CLAUDE.md excise with backup, `--project`-gated memory-symlink removal, print-only settings reminder). 45-assertion E2E harness (`tools/uninstall/test/run-tests.sh`, env-HOME-per-call isolation) incl. the install→uninstall→re-install round-trip; 6 dry-run-only `check-structure.sh` pins. M12 install/uninstall command copy captured in the archived WIP return-contract section. Note: install.sh only *prints* the settings.json perms (no hook registration in settings.json), so uninstall symmetrically only prints — the "hook registration" deliverable wording was reconciled to install.sh's actual behavior (AD-2).
 **Goal:** Make the skill system cleanly installable AND removable with **zero** Claudesk dependency, so a curious user can try the workflow and back out leaving no residue.
 **Deliverables:**
 - A standalone `uninstall.sh` that reverses everything `install.sh` sets up: the skill/agent symlinks into `~/.claude/`, the `~/.claude/settings.json` hook registration, and the per-project memory symlink
