@@ -56,6 +56,12 @@
 - **Priority:** low
 - **Status:** open
 
+## Code-quality findings — doc-layout-unification (2026-07-21)
+- **Pointer:** 2 MAJOR + 2 MINOR findings auto-backlogged by feature-review-quality against ship commit a791f6a. The 2 MAJOR converge on one real defect: `tools/migrate-doc-layout/` writes its reversible backup INSIDE the repo (`workflow-system/.migration-backup-<date>/`), so a `git add -A` stages it into the migration commit (the claudesk mid-run footgun) — the mitigation lives only in the operator's per-project loop, not the tool; AND the test suite has no assertion guarding against it. The 2 MINOR: `run()` `eval`-quoting fragility (inherited from memory-link), and a README-advertised `--help` flag the script doesn't implement. Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** medium (the 2 MAJOR — backup footgun + its missing test); low (the 2 MINOR)
+- **Status:** pending
+- **Pickup shape:** `/feature-refactor` on `tools/migrate-doc-layout/` — land the backup-outside-repo (or gitignore) fix + the paired test assertion together (both MAJOR), then optionally the `--help` case + `eval`→`"$@"` (MINOR, ideally shared with memory-link). **Verify each suggested fix against the code first (review-finding-actions-are-hypotheses).** Good candidate for the next `/util-backlog-paydown` sweep or a direct refactor since the tool is fresh.
+
 ## Code-quality findings — memory-location-symlink (2026-07-03)
 - **Pointer:** 2 MINOR findings auto-backlogged by feature-review-quality against ship commit d173bd7 — (1) `ensure-memory-link.sh` dry-run emits a stray `cd: No such file` on stderr when repo target dir doesn't exist yet + harness already symlinked (diagnostic noise, verdict correct); (2) the "any project with docs/product/" migration scope rule is prose-only, not script-enforced (acceptable given the P2.2 operator-confirmation gate). The 2 MAJOR findings from the same review were fixed in-place (amended into the ship commit) — see the WIP `## Code-Quality Review` section. Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)

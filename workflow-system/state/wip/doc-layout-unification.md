@@ -5,8 +5,8 @@
 **Created:** 2026-07-21
 **Entry:** spec (complex feature — L-sized 59-file sweep + cross-project migration)
 **Milestone:** 7 (Claudesk Handoff Cycle)
-**Arch:** `docs/product/arch.md` → Revision 2026-07-20 → AD-1 (Option A, physical unification)
-**WBS:** `docs/product/wbs.md` → Milestone 7 (WP1 / WP2 / WP3-M7)
+**Arch:** `workflow-system/product/arch.md` → Revision 2026-07-20 → AD-1 (Option A, physical unification)
+**WBS:** `workflow-system/product/wbs.md` → Milestone 7 (WP1 / WP2 / WP3-M7)
 **drive_mode:** autopilot
 
 ## Problem Statement
@@ -161,6 +161,38 @@ workflow-system/product/*.md  +  workflow-system/product/*wbs*.md  +  workflow-s
 
 ---
 
+## Code-Quality Review — doc-layout-unification
+
+_Reviewed by `code-quality-reviewer` subagent against ship baseline 30008016..a791f6a (2026-07-21). Mode 3 (autopilot): 0 CRITICAL, 2 MAJOR, 3 MINOR → all auto-backlogged (F39). Operator read-time veto: mark a finding `[DISMISSED]` here before finalize archives this file._
+
+### Strengths
+- Migration script mirrors the proven `tools/memory-link/migrate-memory.sh` template (idempotency, `--dry-run`, `--date`, reversible backup, drift-keep-both) — reusing a validated safety primitive for a destructive op.
+- Path-anchored sweep discipline (803 bare-word vs 343 path "workflow") correctly identified as highest-risk, documented, and pinned forward by Phase-15.
+- `test/run-tests.sh` is a genuine highest-level test (runs the real script against fixture projects; asserts renames-not-delete+add, `git log --follow`, drift sidecar, DUP-drop, idempotent no-op, all error exits).
+- Phase-15 self-match exclusion handled thoughtfully with documented rationale (frozen-capture record-falsification).
+- `move_one` iterates per-file so drift applies per-file + partial-destination is safe; deepest-first `rmdir` with the `find -empty` rationale comment is a correct non-obvious call.
+
+### Issues
+**CRITICAL**
+- (none)
+
+**MAJOR**
+- [tools/migrate-doc-layout/migrate-doc-layout.sh:~57,~188] Reversible backup is written *inside* the destination (`workflow-system/.migration-backup-<date>/`); the tool neither gitignores it nor warns that `git add -A` will stage it. This is the exact footgun that hit the claudesk run (backup staged into the migration commit → 134 phantom `D` deletions → amend). Mitigation currently lives only in the operator's per-project loop discipline, NOT the tool — a README-following re-run reproduces it. — *the safety primitive's backup can corrupt the git history it exists to preserve; test suite doesn't cover it.*
+- [tools/migrate-doc-layout/test/run-tests.sh:~112-119] Git-history test group covers only the happy path; no assertion that `.migration-backup-<date>/` is absent from / not staged in the resulting git status — the one behavior that failed in the real run. — *the coverage gap aligns exactly with the only defect the migration actually hit.*
+
+**MINOR**
+- [tools/migrate-doc-layout/migrate-doc-layout.sh:~59] `run()` uses `eval "$*"` on a space-joined string, forcing careful caller-side quoting; a path with an embedded `"`/`$` would break. Inherited from the memory-link precedent, not introduced. Not triggered by the known doc-path input set. — *low-probability quoting fragility in a destructive tool.*
+- [workflow-system/state/wip/doc-layout-unification.md frontmatter] `**Arch:**`/`**WBS:**` fields pointed at old `docs/product/…` paths. **[FIXED in review — updated to `workflow-system/product/…`.]**
+- [tools/migrate-doc-layout/README.md + script] README/WIP advertise a `--help`/`-h` surface the arg-parse loop doesn't implement (falls through to `$PROJ`). — *minor doc/behavior mismatch.*
+
+### Assessment
+Well-built, low-risk-executed change to a genuinely high-risk operation. The engineering that matters (path-anchored sweep, memory-link-modeled primitive, from-the-outside test suite, Phase-15 lock) is disciplined; the riskiest unknown was resolved in a decision-probe before the mechanical sweep. Comments encode *why*, not *what*. Adds no state-machine debt (no transitions). The one real debt: the backup-inside-repo footgun shipped unlanded in the tool with a matching test-coverage gap — reproducible by the next README-follower. That is the item worth carrying into refactor/backlog; the rest is polish.
+
+### If you disagree
+Mark a finding `[DISMISSED]` in this section before `feature-finalize` archives the WIP.
+
+---
+
 ## Work Tree
 
 - [x] Phase 1: WP2a — Source sweep (move this repo's dirs + rewrite all path references)  <!-- status: COMPLETE — all impl + verify-auto/self/human/codify done; committed 6fedeb5 + b455657 -->
@@ -231,8 +263,9 @@ workflow-system/product/*.md  +  workflow-system/product/*wbs*.md  +  workflow-s
   - [x] verify-codify  <!-- status: DONE — the arch as-built + return contract are documentation deliverables; check-structure.sh Phase 15 (already shipped) locks the layout convention. No behavioral test applies to a prose resync. -->
 
 ## Current Node
-- **Path:** Feature > ship (COMPLETE) → review-quality
-- **Active scope:** SHIPPED (local commits, not pushed — operator's call). Next: review-quality (F38).
+- **Path:** Feature > review-quality (COMPLETE) → finalize
+- **Active scope:** review-quality done — 0 CRITICAL / 2 MAJOR / 3 MINOR. Mode-3 auto-backlogged all (F39). Next: finalize.
+- **Review outcome:** the 2 MAJOR are one real defect (migrate-doc-layout backup-inside-repo footgun + its missing test) — backlogged as medium; operator may run /feature-refactor to land the fix. 1 MINOR fixed inline (stale frontmatter paths); 2 MINOR backlogged (eval-quoting, --help). No CRITICAL → no auto-refactor.
 - **Blocked:** none
 - **Unvisited:** ship → review-quality → finalize.
 - **Open discoveries:** (1) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS (medium — category-A live-prose in moved product docs; arch.md's own refs handled in P3.1, the rest is follow-up); (2) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent); (3) operational learning: migrate-doc-layout should write its backup outside the repo (loop-ordering footgun).
