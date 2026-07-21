@@ -145,11 +145,12 @@ This repo dogfoods the product workflow but **skips `/product-context`** — the
 ## Current Phase
 
 **Active cycle:** Claudesk Handoff Cycle (Milestones 7–12) — see `workflow-system/product/wbs.md`
-**WBS progress:** 4/8 WPs done (WP1, WP2, WP3-M7, WP4)
+**WBS progress:** 5/8 WPs done (WP1, WP2, WP3-M7, WP4, WP6)
 
 - **WP1–WP3-M7 (Milestone 7)** ✅ — Doc-layout unification (Option A physical move): `docs/product/*` → `workflow-system/product/`, `workflow/*` → `workflow-system/state/`; 58-file sweep + `tools/migrate-doc-layout/` primitive (9 projects migrated) + `check-structure.sh` Phase-15 lock
 - **WP4 (Milestone 8)** ✅ — Standalone defensive `uninstall.sh` (commit 74cbb7c): into-repo-guarded symlink removal, block-only CLAUDE.md excise, `--project`-gated memory-symlink removal, print-only settings; 45-assertion E2E harness (`tools/uninstall/test/`) + 6 dry-run-only structure pins
-- **Remaining:** WP5 (pause disambiguation / M9, parallel), WP6 (research-skill collision / M10, parallel), WP7 (onboarding spike / M11, brainstorm-first), WP8 (M12 return contract to Claudesk — aggregates WP4 + M7 + WP7 deliverables)
+- **WP6 (Milestone 10)** ✅ — Research cost-tier disambiguation (commit 17fe152): new standalone `quick-research` skill (light web pass + confidence labels + known-unknowns + human-confirmed deep-research escalation gate, never auto-launch), `## Research cost tiers (GLOBAL)` snippet rule, orchestrator reinforcement, sharpened (not renamed) product/feature-research descriptions; `research.yaml` + `check-structure.sh` [Phase 16] (11 pins, 438/0). Root cause was a cost-tier jump, not topic confusion (14-day/602-log audit)
+- **Remaining:** WP5 (pause disambiguation / M9, parallel), WP7 (onboarding spike / M11, brainstorm-first), WP8 (M12 return contract to Claudesk — aggregates WP4 + M7 + WP7 deliverables)
 
 ## Claude-time visualize URL-hash state
 

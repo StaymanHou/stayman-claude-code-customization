@@ -1,7 +1,7 @@
 # Feature: WP6 — Research Cost-Tier Disambiguation
 
 **Workflow:** feature
-**State:** verify-codify (all phases complete)
+**State:** Completed 2026-07-21 — shipped 17fe152, finalized; WP6/M10 done
 **Created:** 2026-07-21
 **Milestone:** 10 (WP6 of the Claudesk Handoff Cycle)
 **drive_mode:** autopilot
@@ -55,11 +55,42 @@ The word "research" spans a **cost spectrum** — from a single web lookup to th
   - [x] verify-codify — No running-code integration boundary (prompt/convention edits + new skill). Coverage sufficient, NO new tests needed: the 11 Phase-16 structural pins are the regression guards (confirm-gate anchor, sharpened descriptions, snippet rule, orchestrator reinforcement) + research.yaml 2 behavioral scenarios codify the light-tier/gated-offer/no-over-reach contract — both green. Final full suite: 438 PASS / 0 FAIL, no regression, no brackets warning. Carry-forward nuance: offer-and-wait branch is pinned+scenario-present but not behaviorally-fired live (branch existence pinned). ALL PHASES COMPLETE.  <!-- status: complete -->
 
 ## Current Node
-- **Path:** Feature > ALL PHASES COMPLETE > ready to ship
-- **Active scope:** none — both phases [x]; feature is verify-codify-complete, ready for /feature-ship
+- **Path:** Feature > review-quality COMPLETE > ready for finalize
+- **Active scope:** none — shipped 17fe152, review-quality done (0 CRITICAL / 0 MAJOR / 3 MINOR auto-backlogged, F39); ready for /feature-finalize
 - **Blocked:** none
-- **Unvisited:** none (Phase 1 + Phase 2 both complete)
-- **Open discoveries:** Phase-15 pre-existing failure resolved inline (see Test Triage); offer-and-wait branch verified structurally not behaviorally (see verify-self note)
+- **Unvisited:** none (Phase 1 + Phase 2 complete; review-quality complete)
+- **Open discoveries:** Phase-15 pre-existing failure resolved inline (see Test Triage); 3 MINOR quality findings auto-backlogged (QR2 anchors = cheap+safe next pickup); offer-and-wait branch verified structurally not behaviorally
+
+## Retrospect
+- **What changed in our understanding:** The operator-first log review (before any planning) inverted the framing. The WBS stub assumed a *topic* collision fixable by sharpening descriptions or renaming. The 14-day audit (602 logs, 8 real invocations) showed the three names never misroute by topic — the model disambiguates by workflow layer. Then the operator's correction on the two "correct-routing" fence cases (C/E) revealed the actual defect: a *cost-tier jump* (light-lookup intent → heavyweight deep-research harness, no cost checkpoint). The deliverable became a new light tier + a confirm gate, not a rename.
+- **Assumptions that held:** No rename needed (logs confirmed). The `contains_any`→SOFT_PASS pattern for a no-transition skill (util.yaml precedent) worked cleanly. install.sh auto-discovers the new skill dir (no install.sh edit). The confirm-before-deep gate maps naturally onto the existing "verify-human is the only autopilot pause" invariant rather than needing a new pause class.
+- **Assumptions that were wrong:** (1) Expected the WBS-stub disambiguation to BE the work; it was the smaller half — the light tier was the real deliverable. (2) Did not anticipate surfacing a *pre-existing* Phase-15 failure (CLAUDE.md:150 migration-mapping prose) at Phase 1 verify-codify — an orthogonal contract-conflict fixed inline with operator approval. (3) The operator's Q1 note (confidence-labels + known-unknowns as the escalation *trigger*) was a sharper mechanism than the menu options I offered — it made the cheap default *safe* by construction.
+- **Approach delta:** Two phases (new skill, then disambiguation surfaces) executed as planned. The unplanned work was the inline Phase-15 fix (paused for operator judgment → option (a) → narrow mapping-prose exclusion + a latent BSD-grep warning fix). Live verify-self exercised the settled-at-light branch but not the offer-and-wait branch (no test question was unresolvable enough) — verified structurally instead; honest coverage nuance carried forward as a MINOR backlog item.
+
+## Code-Quality Review — wp6-research-cost-tier-disambiguation
+
+Reviewer subagent, ship commit 17fe152, Mode 3 (autopilot). **0 CRITICAL, 0 MAJOR, 3 MINOR** → Case C (MINOR-only auto-backlog, F39).
+
+### Strengths
+- Evidence-driven scoping (14-day audit → light-tier + confirm-gate, NOT a rename).
+- Confirm-before-deep gate anchored to the existing "verify-human is the only autopilot pause" invariant rather than a new pause class.
+- quick-research self-honesty (HIGH/MED/LOW labels + REQUIRED known-unknowns) as the hygiene that makes a cheap default safe.
+- Category framing convention-correct (`## Category`, not debug-*'s `## Category Context`; not util-*).
+- Pre-existing Phase-15 failure triaged (contract-conflict → paused → operator-approved inline fix) with a narrow mapping-prose exclusion that still catches live stale paths.
+
+### Issues
+**CRITICAL** — (none)
+**MAJOR** — (none)
+**MINOR**
+- [tests/scenarios/research.yaml QR2] `contains_any` includes `"80"`/`"443"` — prompt-answerable regardless of the skill prose, so those two anchors dilute the assertion toward prompt-answerability (sibling to the prompt-leakage lesson). The `"confidence"`/`"settled"` anchors are the load-bearing ones. **CHEAP+SAFE fix candidate — strong next-refactor/sweep pickup.**
+- [skills/quick-research/SKILL.md:2] `description` is a dense ~55-word sentence, longer than the four in-workflow siblings. Cosmetic; disambiguation value is real.
+- [skills/quick-research/SKILL.md §5] the "never auto-launch" confirm-gate clause lives in prose across three surfaces (SKILL §5, both AGENTS.md) with no placement-level structural pin (Phase-16 pins the phrase, not its co-location with the escalation step). Low severity — the skill emits no transition, so AUTO-exit machinery doesn't apply.
+
+### Assessment
+Well-built, tightly-scoped, evidence-driven; strong convention adherence; pre-existing Phase-15 failure correctly triaged + narrowly fixed. Only real debt is test-signal quality (QR2 port anchors) + the confirm-gate's prose-only placement. Neither blocking.
+
+### If you disagree
+Dismiss any finding by editing this section + marking the line `[DISMISSED]` before finalize archives the WIP.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>

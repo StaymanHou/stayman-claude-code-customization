@@ -9,3 +9,4 @@
 - [project_ship_process.md](project_ship_process.md) — Standard shipping process for the my-claude-code-customization repo
 - [triage-pause-decisive-users.md](triage-pause-decisive-users.md) — Workflow note — verify-codify triage pause is fast (1 message) when user has strong design opinions; friction only when user is also ambiguous
 - [viz-render-marker-collision.md](viz-render-marker-collision.md) — (no description)
+- [reference_session-log-mining-gotchas.md](reference_session-log-mining-gotchas.md) — Mining ~/.claude/projects/*/*.jsonl: use absolute-path/`--` guards (leading-`-` slugs break unguarded grep/ls); count real skill invocations from assistant tool_use, not raw greps (skill-listing = ~435/session noise)

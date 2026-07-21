@@ -2,6 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-21
+progress: 5/8 WPs (WP1, WP2, WP3-M7, WP4, WP6)
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -89,15 +90,18 @@ The standard rule details WPs for the **next milestone only**, because later mil
 
 ## Milestones 9–12 — lightweight stubs (task-level detail deferred to own planning)
 
+> **⚠️ REFRAME 2026-07-21 (operator):** WP5 and WP6 are **NOT quick wins** despite small implementation surfaces. Both are fundamentally **terminology-design** work — the *word* we settle on ("pause" vs. course-correct; "research" vs. deep-research) is the deliverable, and it must be agreed with the operator AND legible to a **brand-new user who has none of the nuance we carry**. So both are **brainstorm-first / align-on-terminology-then-implement** (closer to WP7's shape than to a mechanical task). Do NOT start either with `/feature-plan` or `/task-plan` directly — open a terminology-alignment discussion first, agree the vocabulary, THEN plan the (likely small) edit. Sizes below refer to the *implementation* only; the design conversation is the real cost.
+
 ### WP5: Disambiguate "pause" (Milestone 9)
 **Description:** AD-4 — pure prompt-convention. Reserve bare "pause" for course-correction; require explicit `/session-pause` (or a distinct phrase) for the skill; orchestrator confirms intent when ambiguous. Edit the relevant orchestrator `agents/*/AGENTS.md` + `session-pause`/`session-resume` SKILL.md prose; add a behavioral scenario for the ambiguous-input case. Honor the state-machine-in-three-places sync rule only if any transition prose changes (expected: none — behavior within existing states).
-**Milestone:** 9 · **Dependencies:** none (independent) · **Size:** S
-**Likely shape:** a small feature or a task. Detailed at its own `/feature-plan` or `/task-plan`.
+**Milestone:** 9 · **Dependencies:** none (independent) · **Size:** S (implementation) — **terminology-alignment discussion required first (see REFRAME above)**
+**Likely shape:** terminology-alignment discussion → then a small feature or task. The vocabulary (and how it reads to a new user) must be agreed before planning.
 
-### WP6: Resolve "research" skill collision (Milestone 10)
+### WP6: Resolve "research" skill collision (Milestone 10) ✅ SHIPPED 2026-07-21 (commit 17fe152)
+**AS-BUILT (2026-07-21):** The terminology-alignment discussion (grounded in a 14-day audit of all 602 machine session logs → 8 real research invocations) reframed the problem: the three names never misroute by *topic* (the model disambiguates by workflow layer), so **no rename** was needed. The real bite is a **cost-tier jump** — an ambiguous "do some research" silently escalating to the heavyweight built-in `deep-research` harness when a quick web lookup was wanted (operator's C/E fence cases). Delivered beyond the original disambiguation-first stub: a **new standalone `quick-research` skill** (light web pass + per-claim confidence labels + known-unknowns list + human-confirmed escalation gate that NEVER auto-launches deep-research, even in autopilot), a global `## Research cost tiers (GLOBAL)` rule in `CLAUDE.snippet.md`, orchestrator reinforcement in both `agents/{feature,product}-workflow/AGENTS.md`, sharpened (not renamed) `product-research`/`feature-research` descriptions, `tests/scenarios/research.yaml` (2 behavioral scenarios) + `check-structure.sh` [Phase 16] (11 pins). 438/0. Also fixed a pre-existing [Phase 15] failure inline. 3 MINOR quality findings backlogged.
 **Description:** AD-3 — disambiguation-first. Sharpen `product-research` + `feature-research` `description:` frontmatter to read unambiguously workflow-scoped (they run *inside* a workflow state, not "research the web"); add orchestrator disambiguation prose. Rename is fallback-only (if renamed, the three-places sync + scenarios + CLAUDE.md all update — flagged, not planned unless disambiguation proves insufficient).
-**Milestone:** 10 · **Dependencies:** none (independent) · **Size:** XS–S
-**Likely shape:** a task (description-wording edit + orchestrator prose). Detailed at its own `/task-plan`.
+**Milestone:** 10 · **Dependencies:** none (independent) · **Size:** XS–S (implementation) — **terminology-alignment discussion required first (see REFRAME above)**
+**Likely shape:** terminology-alignment discussion → then a task (description-wording edit + orchestrator prose). The naming (and its legibility to a new user unaware of the workflow-vs-CC-deep-research nuance) must be agreed before planning.
 
 ### WP7: Probe — new-user onboarding + "aha" design (Milestone 11)
 **Type:** probe (design spike — knowledge output, NOT software)
@@ -139,3 +143,6 @@ M7: WP1 (decide layout+migration) → WP2 (sweep + migrate tool + run) → WP3-M
 - **WP7 last-but-one** — brainstorm-first, depends on settled layout + install flow; its spec feeds WP8.
 - **WP8 terminal** — aggregates deliverables back to Claudesk (**including the required M11 `docs_list` path change**).
 - No environment/Docker WP (this repo is host-based shell + prompt files, no services). No 3rd-party probe WPs (no external integrations). No orchestration/async WPs (none in scope). Deviations from the standard ordering sequence are all "N/A — no such surface in this cycle."
+
+## Session Pause — 2026-07-21 12:30
+Paused. See `workflow-system/state/.session.md` to resume.

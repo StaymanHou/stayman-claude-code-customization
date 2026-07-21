@@ -62,6 +62,12 @@
 - **Status:** pending
 - **Pickup shape:** small — swap `eval "$*"` for a `"$@"`-based dispatch in `migrate-doc-layout.sh`; ideally fixed together with the identical pattern in `tools/memory-link/` since it's a shared inherited smell. Not urgent (no known-input trigger). **Verify against the code first (review-finding-actions-are-hypotheses).**
 
+## Code-quality findings — wp6-research-cost-tier-disambiguation (2026-07-21)
+- **Pointer:** 3 MINOR findings (feature-review-quality, ship 17fe152). (1) QR2 scenario `contains_any` includes prompt-answerable `"80"`/`"443"` anchors that dilute the assertion — **cheap+safe fix**; (2) quick-research `description` is dense (~55 words) — cosmetic; (3) the "never auto-launch" confirm-gate clause is prose-only across 3 surfaces with no placement-level pin — latent-drift guard. Full bodies in [`workflow-system/state/backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** finding (1) is the strong next-`/feature-refactor`-or-sweep pickup (drop the two port-number anchors from QR2, keep `"confidence"`/`"settled"`); (2)+(3) are optional polish. **Verify against the code first (review-finding-actions-are-hypotheses).**
+
 ## Code-quality findings — memory-location-symlink (2026-07-03)
 - **Pointer:** 2 MINOR findings auto-backlogged by feature-review-quality against ship commit d173bd7 — (1) `ensure-memory-link.sh` dry-run emits a stray `cd: No such file` on stderr when repo target dir doesn't exist yet + harness already symlinked (diagnostic noise, verdict correct); (2) the "any project with docs/product/" migration scope rule is prose-only, not script-enforced (acceptable given the P2.2 operator-confirmation gate). The 2 MAJOR findings from the same review were fixed in-place (amended into the ship commit) — see the WIP `## Code-Quality Review` section. Full bodies in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)
@@ -122,7 +128,7 @@ Buried 2026-06-12:
 
 ## Inbound from Claudesk (handoff 2026-07-20 — not yet triaged into TODO order)
 
-> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding. **UPDATE 2026-07-21: #2 folder-unify (Milestone 7) + #1 uninstall (Milestone 8) SHIPPED** — their SURFACEs (CLAUDESK-UNIFY-DOC-FOLDERS, CLAUDESK-STANDALONE-UNINSTALL) are resolved + deleted per delete-on-resolve; see CHANGELOG. The remaining 3 (pause, research, onboarding) are still open below.
+> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding. **UPDATE 2026-07-21: #2 folder-unify (Milestone 7) + #1 uninstall (Milestone 8) + #3/#4 research-collision (Milestone 10) SHIPPED** — their SURFACEs (CLAUDESK-UNIFY-DOC-FOLDERS, CLAUDESK-STANDALONE-UNINSTALL, CLAUDESK-RESEARCH-SKILL-COLLISION) are resolved + deleted per delete-on-resolve; see CHANGELOG. The remaining 2 (pause = WP5/M9, onboarding = WP7/M11) are still open below.
 
 ## SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY
 - **Source:** Claudesk handoff 2026-07-20 (operator-observed).
@@ -133,13 +139,6 @@ Buried 2026-06-12:
 - **Priority:** medium (small, independent; can run in parallel).
 - **Status:** pending (inbound; not yet ordered).
 
-## SURFACE-2026-07-20-CLAUDESK-RESEARCH-SKILL-COLLISION
-- **Source:** Claudesk handoff 2026-07-20 (operator-observed).
-- **Target level:** skill naming / orchestrator prompts.
-- **Type:** naming collision (wrong-skill-fires risk).
-- **Summary:** Claude Code shipped a built-in **deep-research** skill/capability; this repo has `product-research` + `feature-research`. "research" now overlaps and can fire the wrong one. Rename/namespace this repo's research skills, or add orchestrator disambiguation, so the workflow research skills don't collide with CC's built-in deep-research.
-- **Context:** Operator says "research" → risk of the built-in deep-research firing instead of the workflow's product/feature research (or vice versa). Independent of the other items.
-- **Priority:** medium (small, independent; can run in parallel).
 - **Status:** pending (inbound; not yet ordered).
 
 ## SURFACE-2026-07-20-CLAUDESK-ONBOARDING-DESIGN
