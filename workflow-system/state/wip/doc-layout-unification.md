@@ -128,6 +128,39 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
 
 **All WP1 decisions settled. Final migration target count: 9 projects (10 found, gospelherald excluded).**
 
+## Return Contract — M7 settled layout (for WP8 → Claudesk M11)
+
+**Deliverable for the M12 cross-repo return contract (WP8).** M7 shipped **Option A** — the doc layout is physically unified. Claudesk M11's `docs_list` auto-discovery MUST be updated to glob the **new** roots. This block is the authoritative old→new mapping to hand back.
+
+### Settled layout (as-built 2026-07-21)
+
+| Old path (M11 currently globs) | New path (M11 MUST glob) |
+|---|---|
+| `docs/product/*.md` | `workflow-system/product/*.md` |
+| `docs/product/*wbs*.md` (scratch) | `workflow-system/product/*wbs*.md` |
+| `workflow/wip/*.md` | `workflow-system/state/wip/*.md` |
+| `workflow/backlog.md` | `workflow-system/state/backlog.md` |
+| `workflow/.session.md` | `workflow-system/state/.session.md` |
+
+### `docs_list` backend command change (required, not optional)
+
+Claudesk M11's `docs_list` glob set changes from:
+```
+docs/product/*.md  +  *wbs*.md  +  workflow/wip/*.md  +  workflow/backlog.md  +  workflow/.session.md
+```
+to:
+```
+workflow-system/product/*.md  +  workflow-system/product/*wbs*.md  +  workflow-system/state/wip/*.md  +  workflow-system/state/backlog.md  +  workflow-system/state/.session.md
+```
+
+- **Workflow-order for the viewer** (unchanged ordering, new paths): vision → roadmap → wbs (+ `*wbs*.md` scratch) → `workflow-system/state/wip/*.md` → `workflow-system/state/backlog.md` → `workflow-system/state/.session.md` → (arch · research · context).
+- **Auto-select-on-open relevance** (new paths): `workflow-system/state/.session.md` → else active `workflow-system/state/wip/*.md` → else `roadmap.md`.
+- **`CHANGELOG.md` still deliberately excluded.** Absent files remain silent no-ops.
+- **Timing still favorable:** Claudesk M11 is paused/unshipped, so it can adopt the new globs before first ship — no migration of M11-rendered state needed.
+- **Note for Claudesk:** claudesk's OWN repo has already been migrated to `workflow-system/` (commit `aacc687`), so M11 can be developed against the new layout directly.
+
+---
+
 ## Work Tree
 
 - [x] Phase 1: WP2a — Source sweep (move this repo's dirs + rewrite all path references)  <!-- status: COMPLETE — all impl + verify-auto/self/human/codify done; committed 6fedeb5 + b455657 -->
@@ -179,34 +212,31 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
     - [x] P2.6.g neo-stayman-assistant (operator-paused, dirty=1→baseline f7a8fc2, main)  <!-- status: DONE — 97 renames, 31-commit history, committed a5ef539 -->
     - [x] P2.6.h google-newsroom-intelligence-engine (active, dirty=5→baseline 00beff0, wip=1)  <!-- status: DONE — 92 renames; active wip m4-wp7c-lane-ruleset-drift-detector.md moved intact; committed 89ea32a -->
     - [x] P2.6.verify Cross-project sweep: all 9 on new layout, old dirs gone, backups removed, history preserved; gospelherald correctly UNTOUCHED (old layout, excluded per operator)  <!-- status: DONE -->
-  - [ ] verify-auto  <!-- status: NOT-STARTED -->
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
-  - [ ] verify-human  <!-- status: NOT-STARTED -->
-  - [ ] verify-codify  <!-- status: NOT-STARTED -->
   - [x] verify-auto  <!-- status: DONE — migrate-doc-layout suite 35/35; check-structure.sh 420/0 (this repo unaffected by external migrations) -->
   - [x] verify-self  <!-- status: DONE — cross-project observation: all 9 targets on new layout, old gone, backups removed, history preserved; gospelherald correctly untouched. The tool's own 35/35 suite is the live-system evidence. -->
   - [x] verify-human  <!-- status: DONE (via P2.5 gate + 2 AskUserQuestion rounds + per-project operator decisions — the operator was deeply in-loop for the whole cross-project run; a separate verify-human pause would be redundant). Within THIS repo Phase 2 only adds isolated tools/migrate-doc-layout/; the large external effects were operator-gated at P2.5 and committed per-project with approval. -->
   - [x] verify-codify  <!-- status: DONE — the migration tool IS codified by tools/migrate-doc-layout/test/run-tests.sh (35 assertions, committed 26e9d5f). The Phase-15 structural lock (from Phase 1) already guards the layout convention in this repo. No new codify test needed — the highest-level test (the tool suite) already exists and is green. -->
 
-- [ ] Phase 3: WP3-M7 — Resync arch as-built + capture settled layout for the M12 return contract  <!-- status: NOT-STARTED; depends on Phase 2 -->
+- [x] Phase 3: WP3-M7 — Resync arch as-built + capture settled layout for the M12 return contract  <!-- status: COMPLETE — arch.md AS-BUILT added, Return Contract block written, verify loop done -->
+
   **Observable outcomes:**
   - CLI: `grep -c 'workflow-system/product\|workflow-system/state' workflow-system/product/arch.md` > 0 — AD-1 resynced to as-built (paths moved, migration strategy shipped).
   - CLI: a `## Return contract — M7 settled layout` (or equivalent) block exists in the WIP (or a designated doc) carrying the exact new `docs_list` glob paths (`workflow-system/product/*.md`, `workflow-system/state/wip/*.md`, `workflow-system/state/backlog.md`, `workflow-system/state/.session.md`) for WP8 to hand to Claudesk M11.
   - CLI: `bash tests/check-structure.sh` still exits 0 after the arch.md edit.
-  - [ ] P3.1 Resync `arch.md` AD-1 from decision → as-built (paths moved; `tools/migrate-doc-layout/` shipped; 9-project migration done; gospelherald excluded)  <!-- status: NOT-STARTED -->
-  - [ ] P3.2 Write the settled layout + exact new `docs_list` glob paths for the WP8 (M12) return contract  <!-- status: NOT-STARTED -->
-  - [ ] verify-auto  <!-- status: NOT-STARTED -->
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
-  - [ ] verify-human  <!-- status: NOT-STARTED -->
-  - [ ] verify-codify  <!-- status: NOT-STARTED -->
+  - [x] P3.1 Resync `arch.md` AD-1 from decision → as-built — added an AS-BUILT subsection (final names, this-repo git mv, path-anchored 58-file sweep + 3 excluded false-positive classes, Phase-15 lock, tools/migrate-doc-layout/ + 9-project run, gospelherald excluded). Preserved category-B decision/back-loop text; the migration-mapping arrows are intentionally NOT rewritten.  <!-- status: DONE -->
+  - [x] P3.2 Wrote the `## Return Contract — M7 settled layout` block in the WIP — exact old→new docs_list mapping + the required Claudesk M11 backend glob change, for WP8 to hand back.  <!-- status: DONE -->
+  - [x] verify-auto  <!-- status: DONE — check-structure.sh 420/0 after arch.md edit; arch.md refs new roots (5); Return Contract block present -->
+  - [x] verify-self  <!-- status: DONE — Observable outcomes confirmed live: arch.md grep>0, Return Contract block=1, check-structure green. Docs-only phase; no running-system surface beyond the grep-verifiable outcomes. -->
+  - [x] verify-human  <!-- status: DONE — docs-only phase (arch resync + return-contract capture); no integration boundary; auto-skip gate clean (autopilot + verify-self all-PASS + no boundary + no consuming-surface outcome). Operator read-time veto retained via the committed arch.md + WIP. -->
+  - [x] verify-codify  <!-- status: DONE — the arch as-built + return contract are documentation deliverables; check-structure.sh Phase 15 (already shipped) locks the layout convention. No behavioral test applies to a prose resync. -->
 
 ## Current Node
-- **Path:** Feature > Phase 3 (WP3-M7) > P3.1
-- **Active scope:** Phases 1 + 2 COMPLETE. Phase 3 = resync arch.md AD-1 to as-built (P3.1) + write settled layout/docs_list for the M12 return contract (P3.2).
+- **Path:** Feature > ship (all 3 phases complete)
+- **Active scope:** ship — all phases done, ready for final checks + push decision.
 - **Blocked:** none
-- **Unvisited:** Phase 3 (P3.1 arch-resync → P3.2 return-contract-capture) + verify group. Then ship → review-quality → finalize.
-- **Open discoveries:** (1) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS — category-A live-prose refs in moved product docs; **fold the category-A updates into P3.1's arch-resync** (arch.md is being edited anyway); (2) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent).
-- **Phase 1 + 2 complete + committed.** P1: 6fedeb5 sweep + b455657 lock + 0af97be codify-close. P2: 26e9d5f tool; 8 external projects migrated (areo d5d339c, ops-data-hub 13eed97, claudesk aacc687, turn-based a01d5bb, knowledge_base 4ebbafb, replicator e8d6768, neo-stayman a5ef539, GNIE 89ea32a).
+- **Unvisited:** ship → review-quality → finalize.
+- **Open discoveries:** (1) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS (medium — category-A live-prose in moved product docs; arch.md's own refs handled in P3.1, the rest is follow-up); (2) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent); (3) operational learning: migrate-doc-layout should write its backup outside the repo (loop-ordering footgun).
+- **ALL 3 PHASES COMPLETE + committed.** P1: 6fedeb5 sweep + b455657 lock + 0af97be codify. P2: 26e9d5f tool + e87e053 close; 8 external projects migrated. P3: arch AS-BUILT + Return Contract (this commit).
 
 ## Test Triage — session-suite S2 / S3 / S12 (verify-codify behavioral run)
 Classification: Pre-existing scenario fragility (S2 routing-fork wobble, S12 not_contains_strict fragility), independent of this feature. S3 was flaky (passed on sonnet retry). NONE is a regression from the rename.
