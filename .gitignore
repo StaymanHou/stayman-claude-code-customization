@@ -21,7 +21,7 @@ __pycache__/
 .claude/settings.local.json
 
 # Transient session pointer (recreated by /session-pause, deleted on /session-resume)
-workflow/.session.md
+workflow-system/state/.session.md
 
 # NOTE: .claude/learnings/ AND .claude/memory/ are intentionally NOT ignored here — this repo
 # tracks them as content. Rationale + PII handling: see CLAUDE.md → "## Artifact tracking overrides".
