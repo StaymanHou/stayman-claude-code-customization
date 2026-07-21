@@ -150,7 +150,9 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
     - [x] P1.verify-human.1 Operator eyeballed the new top-level layout — approved  <!-- status: done -->
     - [x] P1.verify-human.2 Operator confirmed sweep exclusions correct (frozen jsonl + gitignored results intentionally on old paths)  <!-- status: done -->
     - [x] P1.verify-human.3 Operator OK'd committing the Phase-1 sweep now, atomic commit  <!-- status: done -->
-  - [ ] verify-codify  <!-- status: NOT-STARTED -->
+  - [ ] verify-codify  <!-- status: in-progress — structural pin DONE (Phase 15, 420/0); behavioral session-suite running in bg -->
+    - [x] verify-codify.1 Structural regression lock: check-structure.sh Phase 15 (4 pins) — asserts NO stale docs/product|workflow/<child> reappears + both unified roots stay referenced. 420/0. Caught 8 self-match false-positives on first write → triaged (obsolete-test, high-conf) → excluded check-structure.sh from its own grep.  <!-- status: done -->
+    - [ ] verify-codify.2 Behavioral highest-level test: full session-group suite (31 scenarios, fresh-subprocess) — running in bg (id ba3ldcv7g)  <!-- status: in-progress -->
 
 - [ ] Phase 2: WP2b — Migration tool + gated cross-project run  <!-- status: NOT-STARTED; depends on Phase 1 -->
   **Observable outcomes:**
@@ -189,6 +191,12 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
 - **Unvisited:** Phase 1 verify-codify → Phase 2 (P2.1→P2.6 + verify group, P2.5 is an operator-ping coordination pause) → Phase 3 (P3.1→P3.2 + verify group)
 - **Open discoveries:** WP2b operator-coordination ping for in-flight projects (Phase 2 gate)
 - **Phase-1 sweep committed** (operator-approved atomic commit 2026-07-21). verify-human approved 3/3.
+
+## Test Triage — Phase 15 "no stale docs/product path" (verify-codify)
+Classification: Obsolete test — the check as first written was self-matching (its own descriptive comments + the `grep -rnE 'docs/product'` pattern literal live inside check-structure.sh, which the check greps).
+Confidence: high
+Evidence: all 8 reported "stale" refs are on lines 2121–2149 of tests/check-structure.sh — the Phase 15 block's own comments/pattern, zero in any skill/agent/scenario/CLAUDE doc.
+Action: exclude check-structure.sh from its own docs/product grep (the check guards the prompt/scenario/CLAUDE surface, not its own source). Auto-fixed then re-ran. NOTE: the fact that a legitimate stale-path check would trip on its own pattern-literal is itself signal the sweep+lock is working — no real stale ref exists in the guarded surface.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary> -->

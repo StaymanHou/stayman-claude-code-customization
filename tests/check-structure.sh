@@ -2118,6 +2118,56 @@ grep_check "session-store-learning documents the project-memory symlink converge
 
 echo ""
 
+# ── Phase 15: Doc-layout unification — no stale docs/product | workflow/<child> paths ──
+# M7 (Claudesk Handoff Cycle, 2026-07-21) physically unified the two per-project doc
+# folders under one root: docs/product/* → workflow-system/product/, workflow/* →
+# workflow-system/state/ (arch.md AD-1 Option A). This phase LOCKS that layout: a future
+# edit MUST NOT silently reintroduce the old `docs/product/` or `workflow/<child>` paths
+# in any skill/agent prompt, test scenario, or CLAUDE doc — that would drift the emitted
+# paths back and desync consuming projects (+ Claudesk M11's docs_list).
+#
+# The check is PATH-ANCHORED, mirroring the sweep discipline that built the layout:
+#   - `docs/product` is always a path → any occurrence is stale.
+#   - `workflow/` is only a state-dir path when followed by a known child
+#     (wip|backlog|archive|.session|learnings). The bare concept-word "workflow"
+#     ("the feature workflow", "workflow state") and the `-workflow/AGENTS.md`
+#     orchestrator-file tails are NOT matched — matching them would be the same
+#     false-positive class the sweep itself had to avoid (803 bare-word vs 343 path).
+#
+# Intentional NON-targets, excluded before matching (these correctly keep old paths):
+#   - tests/results/*.json — gitignored, regenerable test output.
+#   - tests/sessions/*.jsonl — Tier-2-audited FROZEN historical session captures;
+#     rewriting them would falsify the record + invalidate tests/sessions/AUDIT-LOG.md.
+#   - tests/check-structure.sh — THIS file: its own descriptive comments + the grep
+#     pattern-literals below contain the very strings it searches for (self-match). The
+#     check guards the prompt/scenario/CLAUDE surface, not its own source.
+echo "[Phase 15] Doc-layout unification — no stale docs/product | workflow/<child> paths"
+
+stale_docs_product=$( (grep -rnE 'docs/product' skills/ agents/ tests/ CLAUDE.md CLAUDE.snippet.md 2>/dev/null || true) \
+  | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|tests/check-structure\.sh' || true )
+stale_dp_count=$(printf '%s' "$stale_docs_product" | grep -c . || true)
+if [ "$stale_dp_count" -eq 0 ]; then
+  check "no stale docs/product/ path in skills/ agents/ tests/ CLAUDE docs (unified to workflow-system/product/)" "pass"
+else
+  check "no stale docs/product/ path in skills/ agents/ tests/ CLAUDE docs (unified to workflow-system/product/)" "fail" "found $stale_dp_count stale docs/product ref(s) — should be workflow-system/product/"
+fi
+
+stale_workflow_state=$( (grep -rnE 'workflow/(wip|backlog|archive|\.session|learnings)' skills/ agents/ tests/ CLAUDE.md CLAUDE.snippet.md 2>/dev/null || true) \
+  | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|workflow-system|tests/check-structure\.sh' || true )
+stale_ws_count=$(printf '%s' "$stale_workflow_state" | grep -c . || true)
+if [ "$stale_ws_count" -eq 0 ]; then
+  check "no stale workflow/<child> state path in skills/ agents/ tests/ CLAUDE docs (unified to workflow-system/state/)" "pass"
+else
+  check "no stale workflow/<child> state path in skills/ agents/ tests/ CLAUDE docs (unified to workflow-system/state/)" "fail" "found $stale_ws_count stale workflow/<child> ref(s) — should be workflow-system/state/"
+fi
+
+# Positive anchor: the two unified roots are actually referenced (guards against a
+# future over-eager "cleanup" that deletes the paths entirely rather than migrating them).
+grep_check "unified root workflow-system/product/ is referenced in skills/" "skills/session-start/SKILL.md" "workflow-system/product/" 1
+grep_check "unified root workflow-system/state/ is referenced in skills/" "skills/session-pause/SKILL.md" "workflow-system/state/" 1
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="
