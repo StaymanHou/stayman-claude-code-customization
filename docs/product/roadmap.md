@@ -1,7 +1,7 @@
 ---
 stage: roadmap
 state: complete
-updated: 2026-05-02
+updated: 2026-07-20
 ---
 
 # Roadmap — Claude Code Workflow System
@@ -119,3 +119,89 @@ updated: 2026-05-02
 - In orchestrated mode, clean-pass steps chain without user prompting; verify-human and finalize remain PAUSE
 - verify-codify always writes a triage artifact before acting on any test failure
 - 95 transition scenarios pass on haiku
+
+## Group — Claudesk Handoff Cycle (secondary non-workflow-user readiness)
+
+<!-- New cycle, 2026-07-20. Inbound from HANDOFF-from-claudesk-2026-07-20.md. These 5
+     milestones are properties of the skills/workflow system itself (the seam test:
+     "does it require Claudesk to run?" → No → this repo owns it). This repo ships FIRST;
+     Claudesk then builds the gate (their M10.9) + Docs viewer (their M11) that CONSUME
+     these deliverables. A cross-repo return contract to /Users/stayman/Personal/projects/claudesk
+     closes the loop (see Milestone 12). Milestone numbering continues the flat list;
+     groups are cosmetic only. -->
+
+### Milestone 7: Unify the workflow-doc layout for new users
+**Origin:** SURFACE-2026-07-20-CLAUDESK-UNIFY-DOC-FOLDERS
+**Goal:** Reduce the two-location learning cost (`docs/product/*` strategic + `workflow/*` operational) to a single friendlier top-level layout — or a clearly-indexed single entry point — for users new to the workflow. This is foundational: every other milestone and the Claudesk return contract reference the settled layout.
+**Deliverables:**
+- A decided doc-folder layout (co-located single root, or a top-level index that unifies the two locations) with the rename/move plan
+- All workflow skills/agents that read or write these paths updated to the new layout (this touches many `skills/*/SKILL.md` and `agents/*/AGENTS.md` — a doc-convention change, not a one-file edit)
+- `CLAUDE.md` / `CLAUDE.snippet.md` and `docs/product/arch.md` resynced to the new layout
+- Structure-check pins (`tests/check-structure.sh`) updated to the new paths
+**Exit Criteria:**
+- A new user can find both strategic and operational workflow state from one obvious place
+- No skill references a stale path; `tests/check-structure.sh` passes
+- The settled layout (exact paths Claudesk M11's `docs_list` must discover) is written down for the return contract
+
+### Milestone 8: Standalone `uninstall.sh` + `install.sh` as single source of truth
+**Origin:** SURFACE-2026-07-20-CLAUDESK-STANDALONE-UNINSTALL
+**Goal:** Make the skill system cleanly installable AND removable with **zero** Claudesk dependency, so a curious user can try the workflow and back out leaving no residue.
+**Deliverables:**
+- A standalone `uninstall.sh` that reverses everything `install.sh` sets up: the skill/agent symlinks into `~/.claude/`, the `~/.claude/settings.json` hook registration, and the per-project memory symlink
+- `install.sh` confirmed/kept as the canonical single source of truth for install steps (idempotent; the copy Claudesk's invite will *display*, not hardcode)
+- Verification that install → uninstall → re-install is clean and idempotent
+**Exit Criteria:**
+- `uninstall.sh` run on a fresh install leaves `~/.claude/` and the project with no workflow-system residue
+- Works invoked directly from a shell with Claudesk not present
+- Canonical install-instruction copy + commands captured for the return contract
+
+### Milestone 9: Disambiguate "pause" (course-correct vs. `/session-pause`)
+**Origin:** SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY
+**Goal:** Remove the overloaded meaning of the bare word "pause" so the orchestrator never drops a wanted `session-pause` nor writes a `.session.md` when the operator only meant "stop and reconsider."
+**Deliverables:**
+- Orchestrator/skill prompt updates that reserve bare "pause" for course-correction and require explicit `/session-pause` (or a distinct phrase) for the skill — or an intent-confirm when the word is ambiguous
+- Behavioral test scenario(s) covering the ambiguous-input case
+**Exit Criteria:**
+- Ambiguous "pause" no longer silently invokes `session-pause`; intent is confirmed or the word is reserved as decided
+- Scenario coverage passes
+
+### Milestone 10: Resolve the "research" skill naming collision
+**Origin:** SURFACE-2026-07-20-CLAUDESK-RESEARCH-SKILL-COLLISION
+**Goal:** Prevent this repo's `product-research` / `feature-research` skills from colliding with Claude Code's built-in **deep-research** capability so "research" doesn't fire the wrong skill.
+**Deliverables:**
+- Decision + implementation: rename/namespace this repo's research skills, or add orchestrator disambiguation
+- All references updated (skills, agents, `transitions.md`, scenarios, `CLAUDE.md`) if a rename is chosen
+**Exit Criteria:**
+- Saying "research" in a workflow context no longer risks firing CC's built-in deep-research (or vice versa)
+- All three state-machine locations stay in sync if IDs/names change
+
+### Milestone 11: New-user onboarding + "aha" design (brainstorm-first)
+**Origin:** SURFACE-2026-07-20-CLAUDESK-ONBOARDING-DESIGN
+**Goal:** Design the deliberate first-run path a brand-new user takes when Claudesk invites them in — the fastest "aha" (the moment the workflow's value clicks) — and decide whether it needs a dedicated onboarding skill and/or a throwaway tutorial project.
+**Deliverables:**
+- An onboarding flow spec (what a new user does first, the aha moment, the surface Claudesk should render + when)
+- A decision on a dedicated onboarding skill and/or tutorial project
+**Exit Criteria:**
+- A written onboarding flow spec Claudesk can render against
+- ⚠️ **Brainstorm-first / co-design:** this milestone is explicitly designed *with* the operator — depends on the settled Milestone 7 layout + Milestone 8 install flow; not auto-generated
+
+### Milestone 12: Cross-repo return contract to Claudesk
+**Origin:** Handoff return contract (HANDOFF-from-claudesk-2026-07-20.md → "What Claudesk needs back from you")
+**Goal:** Close the loop so Claudesk's M10.9 + M11 can build against settled, non-moving deliverables.
+**Deliverables:**
+- A "here's what changed + here's the copy/paths for Claudesk" note back to `/Users/stayman/Personal/projects/claudesk` (reciprocal handoff or a backlog SURFACE there) carrying: (1) canonical install-instruction copy + install/uninstall commands, (2) the settled doc-folder layout (so M11's `docs_list` discovery matches), (3) the onboarding flow spec
+**Exit Criteria:**
+- Claudesk has received the three deliverables in a form it can consume without hardcoding workflow internals
+
+## Revision 2026-07-20 — Claudesk Handoff Cycle
+
+**What changed:** Reopened the roadmap (`state: complete` → `in-progress`) to add a new cycle (Milestones 7–12) sequencing the five inbound items from `HANDOFF-from-claudesk-2026-07-20.md`, plus a cross-repo return-contract milestone. These are properties of the skills/workflow system itself (not Claudesk-coupled runtime), so this repo owns them and ships first.
+
+**Sequencing rationale:**
+- **M7 (doc-folder unify) first** — foundational; it's the layout every other milestone and the Claudesk return contract reference, and the thing Claudesk M11's Docs viewer must discover. Dependency-driven ordering, not a product-design lean.
+- **M8 (install/uninstall) second** — unblocks Claudesk's invite + the "try-and-back-out" story; standalone, but naturally after the layout settles since uninstall must clean up whatever paths M7 establishes.
+- **M9 (pause) + M10 (research collision)** — small, independent, prompt-level; could run in parallel/either order. Placed after the foundational pair for a clean linear drive, no hard dependency.
+- **M11 (onboarding) last** — brainstorm-first, co-designed with the operator; depends on the settled M7 layout + M8 install flow to build a coherent first-run story.
+- **M12 (return contract) terminal** — aggregates M7/M8/M11 deliverables back to Claudesk.
+
+**Assumptions:** This cycle does NOT reopen this repo's `vision.md` Target Audience section — the audience-stance refinement (adding a non-workflow secondary user) is assigned to the *Claudesk* side per the handoff; this repo delivers the mechanics only. `docs/product/design-priors.md` is absent in this repo, so no design-prior consult applied (silent no-op).

@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-07-15
+updated: 2026-07-20
 ---
 
 # Architecture
@@ -230,6 +230,54 @@ updated: <YYYY-MM-DD>
 - Incident-workflow skills — unaffected.
 - `session-*` skills — unaffected. The Work Tree is carried transparently through pause/resume because it lives in the WIP file.
 - `install.sh` — no new files, no new symlinks needed for Phases 1–2.
+
+## Revision 2026-07-20
+
+### Claudesk Handoff Cycle — architectural decisions (Milestones 7–12)
+
+Inbound from `HANDOFF-from-claudesk-2026-07-20.md`. This repo owns the *mechanics* of making the workflow system pleasant for a new, non-workflow secondary user (the *audience-stance* vision refinement lives on the Claudesk side, not here). This cycle adds **no new runtime dependencies** and **no new state-machine transitions** — all changes are doc-convention, prompt, and shell-script. The decisions below are the ratified inputs to `/product-wbs`. Sources: `docs/product/roadmap.md` (Milestones 7–12), `docs/product/research.md`.
+
+#### AD-1 (Milestone 7) — Doc-layout unification: **Option A (physical unification under one root)** — operator-ratified 2026-07-20
+
+> **Superseded the initial Option-B lean.** This decision was first recorded as Option B (index-only, no move). The operator overrode it (see **P8 back-loop below**): the two-folder split is *itself* the confusion for any newcomer unfamiliar with this customization — an index leaves the split in place and does not remove the confusing thing. Option A removes it. The original Option-B rationale is preserved in the back-loop note for the record.
+
+- **Decision:** **Physically unify** the two doc locations under **one top-level folder with two clearly-named subfolders** (working names, finalizable in build):
+  - `docs/product/*` → **`workflow-system/product/`** (strategic: vision, roadmap, research, arch, wbs, context, `archive/`)
+  - `workflow/*` → **`workflow-system/state/`** (operational: `wip/`, `backlog.md`, `backlog-*.md`, `.session.md`, `archive/`)
+  - Result: **one folder a newcomer must learn** (`workflow-system/`); the strategic-vs-operational distinction survives as legible substructure.
+- **Rationale (operator):** The pain is not merely orientation — the **existence of two separate top-level folders is the confusion** for any user not already fluent in this customization. A single top-level home directly removes it; an index only describes it.
+- **Accepted cost:** the **~59-file path sweep** (38 skills, 14 tests, 5 agents, `CLAUDE.md`, `CLAUDE.snippet.md`) plus the three-places-in-sync regression surface (`transitions.md` / `SKILL.md` / scenarios), and a **required Claudesk `docs_list` change** (M11 discovers the old paths). These are accepted deliberately — the newcomer-clarity payoff justifies the blast radius. Timing is favorable: Claudesk M11 is **paused/unshipped**, so its `docs_list` can be pointed at the new layout before it ships (the M12 return contract carries the new paths).
+- **Migration safety:** paths appear in prompt *prose* (not just code), so the sweep is a text-substitution across `skills/ agents/ tests/ CLAUDE*.md` with a full `check-structure.sh` + `run-tests.sh` verification gate. `git mv` preserves history for the moved dirs. The per-project nature matters: **this is a convention change for all consuming projects**, not just this repo — the skills emit the new paths, so every project that adopts an updated skill starts writing to `workflow-system/`. A migration story for *existing* consuming projects (old `docs/product/` + `workflow/` already on disk) must be decided in WBS (skills tolerate both during transition, or a one-time migration helper — parallels the `memory-link` migration precedent).
+- **Cross-repo consequence:** Claudesk M11's `docs_list` **must** be updated to glob the new roots (`workflow-system/product/*.md` + `workflow-system/state/...`). This is an explicit M12 return-contract deliverable, not an optional note.
+
+**P8 back-loop (2026-07-20):** WBS→arch reversal of AD-1. The initial Option-B lean (index-only) was ratified in the first pass of this revision on cost grounds — a 59-file move to solve what was framed as an *orientation* cost, plus avoiding a Claudesk `docs_list` change. The operator reframed the problem at WBS review: the two-folder split is the confusion itself, not a describable-around orientation gap, so an index under-solves. Reversed to Option A; the 59-file sweep + Claudesk coordination are accepted. `docs/product/research.md`'s blast-radius measurement stands and now scopes the *accepted* work rather than arguing against it.
+
+#### AD-2 (Milestone 8) — `uninstall.sh` mirrors `install.sh`, symmetric + defensive
+
+- **Decision:** A standalone `uninstall.sh` (pure bash, zero Claudesk dependency) that reverses each thing `install.sh` sets up, using the **same idempotency + safety contract** install already uses:
+  1. **Symlinks** (skills, agents, hooks, `claude-time` hook.pl + CLI bin) — `rm` **only** when the link exists AND its resolved target points *into this repo* (mirror install's "exists but not a symlink → skip, manual resolution needed" guard; never remove a non-symlink or a foreign-target link).
+  2. **CLAUDE.md snippet block** — excise **only** the marker-delimited block between `<!-- BEGIN claude-workflow-system -->` and `<!-- END claude-workflow-system -->` via the same `awk` block-delete install uses for replacement; **never** delete `~/.claude/CLAUDE.md` wholesale; back up before editing (mirror install's `.bak` discipline).
+  3. **Per-project memory symlink** — remove the `~/.claude/projects/<slug>/memory` *symlink* only; **never** touch the real store it points at (`<proj>/.claude/memory`). Reuse `tools/memory-link/lib-slug.sh` for realpath-safe slug derivation (the documented footgun).
+  4. **settings.json perms** — install only *prints* these (does not auto-write), so uninstall correspondingly only *prints* a reminder of what to remove; it does not edit `settings.json` unless a later install revision starts auto-writing a hook registration (then reverse exactly that block).
+- **Rationale:** an unclean uninstall (leftover symlinks, a half-excised snippet, a clobbered CLAUDE.md, or a deleted memory store) is exactly the "residue" the try-and-back-out story must avoid. Symmetry with `install.sh` keeps the two in lockstep as the single source of truth.
+- **Verification target (for WBS):** `install → uninstall → re-install` round-trips clean and idempotent.
+
+#### AD-3 (Milestone 10) — "research" collision: **disambiguation-first, rename-as-fallback**
+
+- **Decision:** Treat the collision as a **semantic description-matching routing risk**, not a name clash. First-line fix: sharpen the `description`/trigger phrasing of `product-research` + `feature-research` so they read as **unambiguously workflow-scoped** (they run *inside* a workflow state, not "research the web"), plus orchestrator-prompt disambiguation. A **rename is a fallback only** if disambiguation proves insufficient in practice.
+- **Rationale:** research + web-search confirmed there is **no literal identifier collision** — CC's built-in is `/deep-research`; this repo has `product-research`/`feature-research`. CC skill activation is *semantic* (matches the request against skill descriptions), so a rename would not fix the semantic-match problem and would incur the full three-places-in-sync cost (transitions IDs, SKILL.md, scenarios, CLAUDE.md) for little gain. Disambiguation attacks the actual failure mode at low cost.
+
+#### AD-4 (Milestone 9) — "pause" disambiguation: pure prompt-convention
+
+- No architectural surface beyond *which prompts change*: the orchestrator AGENTS.md files + relevant SKILL.md prose. The convention (reserve bare "pause" for course-correction; require explicit `/session-pause` or a distinct phrase for the skill; confirm intent when ambiguous) is a prompt edit + behavioral scenario, no state-machine change. Detailed decomposition deferred to WBS.
+
+#### AD-5 (Milestone 11) — onboarding: **deferred / designed later (brainstorm-first)**
+
+- Explicitly **not architected now.** It is a design activity co-owned with the operator, dependent on the settled AD-1 index layout and the AD-2 install/uninstall flow. Arch acknowledges it exists and is sequenced last; its shape (a dedicated onboarding SKILL.md and/or a throwaway tutorial project) is a WBS/brainstorm output, not an arch decision. WBS should carve it as a design-spike work package, not an implementation WP.
+
+### Design-prior capture check (this cycle)
+
+No new `design-priors.md` prior proposed. The candidate lean — "favor low-blast-radius/orientation fixes over large refactors for the new-user audience" (AD-1) — is a **technical/operational tradeoff** (blast-radius vs. clarity), which the arch-boundary exclusion keeps in *this* file, not `design-priors.md`. The genuinely *product*-design lean in this space (audience/anti-persona gating for the non-workflow user) is being captured on the **Claudesk** side per the handoff, not duplicated here. `design-priors.md` remains absent in this repo (silent no-op).
 
 ## Revision 2026-06-26
 

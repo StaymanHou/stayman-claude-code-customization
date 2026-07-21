@@ -91,3 +91,54 @@ Buried 2026-06-12:
 - **Status:** pending
 - **Pickup shape:** all 3 are cheap+safe 1-line edits (#1/#3 apply directly; #2's exact line numbers need verifying against the committed file first per the "review-finding suggested-actions are hypotheses" Context Rule). Natural candidates for the next `/util-backlog-paydown` sweep or a small `/task-plan`.
 
+
+---
+
+## Inbound from Claudesk (handoff 2026-07-20 — not yet triaged into TODO order)
+
+> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding.
+
+## SURFACE-2026-07-20-CLAUDESK-STANDALONE-UNINSTALL
+- **Source:** Claudesk handoff 2026-07-20 (secondary-non-workflow-user gate design).
+- **Target level:** product:roadmap / task (install tooling).
+- **Type:** gap (missing standalone uninstall; install must be single source of truth).
+- **Summary:** Add a standalone `uninstall.sh` (works with **zero** Claudesk dependency) that cleanly reverses everything `install.sh` sets up — the skill/agent symlinks into `~/.claude/`, the `~/.claude/settings.json` hook registration, the per-project memory symlink. Keep `install.sh` as the canonical single source of truth for the install steps (Claudesk's invite will *display* these, not hardcode them).
+- **Context:** Claudesk offers a one-click *disable* (its own UI flip) + an evangelistic invite to install this workflow system. De-frictioning "try the workflow system + Claudesk together, then cleanly remove it if not for me" needs a real standalone uninstall — the skill system must be removable without Claudesk in the loop, leaving no residue.
+- **Priority:** medium (unblocks Claudesk's invite + the try-and-back-out story).
+- **Status:** pending (inbound; not yet ordered).
+
+## SURFACE-2026-07-20-CLAUDESK-UNIFY-DOC-FOLDERS
+- **Source:** Claudesk handoff 2026-07-20.
+- **Target level:** product:roadmap (a doc-convention change touching every workflow skill that reads/writes these paths).
+- **Type:** new-work / refactor (new-user ergonomics).
+- **Summary:** Unify the split workflow-doc layout (`docs/product/*.md` strategic + `workflow/*` operational) into a friendlier single top-level layout for users **new** to the workflow — one place to learn, not two. Layout name/shape TBD (co-locate or a single indexed root).
+- **Context:** The split is second nature to the author but a two-location learning cost for a new user Claudesk is inviting in. **⚠️ Cross-repo coupling:** Claudesk M11's Docs viewer auto-discovers this exact doc set (`docs/product/*.md` incl. `*wbs*`, `workflow/wip/*.md`, `workflow/backlog.md`, `workflow/.session.md`) — if this layout changes, the settled layout must be sent back to Claudesk so its `docs_list` discovery follows (see the handoff's return contract). Decide the layout here; Claudesk adapts to it.
+- **Priority:** medium (foundational — everything else references the layout; do first).
+- **Status:** pending (inbound; not yet ordered).
+
+## SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY
+- **Source:** Claudesk handoff 2026-07-20 (operator-observed).
+- **Target level:** skill/orchestrator prompts.
+- **Type:** ambiguity / correctness (wrong-intent risk).
+- **Summary:** The bare word "pause" is overloaded: sometimes the operator means *interrupt/course-correct the current work mid-flight*, other times *invoke the `session-pause` skill*. Disambiguate in the orchestrator/skill prompts — e.g. reserve bare "pause" for course-correction and require explicit `/session-pause` (or a distinct phrase) for the skill, or have the orchestrator confirm intent when the word is ambiguous.
+- **Context:** A misfire either drops a session-pause the operator wanted, or writes a `.session.md` when they only meant "stop and reconsider." Lives in this repo's prompts, not Claudesk.
+- **Priority:** medium (small, independent; can run in parallel).
+- **Status:** pending (inbound; not yet ordered).
+
+## SURFACE-2026-07-20-CLAUDESK-RESEARCH-SKILL-COLLISION
+- **Source:** Claudesk handoff 2026-07-20 (operator-observed).
+- **Target level:** skill naming / orchestrator prompts.
+- **Type:** naming collision (wrong-skill-fires risk).
+- **Summary:** Claude Code shipped a built-in **deep-research** skill/capability; this repo has `product-research` + `feature-research`. "research" now overlaps and can fire the wrong one. Rename/namespace this repo's research skills, or add orchestrator disambiguation, so the workflow research skills don't collide with CC's built-in deep-research.
+- **Context:** Operator says "research" → risk of the built-in deep-research firing instead of the workflow's product/feature research (or vice versa). Independent of the other items.
+- **Priority:** medium (small, independent; can run in parallel).
+- **Status:** pending (inbound; not yet ordered).
+
+## SURFACE-2026-07-20-CLAUDESK-ONBOARDING-DESIGN
+- **Source:** Claudesk handoff 2026-07-20.
+- **Target level:** product:vision / product:roadmap (a new-user on-ramp for the workflow system).
+- **Type:** new-work (onboarding UX; brainstorm-first).
+- **Summary:** Design the new-user onboarding + "aha" moments for someone brand-new to the workflow system (whom Claudesk will invite in). What does a first-time user do first? What's the fastest moment the workflow's value clicks? Does it need a **dedicated onboarding skill** and/or a **throwaway tutorial project** to practice on? **Explicitly brainstorm-first — not yet specced;** the operator wants to brainstorm this together.
+- **Context:** Claudesk will *render* the onboarding surface but the *content + flow* is this repo's — it's a property of the workflow system, not the app. Depends on the settled folder layout (#2) + install flow (#1) to build a coherent first-run story, so likely sequenced last. The onboarding flow spec is part of the return contract to Claudesk.
+- **Priority:** medium (the payoff of inviting users at all; do after layout + install settle).
+- **Status:** pending (inbound; brainstorm-first; not yet ordered).
