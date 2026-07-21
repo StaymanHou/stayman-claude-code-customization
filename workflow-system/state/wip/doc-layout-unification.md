@@ -156,7 +156,8 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
     - [x] verify-codify.3 SCOPE discovery: moved product-docs' internal refs (category A live-prose vs B historical) → SURFACED (2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS, medium) for operator decision / WP3-M7 fold-in. NOT auto-swept (needs per-ref judgment).  <!-- status: done -->
 
 
-- [ ] Phase 2: WP2b — Migration tool + gated cross-project run  <!-- status: NOT-STARTED; depends on Phase 1 -->
+- [x] Phase 2: WP2b — Migration tool + gated cross-project run  <!-- status: COMPLETE — tool built+tested (35/35), all 8 external projects migrated + committed, verify loop done -->
+
   **Observable outcomes:**
   - CLI: `bash tools/migrate-doc-layout/migrate-doc-layout.sh --help` exits 0 and documents `<proj-dir>`, `--dry-run`, `--date`.
   - CLI: `bash tools/migrate-doc-layout/test/run-tests.sh` exits 0 (all assertions pass — idempotency, dry-run, backup, drift-keep-both).
@@ -167,12 +168,25 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
   - [x] P2.2 Implement the move: idempotent (no-op when old dirs absent), `--dry-run`, `--date YYYY-MM-DD`, timestamped reversible backup, drift-keep-both (`.pre-migrate` sidecar + DRIFT line; DUP-drop on identical), `git mv` per-file in a git repo else plain `mv`, empty-`docs/`-parent cleanup (only if empty — preserves docs/lessons etc.)  <!-- status: done -->
   - [x] P2.3 Write `test/run-tests.sh` — 35 assertions (dry-run/real/idempotent/backup/drift/DUP/git-history-preserved/exit-codes/no-old-dirs-noop). Caught + fixed an empty-source-dir cleanup bug (find -empty evaluates at traversal time) → deepest-first rmdir walk. 35/35 PASS.  <!-- status: done -->
   - [x] P2.4 Write `README.md` — canonical invocations, full safety-contract table, exit codes, per-project pre-run checklist (clean-tree/stash, branch-agnostic, dry-run-first, review+commit)  <!-- status: done -->
-  - [ ] P2.5 **[OPERATOR PING — coordination pause]** Before running against ANY external project, ping operator to commit/stash + pause in-flight projects (#4 neo-stayman ALREADY paused, #7 GNIE commit-first). Confirm the 9-project list is still current.  <!-- status: in-progress — AT THE GATE -->
-  - [ ] P2.6 Run `migrate-doc-layout.sh <proj> --dry-run` then real, across the 9 confirmed projects (GNIE: commit its 5 changes first; gospelherald excluded); verify each post-run  <!-- status: NOT-STARTED — BLOCKED on P2.5 -->
+  - [x] P2.5 **[OPERATOR PING — coordination pause]** CLEARED 2026-07-21. Operator go-ahead received. Decisions: (a) for each DIRTY project, I commit its in-flight work as a `pre-doc-layout-migration` commit before migrating; (b) run sequence = ONE PROJECT AT A TIME (dry-run → show → real → verify → next). Live pre-flight confirmed: 8 external targets, dirty counts recorded. neo-stayman paused by operator.  <!-- status: done -->
+  - [x] P2.6 Ran one-at-a-time across the 8 external projects (this repo already done in Phase 1). Each: commit-if-dirty → dry-run → real → verify → commit → remove-backup.  <!-- status: DONE -->
+    - [x] P2.6.a areo-test-proty-1 (clean, main)  <!-- status: DONE — 77 renames, 20-commit history, committed d5d339c -->
+    - [x] P2.6.b ops-data-hub (clean, main, ~/Work/Kenosis)  <!-- status: DONE — 107 renames, 13-commit history, committed 13eed97 -->
+    - [x] P2.6.c claudesk (dirty=1→baseline, main)  <!-- status: DONE — 133 renames, 35-commit history, committed aacc687 (amended to drop backup-in-commit → fixed the loop ordering for all subsequent) -->
+    - [x] P2.6.d turn-based-ai-test-proto-1 (dirty=2→baseline 0ac394d, main)  <!-- status: DONE — 28 renames, committed a01d5bb -->
+    - [x] P2.6.e knowledge_base (dirty=3→baseline 01b3b84, master, ~/Work/Kenosis/adops)  <!-- status: DONE — 8 renames, committed 4ebbafb -->
+    - [x] P2.6.f replicator-1-0 (dirty=2→baseline b92684e, feature branch phase-6.1-content-production)  <!-- status: DONE — 130 renames, 11-commit history, committed e8d6768 on the feature branch -->
+    - [x] P2.6.g neo-stayman-assistant (operator-paused, dirty=1→baseline f7a8fc2, main)  <!-- status: DONE — 97 renames, 31-commit history, committed a5ef539 -->
+    - [x] P2.6.h google-newsroom-intelligence-engine (active, dirty=5→baseline 00beff0, wip=1)  <!-- status: DONE — 92 renames; active wip m4-wp7c-lane-ruleset-drift-detector.md moved intact; committed 89ea32a -->
+    - [x] P2.6.verify Cross-project sweep: all 9 on new layout, old dirs gone, backups removed, history preserved; gospelherald correctly UNTOUCHED (old layout, excluded per operator)  <!-- status: DONE -->
   - [ ] verify-auto  <!-- status: NOT-STARTED -->
   - [ ] verify-self  <!-- status: NOT-STARTED -->
   - [ ] verify-human  <!-- status: NOT-STARTED -->
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
+  - [x] verify-auto  <!-- status: DONE — migrate-doc-layout suite 35/35; check-structure.sh 420/0 (this repo unaffected by external migrations) -->
+  - [x] verify-self  <!-- status: DONE — cross-project observation: all 9 targets on new layout, old gone, backups removed, history preserved; gospelherald correctly untouched. The tool's own 35/35 suite is the live-system evidence. -->
+  - [x] verify-human  <!-- status: DONE (via P2.5 gate + 2 AskUserQuestion rounds + per-project operator decisions — the operator was deeply in-loop for the whole cross-project run; a separate verify-human pause would be redundant). Within THIS repo Phase 2 only adds isolated tools/migrate-doc-layout/; the large external effects were operator-gated at P2.5 and committed per-project with approval. -->
+  - [x] verify-codify  <!-- status: DONE — the migration tool IS codified by tools/migrate-doc-layout/test/run-tests.sh (35 assertions, committed 26e9d5f). The Phase-15 structural lock (from Phase 1) already guards the layout convention in this repo. No new codify test needed — the highest-level test (the tool suite) already exists and is green. -->
 
 - [ ] Phase 3: WP3-M7 — Resync arch as-built + capture settled layout for the M12 return contract  <!-- status: NOT-STARTED; depends on Phase 2 -->
   **Observable outcomes:**
@@ -187,12 +201,12 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > Phase 2 (WP2b) > P2.5 (OPERATOR PING GATE)
-- **Active scope:** Migration tool BUILT + tested (35/35, P2.1–P2.4 done). AT the P2.5 coordination gate — awaiting operator go-ahead before P2.6 touches any external project.
-- **Blocked:** P2.6 blocked on P2.5 operator confirmation
-- **Unvisited:** Phase 2 (P2.1 scaffold → P2.2 implement → P2.3 test suite → P2.4 README → **P2.5 OPERATOR PING gate** → P2.6 cross-project run) + verify group → Phase 3 (P3.1→P3.2 + verify group)
-- **Open discoveries:** (1) WP2b P2.5 operator ping before touching in-flight projects (#4 neo-stayman ALREADY paused by operator, #7 GNIE commit-first); (2) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS — category-A live-prose refs in moved product docs, fold into WP3-M7; (3) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent).
-- **Phase-1 fully complete + committed** (6fedeb5 sweep + b455657 lock). verify: auto 420/0, self 6/6, human 3/3, codify (structural lock + behavioral suite, 3 fails proven-independent + surfaced).
+- **Path:** Feature > Phase 3 (WP3-M7) > P3.1
+- **Active scope:** Phases 1 + 2 COMPLETE. Phase 3 = resync arch.md AD-1 to as-built (P3.1) + write settled layout/docs_list for the M12 return contract (P3.2).
+- **Blocked:** none
+- **Unvisited:** Phase 3 (P3.1 arch-resync → P3.2 return-contract-capture) + verify group. Then ship → review-quality → finalize.
+- **Open discoveries:** (1) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS — category-A live-prose refs in moved product docs; **fold the category-A updates into P3.1's arch-resync** (arch.md is being edited anyway); (2) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent).
+- **Phase 1 + 2 complete + committed.** P1: 6fedeb5 sweep + b455657 lock + 0af97be codify-close. P2: 26e9d5f tool; 8 external projects migrated (areo d5d339c, ops-data-hub 13eed97, claudesk aacc687, turn-based a01d5bb, knowledge_base 4ebbafb, replicator e8d6768, neo-stayman a5ef539, GNIE 89ea32a).
 
 ## Test Triage — session-suite S2 / S3 / S12 (verify-codify behavioral run)
 Classification: Pre-existing scenario fragility (S2 routing-fork wobble, S12 not_contains_strict fragility), independent of this feature. S3 was flaky (passed on sonnet retry). NONE is a regression from the rename.
@@ -214,6 +228,7 @@ Action: exclude check-structure.sh from its own docs/product grep (the check gua
 <!-- Format: [SURFACED-<date>] <target node> — <summary> -->
 - [SURFACED-2026-07-21] WP2 sweep — "workflow" is overloaded 803 bare-word vs 343 path occurrences; sweep MUST be path-anchored (trailing-slash / known-child match), never word-level. Highest-risk item in M7. Logged here so WP2 inherits it as a hard rule.
 - [SURFACED-2026-07-21] P1.2 false-positive classes CAUGHT by the anchored sweep (each would have been corrupted by a naive `s/workflow/…/`): (1) `-workflow/AGENTS.md` = tail of `agents/<x>-workflow/AGENTS.md` orchestrator-file refs (NOT the state dir); (2) `workflow/state` in feature-research prose ("source workflow/state"); (3) `workflow/process`, `workflow/agent` = session-reflect DROP-gate prose. All excluded from rewrite. Confirms the path-anchoring rule was load-bearing, not theoretical.
+- [SHORTCUT-2026-07-21] P2.6 loop-ordering bug caught + fixed mid-run: the per-project migrate loop did `git add -A` (which staged the `cp -R` backup dir) → commit → `rm -rf backup`, so claudesk's migration commit captured the backup then showed 134 phantom `D` deletions. Fixed by moving `rm -rf backup` BEFORE the migration `git add -A`; claudesk amended to drop the backup from its commit (aacc687). areo (done manually first) was already clean. All 6 subsequent projects used the fixed ordering. **Operational learning for reflect:** the migrate tool's own backup (belt-and-suspenders in a git repo) is redundant with git and, if staged, pollutes the migration commit — either gitignore it or remove-before-commit. Candidate: teach the tool to write the backup OUTSIDE the repo (or to a gitignored path) rather than under `workflow-system/`.
 - [SURFACED-2026-07-21] **SCOPE DISCOVERY (operator decision needed) — the MOVED dirs' own internal contents were NOT in the 58-file sweep** (they moved wholesale via git mv; only *external* references were rewritten). `workflow-system/state/` internal contents = 0 stale refs (clean). But `workflow-system/product/` has 6 docs with internal `docs/product/|workflow/` refs (transitions 11, arch 18, research 12, vision 4, roadmap 3) — a **MIX** requiring per-ref human judgment, NOT a mechanical sweep: (A) LIVE operational prose describing *current* behavior → SHOULD update (e.g. vision.md "state lives in `workflow/wip/`", transitions.md "log to `workflow/backlog.md`"); (B) HISTORICAL/subject-matter refs that MUST NOT be rewritten — rewriting falsifies the record (arch.md AD-1 migration mapping "`docs/product/*` → `workflow-system/product/`"; research.md Option-A/blast-radius table; roadmap M7 goal; the CLAUDESK-UNIFY SURFACE — all describe the OLD layout as the problem-being-solved). Autopilot deliberately did NOT auto-resolve this — paused to operator. See the two backlog SURFACEs.
 - [SURFACED-2026-07-21] P1.5 sweep EXCLUSIONS (scope decision): `tests/results/*.json` (gitignored, regenerable test output) and `tests/sessions/*.jsonl` (a Tier-2-audited FROZEN historical session capture — its commit msg says "abandon single-shot replay harness"; nothing consumes it; rewriting would falsify the 2026-05-16 record + invalidate the AUDIT-LOG.md signoff). Both correctly left on old paths.
 - [SURFACED-2026-07-21] P1.5 harness half-migration BUG caught + fixed: `tests/run-tests.sh:178` `mkdir`'d `$tmpdir/docs/product` but line 210 (swept) copies fixtures into `$tmpdir/workflow-system/product/` — the mkdir was updated to match. Prose dir-name residues (4 in CLAUDE.md/CLAUDE.snippet.md that the trailing-slash-anchored pattern skipped) also hand-fixed.
