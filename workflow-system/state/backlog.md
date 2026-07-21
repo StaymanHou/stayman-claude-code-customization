@@ -6,15 +6,7 @@
 
 ## TODO
 
-## SURFACE-2026-07-21-BOUNDARY-HANDOFF-AUTOCHAIN-NOT-IN-STATE-MACHINE
-- **Source:** feature:reflect (WP5 session-vocabulary-disambiguation) + operator follow-up.
-- **Target level:** product:arch / transitions.md (state-machine change) — likely a small **feature** (three-places-in-sync touch).
-- **Type:** gap / correctness (state-machine vs. prose drift).
-- **Summary:** WP5 added an advisory-prose rule — *"at a clean workflow boundary a session handoff is the natural auto-chain, even in autopilot/FSD; only mid-workflow ambiguity confirms."* But this behavior is **prose-only** (in `session-handoff/SKILL.md` §Intent-disambiguation, the 4 orchestrator `agents/*/AGENTS.md` §Your-Role guard bullet, and `CLAUDE.snippet.md` § Session vocabulary rule 2). The **state machine does not model it**: (a) every terminal-close transition exits `finalize/refactor/resolve/close → EXIT→reflect` and **reflect IS the terminus** — there is no `reflect → session-handoff` edge; (b) `session-handoff` is explicitly "NOT a state-machine state" (transitions.md:438), its only ID `S17` is a test-harness output label, not a transition target; (c) the drive-mode **pause-policy tables** (transitions.md Drive-modes + the canonical `agents/*/AGENTS.md` tables) have **zero rows** for a post-reflect handoff or for the "auto-chain the handoff in autopilot/FSD" claim.
-- **Context:** The autopilot/FSD "auto-chain even in autopilot" claim is exactly the kind of chaining decision the pause-policy tables exist to make authoritative — asserting it in prose without a transition ID or a table row is the same drift class as the P1 autopilot-pause incidents (chaining behavior living in prose the orchestrator reads inconsistently). Works today because the orchestrator reads the prose, but the machine formally stops one step short of the behavior the prose assumes.
-- **Suggested action:** Promote the boundary-handoff auto-chain from prose into the state machine — add an explicit **post-terminal transition** (e.g. `S22: reflect → session-handoff`, condition "clean boundary + nothing to persist / capture confirmed-saved", type forward, **AUTO in all drive modes**) + a matching **pause-policy row** in transitions.md Drive-modes AND the 4 canonical `agents/*/AGENTS.md` tables, so the three-places-in-sync rule (transitions.md / SKILL.md / scenarios) actually covers it. Add a behavioral scenario asserting the boundary auto-chain fires (and the mid-workflow ambiguous case still confirms). Keep the *prose* as the human-readable statement, but make the *table* authoritative. Decide whether `session-handoff` should become a first-class dispatched state or stay a meta-op with a documented post-reflect edge (transitions.md:438 currently says the latter).
-- **Priority:** medium — **operator flagged for the IMMEDIATE next session.**
-- **Status:** pending
+## SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE
 - **Source:** feature:build (wp5-disambiguate-pause, Phase 1)
 - **Target level:** product:wbs
 - **Type:** gap
@@ -54,16 +46,6 @@
 - **Priority:** low
 - **Status:** open
 
-## SURFACE-2026-07-15-RUN-TESTS-ID-FILTER-PARSES-ALL-SCENARIOS-FIRST
-- **Source:** feature:build (delete-on-resolve-backlog-convention Phase 3 P3.3)
-- **Target level:** task:plan (test-harness perf/UX)
-- **Type:** tech-debt
-- **Summary:** `tests/run-tests.sh --id <ids>` parses **every** scenario in all group YAMLs before applying the `--id` filter, so even a `--dry-run` of 4 targeted IDs exceeds 60s (never printed within the timeout). The filter is applied post-parse (run-tests.sh:~155-164), so targeting a tiny subset gets no speedup over a full parse.
-- **Context:** Discovered while confirming the 4 delete-on-resolve scenarios. The real (model-executing) run of 4 scenarios took 105s and worked fine — the slowness is purely the parse-before-filter in `--dry-run` / setup. **UPDATE 2026-07-21 (WP5 disambiguate-pause):** this is NOT merely a dry-run convenience issue — it materially BLOCKED real single-scenario behavioral verification. A `run-tests.sh --id S26,S27` (2 scenarios) hung >5 min in the parse-all phase, 0 bytes out, no `claude --print` ever spawned, and had to be killed. The `session.yaml` group has grown to 33 scenarios; the per-scenario `parse_scenario_field`/`parse_scenario_nested` shell-outs (run-tests.sh:~98-129) over all 33 before the `--id` filter make targeted behavioral runs unusable. WP5 had to DEFER its 2 behavioral scenarios' execution to a future full sweep as a result. Priority raised low→medium.
-- **Suggested action:** `/task-plan` — move the `--id` match to a cheap pre-parse `id:`-line scan so non-matching scenarios are skipped before full parse (a scenario whose `id:` doesn't match `--id` should never reach `parse_scenario_field`). Property-check against `--id` single/multi/none + `--group`. This unblocks fast per-scenario behavioral iteration, which WP5 showed is now a real need.
-- **Priority:** medium
-- **Status:** RESOLVING — fixed by the boundary-handoff-autochain feature Phase 3 (P3.1, 2026-07-21): hoisted a cheap `id`-only pre-parse gate to the top of `run_test()` before the ~22 expensive per-scenario parses. Targeted `--id` run went from >5min hang → 22.5s; property-checked single/multi/none/bad-id/group/combined. **Will be deleted-on-resolve at feature finalize** (CHANGELOG-then-delete).
-
 ## SURFACE-2026-07-21-RUN-TESTS-ID-DRYRUN-STILL-WALKS-ALL-FILES
 - **Source:** feature:build (boundary-handoff-autochain Phase 3 P3.2)
 - **Target level:** task:plan (test-harness perf, minor)
@@ -83,6 +65,12 @@
 - **Suggested action:** `/task-plan` — decide the coherent scheme, apply across all `## Step 0`-bearing skills, update the Phase-3 pins to match. Property-check the pin strings after.
 - **Priority:** low
 - **Status:** open
+
+## Code-quality findings — boundary-handoff-autochain-state-machine (2026-07-21)
+- **Pointer:** 3 MINOR findings (feature-review-quality, ship 3104205), all cosmetic/docs: (1) `transitions.md` S-ID gap (S19/S21 unused) undocumented; (2) the "table is authoritative" guard bullet nested at 5-space instead of 3-space peer across the 4 AGENTS.md; (3) S29's `not_contains: TRANSITION: S17` is near-inert. Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** all trivial docs/test-nit edits — bundle into the next `/util-backlog-paydown` sweep. **Verify each against the code first (review-finding-actions-are-hypotheses).**
 
 ## Code-quality findings — doc-layout-unification (2026-07-21)
 - **Pointer:** 1 MINOR finding remaining (3 of the original 4 RESOLVED by the 2026-07-21 post-ship refactor — see CHANGELOG). Remaining: `run()` uses `eval "$*"` (quoting fragility inherited from `tools/memory-link/`; a path with embedded `"`/`$` would break — not triggered by the known doc-path input set). Full body in [`workflow/backlog-quality-findings.md`](backlog-quality-findings.md).

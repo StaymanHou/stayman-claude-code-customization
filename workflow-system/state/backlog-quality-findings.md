@@ -93,3 +93,23 @@ _Resolved findings are **deleted** from this file on close (delete-on-resolve co
 - **Severity:** MINOR (feature-review-quality, ship d7e9075)
 - **Finding:** `uninstall.sh` `remove_link` header comment enumerates outcomes in the order "not present → [ok] … symlink … real file", but the code body checks them in the reverse order (`-L` symlink → `-e` real file → fallthrough `[ok]`). Harmless — behavior is correct — but the comment ordering doesn't match read order and momentarily misleads a future reader.
 - **Pickup shape:** trivial — reorder the comment's outcome list to match the code's check order (`-L` → `-e` → fallthrough). Bundle into the next `/util-backlog-paydown` sweep or a docs-only task.
+
+# boundary-handoff-autochain-state-machine — 2026-07-21
+
+## SURFACE-2026-07-21-QUALITY-SESSION-ID-GAP-UNDOCUMENTED
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 3104205)
+- **Finding:** The `transitions.md` Session-transitions table now reads S17, S18, S20, S22, S23 — S19 and S21 are absent and undocumented. A future author adding a session edge cannot tell whether S19/S21 are retired-and-reserved or simply never used, risking accidental ID reuse in an append-only namespace.
+- **Pickup shape:** trivial — add a one-line "S19/S21 unused" note near the Session-transitions table (mirroring how `F17` retired is called out elsewhere). Bundle into the next `/util-backlog-paydown` sweep or a docs task. **Verify against the code first** (review-finding-actions-are-hypotheses).
+
+## SURFACE-2026-07-21-QUALITY-GUARD-BULLET-NESTING
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 3104205)
+- **Finding:** The new "pause-policy table is authoritative" bullet in the §Your-Role guard block is nested at 5-space indent (child of the "Agent-side guard is CONTEXTUAL" bullet) across all 4 orchestrator AGENTS.md, but it reads as a peer statement governing the whole boundary auto-chain decision, not only the CONTEXTUAL-guard sub-case. Cosmetic; identical across all 4 files.
+- **Pickup shape:** trivial — promote the bullet to a 3-space peer of the two sibling guard bullets in all 4 AGENTS.md (keep them in sync). Bundle into the next sweep. **Verify the current indent against each file first.**
+
+## SURFACE-2026-07-21-QUALITY-S29-INERT-NOT-CONTAINS
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 3104205)
+- **Finding:** `tests/scenarios/session.yaml::S29` carries `not_contains: TRANSITION: S17`, but the real mis-fire (an unwanted handoff) surfaces as a written `.session.md` / "Handed off" string — already guarded by the sibling `not_contains` lines. The `TRANSITION: S17` guard is near-inert (session-handoff rarely emits a structured token in this prose-behavior path). Not wrong, just lower-signal than its prominence suggests.
+- **Pickup shape:** optional — drop the `TRANSITION: S17` line from S29's `not_contains` (or replace with a stronger `.session.md`-side anchor). Low value; leave unless touching S29 for another reason. **Verify against the current S29 block first.**
