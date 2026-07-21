@@ -102,3 +102,7 @@ Mode 1 pauses: every step.
 Mode 2 happy-path pauses: vision scoping + roadmap review + P10 exit (3 total).
 Mode 3 happy-path pauses: vision scoping only (1 total).
 Mode 4 happy-path pauses: none.
+
+### Research tiers — workflow-research vs. web-research, and confirm before deep-research
+
+`product-research` is an **in-workflow** state (P3/P5 → scout solutions/libraries for the *next milestone*, grounded in this codebase, before `/product-wbs`). It is **not** general web research. When a *web* research need arises during product work (a fact, a precedent, an ecosystem survey), do **not** reach for the heavyweight `deep-research` harness reflexively — pull `/quick-research` (a light, standalone WebSearch/WebFetch pass returning confidence-labeled findings + a known-unknowns list). If that light pass leaves **load-bearing unknowns**, `quick-research` will **offer** to escalate to `deep-research` — but that offer **requires an explicit human "yes" before launch, even in autopilot/FSD** (the cost boundary is a human-input point, not an auto-chainable transition). Reach for `deep-research` only when the ROI bar clears: high-stakes/decision-reversing, cross-source verification needed, broad literature survey, or a quick pass left load-bearing unknowns. See `~/.claude/CLAUDE.md` → "Research cost tiers (GLOBAL)" for the full contract. `quick-research` is a standalone skill, not a workflow state (no P-ID, no pause-policy row).

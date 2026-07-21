@@ -1,6 +1,6 @@
 ---
 name: product-research
-description: "Product workflow: research technical solutions, libraries, and frameworks for the next development milestone"
+description: "Product-workflow state (runs INSIDE the product state machine, before /product-wbs): scout technical solutions, libraries, and frameworks for the NEXT development milestone, grounded in this codebase. NOT general web research — for a fast web lookup use quick-research; for a cited multi-source report use the built-in deep-research."
 argument-hint: <specific focus areas or constraints>
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: feature-research
-description: "Feature workflow: conduct research, spikes, or investigation to answer technical questions"
+description: "Feature-workflow state (runs INSIDE the feature state machine, a spike DURING a feature): investigate this codebase + its local data to answer a bounded technical question that unblocks the current phase. NOT general web research — for a fast web lookup use quick-research; for a cited multi-source report use the built-in deep-research."
 argument-hint: <research topic or questions to answer>
 ---
 

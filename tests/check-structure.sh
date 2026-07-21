@@ -2187,10 +2187,22 @@ echo ""
 #   - tests/check-structure.sh — THIS file: its own descriptive comments + the grep
 #     pattern-literals below contain the very strings it searches for (self-match). The
 #     check guards the prompt/scenario/CLAUDE surface, not its own source.
+#   - Migration-MAPPING prose lines (category-B): a line that DESCRIBES the old→new move
+#     via the mapping arrow "→ workflow-system/{product,state}" is documenting history,
+#     not emitting a live stale path. Rewriting the left side (docs/product/* →
+#     workflow-system/product/*) would falsify the record (see
+#     SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS). Anchored on the arrow +
+#     new-root target so it excludes ONLY the mapping form, NOT a bare live old-path ref.
 echo "[Phase 15] Doc-layout unification — no stale docs/product | workflow/<child> paths"
 
+# shared exclusion for category-B migration-mapping prose (old → workflow-system/<root>).
+# grep is line-oriented, so '.*' cannot cross lines — no need for a newline-excluding
+# char class (which also tripped a "brackets not balanced" warning on BSD grep).
+mapping_prose='→.*workflow-system/(product|state)'
+
 stale_docs_product=$( (grep -rnE 'docs/product' skills/ agents/ tests/ CLAUDE.md CLAUDE.snippet.md 2>/dev/null || true) \
-  | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|tests/check-structure\.sh' || true )
+  | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|tests/check-structure\.sh' \
+  | grep -vE "$mapping_prose" || true )
 stale_dp_count=$(printf '%s' "$stale_docs_product" | grep -c . || true)
 if [ "$stale_dp_count" -eq 0 ]; then
   check "no stale docs/product/ path in skills/ agents/ tests/ CLAUDE docs (unified to workflow-system/product/)" "pass"
@@ -2199,7 +2211,8 @@ else
 fi
 
 stale_workflow_state=$( (grep -rnE 'workflow/(wip|backlog|archive|\.session|learnings)' skills/ agents/ tests/ CLAUDE.md CLAUDE.snippet.md 2>/dev/null || true) \
-  | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|workflow-system|tests/check-structure\.sh' || true )
+  | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|workflow-system|tests/check-structure\.sh' \
+  | grep -vE "$mapping_prose" || true )
 stale_ws_count=$(printf '%s' "$stale_workflow_state" | grep -c . || true)
 if [ "$stale_ws_count" -eq 0 ]; then
   check "no stale workflow/<child> state path in skills/ agents/ tests/ CLAUDE docs (unified to workflow-system/state/)" "pass"
@@ -2211,6 +2224,38 @@ fi
 # future over-eager "cleanup" that deletes the paths entirely rather than migrating them).
 grep_check "unified root workflow-system/product/ is referenced in skills/" "skills/session-start/SKILL.md" "workflow-system/product/" 1
 grep_check "unified root workflow-system/state/ is referenced in skills/" "skills/session-pause/SKILL.md" "workflow-system/state/" 1
+
+echo ""
+
+# ── Phase 16: Research cost-tier disambiguation (WP6) ────────────────────────
+# quick-research is the LIGHT research tier; deep-research (harness built-in) is the HEAVY
+# tier. The bite this feature fixed is a cost-tier jump (a light lookup silently escalating
+# into deep-research), NOT topic confusion. These pins lock the four load-bearing surfaces:
+# (a) quick-research's own behavior anchors — confidence labels, known-unknowns, and the
+# human-gated (never-auto-launch) deep-research escalation; (b) the global cost-tier rule in
+# CLAUDE.snippet.md; (c) the two in-workflow research skills' sharpened descriptions reading
+# as workflow-scoped + NOT web research; (d) the orchestrator reinforcement. Anchors were
+# grep-verified present before pinning (per the review-finding-is-a-hypothesis discipline).
+echo "[Phase 16] Research cost-tier disambiguation (quick-research + confirm-before-deep)"
+
+# (a) quick-research SKILL.md behavior anchors
+grep_check "quick-research SKILL.md name frontmatter" "skills/quick-research/SKILL.md" "^name: quick-research$" 1
+grep_check "quick-research requires per-claim confidence labels" "skills/quick-research/SKILL.md" "confidence label" 1
+grep_check "quick-research requires a known-unknowns list" "skills/quick-research/SKILL.md" "known unknown" 1
+grep_check "quick-research: deep-research escalation is NEVER auto-launched" "skills/quick-research/SKILL.md" "NEVER launched automatically|NEVER auto-launch|never launched automatically" 1
+grep_check "quick-research states the ROI bar for deep-research" "skills/quick-research/SKILL.md" "When deep-research IS justified|ROI" 1
+
+# (b) global cost-tier rule in CLAUDE.snippet.md
+grep_check "CLAUDE.snippet.md carries the Research cost tiers rule" "CLAUDE.snippet.md" "## Research cost tiers \(GLOBAL\)" 1
+grep_check "CLAUDE.snippet.md: confirm-before-deep-research rule" "CLAUDE.snippet.md" "Confirm before deep-research" 1
+
+# (c) the two in-workflow research descriptions read workflow-scoped + NOT web research
+grep_check "product-research description reads workflow-scoped (NOT web research)" "skills/product-research/SKILL.md" "^description:.*NOT general web research" 1
+grep_check "feature-research description reads workflow-scoped (NOT web research)" "skills/feature-research/SKILL.md" "^description:.*NOT general web research" 1
+
+# (d) orchestrator reinforcement in both product + feature orchestrators
+grep_check "feature-workflow orchestrator reinforces research tiers + confirm-before-deep" "agents/feature-workflow/AGENTS.md" "Research tiers — workflow-research vs. web-research" 1
+grep_check "product-workflow orchestrator reinforces research tiers + confirm-before-deep" "agents/product-workflow/AGENTS.md" "Research tiers — workflow-research vs. web-research" 1
 
 echo ""
 

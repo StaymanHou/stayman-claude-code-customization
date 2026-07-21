@@ -153,6 +153,26 @@ When filling a product-design gap the operator left open, load `design-priors.md
 
 `tests/check-structure.sh` (Phase 13) pins the consult block in the planning skills, the capture move in the checkpoint skills, the schema in `arch.md`, and this mapping.
 
+## Research cost tiers (GLOBAL)
+
+"Research" spans a **cost spectrum**, and four skills sit on it. Picking by the *word* "research" is the failure mode — a fast online lookup silently escalating into the heavyweight `deep-research` harness (high time + token cost) when a cheap pass was what was wanted. Pick by **cost + surface**, and **never launch the heavyweight tier on a fence case without human confirmation**.
+
+| Skill | Tier / cost | Surface | Use when |
+|---|---|---|---|
+| `quick-research` | **Light — fast, cheap** | The web (WebSearch/WebFetch) | Ad-hoc "look this up online"; a good-enough answer. **The default for a general web lookup.** |
+| `deep-research` (harness built-in) | **Heavy — slow, high token cost** | The web, many sources | A multi-source, adversarially-verified, **cited** report *and* the ROI justifies it. **Never the reflexive default.** |
+| `feature-research` | In-workflow | This codebase + local data | A bounded technical **spike** inside a running feature to unblock the current phase. |
+| `product-research` | In-workflow | Solutions/libraries for a milestone | Scouting technical options for the **next** milestone, inside the product flow. |
+
+**The rules:**
+
+1. **Light-first default.** For a general web question of unknown depth, start with `quick-research`. Do not reach for `deep-research` reflexively.
+2. **Quick-research is honest about its shallowness.** It returns **per-claim/per-source confidence labels** (HIGH/MED/LOW) and an explicit **known-unknowns list** — that hygiene is what makes a cheap default safe.
+3. **Confirm before deep-research (the cost boundary is a human-input point).** When a light pass leaves *load-bearing* unknowns, **offer** to escalate to `deep-research` — the known-unknowns become its sub-questions — but **wait for an explicit human "yes" before launching it.** This holds **even in autopilot / FSD**: an escalation offer is a confirmation prompt, not a transition the orchestrator may auto-chain. `deep-research` is **never** auto-launched from a fence case.
+4. **The ROI bar for deep-research** — reach for it (or accept an escalation into it) only when at least one holds: high-stakes/decision-reversing · needs cross-source verification (sources conflict) · broad literature/precedent survey · a quick pass left load-bearing unknowns. Otherwise quick-research is enough — escalating "to be thorough" is the over-reach this discipline exists to prevent.
+
+`deep-research` is a **harness built-in** (not editable from this repo); the light path + confidence/known-unknowns discipline + confirm-gate live in `quick-research`'s own SKILL.md, and the two in-workflow research skills' `description:` frontmatter is sharpened to read unambiguously as workflow-scoped (not web research). `tests/check-structure.sh` pins these surfaces.
+
 ## CHANGELOG.md convention (GLOBAL)
 
 Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at the project root (`<proj_root>/CHANGELOG.md`). It is the narrative record of what shipped, closed, or resolved — and it is the **sole** canonical record of resolved backlog items. `workflow-system/state/backlog.md` (and `workflow-system/state/backlog-quality-findings.md`) carry **only open work** — a resolved item is **deleted** from the backlog on resolve, not marked with a `Status: resolved` line and not moved to a `## Resolved` section. The resolved paper trail lives in CHANGELOG alone (see the **delete-on-resolve** rule under "Append discipline" below).

@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-07-15
+updated: 2026-07-21
 ---
 
 
@@ -20,7 +20,8 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
 - **Last:** 24s (2026-07-21)
 - **Use timeout:** 90000
 - **History:**
-  - 24s — 2026-07-21  <!-- uninstall-sh (WP4) Phase 1 verify-codify; 420 PASS / 0 FAIL. Adding uninstall.sh introduced NO regression and NO new pins yet (the uninstall structural pin lands in Phase 3 / P3.2). Baseline 420 confirmed carried forward from the M7 lock. Runtime flat. -->
+  - 24s — 2026-07-21  <!-- WP6 (research-cost-tier) Phase 2 verify-auto; 438 PASS / 0 FAIL. +11 from Phase 1's 427 — new [Phase 16] research cost-tier disambiguation pins (5 quick-research anchors + 2 snippet-rule + 2 sharpened-description + 2 orchestrator-reinforcement). All anchors grep-verified present before pinning. Runtime flat. -->
+  - 23s — 2026-07-21  <!-- WP6 (research-cost-tier) Phase 1 verify-codify; 427 PASS / 0 FAIL. +1 from the uninstall baseline 426: fixed a PRE-EXISTING Phase-15 failure (CLAUDE.md:150 M7 migration-mapping prose `docs/product/* → workflow-system/product/` counted as a stale ref) by adding a category-B mapping-prose exclusion (`→.*workflow-system/(product|state)`) to BOTH Phase-15 stale-path filters — narrow (still catches live stale paths, only skips old→new mapping lines). Also fixed a latent BSD-grep "brackets not balanced" warning (raw-newline char class → `.*`). WP6 Phase 1 added skills/quick-research/ (auto-covered by dynamic per-skill phases; content pins deferred to Phase 2/P2.5). Runtime flat. -->
   - 24s — 2026-07-21  <!-- doc-layout-unification Phase 1 (WP2a) verify-auto; 416 PASS / 0 FAIL after the docs/product→workflow-system/product + workflow→workflow-system/state move + 58-file path sweep. The 12 product-path grep_check pins all resolved at the new workflow-system/product/ paths; count flat at 416 (rename is path-substitution, adds no new pins). -->
   - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 4 verify-auto; 416 PASS / 0 FAIL. Phase 4 was the migration (deleted 5+13 resolved backlog blocks, rewrote 1 partial) — pure backlog markdown-data edits; check-structure.sh does not pin backlog.md content, so count flat at 416, no regression. -->
   - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 3 verify-auto; 416 PASS / 0 FAIL. +5 from Phase 2's 411 (new Phase 11 delete-on-resolve pins: 4 close skills + 1 snippet invariant). Anchors grep-verified before pinning. Behavioral scenarios (F19/T10/I10/P13-delete-on-resolve) ran separately: 3 PASS + 1 SOFT_PASS (I10 prose-behavior shape), 0 FAIL. Runtime flat. -->

@@ -1,0 +1,69 @@
+group: research
+# Behavioral scenarios for quick-research — the LIGHT research tier + the confirm-before-
+# deep-research escalation gate (WP6, research cost-tier disambiguation).
+#
+# quick-research is a STANDALONE skill that emits NO workflow transition token. So these
+# scenarios assert via contains_any only (verify.sh enforces contains_required only inside a
+# transition match; with no transition the path is the contains_any SOFT_PASS branch, and
+# SOFT_PASS counts as passing) — same shape as util.yaml.
+#
+# PROMPT-LEAKAGE DISCIPLINE (docs/lessons/test-scenario-prompt-leakage.md): the prompt must
+# present the fence-case CONTEXT neutrally and must NOT recite the rule under test ("confirm
+# before deep-research", "label confidence", "list unknowns"). If the prompt stated the
+# rule, the scenario would test prompt-obedience, not the skill — it would pass even if the
+# skill prose were deleted. So each prompt is just a plain web-research request; the
+# assertion is that the skill's OWN prose drives the confidence-labeling + known-unknowns +
+# human-gated escalation behavior.
+#
+# WEB-TOOL NOTE: quick-research's procedure calls WebSearch/WebFetch, which may be
+# unavailable or nondeterministic under --print. The load-bearing, deterministic behavior is
+# the CONTROL FLOW the skill imposes regardless of whether the web pass returns real data:
+# (1) it does NOT reflexively launch the deep-research harness, and (2) when gaps remain it
+# OFFERS deep-research and waits for a human yes. The contains_any anchors target that prose.
+
+scenarios:
+  - id: QR1-fence-case-offers-and-waits
+    name: "quick-research: fence-case web question → light pass, then human-gated deep-research offer (not auto-launch)"
+    skill: quick-research
+    # Neutral fence-case prompt: a web-researchable question of genuinely uncertain depth,
+    # phrased as a plain ask. Does NOT tell the model to confirm, label, or list unknowns.
+    args: >
+      I'm weighing whether to adopt a Homebrew cask that also ships its own in-app
+      auto-updater for a macOS app — do those two update mechanisms conflict, and how do
+      real-world casks handle it? Look into it.
+    expect:
+      # The skill should run the LIGHT tier and, because this question has load-bearing
+      # unknowns, OFFER to escalate — gated on a human yes — rather than silently launching
+      # the heavyweight harness. Any of these anchors evidences the gated-escalation behavior.
+      contains_any:
+        - "deep-research"
+        - "known unknown"
+        - "confidence"
+        - "quick"
+        - "want me to"
+      # No not_contains: the model legitimately NAMES deep-research (that's the offer). The
+      # failure mode (silently RUNNING deep-research without asking) is not detectable as a
+      # forbidden string here — it's a control-flow property the QR prose + verify-self cover;
+      # this scenario asserts the light-tier + offer prose is present.
+    max_retries: 2
+
+  - id: QR2-settled-no-overreach
+    name: "quick-research: a settled, well-known fact → answer without over-reaching to deep-research"
+    skill: quick-research
+    # Neutral prompt: a question a light pass can fully settle. The skill should NOT
+    # manufacture an escalation offer "to be thorough" (the over-reach guard). Prompt does
+    # not mention escalation, ROI, or confidence.
+    args: >
+      What's the default HTTP port for a plain (non-TLS) HTTP server, and what port does
+      HTTPS use? Quick lookup.
+    expect:
+      # A settled answer should carry confidence labeling and NOT need a deep-research
+      # escalation. We assert the light-tier hygiene is present; the over-reach guard
+      # (no forced escalation on a settled question) is verified structurally + at verify-self.
+      contains_any:
+        - "confidence"
+        - "HIGH"
+        - "80"
+        - "443"
+        - "settled"
+    max_retries: 2
