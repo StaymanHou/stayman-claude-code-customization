@@ -139,3 +139,6 @@ M7: WP1 (decide layout+migration) → WP2 (sweep + migrate tool + run) → WP3-M
 - **WP7 last-but-one** — brainstorm-first, depends on settled layout + install flow; its spec feeds WP8.
 - **WP8 terminal** — aggregates deliverables back to Claudesk (**including the required M11 `docs_list` path change**).
 - No environment/Docker WP (this repo is host-based shell + prompt files, no services). No 3rd-party probe WPs (no external integrations). No orchestration/async WPs (none in scope). Deviations from the standard ordering sequence are all "N/A — no such surface in this cycle."
+
+## Session Pause — 2026-07-21 11:00
+Paused. See `workflow-system/state/.session.md` to resume.
