@@ -122,7 +122,7 @@ Buried 2026-06-12:
 
 ## Inbound from Claudesk (handoff 2026-07-20 — not yet triaged into TODO order)
 
-> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding.
+> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding. **UPDATE 2026-07-21: #2 folder-unify (Milestone 7) SHIPPED** — its SURFACE (CLAUDESK-UNIFY-DOC-FOLDERS) is resolved + deleted per delete-on-resolve; see CHANGELOG. The remaining 4 (uninstall, pause, research, onboarding) are still open below.
 
 ## SURFACE-2026-07-20-CLAUDESK-STANDALONE-UNINSTALL
 - **Source:** Claudesk handoff 2026-07-20 (secondary-non-workflow-user gate design).
@@ -131,15 +131,6 @@ Buried 2026-06-12:
 - **Summary:** Add a standalone `uninstall.sh` (works with **zero** Claudesk dependency) that cleanly reverses everything `install.sh` sets up — the skill/agent symlinks into `~/.claude/`, the `~/.claude/settings.json` hook registration, the per-project memory symlink. Keep `install.sh` as the canonical single source of truth for the install steps (Claudesk's invite will *display* these, not hardcode them).
 - **Context:** Claudesk offers a one-click *disable* (its own UI flip) + an evangelistic invite to install this workflow system. De-frictioning "try the workflow system + Claudesk together, then cleanly remove it if not for me" needs a real standalone uninstall — the skill system must be removable without Claudesk in the loop, leaving no residue.
 - **Priority:** medium (unblocks Claudesk's invite + the try-and-back-out story).
-- **Status:** pending (inbound; not yet ordered).
-
-## SURFACE-2026-07-20-CLAUDESK-UNIFY-DOC-FOLDERS
-- **Source:** Claudesk handoff 2026-07-20.
-- **Target level:** product:roadmap (a doc-convention change touching every workflow skill that reads/writes these paths).
-- **Type:** new-work / refactor (new-user ergonomics).
-- **Summary:** Unify the split workflow-doc layout (`docs/product/*.md` strategic + `workflow/*` operational) into a friendlier single top-level layout for users **new** to the workflow — one place to learn, not two. Layout name/shape TBD (co-locate or a single indexed root).
-- **Context:** The split is second nature to the author but a two-location learning cost for a new user Claudesk is inviting in. **⚠️ Cross-repo coupling:** Claudesk M11's Docs viewer auto-discovers this exact doc set (`docs/product/*.md` incl. `*wbs*`, `workflow/wip/*.md`, `workflow/backlog.md`, `workflow/.session.md`) — if this layout changes, the settled layout must be sent back to Claudesk so its `docs_list` discovery follows (see the handoff's return contract). Decide the layout here; Claudesk adapts to it.
-- **Priority:** medium (foundational — everything else references the layout; do first).
 - **Status:** pending (inbound; not yet ordered).
 
 ## SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY

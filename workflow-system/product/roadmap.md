@@ -1,7 +1,7 @@
 ---
 stage: roadmap
 state: complete
-updated: 2026-07-20
+updated: 2026-07-21
 ---
 
 # Roadmap — Claude Code Workflow System
@@ -130,13 +130,14 @@ updated: 2026-07-20
      closes the loop (see Milestone 12). Milestone numbering continues the flat list;
      groups are cosmetic only. -->
 
-### Milestone 7: Unify the workflow-doc layout for new users
-**Origin:** SURFACE-2026-07-20-CLAUDESK-UNIFY-DOC-FOLDERS
+### Milestone 7: Unify the workflow-doc layout for new users ✅ COMPLETE 2026-07-21
+**Origin:** SURFACE-2026-07-20-CLAUDESK-UNIFY-DOC-FOLDERS (resolved)
+**Shipped as:** the `doc-layout-unification` feature (Option A physical unification) — `docs/product/*` → `workflow-system/product/`, `workflow/*` → `workflow-system/state/`. 58-file path-anchored sweep + `tools/migrate-doc-layout/` migration primitive (9 consuming projects migrated, gospelherald excluded) + `check-structure.sh` Phase-15 anti-regression lock. Settled layout + Claudesk M11 `docs_list` change captured for the M12 return contract (WP8).
 **Goal:** Reduce the two-location learning cost (`docs/product/*` strategic + `workflow/*` operational) to a single friendlier top-level layout — or a clearly-indexed single entry point — for users new to the workflow. This is foundational: every other milestone and the Claudesk return contract reference the settled layout.
 **Deliverables:**
 - A decided doc-folder layout (co-located single root, or a top-level index that unifies the two locations) with the rename/move plan
 - All workflow skills/agents that read or write these paths updated to the new layout (this touches many `skills/*/SKILL.md` and `agents/*/AGENTS.md` — a doc-convention change, not a one-file edit)
-- `CLAUDE.md` / `CLAUDE.snippet.md` and `docs/product/arch.md` resynced to the new layout
+- `CLAUDE.md` / `CLAUDE.snippet.md` and `workflow-system/product/arch.md` resynced to the new layout
 - Structure-check pins (`tests/check-structure.sh`) updated to the new paths
 **Exit Criteria:**
 - A new user can find both strategic and operational workflow state from one obvious place

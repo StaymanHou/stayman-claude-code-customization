@@ -1,7 +1,7 @@
 ---
 stage: wbs
 state: complete
-updated: 2026-07-20
+updated: 2026-07-21
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -29,7 +29,7 @@ The standard rule details WPs for the **next milestone only**, because later mil
 
 > **AD-1 operator-ratified Option A** (2026-07-20 P8 back-loop): physically unify the two folders under one top-level root — `docs/product/*` → `workflow-system/product/`, `workflow/*` → `workflow-system/state/`. Working names; finalizable in WP1.1. The ~59-file path sweep + a required Claudesk `docs_list` change are accepted. **This is the materially larger decomposition** (vs. the superseded index-only Option B). It is a **convention change for all consuming projects**, not just this repo.
 
-### WP1: Decide the target layout + migration strategy for existing consuming projects
+### WP1: Decide the target layout + migration strategy for existing consuming projects ✅ SHIPPED 2026-07-21 (commit 3000801)
 **Type:** probe (decision output — settles the rename map + migration approach before the mechanical sweep)
 **Milestone:** 7
 **Dependencies:** none (first WP of the cycle)
@@ -38,32 +38,32 @@ The standard rule details WPs for the **next milestone only**, because later mil
 **Migration is IN SCOPE (operator-confirmed 2026-07-20):** existing projects on this machine already using the workflow system WILL be migrated — not clean-break. **Reference precedent: `tools/memory-link/`** (2026-07-03 memory-location-symlink feature) — a proven template for exactly this "reusable primitive + one-time cross-project migration" shape. WP2 builds a `tools/migrate-doc-layout/` mirroring its structure and disciplines: **idempotent** (re-run = no-op), **`--dry-run`**, **timestamped reversible backup** before any move, **drift/conflict rule** (never silently overwrite), **`--date` param** for deterministic test naming (the harness-shell date footgun), a **test suite** under `tools/migrate-doc-layout/test/`, and a **README** with canonical invocations. The one-time run across the machine's existing projects mirrors memory-link's 8-project run.
 **Success criterion:** a written rename map (old path → new path, exhaustive) + confirmed "migrate existing projects via a memory-link-style helper" approach, recorded in `arch.md` (as-built) before WP2 touches any file.
 **Tasks:**
-- [ ] 1.1 Confirm/finalize folder + subfolder names; produce the exhaustive old→new rename map
-- [ ] 1.2 Read `tools/memory-link/` (`migrate-memory.sh` + `ensure-*.sh` + `test/` + README) as the template; enumerate the existing on-machine projects to migrate (like memory-link's project sweep)
-- [ ] 1.3 Decide whether/when this repo dogfoods the move on its own docs (and whether the migrate helper handles that too)
+- [x] 1.1 Confirm/finalize folder + subfolder names; produce the exhaustive old→new rename map
+- [x] 1.2 Read `tools/memory-link/` (`migrate-memory.sh` + `ensure-*.sh` + `test/` + README) as the template; enumerate the existing on-machine projects to migrate (like memory-link's project sweep) — 10 found, 9 migrated (gospelherald excluded)
+- [x] 1.3 Decide whether/when this repo dogfoods the move on its own docs (and whether the migrate helper handles that too) — repo moved via plain git mv in Phase 1; helper for other projects
 
-### WP2: Execute the path sweep across skills, agents, tests, CLAUDE docs
+### WP2: Execute the path sweep across skills, agents, tests, CLAUDE docs ✅ SHIPPED 2026-07-21 (commits 6fedeb5 sweep + b455657 lock + 26e9d5f tool + e87e053 run; split into WP2a source-sweep + WP2b migration-tool as recommended)
 **Description:** The mechanical heart of M7, in two parts: **(i) the source sweep** — `git mv` the directories (preserving history), then rewrite every path reference across the ~59-file blast radius (38 skills, 14 tests, 5 agents, `CLAUDE.md`, `CLAUDE.snippet.md`) to the new roots; and **(ii) the migration tool** — build `tools/migrate-doc-layout/` (mirroring `tools/memory-link/`) that moves an existing consuming project's `docs/product/` + `workflow/` to the new layout, then run it once across the machine's existing projects (WP1.2 enumeration). Honor the **state-machine-lives-in-three-places** sync rule (`transitions.md` / `SKILL.md` / scenarios) and the **path-qualification mandate** (every path reference stays explicitly qualified). Update `tests/check-structure.sh` path pins.
 **Milestone:** 7
 **Dependencies:** WP1 (needs the settled rename map + project enumeration)
 **Size:** L (or split into WP2a source-sweep + WP2b migration-tool at feature-plan time — recommended given size)
 **Tasks:**
-- [ ] 2.1 `git mv docs/product → workflow-system/product` and `workflow → workflow-system/state` in THIS repo (per WP1.3 dogfood decision)
-- [ ] 2.2 Sweep path references in `skills/` (38 files) — grep-driven, per the downstream-contract-impacts discipline
-- [ ] 2.3 Sweep `agents/` (5 files) + `CLAUDE.md` + `CLAUDE.snippet.md`
-- [ ] 2.4 Sweep `tests/` (14 files: scenarios, run-tests.sh, check-structure.sh path pins, session jsonl fixtures)
-- [ ] 2.5 Build `tools/migrate-doc-layout/` from the `tools/memory-link/` template (script + `--dry-run` + `--date` + timestamped backup + drift rule + `test/` suite + README)
-- [ ] 2.6 Run the migration tool (`--dry-run` first) across the enumerated existing on-machine projects; verify each
-- [ ] 2.7 Run `tests/check-structure.sh` + `tests/run-tests.sh` (fresh-subprocess — beware harness bootstrap-skip on edited SKILL.md) to full green; capture runtimes to `runtimes.md`
+- [x] 2.1 `git mv docs/product → workflow-system/product` and `workflow → workflow-system/state` in THIS repo (per WP1.3 dogfood decision) — 133 renames, history preserved
+- [x] 2.2 Sweep path references in `skills/` (38 files) — grep-driven, per the downstream-contract-impacts discipline — path-anchored (never bare-word)
+- [x] 2.3 Sweep `agents/` (5 files) + `CLAUDE.md` + `CLAUDE.snippet.md`
+- [x] 2.4 Sweep `tests/` (scenarios, run-tests.sh incl. mkdir fixture-fix, check-structure.sh 12 path pins); EXCLUDED tests/results/*.json (gitignored) + tests/sessions/*.jsonl (frozen audited capture)
+- [x] 2.5 Build `tools/migrate-doc-layout/` from the `tools/memory-link/` template (script + `--dry-run` + `--date` + timestamped backup + drift rule + 35-assertion `test/` suite + README)
+- [x] 2.6 Run the migration tool (`--dry-run` first) across the enumerated existing on-machine projects (9 migrated, gospelherald excluded); verify each — all history preserved
+- [x] 2.7 Run `tests/check-structure.sh` (420/0) + behavioral session-suite (fresh-subprocess); + added Phase-15 anti-regression lock. 3 session fails proven independent of the rename + SURFACED
 
-### WP3-M7: Resync arch as-built + capture settled layout for the return contract
+### WP3-M7: Resync arch as-built + capture settled layout for the return contract ✅ SHIPPED 2026-07-21 (commit 88e8243)
 **Description:** After the sweep is green, resync `arch.md` (as-built: the layout moved; new paths; migration strategy shipped) and record the settled layout + exact new discovery paths in a form the M12 return contract (WP7) can hand to Claudesk's M11.
 **Milestone:** 7
 **Dependencies:** WP2
 **Size:** XS–S
 **Tasks:**
-- [ ] m7.1 Resync `arch.md` AD-1 to as-built (paths moved, migration strategy chosen)
-- [ ] m7.2 Write the settled layout + new `docs_list` glob paths for the WP7 return contract
+- [x] m7.1 Resync `arch.md` AD-1 to as-built (paths moved, migration strategy chosen) — AS-BUILT subsection appended; category-B decision/mapping text preserved
+- [x] m7.2 Write the settled layout + new `docs_list` glob paths for the WP7 return contract — `## Return Contract — M7 settled layout` block in the archived WIP (old→new docs_list mapping for Claudesk M11)
 
 **WP1 → WP2 → WP3-M7 rationale:** settle the rename map + migration strategy (cheap, reversible decision) **before** the 59-file mechanical sweep (expensive, wide) — resolving the riskiest unknown (existing-project migration) first, exactly the learning-sequence discipline. Resync/capture only after the sweep is verified green.
 

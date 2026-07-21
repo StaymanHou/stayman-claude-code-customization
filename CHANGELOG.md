@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-21
+
+- **Feature shipped:** Doc-layout unification (M7) — the workflow system's two per-project doc folders were physically unified under one root (`docs/product/*` → `workflow-system/product/`, `workflow/*` → `workflow-system/state/`) so a newcomer learns one place instead of two; delivered as a path-anchored 58-file source sweep in this repo, a new `tools/migrate-doc-layout/` migration primitive (idempotent, `--dry-run`, reversible backup, drift-keep-both, git-mv history preservation, 35-assertion test suite) that migrated 9 consuming projects (gospelherald excluded), a `check-structure.sh` Phase-15 anti-regression lock (4 pins, 420/0), and an `arch.md` AS-BUILT resync + M12 return-contract capture of the settled layout for Claudesk M11's `docs_list`.
+- **Backlog resolved:** SURFACE-2026-07-20-CLAUDESK-UNIFY-DOC-FOLDERS — closed by the doc-layout-unification feature (this milestone IS that SURFACE; the split-folder confusion it described is removed).
+- **Milestone:** Milestone 7 — Unify the workflow-doc layout for new users (WBS WP1 decide + WP2 sweep/tool + WP3-M7 resync, all shipped).
+
 ## 2026-07-15
 
 - **Feature shipped:** Delete-on-resolve backlog convention — terminal-close skills (`feature-finalize`, `task-close`, `incident-resolve`, `product-finalize`) now DELETE a resolved backlog entry on resolve (gated by a CHANGELOG-then-delete hard invariant: no delete without the `**Backlog resolved:**` line landing in the same commit) rather than marking it `Status: resolved`, making `workflow/backlog.md` + `workflow/backlog-quality-findings.md` open-work-only and CHANGELOG.md the sole resolved-item record; landed with the convention in `CLAUDE.snippet.md` + `arch.md` + project `CLAUDE.md`, 5 `check-structure.sh` [Phase 11] pins, 4 `*-delete-on-resolve` behavioral scenarios + fixture, and a migration that deleted the ~18 already-resolved entries backlogged before the convention existed.

@@ -1,7 +1,7 @@
 # Feature: Doc-layout unification (M7 / WP1 decision-probe → WP2 sweep → WP3-M7 resync)
 
 **Workflow:** feature
-**State:** ship (complete)
+**State:** COMPLETED 2026-07-21
 **Created:** 2026-07-21
 **Entry:** spec (complex feature — L-sized 59-file sweep + cross-project migration)
 **Milestone:** 7 (Claudesk Handoff Cycle)
@@ -160,6 +160,17 @@ workflow-system/product/*.md  +  workflow-system/product/*wbs*.md  +  workflow-s
 - **Note for Claudesk:** claudesk's OWN repo has already been migrated to `workflow-system/` (commit `aacc687`), so M11 can be developed against the new layout directly.
 
 ---
+
+## Retrospect
+- **What changed in our understanding:** (1) The word "workflow" is far more overloaded than the WBS anticipated — 803 bare concept-word uses vs 343 path uses — making the sweep's path-anchoring the single load-bearing decision (a naive substitution would have corrupted the whole prompt corpus). (2) The migration scope was bigger than the WBS's `~/Personal/projects` assumption: a full-home sweep found 4 more consuming projects under `~/Work/Kenosis` (10 total, 9 migrated). (3) A "reversible backup inside the repo" is an anti-pattern when the target IS a git repo — the backup is redundant with git AND actively corrupts the migration commit if staged (caught mid-run at claudesk; independently re-flagged by review-quality).
+- **Assumptions that held:** the `tools/memory-link/` template transferred cleanly (idempotent + --dry-run + --date + drift-keep-both + git-mv-history all applied 1:1); the ~59-file blast-radius estimate was exact (58 files swept); `git mv` preserved history across all 9 projects; the moved-dir-internal-refs being a live-vs-historical mix (not a mechanical sweep) was correctly anticipated and surfaced rather than auto-swept.
+- **Assumptions that were wrong:** the WBS framed WP2 as a single L-sized unit, but the split into WP2a (source sweep) + WP2b (migration tool + run) was clearly correct — they have different risk profiles (mechanical vs. destructive-cross-project) and verification surfaces. The behavioral session-suite was assumed useful as a verify-codify gate; in fact it surfaced only pre-existing haiku model-noise (S2/S12) unrelated to the rename — the *structural* Phase-15 lock is the real regression guard for a path change.
+- **Approach delta:** matched the plan closely. The one deviation: WP2b's per-project run hit the backup-in-commit footgun on the 2nd project (claudesk), requiring a loop-ordering fix (remove-backup-before-commit) + a claudesk amend. Recorded as a shipped-unlanded operational learning → backlogged as the 2 MAJOR review findings.
+
+## Communicate
+> **Feature complete:** Doc-layout unification (M7) has shipped. The workflow system's two per-project doc folders (`docs/product/` + `workflow/`) are now physically unified under a single `workflow-system/` root (`product/` + `state/` subfolders) — one place for a newcomer to learn instead of two. This repo + 8 other consuming projects were migrated (history preserved) via the new `tools/migrate-doc-layout/` primitive; a `check-structure.sh` Phase-15 lock prevents the old paths from creeping back. Verify: `ls workflow-system/` in any migrated project; `bash tests/check-structure.sh` → 420/0.
+>
+> Requester = operator — closure notice for self-record.
 
 ## Code-Quality Review — doc-layout-unification
 
