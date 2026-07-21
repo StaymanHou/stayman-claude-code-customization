@@ -9,8 +9,8 @@ skills:
   - incident-mitigate
   - incident-codify
   - incident-resolve
-  - session-pause
-  - session-resume
+  - session-handoff
+  - session-restore
   - session-reflect
 ---
 
@@ -74,6 +74,9 @@ report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → c
 6. **Surface follow-ups (I11, I12).** After resolution, evaluate whether the root cause needs proper fixing beyond the mitigation. Log to backlog.
 7. **Fast-close path (I4, I7).** False alarms and duplicates can skip investigation/mitigation but must still go through resolve for proper documentation.
 8. **Can interrupt any workflow (F27).** Incidents can be entered from any feature workflow state. The interrupted workflow's state should be saved first.
+9. **Support session handoff/restore** via `/session-handoff` and `/session-restore`.
+   - **Disambiguate "pause" — turn-level vs session boundary.** Bare **"pause"**, **"stop"**, **"hold"** (and "pause the turn", "hold the turn", "stop for a moment", "pause now") mean *interrupt the current turn / course-correct* — **do NOT** invoke `/session-handoff` and **do NOT** write `workflow-system/state/.session.md`; just stop and wait. **The going-offline family — "I need to go", "I'll /resume later", "shutting down / disconnecting", "stop so I can /exit" — is ALSO turn-level** (stop immediately; the operator uses the built-in `/resume` to continue *this turn* when back online; `/resume` ≠ `/session-restore`). Only **"hand off the session"**, "pause the session", "pause here, <X> next session", "wrap up and pause", or an explicit `/session-handoff` mean the session-boundary handoff.
+   - **Agent-side guard is CONTEXTUAL (keyed on workflow position, not universal).** At a **clean workflow boundary** — after a terminal-close (`finalize`/`close`/`resolve`) → `session-reflect` with nothing to persist, or after `session-capture` once a learning is confirmed-saved — a session handoff is the *natural, expected* next step: **auto-chain it, no confirm** (even in autopilot/FSD). Only **mid-workflow, on an ambiguous word** (bare "pause"/"defer"/"wrap up"/"hold" in the middle of a phase) do you **fire the guard**: don't write `.session.md` on the ambiguous word alone — ask one line ("Turn-level hold, or write a session handoff for next time?") first. The over-reach is bidirectional (an adjacent "defer that check" can pull toward an unwanted handoff — a real misfire cost a stray `.session.md` + `rm`). Discriminator: terminal boundary → natural handoff; mid-workflow ambiguity → confirm first.
 
 ## Orchestration Procedure
 

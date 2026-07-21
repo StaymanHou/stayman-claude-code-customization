@@ -1,6 +1,6 @@
 ---
 name: session-reflect
-description: "Session operation: post-session reflection — identify wrong assumptions, lessons learned, and prompt store-learning"
+description: "Session operation: post-session reflection — identify wrong assumptions, lessons learned, and prompt session-capture"
 argument-hint: <optional context about what to reflect on>
 ---
 
@@ -78,7 +78,7 @@ Historically the agent systematically over-labels `[GLOBAL]`: of every learning 
 
 - **Default every tier-1 store candidate to `[PROJECT]`.** A concrete gotcha, convention, or fix discovered while working in this repo is project-scope by default — even when it *feels* like it might generalize. "Could apply elsewhere" is NOT sufficient for global; the operator consistently prefers to keep such things project-local and hand-port later if a second project ever hits it.
 - **Label `[GLOBAL]` only when ALL THREE hold:** (a) the learning is about the *workflow system / agent-operation itself*, not any one codebase's domain, tools, or stack; AND (b) it would change behavior in an unrelated project with a different stack; AND (c) you can name the specific cross-project mechanism it changes. Absent all three, it is `[PROJECT]`.
-- **Even then, `[GLOBAL]` is a draft, not an install** (see `session-store-learning` — it lands in `<proj-dir>/.claude/learnings/` for the operator to hand-port). So the bar is "worth the operator's time to review and carry to the source repo," which is high. When in doubt, `[PROJECT]`.
+- **Even then, `[GLOBAL]` is a draft, not an install** (see `session-capture` — it lands in `<proj-dir>/.claude/learnings/` for the operator to hand-port). So the bar is "worth the operator's time to review and carry to the source repo," which is high. When in doubt, `[PROJECT]`.
 
 **Carve-out — this repo (`my-claude-code-customization`):** here the workflow system IS the domain, so `[GLOBAL]`-flavored workflow-mechanism learnings are legitimately common and are tracked first-class (per this repo's `## Artifact tracking overrides`). The lean-project default still applies to repo-specific *authoring* conventions (those go to this repo's root `<proj-dir>/CLAUDE.md`).
 
@@ -116,16 +116,16 @@ Present the learnings in **three tiers**, in this order. The tiers come directly
 ```
 
 **Tier discipline:**
-- **Scope label leads on tier-1 items.** Each store candidate starts with a bracketed `[GLOBAL]` or `[PROJECT]` label (uppercased, matching the `[SHORTCUT-...]` / `[SURFACED-...]` audit-marker style used elsewhere) so scope is visible at a glance. `[GLOBAL]` = reusable across all projects (cleared the §2b 3-part gate); `[PROJECT]` = this repo only (the default). This is the same scope vocabulary `session-store-learning` consumes when routing.
+- **Scope label leads on tier-1 items.** Each store candidate starts with a bracketed `[GLOBAL]` or `[PROJECT]` label (uppercased, matching the `[SHORTCUT-...]` / `[SURFACED-...]` audit-marker style used elsewhere) so scope is visible at a glance. `[GLOBAL]` = reusable across all projects (cleared the §2b 3-part gate); `[PROJECT]` = this repo only (the default). This is the same scope vocabulary `session-capture` consumes when routing.
 - **Tier 2 requires a citation.** No cited location → the item is tier 1, not tier 2 (per §2a fail-safe).
 - **Tier 3 is one line.** Never expand a dropped candidate into full prose; the collapsed list is the entire tier. Its purpose is an auditable veto surface, not a discussion.
 - **Default to fewer.** If §2a leaves zero tier-1 candidates, say so plainly ("No store candidates this session") — that is the common, correct outcome, not a failure.
 
 ### 4. Prompt Store-Learning
 
-**Only tier-1 store candidates** are offered for persistence — tiers 2 and 3 are read-only and never routed to `session-store-learning`.
+**Only tier-1 store candidates** are offered for persistence — tiers 2 and 3 are read-only and never routed to `session-capture`.
 
-- **If there are tier-1 candidates:** recommend "Run `/session-store-learning <the specific tier-1 learnings>` to persist them." Pass them pre-scoped (the `[PROJECT]`/`[GLOBAL]` labels from §2b) so store-learning routes without re-deciding.
-- **If there are no tier-1 candidates:** do NOT recommend `/session-store-learning`. State "Nothing to persist this session" and stop.
+- **If there are tier-1 candidates:** recommend "Run `/session-capture <the specific tier-1 learnings>` to persist them." Pass them pre-scoped (the `[PROJECT]`/`[GLOBAL]` labels from §2b) so session-capture routes without re-deciding.
+- **If there are no tier-1 candidates:** do NOT recommend `/session-capture`. State "Nothing to persist this session" and stop.
 
 **Context:** {{args}}

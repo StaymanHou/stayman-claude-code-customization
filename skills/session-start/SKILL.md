@@ -16,7 +16,7 @@ You are a workflow dispatcher AND orchestrator. Your job is to **classify** the 
 | **Feature** | `feature-spec` (complex) or `feature-plan` (small/simple) | `agents/feature-workflow/AGENTS.md` | Multi-step implementation |
 | **Task** | `task-plan` | `agents/task-workflow/AGENTS.md` | Atomic work: bug fix, small change |
 | **Incident** | `incident-report` | `agents/incident-workflow/AGENTS.md` | Production issue |
-| **Resume** | — (run `/session-resume` directly) | — | Continue a previously paused session |
+| **Restore** | — (run `/session-restore` directly) | — | Continue a previously handed-off session |
 
 **Small/simple feature criteria** (skip spec, go straight to plan):
 All must hold: (1) no new data models or API endpoints, (2) no architectural decisions required, (3) describable in ≤ 4 sentences, (4) estimated < 4 hours of agent work, (5) estimated ≤ ~200 lines of new/changed code.
@@ -64,7 +64,7 @@ Four modes control how aggressively the orchestrator chains between steps. The f
 
 ### 1. Check for active work
 Briefly check for any active work and mention it if found:
-- `workflow-system/state/.session.md` — an explicitly paused session → strongly recommend `/session-resume` over starting fresh
+- `workflow-system/state/.session.md` — an explicitly handed-off session → strongly recommend `/session-restore` over starting fresh
 - `workflow-system/state/wip/` — any active feature/task/incident files
 - `workflow-system/product/` — any product doc with frontmatter `state: in-progress`
 
@@ -93,7 +93,7 @@ It is idempotent and realpath-safe — a clean no-op ("OK: already linked") when
   > By the way, the backlog has these open items —
   >
   > **1. SURFACE-2026-05-12-STORE-LEARNING-WRONG-ITEM-SELECTED** *(medium-high)*
-  > `/session-store-learning` re-indexes within the "Recommendations" sub-list, silently picks the wrong learning.
+  > `/session-capture` re-indexes within the "Recommendations" sub-list, silently picks the wrong learning.
   >
   > **2. SURFACE-2026-05-11-ENTRYPOINT-SKILLS-LOAD-PRODUCT-CONTEXT** *(medium)*
   > Entry-point skills should optionally load relevant `workflow-system/product/*.md` files when present.
@@ -140,7 +140,7 @@ State your classification (1–2 sentences), then present the mode menu (the har
 
 **Mode 1 behaviour:** after each skill completes, summarise what was done and tell the user which slash command to run next. Do not invoke the next skill automatically.
 
-**Record the selected mode** in the WIP file's frontmatter as `drive_mode: stepping | orchestrated | autopilot | fsd` when the first skill creates or updates the file. Honour this value across any `/session-pause` + `/session-resume` cycle and across cross-workflow handoffs.
+**Record the selected mode** in the WIP file's frontmatter as `drive_mode: stepping | orchestrated | autopilot | fsd` when the first skill creates or updates the file. Honour this value across any `/session-handoff` + `/session-restore` cycle and across cross-workflow handoffs.
 
 **Incident override:** regardless of the selected drive mode, the incident workflow always runs as Mode 2 (Orchestrated). Human judgment is non-negotiable during incidents.
 
@@ -199,7 +199,7 @@ Cross-workflow examples you may hit:
 Non-EXIT terminal states (e.g., `F19` finalize → reflect, `T10` close → EXIT): the workflow simply ends. Do not auto-chain into a new one.
 
 ### 6. Resume path
-If the work classifies as a resume, do NOT start driving. Tell the user to run `/session-resume`. That skill reads `workflow-system/state/.session.md` and restores context — including the previously selected drive mode — before any workflow driving would make sense.
+If the work classifies as a restore, do NOT start driving. Tell the user to run `/session-restore`. That skill reads `workflow-system/state/.session.md` and restores context — including the previously selected drive mode — before any workflow driving would make sense.
 
 ## What success looks like
 

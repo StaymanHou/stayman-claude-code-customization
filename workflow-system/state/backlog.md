@@ -6,6 +6,16 @@
 
 ## TODO
 
+## SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE
+- **Source:** feature:build (wp5-disambiguate-pause, Phase 1)
+- **Target level:** product:wbs
+- **Type:** gap
+- **Summary:** `install.sh` is additive-only — after a skill/agent directory is renamed (`git mv skills/session-pause skills/session-handoff`), install.sh creates the new-name symlink but leaves the old-name symlink dangling in `~/.claude/skills/`. A dangling `/session-pause` symlink still surfaces as an "available skill" to the harness but resolves to a non-existent dir. WP5 hit this THREE times in one feature (session-pause, session-resume, session-store-learning renames) and removed each orphan manually (defensive: symlink + dangling + target-in-repo guard) — a clear signal the prune belongs in install.sh.
+- **Context:** Any future skill rename hits this. Bites silently — the new skill works, so the stale link is easy to miss. `uninstall.sh` already has the "symlink + target-into-repo" removal primitive; install.sh could reuse it to prune symlinks in `~/.claude/skills/` (and `~/.claude/agents/`) whose target no longer exists.
+- **Suggested action:** Add an orphan-prune pass to `install.sh` — after linking, iterate `~/.claude/{skills,agents}/*`, and for each symlink that (a) points into this repo AND (b) is dangling, remove it. Mirror uninstall.sh's defensive guard. Small task.
+- **Priority:** medium
+- **Status:** pending
+
 ## SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS
 - **Source:** feature:verify-codify (doc-layout-unification M7 WP2a)
 - **Target level:** task:plan (or fold into M7 WP3-M7 arch-resync — operator's call)
@@ -41,9 +51,9 @@
 - **Target level:** task:plan (test-harness perf/UX)
 - **Type:** tech-debt
 - **Summary:** `tests/run-tests.sh --id <ids>` parses **every** scenario in all group YAMLs before applying the `--id` filter, so even a `--dry-run` of 4 targeted IDs exceeds 60s (never printed within the timeout). The filter is applied post-parse (run-tests.sh:~155-164), so targeting a tiny subset gets no speedup over a full parse.
-- **Context:** Discovered while confirming the 4 delete-on-resolve scenarios. The real (model-executing) run of 4 scenarios took 105s and worked fine — the slowness is purely the parse-before-filter in `--dry-run` / setup. Low-value to fix (the real run works; dry-run is a convenience), but a short-circuit (skip parsing a scenario's body when its `id` doesn't match `--id`) would make `--dry-run --id` and small `--id` batches near-instant.
-- **Suggested action:** `/task-plan` — move the `--id` match to a cheap pre-parse `id:`-line scan so non-matching scenarios are skipped before full parse. Property-check against `--id` single/multi/none + `--group`.
-- **Priority:** low
+- **Context:** Discovered while confirming the 4 delete-on-resolve scenarios. The real (model-executing) run of 4 scenarios took 105s and worked fine — the slowness is purely the parse-before-filter in `--dry-run` / setup. **UPDATE 2026-07-21 (WP5 disambiguate-pause):** this is NOT merely a dry-run convenience issue — it materially BLOCKED real single-scenario behavioral verification. A `run-tests.sh --id S26,S27` (2 scenarios) hung >5 min in the parse-all phase, 0 bytes out, no `claude --print` ever spawned, and had to be killed. The `session.yaml` group has grown to 33 scenarios; the per-scenario `parse_scenario_field`/`parse_scenario_nested` shell-outs (run-tests.sh:~98-129) over all 33 before the `--id` filter make targeted behavioral runs unusable. WP5 had to DEFER its 2 behavioral scenarios' execution to a future full sweep as a result. Priority raised low→medium.
+- **Suggested action:** `/task-plan` — move the `--id` match to a cheap pre-parse `id:`-line scan so non-matching scenarios are skipped before full parse (a scenario whose `id:` doesn't match `--id` should never reach `parse_scenario_field`). Property-check against `--id` single/multi/none + `--group`. This unblocks fast per-scenario behavioral iteration, which WP5 showed is now a real need.
+- **Priority:** medium
 - **Status:** open
 
 ## SURFACE-2026-07-13-STEP0-PREAMBLE-VS-PROCEDURE-RENUMBER

@@ -17,7 +17,7 @@ This machine has a state-machine-driven workflow system installed (skills + orch
 - **Task** — `/task-plan` → act → close (atomic changes, bug fixes)
 - **Incident** — `/incident-report` → triage → investigate → mitigate → resolve
 
-Or `/session-start` to get routed, `/session-pause` and `/session-resume` for cross-session continuity.
+Or `/session-start` to get routed, `/session-handoff` and `/session-restore` for cross-session continuity.
 
 **Orchestrator procedures** (`agents/<workflow>-workflow/AGENTS.md`) describe how to drive each workflow end-to-end — happy path, back-loops, and which moments require a human pause. `/session-start` reads the matching orchestrator file and runs the workflow **in the current conversation** (not via a subagent spawn), invoking each skill via the Skill tool and pausing only at real decision points (spec/plan review, verify-human, back-loops, triage severity, etc.).
 
@@ -173,6 +173,27 @@ When filling a product-design gap the operator left open, load `design-priors.md
 
 `deep-research` is a **harness built-in** (not editable from this repo); the light path + confidence/known-unknowns discipline + confirm-gate live in `quick-research`'s own SKILL.md, and the two in-workflow research skills' `description:` frontmatter is sharpened to read unambiguously as workflow-scoped (not web research). `tests/check-structure.sh` pins these surfaces.
 
+## Session vocabulary — turn vs. session boundary (GLOBAL)
+
+Like "research," the word **"pause" is overloaded across a cost spectrum**, and picking by the bare word is the failure mode. Two intents, very different costs:
+
+| Intent | Cost | Words the operator uses | Correct response |
+|---|---|---|---|
+| **Turn-level** | cheap, reversible, **no artifact** | bare **"pause"**, **"stop"**, **"hold"**, "pause the turn", "hold the turn", "stop for a moment", "pause now"; **the going-offline family: "I need to go", "I'll `/resume` later", "hold, I'm shutting down / disconnecting", "stop so I can `/exit`"** | Stop **immediately** so the operator can safely `/exit`. **Do NOT** invoke `/session-handoff`; write **nothing** to `.session.md`. There is deliberately **no turn-level skill** — it's a plain interrupt; the operator uses the built-in **`/resume`** to continue *this turn* when back online. |
+| **Session boundary** | expensive — writes `workflow-system/state/.session.md` + a full handoff | **"hand off the session"**, "pause the session", "pause here, <X> next session", "wrap up and pause", explicit `/session-handoff` | Invoke `/session-handoff` (OUT). Restore next session with `/session-restore` (IN). |
+
+> **`/resume` ≠ `/session-restore` (the exact conflation to avoid).** `/resume` (built-in) continues the *current turn* after a turn-level HOLD; `/session-restore` restores a *written handoff* across sessions. So **"I'll /resume later" is turn-level (HOLD), NOT a handoff cue** — reading it as session-boundary intent and writing `.session.md` is a confirmed false-positive misfire.
+
+**The two session-boundary skills** (renamed in WP5/M9 from `session-pause`//`session-resume`): **`/session-handoff`** (write the handoff) ↔ **`/session-restore`** (restore it). "restore" was chosen to avoid colliding with the built-in **`/resume`**. The cross-project analogue is **`/project-handoff`** (WP8) — the `session-`/`project-` prefix disambiguates the two handoff scopes. The learning-capture skill is **`/session-capture`** (renamed from `session-store-learning` — "store" fuzzy-collided with `/re**stor**e`).
+
+**The rules:**
+
+1. **Turn-level is the default for the bare word.** Treat bare "pause"/"stop"/"hold" as a turn-level interrupt. The session handoff is the *expensive* branch and must be explicitly named.
+2. **Agent-side guard is CONTEXTUAL — keyed on workflow position, not universal.** Whether to write `.session.md` depends on where in the workflow you are, not on a blanket "always confirm":
+   - **Clean workflow boundary → auto-chain the handoff, no confirm.** After a terminal-close (`feature-finalize`/`task-close`/`incident-resolve`/`product-finalize`) → `session-reflect` with nothing to persist, or after `session-capture` once a learning is confirmed-saved, the session is genuinely done and a handoff is the *expected* next step. Write it and chain — even in autopilot/FSD. Demanding an "are you sure?" here is friction, not safety.
+   - **Mid-workflow / ambiguous word → fire the guard.** When the operator says bare "pause"/"defer"/"wrap up"/"hold" in the *middle* of a phase, do **not** write `.session.md` on the ambiguous word alone — **ask one line** ("Turn-level hold, or write a session handoff for next time?") first. The over-reach is bidirectional: an adjacent "defer that check" can pull you toward an unwanted handoff even with no "pause" utterance (a real misfire: an agent read "defer" mid-verify as a session handoff, wrote `.session.md`, and had to `rm` it). The discriminator is **workflow position**: terminal boundary → natural handoff; mid-workflow ambiguity → confirm first.
+3. **Skill-naming collision rule (the fuzzy-matcher searches DESCRIPTIONS, not just names).** When adding or renaming a skill, check both its `name:` AND its `description:` against sibling slash-command prefixes — the harness's fuzzy-matcher ranks on both, so a skill whose *description* contains a competing command's substring (e.g. `incident-mitigate` describing "restore service") will shadow the intended target of that prefix. WP5 hit this three ways (two name collisions + one description collision). `tests/check-structure.sh` [Phase 17] pins a mechanical guard: only `session-restore` may match "restor" by name or description.
+
 ## CHANGELOG.md convention (GLOBAL)
 
 Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at the project root (`<proj_root>/CHANGELOG.md`). It is the narrative record of what shipped, closed, or resolved — and it is the **sole** canonical record of resolved backlog items. `workflow-system/state/backlog.md` (and `workflow-system/state/backlog-quality-findings.md`) carry **only open work** — a resolved item is **deleted** from the backlog on resolve, not marked with a `Status: resolved` line and not moved to a `## Resolved` section. The resolved paper trail lives in CHANGELOG alone (see the **delete-on-resolve** rule under "Append discipline" below).
@@ -272,7 +293,7 @@ A project's root `CLAUDE.md` may declare a `## Artifact tracking overrides` sect
 
 ## Project-memory location — harness symlink (GLOBAL)
 
-Project memories written by `session-store-learning` (and by the harness's own auto-memory mechanism) must be **both** git-tracked (durable, coupled to the code they describe, portable) **and** auto-loaded by the harness at session start. Those two properties used to live in two different directories:
+Project memories written by `session-capture` (and by the harness's own auto-memory mechanism) must be **both** git-tracked (durable, coupled to the code they describe, portable) **and** auto-loaded by the harness at session start. Those two properties used to live in two different directories:
 
 - **Repo store** `<proj-dir>/.claude/memory/` — git-tracked, but the harness does NOT auto-load it.
 - **Harness store** `~/.claude/projects/<slug>/memory/` — auto-loaded at session start (this is where `MEMORY.md` is read from), but machine-local, untracked, and keyed on a path-derived slug.

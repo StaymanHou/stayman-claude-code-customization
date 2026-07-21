@@ -67,7 +67,7 @@ For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 3. `git add CHANGELOG.md <incident-file>` (add `workflow-system/state/backlog.md workflow-system/state/backlog-quality-findings.md` too if step 2 edited them) — stage CHANGELOG + the finalized incident report + any backlog edits together.
 4. `git mv <incident-file> workflow-system/state/archive/<incident-file>` — perform the §4 move now.
 5. Single commit captures the report's final edits + CHANGELOG append + any backlog delete/rewrite + archive move.
-6. **Do NOT `git push`.** The resolve commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
+6. **Do NOT `git push`.** The resolve commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-capture`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
 **Idempotency:** if the incident file is already inside `workflow-system/state/archive/`, skip the append (re-running resolve on an already-archived incident is a no-op).
 

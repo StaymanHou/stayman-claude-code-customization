@@ -193,14 +193,15 @@ grep_check "feature-workflow AGENTS.md retains AUTO-SKIP pause-policy annotation
 grep_check "feature-verify-self SKILL.md retains 'In-place fix shortcut' sub-clause" "skills/feature-verify-self/SKILL.md" "In-place fix shortcut" 1
 grep_check "feature-verify-self SKILL.md retains SHORTCUT-token audit-trail convention" "skills/feature-verify-self/SKILL.md" "\[SHORTCUT-<YYYY-MM-DD>\]" 1
 
-# Pause-footer strip shipped to session-resume/SKILL.md §6b (task:
-# session-resume-strip-pause-footer). The step removes the orphan
-# `## Session Pause — <timestamp>` block that `/session-pause` always appends
-# to `state_file` EOF. Without §6b, every paused-then-resumed item accrues a
-# 10–30s cleanup tax at finalize/close time (18+ recurrences observed in one
-# project alone). This pin anchors the heading so a future edit can't silently
-# drop the step.
-grep_check "session-resume SKILL.md retains §6b 'Strip the stale Pause footer' step" "skills/session-resume/SKILL.md" "Strip the stale Pause footer" 1
+# Handoff-footer strip shipped to session-restore/SKILL.md §6b (originally the
+# strip-pause-footer task; the OUT/IN skills were renamed to handoff/restore in
+# WP5/M9). The step removes the orphan `## Session Handoff — <timestamp>`
+# block (or the legacy `## Session Pause —` heading) that `/session-handoff`
+# always appends to `state_file` EOF. Without §6b, every handed-off-then-restored
+# item accrues a 10–30s cleanup tax at finalize/close time (18+ recurrences
+# observed in one project alone). This pin anchors the heading so a future edit
+# can't silently drop the step.
+grep_check "session-restore SKILL.md retains §6b 'Strip the stale Handoff footer' step" "skills/session-restore/SKILL.md" "Strip the stale Handoff footer" 1
 
 grep_check "feature-reproduce SKILL.md has Step 0 section" "skills/feature-reproduce/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "incident-report SKILL.md has Step 0 section" "skills/incident-report/SKILL.md" "^## Step 0: Available product context" 1
@@ -1966,7 +1967,7 @@ echo ""
 
 # Phase 11: Close-commit discipline + delete-on-resolve pins
 # Pins the no-auto-push clause across all four terminal-close skills + the amend-to-HEAD
-# clause in session-store-learning. Codifies SKILL.md prose contracts shipped 2026-06-12
+# clause in session-capture. Codifies SKILL.md prose contracts shipped 2026-06-12
 # (close-commit-discipline feature) to prevent silent drift toward auto-push or away
 # from learning-amend folding into HEAD.
 # Also pins the delete-on-resolve (CHANGELOG-then-delete) convention across the four
@@ -1980,8 +1981,8 @@ grep_check "feature-finalize forbids git push from close commit"   "skills/featu
 grep_check "task-close forbids git push from close commit"          "skills/task-close/SKILL.md"              "Do NOT \`git push\`"          1
 grep_check "incident-resolve forbids git push from resolve commit"  "skills/incident-resolve/SKILL.md"        "Do NOT \`git push\`"          1
 grep_check "product-finalize forbids git push from cycle-close commit" "skills/product-finalize/SKILL.md"     "Do NOT \`git push\`"          1
-grep_check "session-store-learning folds learning into HEAD via amend" "skills/session-store-learning/SKILL.md" "git commit --amend --no-edit" 1
-grep_check "session-store-learning stages the learning file before amend" "skills/session-store-learning/SKILL.md" "git add <file-path"        1
+grep_check "session-capture folds learning into HEAD via amend" "skills/session-capture/SKILL.md" "git commit --amend --no-edit" 1
+grep_check "session-capture stages the learning file before amend" "skills/session-capture/SKILL.md" "git add <file-path"        1
 
 # delete-on-resolve (CHANGELOG-then-delete hard invariant) — 4 close skills + canonical snippet rule
 grep_check "feature-finalize deletes resolved backlog entry on close"  "skills/feature-finalize/SKILL.md"  "Delete-on-resolve \(CHANGELOG-then-delete" 1
@@ -2033,13 +2034,13 @@ grep_check "CLAUDE.snippet.md defines 'Artifact tracking policy (GLOBAL)'" "CLAU
 grep_check "Artifact tracking policy states track-by-default rule" "CLAUDE.snippet.md" "[Tt]rack by default" 1
 grep_check "Artifact tracking policy defines the per-project override mechanism" "CLAUDE.snippet.md" "Artifact tracking overrides" 1
 
-# session-store-learning is a policy-FOLLOWER, not a gitignore-inspector:
+# session-capture is a policy-FOLLOWER, not a gitignore-inspector:
 # (1) it names the single canonical global-draft destination;
 # (2) its git behavior is keyed on the artifact tracking policy, NOT on inspecting/editing .gitignore;
 # (3) it explicitly forbids using .gitignore inspection to decide a learning's git fate.
-grep_check "session-store-learning names the canonical learnings destination" "skills/session-store-learning/SKILL.md" "<proj-dir>/\.claude/learnings/<YYYY-MM-DD>-<slug>\.md" 1
-grep_check "session-store-learning keys git behavior on the artifact tracking policy, not gitignore inspection" "skills/session-store-learning/SKILL.md" "[Aa]rtifact tracking policy|Artifact tracking overrides" 1
-grep_check "session-store-learning explicitly forbids gitignore-inspection for git fate" "skills/session-store-learning/SKILL.md" "Do NOT inspect or edit" 1
+grep_check "session-capture names the canonical learnings destination" "skills/session-capture/SKILL.md" "<proj-dir>/\.claude/learnings/<YYYY-MM-DD>-<slug>\.md" 1
+grep_check "session-capture keys git behavior on the artifact tracking policy, not gitignore inspection" "skills/session-capture/SKILL.md" "[Aa]rtifact tracking policy|Artifact tracking overrides" 1
+grep_check "session-capture explicitly forbids gitignore-inspection for git fate" "skills/session-capture/SKILL.md" "Do NOT inspect or edit" 1
 # product-context owns .gitignore reconciliation (the once-per-project owner).
 grep_check "product-context owns .gitignore reconciliation step" "skills/product-context/SKILL.md" "Reconcile .?\.gitignore.? to the artifact tracking policy" 1
 # session-reflect emits the scope label as a LEADING [GLOBAL]/[PROJECT] bracket, not a trailing "— Scope:".
@@ -2159,8 +2160,8 @@ grep_check "snippet codifies .claude/ TRACK-by-default posture" "CLAUDE.snippet.
 grep_check "product-context invokes ensure-memory-link.sh" "skills/product-context/SKILL.md" "ensure-memory-link\.sh" 1
 grep_check "session-start invokes ensure-memory-link.sh (non-product host)" "skills/session-start/SKILL.md" "ensure-memory-link\.sh" 1
 
-# (5) session-store-learning carries the convergence note (repo dir is symlinked; no raw ~/.claude/projects write).
-grep_check "session-store-learning documents the project-memory symlink convergence" "skills/session-store-learning/SKILL.md" "symlink" 1
+# (5) session-capture carries the convergence note (repo dir is symlinked; no raw ~/.claude/projects write).
+grep_check "session-capture documents the project-memory symlink convergence" "skills/session-capture/SKILL.md" "symlink" 1
 
 echo ""
 
@@ -2223,7 +2224,7 @@ fi
 # Positive anchor: the two unified roots are actually referenced (guards against a
 # future over-eager "cleanup" that deletes the paths entirely rather than migrating them).
 grep_check "unified root workflow-system/product/ is referenced in skills/" "skills/session-start/SKILL.md" "workflow-system/product/" 1
-grep_check "unified root workflow-system/state/ is referenced in skills/" "skills/session-pause/SKILL.md" "workflow-system/state/" 1
+grep_check "unified root workflow-system/state/ is referenced in skills/" "skills/session-handoff/SKILL.md" "workflow-system/state/" 1
 
 echo ""
 
@@ -2256,6 +2257,80 @@ grep_check "feature-research description reads workflow-scoped (NOT web research
 # (d) orchestrator reinforcement in both product + feature orchestrators
 grep_check "feature-workflow orchestrator reinforces research tiers + confirm-before-deep" "agents/feature-workflow/AGENTS.md" "Research tiers — workflow-research vs. web-research" 1
 grep_check "product-workflow orchestrator reinforces research tiers + confirm-before-deep" "agents/product-workflow/AGENTS.md" "Research tiers — workflow-research vs. web-research" 1
+
+echo ""
+
+# ── Phase 17: Session-vocabulary disambiguation (WP5 / M9) ───────────────────
+# WP5 renamed the two session-boundary skills (session-pause→session-handoff,
+# session-resume→session-restore — "restore" avoids the built-in /resume collision)
+# and the learning skill (session-store-learning→session-capture — avoids the /restore
+# fuzzy-match collision). Two distinct collision surfaces were found: (1) skill NAME
+# and (2) skill DESCRIPTION — the fuzzy-matcher ranks on BOTH. These pins lock:
+# (a) the renamed skills exist with matching name: frontmatter;
+# (b) old names never reappear in LIVE machinery (anti-regression, Phase-15 style);
+# (c) the /restore collision stays fixed — no skill NAME or DESCRIPTION contains
+#     "restor" except session-restore itself (the description-collision guard);
+# (d) the turn-vs-session disambiguation + agent-side guard prose is present.
+echo "[Phase 17] Session-vocabulary disambiguation (WP5 — handoff/restore/capture rename + collision guard)"
+
+# (a) renamed skills exist, name: matches dir
+grep_check "session-handoff SKILL.md name frontmatter" "skills/session-handoff/SKILL.md" "^name: session-handoff" 1
+grep_check "session-restore SKILL.md name frontmatter" "skills/session-restore/SKILL.md" "^name: session-restore" 1
+grep_check "session-capture SKILL.md name frontmatter" "skills/session-capture/SKILL.md" "^name: session-capture" 1
+
+# (b) anti-regression: old names never reappear in LIVE machinery.
+# Exclusions mirror Phase 15: frozen tests/sessions/*.jsonl, check-structure.sh self,
+# and the intentional CLAUDE.md migration notes (which literally say "renamed from …").
+old_session_names=$( (grep -rnE 'session-pause|session-resume|session-store-learning' skills/ agents/ tests/ CLAUDE.md CLAUDE.snippet.md 2>/dev/null || true) \
+  | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|tests/check-structure\.sh' \
+  | grep -viE 'renamed from|renamed session|Skill renamed|strip-pause-footer|legacy' || true )
+old_names_count=$(printf '%s' "$old_session_names" | grep -c . || true)
+if [ "$old_names_count" -eq 0 ]; then
+  check "no old session-skill name (session-pause|resume|store-learning) in live machinery" "pass"
+else
+  check "no old session-skill name (session-pause|resume|store-learning) in live machinery" "fail" "found $old_names_count old-name ref(s) — should be session-handoff/restore/capture"
+fi
+
+# (c) /restore collision guard: no skill NAME or DESCRIPTION contains "restor"
+# except session-restore itself. This is the description-collision insight made
+# mechanical — the fuzzy-matcher searches descriptions, so a sibling skill whose
+# description says "restore service" (as incident-mitigate once did) re-introduces
+# the collision even with a clean name. Scans every skills/*/SKILL.md frontmatter.
+restore_collision=""
+for skill_md in skills/*/SKILL.md; do
+  sname=$(basename "$(dirname "$skill_md")")
+  [ "$sname" = "session-restore" ] && continue
+  fm=$(awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f{print}' "$skill_md")
+  if printf '%s' "$fm" | grep -qiE 'restor'; then
+    restore_collision="$restore_collision $sname"
+  fi
+done
+if [ -z "$restore_collision" ]; then
+  check "/restore fuzzy-collision guard: only session-restore matches 'restor' (name+description)" "pass"
+else
+  check "/restore fuzzy-collision guard: only session-restore matches 'restor' (name+description)" "fail" "these skills' name/description also match 'restor':$restore_collision — reframe their description"
+fi
+
+# (d) disambiguation + agent-side guard prose present (the behavioral heart of WP5)
+grep_check "session-handoff SKILL.md carries the turn-vs-session disambiguation" "skills/session-handoff/SKILL.md" "turn-level" 1
+grep_check "session-handoff SKILL.md carries the agent-side guard (contextual — workflow-position-keyed)" "skills/session-handoff/SKILL.md" "Agent-side guard" 1
+grep_check "session-handoff guard is contextual: clean-boundary auto-chain vs mid-workflow confirm" "skills/session-handoff/SKILL.md" "clean workflow boundary" 1
+grep_check "feature-workflow AGENTS.md carries the pause disambiguation guidance" "agents/feature-workflow/AGENTS.md" "turn-level vs session boundary" 1
+
+# (e) the durable GLOBAL convention is in the injected snippet (mirrors Phase-16's snippet pin)
+grep_check "CLAUDE.snippet.md carries the Session vocabulary (turn vs session) rule" "CLAUDE.snippet.md" "Session vocabulary — turn vs. session boundary" 1
+grep_check "CLAUDE.snippet.md documents the fuzzy-matcher-searches-descriptions naming rule" "CLAUDE.snippet.md" "fuzzy-matcher searches DESCRIPTIONS" 1
+# the guard is CONTEXTUAL (workflow-position-keyed), NOT a universal always-confirm — this
+# distinction is load-bearing (operator correction 2026-07-21): clean boundary → auto-chain,
+# mid-workflow ambiguity → confirm. A regression to "always confirm" would re-add friction.
+grep_check "CLAUDE.snippet.md: session-handoff guard is CONTEXTUAL, not universal-confirm" "CLAUDE.snippet.md" "Agent-side guard is CONTEXTUAL" 1
+
+# (f) /resume is TURN-LEVEL, not a handoff cue — the second confirmed misfire (2026-07-21):
+# an agent read "hold, I need to go, I'll /resume later" as a session boundary and wrote
+# .session.md. "/resume" (built-in, continues THIS turn) ≠ "/session-restore" (cross-session).
+# The going-offline family ("I'll /resume later", "shutting down", "I need to go") is turn-level HOLD.
+grep_check "session-handoff SKILL.md: /resume-later is turn-level, NOT a handoff cue" "skills/session-handoff/SKILL.md" "resume\` later" 1
+grep_check "CLAUDE.snippet.md distinguishes /resume (turn-level) from /session-restore (cross-session)" "CLAUDE.snippet.md" "/resume\` ≠ \`/session-restore\`" 1
 
 echo ""
 

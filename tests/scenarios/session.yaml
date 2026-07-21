@@ -345,7 +345,7 @@ scenarios:
 
   - id: S6
     name: "session:resume deletes .session.md after restoring context"
-    skill: session-resume
+    skill: session-restore
     args: ""
     fixtures:
       session: fixtures/session/feature-ship-paused.md
@@ -365,7 +365,7 @@ scenarios:
 
   - id: S15
     name: "session:resume surfaces drive_mode from .session.md and shows change-mode menu"
-    skill: session-resume
+    skill: session-restore
     args: ""
     fixtures:
       session: fixtures/session/autopilot-paused.md
@@ -384,7 +384,7 @@ scenarios:
 
   - id: S16
     name: "session:resume allows user to change drive mode on resume"
-    skill: session-resume
+    skill: session-restore
     args: ""
     fixtures:
       session: fixtures/session/autopilot-paused.md
@@ -411,7 +411,7 @@ scenarios:
 
   - id: S17
     name: "session:pause writes drive_mode from WIP frontmatter into .session.md"
-    skill: session-pause
+    skill: session-handoff
     args: ""
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -430,6 +430,65 @@ scenarios:
       not_contains:
         - "drive_mode not set"
         - "no drive mode"
+    max_retries: 2
+
+  # ── WP5 (M9) behavioral guard scenarios ──────────────────────────────────
+  # These two encode the TWO confirmed live misfires of session-handoff as regression tests.
+  # session-handoff carries the disambiguation table + agent-side guard: bare/turn-level "pause"
+  # mid-work, and the going-offline family ("I'll /resume later"), are TURN-LEVEL — the skill must
+  # NOT write .session.md and must NOT emit S17. Per docs/lessons/test-scenario-prompt-leakage.md,
+  # the args present the operator's RAW words neutrally and do NOT recite the rule ("this is
+  # turn-level, don't write .session.md") — else it tests obedience, not the guard. session-handoff
+  # emits S17 only on a real handoff, so the pass signal is prose (SOFT_PASS via contains_any) that
+  # the skill recognized turn-level intent + declined to write; not_contains guards the misfire.
+  - id: S26-handoff-guard-turn-level-pause
+    name: "session:handoff treats a bare mid-work 'pause' as turn-level — declines the handoff, writes no .session.md"
+    skill: session-handoff
+    args: >
+      pause — hold on a sec, let me look at what you just changed before you keep going
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-autopilot-active.md
+    expect:
+      # Bare "pause" + "hold on … before you keep going" = turn-level interrupt mid-work. The guard
+      # says: do NOT write .session.md, do NOT hand off; just stop / offer to confirm. Assert the
+      # skill recognizes turn-level (prose) and does NOT claim to have written the handoff.
+      contains_any:
+        - "turn-level"
+        - "just stop"
+        - "won't write"
+        - "not writing"
+        - "Turn-level hold, or"
+      not_contains:
+        - "Handed off"
+        - "wrote workflow-system/state/.session.md"
+        - "TRANSITION: S17"
+    max_retries: 2
+
+  - id: S27-handoff-guard-going-offline-is-turn-level
+    name: "session:handoff treats 'I need to go, I'll /resume later' as turn-level HOLD — not a cross-session handoff"
+    skill: session-handoff
+    args: >
+      hold right there, I need to go — I'll /resume later
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-autopilot-active.md
+    expect:
+      # The going-offline family ("I need to go", "I'll /resume later") reads superficially like a
+      # future-session cue but is TURN-LEVEL HOLD — /resume (built-in, continues THIS turn) ≠
+      # /session-restore. The skill must stop immediately and NOT write .session.md. This is the
+      # SECOND confirmed live misfire (2026-07-21). SOFT_PASS on turn-level recognition; not_contains
+      # guards the false-positive handoff.
+      contains_any:
+        - "turn-level"
+        - "just stop"
+        - "/resume"
+        - "won't write"
+        - "not writing"
+      not_contains:
+        - "Handed off"
+        - "wrote workflow-system/state/.session.md"
+        - "TRANSITION: S17"
     max_retries: 2
 
   - id: S18
@@ -685,7 +744,7 @@ scenarios:
 
   - id: S19
     name: "session:store-learning drafts global-scope learnings to .claude/learnings/, never to ~/.claude/"
-    skill: session-store-learning
+    skill: session-capture
     args: >
       I just learned that across every project I work in, integration tests
       that mock the database are unreliable — last quarter a mocked test
@@ -756,7 +815,7 @@ scenarios:
 
   - id: S20-amend-head
     name: "session:store-learning project-scope writes amend into HEAD"
-    skill: session-store-learning
+    skill: session-capture
     args: >
       I just learned that in this project specifically, when running the
       claude-time tests, you must use the container-based test runner
@@ -776,7 +835,7 @@ scenarios:
 
   - id: S20-global-canonical-path
     name: "session:store-learning global-scope routes to the canonical <proj-dir>/.claude/learnings/ path"
-    skill: session-store-learning
+    skill: session-capture
     args: >
       I learned a general workflow lesson that applies to ALL my projects, not
       just this one: when an autopilot run hits a verify-self FAIL whose shape
@@ -797,14 +856,14 @@ scenarios:
   # Exercises the per-scenario `fixtures.claude_md` key (per-scenario-claude-md-fixture
   # feature, WP6 of backlog-paydown-2026-07-13). The fixture CLAUDE.md declares an
   # `## Artifact tracking overrides` section that TRACKS <proj-dir>/.claude/learnings/,
-  # so session-store-learning's §5 deterministic discriminator takes the TRACK branch:
+  # so session-capture's §5 deterministic discriminator takes the TRACK branch:
   # a GLOBAL-scope draft is git add-ed + `git commit --amend --no-edit` into HEAD, NOT
   # left uncommitted. Contrast with S20-global-canonical-path (default fixtures/CLAUDE.md,
   # no override → uncommitted parking spot). If this scenario used the default fixture
   # the runner would (pre-WP6) have silently ignored the claude_md key and copied the
   # default anyway — so it also serves as the behavioral proof that the runner now HONORS
   # the key. Assert POSITIVELY that the proposal describes committing/amending.
-  # model: sonnet + budget: 0.50 — this is a session-store-learning free-text-PROPOSAL
+  # model: sonnet + budget: 0.50 — this is a session-capture free-text-PROPOSAL
   # scenario (same family as S25). Root-caused during WP6 verify-self (2026-07-14): the
   # observed FLAKY was NOT model noise — attempt 1 returned `Error: Exceeded USD budget
   # (0.2)`. The scenario asks the skill to classify global scope AND decide git handling,
@@ -821,7 +880,7 @@ scenarios:
     name: "session:store-learning global-scope with tracking-override CLAUDE.md → proposes commit/amend into HEAD"
     model: sonnet
     budget: "0.50"
-    skill: session-store-learning
+    skill: session-capture
     args: >
       I learned a general workflow lesson that applies to ALL my projects, not
       just this one: when an autopilot run hits a verify-self FAIL whose shape
@@ -854,7 +913,7 @@ scenarios:
     # on haiku it is FLAKY (structured S20 match arrives on retry — model-noise in the free-text proposal).
     # Tagged per the recon discipline: proven haiku flakiness + proven sonnet-clean → tag, don't tag preemptively.
     model: sonnet
-    skill: session-store-learning
+    skill: session-capture
     args: >
       I just learned a project-specific code-contract invariant: in this
       project, the `status` column carries values from two independent writers
@@ -883,7 +942,7 @@ scenarios:
     max_retries: 2
 
   # ── session-reflect filter rules (reflect-store-filter-rules feature, 2026-07-03) ──
-  # session-reflect emits NO TRANSITION token — it recommends running /session-store-learning.
+  # session-reflect emits NO TRANSITION token — it recommends running /session-capture.
   # So these scenarios assert on reflect's OUTPUT PROSE via contains_any (→ SOFT_PASS is the
   # achievable positive signal) plus not_contains_strict (→ hard FAIL lever on a failure-proxy
   # phrase). The TESTING-MODE system prompt forces a TRANSITION line, but reflect has none, so

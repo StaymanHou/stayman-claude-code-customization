@@ -1,6 +1,6 @@
 ---
 name: incident-mitigate
-description: "Incident workflow: apply fixes or workarounds to restore service"
+description: "Incident workflow: apply fixes or workarounds to recover service and bring it back to health"
 argument-hint: <incident file name or ID>
 ---
 

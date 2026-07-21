@@ -103,7 +103,7 @@ run_test() {
   local max_retries; max_retries=$(parse_scenario_field "$yaml_file" "$index" "max_retries")
   local scenario_model; scenario_model=$(parse_scenario_field "$yaml_file" "$index" "model")
   # Per-scenario budget override (USD). Inherently-expensive scenarios (heavy skills
-  # that run a full reasoning path — e.g. session-store-learning's artifact-tracking-
+  # that run a full reasoning path — e.g. session-capture's artifact-tracking-
   # policy classification) can hit the global default $MAX_BUDGET (0.20) on attempt 1
   # and get laundered into FLAKY on retry. A per-scenario `budget:` lets such a scenario
   # declare the headroom it needs without inflating every cheap scenario's ceiling.

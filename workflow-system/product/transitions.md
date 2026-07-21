@@ -142,7 +142,7 @@ I'll drive the <workflow> workflow. Which drive mode do you want?
 (Type 1–4 — or just press Enter for Autopilot)
 ```
 
-The selected mode is stored in `workflow/wip/<item>.md` frontmatter as `drive_mode: stepping | orchestrated | autopilot | fsd` and honoured for the full workflow duration including cross-workflow handoffs. The mode persists across `/session-pause` and `/session-resume`.
+The selected mode is stored in `workflow-system/state/wip/<item>.md` frontmatter as `drive_mode: stepping | orchestrated | autopilot | fsd` and honoured for the full workflow duration including cross-workflow handoffs. The mode persists across `/session-handoff` and `/session-restore`.
 
 ### Back-loop guard
 
@@ -435,7 +435,7 @@ Not a state machine — meta-operations that attach to any workflow state.
 
 ### Session transitions (dispatcher outputs)
 
-Session entry skills (`session-start`, `session-resume`, `session-pause`) are dispatchers and meta-operations, not state-machine states. The IDs below label each skill's possible outputs so they can be asserted by the test harness — they are NOT classical state transitions.
+Session entry skills (`session-start`, `session-restore`, `session-handoff`) are dispatchers and meta-operations, not state-machine states. The IDs below label each skill's possible outputs so they can be asserted by the test harness — they are NOT classical state transitions.
 
 | ID | Skill | Output | Condition |
 |----|-------|--------|-----------|
@@ -444,7 +444,7 @@ Session entry skills (`session-start`, `session-resume`, `session-pause`) are di
 | S3 | session-start | feature:plan | Classified as small/simple feature (all criteria met) |
 | S4 | session-start | incident:report | Classified as production incident |
 | S5 | session-start | product:vision | Classified as new product initiative |
-| S6 | session-resume | (resume_skill) | Context restored; `.session.md` deleted after handoff |
+| S6 | session-restore | (resume_skill) | Context restored; `.session.md` deleted after handoff |
 | S7 | session-start | (auto-chain) | Orchestrator auto-chains build → verify-auto without asking user |
 | S8 | session-start | (pause) | Orchestrator pauses at verify-human (PAUSE step in policy) |
 | S9 | session-start | (pause) | Orchestrator pauses at feature-finalize (PAUSE step in policy) |
@@ -453,11 +453,11 @@ Session entry skills (`session-start`, `session-resume`, `session-pause`) are di
 | S12 | session-start | (pause) | Mode 3 (Autopilot): pause only at verify-human |
 | S13 | session-start | (pause-after-each) | Mode 1 (Stepping): pause after every skill, tell user next slash command |
 | S14 | session-start | (skip+chain) | Mode 4 (FSD): skip verify-human, chain to verify-codify |
-| S15 | session-resume | (mode menu) | Surface `drive_mode` from `.session.md` and present change-mode menu |
-| S16 | session-resume | (mode change) | User selects different drive mode on resume — update WIP frontmatter |
-| S17 | session-pause | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |
+| S15 | session-restore | (mode menu) | Surface `drive_mode` from `.session.md` and present change-mode menu |
+| S16 | session-restore | (mode change) | User selects different drive mode on restore — update WIP frontmatter |
+| S17 | session-handoff | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |
 | S18 | session-start | feature:reproduce | Classified as bug-shape feature (user describes undesirable behavior) — route to optional pre-spec/pre-plan red-green reproduction |
-| S20 | session-store-learning | (terminal) | Learning persisted: project-scope to `<proj-dir>/.claude/<dest>`, or global-scope drafted to the canonical `<proj-dir>/.claude/learnings/<date>-<slug>.md`; never `~/.claude/`. Git behavior keyed on the artifact tracking policy + project overrides, not gitignore inspection. |
+| S20 | session-capture | (terminal) | Learning persisted: project-scope to `<proj-dir>/.claude/<dest>`, or global-scope drafted to the canonical `<proj-dir>/.claude/learnings/<date>-<slug>.md`; never `~/.claude/`. Git behavior keyed on the artifact tracking policy + project overrides, not gitignore inspection. (Skill renamed from `session-store-learning` in WP5/M9.) |
 
 ---
 

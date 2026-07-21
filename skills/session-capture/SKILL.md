@@ -1,10 +1,10 @@
 ---
-name: session-store-learning
-description: "Session operation: classify a learning and persist it — project-scope Context Rules write to the project ROOT <proj-dir>/CLAUDE.md, memories/skills to <proj-dir>/.claude/; global-scope writes a draft to the canonical <proj-dir>/.claude/learnings/ path. Git behavior (commit vs leave-uncommitted) follows the artifact tracking policy + project overrides, not gitignore inspection."
-argument-hint: <the learning or insight to store>
+name: session-capture
+description: "Session operation: capture a learning and persist it — project-scope Context Rules write to the project ROOT <proj-dir>/CLAUDE.md, memories/skills to <proj-dir>/.claude/; global-scope writes a draft to the canonical <proj-dir>/.claude/learnings/ path. Git behavior (commit vs leave-uncommitted) follows the artifact tracking policy + project overrides, not gitignore inspection."
+argument-hint: <the learning or insight to capture>
 ---
 
-# Session Store Learning
+# Session Capture
 
 You are an expert at knowledge engineering. Persist a learning so it's useful for future sessions.
 
@@ -90,8 +90,8 @@ Present:
 - **Amend the learning into HEAD (required).** After the write, fold the learning into the most recent commit so it lives in the same commit as the work it describes (the just-completed close commit, in the typical post-reflect cadence):
   - `git add <file-path-just-written>`
   - `git commit --amend --no-edit`
-  - Rationale: `/session-store-learning` typically runs after `/session-reflect`, which runs after a terminal-close skill (`feature-finalize`, `task-close`, `incident-resolve`, `product-finalize`). HEAD is the close commit. Amending prevents the "uncommitted learning file lost in a destructive git operation during the next cross-feature pause" failure mode (resolved `SURFACE-2026-05-22-LEARNING-COMMIT-OFTEN-AT-CROSS-FEATURE-BRANCH`).
-  - If HEAD happens to be a non-close commit (e.g., the user committed manually between reflect and store-learning), amend-to-HEAD still lands the learning into a sensible local commit rather than leaving it uncommitted. Reversible later via `git reset --soft HEAD~1` / `git rebase -i` if the operator wants to detach.
+  - Rationale: `/session-capture` typically runs after `/session-reflect`, which runs after a terminal-close skill (`feature-finalize`, `task-close`, `incident-resolve`, `product-finalize`). HEAD is the close commit. Amending prevents the "uncommitted learning file lost in a destructive git operation during the next cross-feature pause" failure mode (resolved `SURFACE-2026-05-22-LEARNING-COMMIT-OFTEN-AT-CROSS-FEATURE-BRANCH`).
+  - If HEAD happens to be a non-close commit (e.g., the user committed manually between reflect and session-capture), amend-to-HEAD still lands the learning into a sensible local commit rather than leaving it uncommitted. Reversible later via `git reset --soft HEAD~1` / `git rebase -i` if the operator wants to detach.
   - Do NOT `git push` after amending — see no-auto-push contract in the four close skills.
 - Confirm what was saved and where
 
