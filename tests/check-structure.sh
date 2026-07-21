@@ -671,6 +671,52 @@ else
     "skill dirs: $skill_dirs, repo symlinks: $repo_symlinks"
 fi
 
+# uninstall.sh (WP4/M8) — the defensive reversal of install.sh. These pins are
+# DRY-RUN ONLY by design: a real (non-dry-run) uninstall here would tear down the
+# live ~/.claude symlinks that install.sh (above) just created. --dry-run mutates
+# nothing, so it is safe to exercise inside the structural suite. Behavioral
+# coverage lives in tools/uninstall/test/run-tests.sh.
+if [ -f uninstall.sh ]; then
+  check "uninstall.sh exists at repo root (peer of install.sh)" "pass"
+else
+  check "uninstall.sh exists at repo root (peer of install.sh)" "fail" "file missing"
+fi
+
+if [ -x uninstall.sh ]; then
+  check "uninstall.sh is executable" "pass"
+else
+  check "uninstall.sh is executable" "fail" "missing executable bit"
+fi
+
+if bash -n uninstall.sh 2>/dev/null; then
+  check "uninstall.sh passes bash -n (syntax valid)" "pass"
+else
+  check "uninstall.sh passes bash -n (syntax valid)" "fail" "syntax error"
+fi
+
+if ./uninstall.sh --help > /dev/null 2>&1; then
+  check "uninstall.sh --help exits 0" "pass"
+else
+  check "uninstall.sh --help exits 0" "fail" "non-zero exit"
+fi
+
+# --dry-run exits 0 and changes nothing (safe against the live ~/.claude).
+if ./uninstall.sh --dry-run > /dev/null 2>&1; then
+  check "uninstall.sh --dry-run exits 0 (dry-run only — never a live uninstall here)" "pass"
+else
+  check "uninstall.sh --dry-run exits 0 (dry-run only — never a live uninstall here)" "fail" "non-zero exit"
+fi
+
+# The live install must still be intact after the dry-run (guard against a dry-run
+# regression that accidentally mutates state).
+post_dryrun_symlinks=$(ls -la ~/.claude/skills/ 2>/dev/null | grep -c "my-claude-code-customization" || echo 0)
+if [ "$post_dryrun_symlinks" -eq "$repo_symlinks" ]; then
+  check "uninstall.sh --dry-run left the live install intact ($post_dryrun_symlinks symlinks)" "pass"
+else
+  check "uninstall.sh --dry-run left the live install intact" "fail" \
+    "before: $repo_symlinks, after dry-run: $post_dryrun_symlinks"
+fi
+
 echo ""
 
 # ── Phase 5: Hooks ────────────────────────────────────────────────────────

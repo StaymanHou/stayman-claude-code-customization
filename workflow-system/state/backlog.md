@@ -159,3 +159,19 @@ Buried 2026-06-12:
 - **Context:** Claudesk will *render* the onboarding surface but the *content + flow* is this repo's — it's a property of the workflow system, not the app. Depends on the settled folder layout (#2) + install flow (#1) to build a coherent first-run story, so likely sequenced last. The onboarding flow spec is part of the return contract to Claudesk.
 - **Priority:** medium (the payoff of inviting users at all; do after layout + install settle).
 - **Status:** pending (inbound; brainstorm-first; not yet ordered).
+
+## SURFACE-2026-07-21-UNINSTALL-TEST-HOME-EXPORT-HAZARD
+- **Source:** feature:build (uninstall-sh WP4 Phase 1/2 build-smoke)
+- **Target level:** feature (Phase 3 test-harness design constraint — address in-cycle at P3.1)
+- **Type:** bug (test-method hazard; real live-system damage occurred + was recovered)
+- **Summary:** Running the real `uninstall.sh` from a Bash-tool call that did `export HOME="$SANDBOX"` at the top level damaged the LIVE `~/.claude/` (all 41 skill + 6 agent symlinks removed, CLAUDE.md workflow block excised). Recovered by re-running the idempotent `install.sh`. Root cause: a top-level `export HOME` in the persistent Bash-tool environment can point a subsequent real-script invocation at the actual `$HOME`, or an interrupted/failed sandbox setup leaves HOME exported while the script runs against real paths.
+- **Context:** uninstall.sh is *designed* to remove things from `$HOME/.claude`. Any test that exercises it MUST isolate HOME so a leak cannot reach the real home dir.
+- **Suggested action:** The Phase-3 `test/run-tests.sh` harness (P3.1) MUST scope HOME per-invocation — either `( export HOME=...; ... )` fully inside a subshell with a cleanup trap, or `env HOME="$SANDBOX" "$SCRIPT" ...` on each call — and NEVER `export HOME` at the harness's top level. Add an explicit guard/assertion that `$HOME` outside the subshell is unchanged. Mirror migrate-doc-layout's mktemp+trap isolation but add the HOME-scoping discipline.
+- **Priority:** high (this is the load-bearing safety property of the whole feature's test suite; a leak is destructive).
+- **Status:** pending
+
+## Code-quality findings — uninstall-sh (2026-07-21)
+- **Pointer:** 1 MINOR finding auto-backlogged by feature-review-quality against ship commit d7e9075 — `remove_link` header comment lists outcome cases in reverse of the code's check order (harmless doc/read-order polish). The MAJOR (arg-parser `--project` flag-shaped-value → real uninstall) + its sibling MINOR (missing `--project` value → silent exit 1) were FIXED in the post-ship refactor per operator's refactor-now choice. Full body in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low
+- **Status:** pending
+- **Pickup shape:** trivial — reorder the comment; bundle into next `/util-backlog-paydown` or a docs-only task. **Verify against the code first (review-finding-actions-are-hypotheses).**
