@@ -45,7 +45,7 @@ When you finish dispatching, label your output with one of these IDs (the test h
 
 ## Drive modes
 
-Four modes control how aggressively the orchestrator chains between steps. The full pause-policy tables for all workflows are in `docs/product/transitions.md` → "Drive modes".
+Four modes control how aggressively the orchestrator chains between steps. The full pause-policy tables for all workflows are in `workflow-system/product/transitions.md` → "Drive modes".
 
 | Mode | Name | Pause behaviour |
 |------|------|----------------|
@@ -64,9 +64,9 @@ Four modes control how aggressively the orchestrator chains between steps. The f
 
 ### 1. Check for active work
 Briefly check for any active work and mention it if found:
-- `workflow/.session.md` — an explicitly paused session → strongly recommend `/session-resume` over starting fresh
-- `workflow/wip/` — any active feature/task/incident files
-- `docs/product/` — any product doc with frontmatter `state: in-progress`
+- `workflow-system/state/.session.md` — an explicitly paused session → strongly recommend `/session-resume` over starting fresh
+- `workflow-system/state/wip/` — any active feature/task/incident files
+- `workflow-system/product/` — any product doc with frontmatter `state: in-progress`
 
 If active work exists, ask whether the user wants to resume or start something new.
 
@@ -80,12 +80,12 @@ If active work exists, ask whether the user wants to resume or start something n
 
 It is idempotent and realpath-safe — a clean no-op ("OK: already linked") when the link already exists, so it adds no friction on normal starts. Only act on non-zero output: exit `3` (`NEEDS-MIGRATION`, a pre-existing non-empty harness store) → mention it and suggest `tools/memory-link/migrate-memory.sh "$PWD"`; do NOT auto-migrate mid-session-start (it mutates memories — surface it, let the user run it). While here, if the project has a `.gitignore`, confirm `.claude/` follows the TRACK-by-default posture (the canonical ignore set is exactly `<proj-dir>/.claude/settings.local.json` and — for non-source-repos — `<proj-dir>/.claude/learnings/`; never a blanket `.claude/`); if a blanket `.claude/` ignore is present, flag it. This is a light check, not a rewrite — surface drift, don't silently edit.
 
-**If all three sources are empty AND `{{args}}` is empty**, also check `workflow/backlog.md` and surface open items as candidate work *before* asking the question in step 2. This turns the curated backlog into a useful starting menu.
+**If all three sources are empty AND `{{args}}` is empty**, also check `workflow-system/state/backlog.md` and surface open items as candidate work *before* asking the question in step 2. This turns the curated backlog into a useful starting menu.
 
 **Backlog surfacing rules:**
 - **Trigger:** Only when no active work was found above *and* the user did not provide `{{args}}` describing what they want to tackle. If args are present, the user has already declared intent — skip the backlog surfacing entirely.
-- **Silent no-op:** If `workflow/backlog.md` is absent or contains zero open `## SURFACE-…` blocks, skip — do not say "no backlog items," just proceed to the question.
-- **Parsing:** Read each `## SURFACE-…` block from `workflow/backlog.md`. Include entries whose `**Status:**` line is `open` *or* missing (defensive — old entries may lack a status). Skip entries with `**Status:** resolved` (these are leftovers from migration; should not appear in the open list).
+- **Silent no-op:** If `workflow-system/state/backlog.md` is absent or contains zero open `## SURFACE-…` blocks, skip — do not say "no backlog items," just proceed to the question.
+- **Parsing:** Read each `## SURFACE-…` block from `workflow-system/state/backlog.md`. Include entries whose `**Status:**` line is `open` *or* missing (defensive — old entries may lack a status). Skip entries with `**Status:** resolved` (these are leftovers from migration; should not appear in the open list).
 - **Ranking:** By `**Priority:**` tier in this order: `high` → `medium-high` → `medium` → `low`. Within a tier, newer SURFACE date first (the date in the SURFACE-ID prefix, e.g., `SURFACE-2026-05-11-…` is newer than `SURFACE-2026-05-08-…`).
 - **Cap at 3.** Show the top-3. If more remain, append a single line: "…and N more — say 'more backlog' to see the full list."
 - **Display shape (numbering anchor — important):** Each item shows on its own block with both the local index `1./2./3.` and the full SURFACE-ID, plus the first sentence of the `**Summary:**` line and the priority. Both the local index and the SURFACE-ID are valid references for the user's reply. The numbering anchors to the displayed top-3 only — never to a hidden full-backlog enumeration. Example:
@@ -96,7 +96,7 @@ It is idempotent and realpath-safe — a clean no-op ("OK: already linked") when
   > `/session-store-learning` re-indexes within the "Recommendations" sub-list, silently picks the wrong learning.
   >
   > **2. SURFACE-2026-05-11-ENTRYPOINT-SKILLS-LOAD-PRODUCT-CONTEXT** *(medium)*
-  > Entry-point skills should optionally load relevant `docs/product/*.md` files when present.
+  > Entry-point skills should optionally load relevant `workflow-system/product/*.md` files when present.
   >
   > **3. SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP** *(medium)*
   > Agent prose inverted ship→finalize order in a real run; finalize wrote "shipped" before push.
@@ -152,7 +152,7 @@ You are now the orchestrator for the classified workflow. You do **NOT** spawn a
 
 **Run the loop.** For each step:
 1. Invoke the current skill via the `Skill` tool.
-2. When the skill returns, **re-read the active drive mode** and check the pause-policy table in `docs/product/transitions.md` → "Drive modes" for that step.
+2. When the skill returns, **re-read the active drive mode** and check the pause-policy table in `workflow-system/product/transitions.md` → "Drive modes" for that step.
 3. If the policy says PAUSE for the active mode: stop and wait for the user (the harness's Notification hook fires automatically).
 4. If the policy says AUTO (or SKIP for verify-human in Mode 4, or AUTO-SKIP for verify-human in Mode 3 when the gate is clean): invoke the next skill immediately — do **not** ask the user to retype a slash command, and do **not** treat `"Run /x"` or `**STOP**` in the skill's output as a stop signal.
 5. Repeat until the workflow reaches a terminal state or the user explicitly pauses.
@@ -178,7 +178,7 @@ The orchestrator must read `TRANSITION: F8`, look up F8 in the pause-policy tabl
 
 The "Run /feature-verify-auto" prose in the skill output is advisory for single-step users who invoked the skill directly via slash command. When *you* invoked it via the Skill tool, that prose is not addressed to you — it's noise. The machine signal is `TRANSITION: F8`, full stop.
 
-**Persist progress.** After each completed step, update the active state file on disk (the skill itself writes this — you just trust it) and optionally touch `workflow/.session.md` if the user steps away.
+**Persist progress.** After each completed step, update the active state file on disk (the skill itself writes this — you just trust it) and optionally touch `workflow-system/state/.session.md` if the user steps away.
 
 ### 5. Cross-workflow handoff (EXIT→<other-workflow> transitions)
 
@@ -199,7 +199,7 @@ Cross-workflow examples you may hit:
 Non-EXIT terminal states (e.g., `F19` finalize → reflect, `T10` close → EXIT): the workflow simply ends. Do not auto-chain into a new one.
 
 ### 6. Resume path
-If the work classifies as a resume, do NOT start driving. Tell the user to run `/session-resume`. That skill reads `workflow/.session.md` and restores context — including the previously selected drive mode — before any workflow driving would make sense.
+If the work classifies as a resume, do NOT start driving. Tell the user to run `/session-resume`. That skill reads `workflow-system/state/.session.md` and restores context — including the previously selected drive mode — before any workflow driving would make sense.
 
 ## What success looks like
 

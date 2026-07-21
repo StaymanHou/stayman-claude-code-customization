@@ -21,7 +21,7 @@ You are in the **feature** workflow at the **finalize** state.
 **Valid transitions from here:**
 - **F18 → refactor:** Tech debt identified during this feature → tell user to run `/feature-refactor`
 - **F19 → EXIT + reflect:** No tech debt, feature done → auto-trigger reflect
-- **F30 → product-finalize:** No tech debt AND `docs/product/wbs.md` exists with all WPs `[x]` → tell user to run `/product-finalize`
+- **F30 → product-finalize:** No tech debt AND `workflow-system/product/wbs.md` exists with all WPs `[x]` → tell user to run `/product-finalize`
 
 ## Procedure
 
@@ -32,11 +32,11 @@ Read the WIP file's `## Current Node`. If `**Path:**` contains `verify-codify` A
 ### 1. Update Documentation
 - Update relevant docs to reflect the new feature (API docs, setup guides, etc.)
 - Update the project `CLAUDE.md` (root) if new patterns or critical rules were discovered
-- Update `docs/product/wbs.md` and `docs/product/roadmap.md` to reflect the completed feature (check off milestones, mark WPs done). Bump `updated:` in frontmatter.
-- **WBS per-task checkbox tick (required):** when marking a WP done in `docs/product/wbs.md`, after appending the `✅ SHIPPED <date> (commit <sha>)` tag to the WP heading, ALSO convert every `- [ ]` to `- [x]` **within that WP's section only** (between the WP's heading and the next WP heading, or EOF if it's the last WP). The WP being shipped means by definition all its tasks landed — leaving unticked task checkboxes underneath a `✅ SHIPPED` heading makes WBS a partially-trustworthy state surface for downstream planning skills. Do **not** use a global `replace_all` across the whole file — that would mistakenly tick checkboxes in other WPs that are still in-progress. If a task genuinely did not land, the WP should be re-scoped explicitly in WBS rather than silently shipped with hidden gaps.
+- Update `workflow-system/product/wbs.md` and `workflow-system/product/roadmap.md` to reflect the completed feature (check off milestones, mark WPs done). Bump `updated:` in frontmatter.
+- **WBS per-task checkbox tick (required):** when marking a WP done in `workflow-system/product/wbs.md`, after appending the `✅ SHIPPED <date> (commit <sha>)` tag to the WP heading, ALSO convert every `- [ ]` to `- [x]` **within that WP's section only** (between the WP's heading and the next WP heading, or EOF if it's the last WP). The WP being shipped means by definition all its tasks landed — leaving unticked task checkboxes underneath a `✅ SHIPPED` heading makes WBS a partially-trustworthy state surface for downstream planning skills. Do **not** use a global `replace_all` across the whole file — that would mistakenly tick checkboxes in other WPs that are still in-progress. If a task genuinely did not land, the WP should be re-scoped explicitly in WBS rather than silently shipped with hidden gaps.
 
 ### 2. Full Backlog Review
-Scan `workflow/backlog.md` for ALL unresolved items:
+Scan `workflow-system/state/backlog.md` for ALL unresolved items:
 - Items surfaced during this feature's development
 - Items from other workflows that may be affected
 - **Identify items this feature's work resolved.** Per the **delete-on-resolve** rule (`CLAUDE.snippet.md` → `## CHANGELOG.md convention` → `### Append discipline`), a resolved item is **deleted** from the backlog — not marked `Status: resolved`. Note which items are resolved here; the actual deletion happens in §3c under the CHANGELOG-then-delete invariant (delete staged in the same commit as the `**Backlog resolved:**` CHANGELOG line). **Fully-resolved** items are deleted; **partially-resolved** items (open work remains) are **rewritten** to the remaining open work, not deleted. Buried/deferred items are a different lifecycle — never deleted here.
@@ -44,8 +44,8 @@ Scan `workflow/backlog.md` for ALL unresolved items:
 
 ### 3. Archive
 - Mark the WIP plan as "Completed" with completion date
-- Move to `workflow/archive/` (create directory if needed)
-- Clean up `workflow/wip/`
+- Move to `workflow-system/state/archive/` (create directory if needed)
+- Clean up `workflow-system/state/wip/`
 
 ### 3b. Retrospect + Communicate (required — two separate outputs)
 
@@ -77,9 +77,9 @@ For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 
 1. **One `**Feature shipped:**` bullet** — composed from the feature's title and one-sentence problem statement.
 2. **Zero or more `**Backlog resolved:**` bullets** — one per backlog item that step 2 (Full Backlog Review) identified as resolved by this feature's work. Each bullet leads with the SURFACE ID (e.g. `**Backlog resolved:** SURFACE-2026-05-11-FOO — closed by <feature name>`).
-3. **Zero or one `**Milestone:**` bullet** — emit only if this feature completed a WBS work package. Compose from the WP name in `docs/product/wbs.md`.
+3. **Zero or one `**Milestone:**` bullet** — emit only if this feature completed a WBS work package. Compose from the WP name in `workflow-system/product/wbs.md`.
 
-**Delete-on-resolve (CHANGELOG-then-delete hard invariant):** for each `**Backlog resolved:**` bullet you emit, you must also **delete** that item's entry from `workflow/backlog.md` in the **same commit** (for a code-quality finding, also delete the full body from `workflow/backlog-quality-findings.md` and its pointer stub in `backlog.md`). No backlog delete without the matching CHANGELOG line landing in that commit. **Partial resolutions** are **rewritten** to remaining open work, not deleted (the resolved sub-part still emits a `**Backlog resolved:**` line). See `CLAUDE.snippet.md` → `### Append discipline` for the full rule.
+**Delete-on-resolve (CHANGELOG-then-delete hard invariant):** for each `**Backlog resolved:**` bullet you emit, you must also **delete** that item's entry from `workflow-system/state/backlog.md` in the **same commit** (for a code-quality finding, also delete the full body from `workflow-system/state/backlog-quality-findings.md` and its pointer stub in `backlog.md`). No backlog delete without the matching CHANGELOG line landing in that commit. **Partial resolutions** are **rewritten** to remaining open work, not deleted (the resolved sub-part still emits a `**Backlog resolved:**` line). See `CLAUDE.snippet.md` → `### Append discipline` for the full rule.
 
 **Operational sequence (must be in this order to avoid the SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV failure mode):**
 
@@ -87,13 +87,13 @@ The §3 "Archive" step lists the `git mv` action but the actual execution order 
 
 1. Retrospect already written into the WIP file by §3b.
 2. Edit `<proj_root>/CHANGELOG.md` per the convention above (write the `**Backlog resolved:**` line(s) **first**).
-3. **Delete each resolved item's entry** from `workflow/backlog.md` (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding); rewrite any partially-resolved entry to its remaining open work. This is the delete-on-resolve step — it happens *after* the CHANGELOG line is written, satisfying the hard invariant.
-4. `git add CHANGELOG.md <wip-file> workflow/backlog.md workflow/backlog-quality-findings.md` — stage CHANGELOG + the WIP file with retrospect + the backlog edits together (so the delete and its CHANGELOG record land in the same commit).
-5. `git mv <wip-file> workflow/archive/<wip-file>` — perform the move now (the §3 action).
+3. **Delete each resolved item's entry** from `workflow-system/state/backlog.md` (+ `workflow-system/state/backlog-quality-findings.md` body & stub for a code-quality finding); rewrite any partially-resolved entry to its remaining open work. This is the delete-on-resolve step — it happens *after* the CHANGELOG line is written, satisfying the hard invariant.
+4. `git add CHANGELOG.md <wip-file> workflow-system/state/backlog.md workflow-system/state/backlog-quality-findings.md` — stage CHANGELOG + the WIP file with retrospect + the backlog edits together (so the delete and its CHANGELOG record land in the same commit).
+5. `git mv <wip-file> workflow-system/state/archive/<wip-file>` — perform the move now (the §3 action).
 6. Single commit captures retrospect edit + CHANGELOG append + backlog delete/rewrite + archive move.
 7. **Do NOT `git push`.** The close commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 
-**Idempotency:** if the WIP file is already inside `workflow/archive/`, the append is a no-op — skip it. (Re-running finalize on an already-archived item should not double-write the changelog.)
+**Idempotency:** if the WIP file is already inside `workflow-system/state/archive/`, the append is a no-op — skip it. (Re-running finalize on an already-archived item should not double-write the changelog.)
 
 ### 4. Tech Debt Assessment
 Review the implementation for tech debt:
@@ -107,7 +107,7 @@ Review the implementation for tech debt:
 
 **If no tech debt — check WBS completion (F19 vs F30):**
 
-Check whether `docs/product/wbs.md` exists and all work packages are marked `[x]`:
+Check whether `workflow-system/product/wbs.md` exists and all work packages are marked `[x]`:
 - **WBS exists and all WPs `[x]` (F30):** The entire product cycle is complete. Tell user: "Feature complete and WBS fully done. Run `/product-finalize` to resync architecture docs, sweep the backlog, and archive the completed product cycle."
 - **No WBS, or WBS has incomplete WPs (F19):** Feature is done but product cycle continues. Tell user: "Feature complete. Running reflection..." and recommend `/session-reflect`
 

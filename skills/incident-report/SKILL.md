@@ -18,14 +18,14 @@ This is the entry point for all incidents.
 
 ## Step 0: Available product context
 
-Before drafting the report, run `ls docs/product/` to see which strategic docs exist (silent no-op if absent):
+Before drafting the report, run `ls workflow-system/product/` to see which strategic docs exist (silent no-op if absent):
 
-- `docs/product/arch.md` — architectural decisions and system design
-- `docs/product/wbs.md` — active work breakdown structure (current cycle)
-- `docs/product/vision.md` — high-level product vision
-- `docs/product/roadmap.md` — strategic roadmap
+- `workflow-system/product/arch.md` — architectural decisions and system design
+- `workflow-system/product/wbs.md` — active work breakdown structure (current cycle)
+- `workflow-system/product/vision.md` — high-level product vision
+- `workflow-system/product/roadmap.md` — strategic roadmap
 
-**Conditional read — `arch.md` only:** if the incident appears to involve cross-component behavior or system-architecture-level effects (e.g., a service-to-service contract change, a shared queue's behavior, a multi-component data flow), read `docs/product/arch.md` and use it to frame "Where in the system did this happen?" in the report. If the incident is localized (a single endpoint, a single job, a single UI screen with no cross-component effect), skip the read — the pointer above is sufficient.
+**Conditional read — `arch.md` only:** if the incident appears to involve cross-component behavior or system-architecture-level effects (e.g., a service-to-service contract change, a shared queue's behavior, a multi-component data flow), read `workflow-system/product/arch.md` and use it to frame "Where in the system did this happen?" in the report. If the incident is localized (a single endpoint, a single job, a single UI screen with no cross-component effect), skip the read — the pointer above is sufficient.
 
 **`wbs.md`, `vision.md`, `roadmap.md`:** pointer-only. Strategic docs are not incident-context. Investigation will reach for arch and source code; report only needs orientation.
 
@@ -38,7 +38,7 @@ See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for t
 ## Procedure
 
 ### 1. Create Incident Report
-Create `workflow/wip/incident-<slug>.md` with:
+Create `workflow-system/state/wip/incident-<slug>.md` with:
 
 ```markdown
 # Incident: <short title>

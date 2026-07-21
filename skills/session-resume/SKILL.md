@@ -1,7 +1,7 @@
 ---
 name: session-resume
-description: Resume a previously paused workflow session — restores context from workflow/.session.md
-argument-hint: <optional override — ignored if workflow/.session.md exists>
+description: Resume a previously paused workflow session — restores context from workflow-system/state/.session.md
+argument-hint: <optional override — ignored if workflow-system/state/.session.md exists>
 ---
 
 # Session Resume
@@ -18,7 +18,7 @@ When you finish, label your output with one of these IDs:
 
 **Steps:**
 
-1. **Read `workflow/.session.md`.** If it does not exist, tell the user there's nothing to resume and suggest `/session-start`.
+1. **Read `workflow-system/state/.session.md`.** If it does not exist, tell the user there's nothing to resume and suggest `/session-start`.
 
 2. **Parse the pointer.** The frontmatter tells you:
    - `workflow` and `step` — where the user left off
@@ -57,8 +57,8 @@ When you finish, label your output with one of these IDs:
 
 5. **Hand off.** Tell the user the exact skill to invoke to continue, e.g.: "Run `/feature-build` to continue where you left off." (This should match `resume_skill` from the pointer.)
 
-6. **Backlog check.** Quickly scan `workflow/backlog.md` (if it exists) for any `high` priority items that relate to the current work. Mention them if found.
+6. **Backlog check.** Quickly scan `workflow-system/state/backlog.md` (if it exists) for any `high` priority items that relate to the current work. Mention them if found.
 
 6b. **Strip the stale Pause footer from `state_file`.** The `## Session Pause — <timestamp>\nPaused. See …` block that `/session-pause` injected (per `session-pause` SKILL.md §3) must be removed from the `state_file` body now — otherwise it lingers and accrues a cleanup tax at finalize/close time on every paused-then-resumed item. Idempotent — no-op if the marker isn't there. Match pattern: the trailing `## Session Pause — ` heading + all following lines up to EOF (current `/session-pause` always appends to EOF). If a future `/session-pause` variant inserts mid-document, extend the match to "until next `## ` heading or EOF." Edit `state_file` in place to remove the matched block.
 
-7. **Clean up.** Delete `workflow/.session.md` now — its purpose is consumed. The next `/session-pause` will recreate it if needed.
+7. **Clean up.** Delete `workflow-system/state/.session.md` now — its purpose is consumed. The next `/session-pause` will recreate it if needed.

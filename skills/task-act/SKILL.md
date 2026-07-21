@@ -1,6 +1,6 @@
 ---
 name: task-act
-description: "Task workflow: execute the implementation plan from workflow/wip/"
+description: "Task workflow: execute the implementation plan from workflow-system/state/wip/"
 argument-hint: <optional notes or the specific WIP file to work on>
 ---
 
@@ -22,7 +22,7 @@ You are in the **task** workflow at the **act** state.
 ## Procedure
 
 ### 1. Find Active Plan
-- Look in `workflow/wip/` for the active task plan
+- Look in `workflow-system/state/wip/` for the active task plan
 - If `{{args}}` specifies a file, use that
 - If multiple exist, ask the user which one
 - **Read `## Current Node` first** — this is the authoritative position pointer; resume from where it points
@@ -64,7 +64,7 @@ If instead you've been fixing a **behavioral** bug (a drag/click/focus/keyboard 
 
 When you discover something new while working on a step:
 - Add a `SURFACED` child node under the relevant step in the Work Tree: `- [ ] <summary>  <!-- status: SURFACED: <summary> -->`
-- Also log to `workflow/backlog.md`:
+- Also log to `workflow-system/state/backlog.md`:
 
 ```markdown
 ## SURFACE-<timestamp>

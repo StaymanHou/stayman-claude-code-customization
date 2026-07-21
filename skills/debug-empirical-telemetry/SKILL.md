@@ -164,7 +164,7 @@ After ≥3 rounds of `instrument → run → read` without converging on a hypot
 **Procedure:**
 
 1. Run the §6 Cleanup steps anyway — instrumentation should not be left behind even on inconclusive exits.
-2. Document the rounds attempted in the conversation (or in `workflow/wip/debug-<short-slug>.md` if the session was long enough that the trail matters).
+2. Document the rounds attempted in the conversation (or in `workflow-system/state/wip/debug-<short-slug>.md` if the session was long enough that the trail matters).
 3. Emit:
 
 ```
@@ -174,7 +174,7 @@ TRANSITION: DEBUG-TELEMETRY-INCONCLUSIVE
 RETURN-TO: <caller-skill-name, or "user" if directly invoked>
 ```
 
-Log a SURFACE entry to `workflow/backlog.md` summarizing what was tried (for future learning).
+Log a SURFACE entry to `workflow-system/state/backlog.md` summarizing what was tried (for future learning).
 
 ## Pitfalls (load-bearing — read before instrumenting)
 
@@ -198,8 +198,8 @@ This skill emits exactly one of the following terminal tokens (test harness asse
 
 Every termination must also include a `RETURN-TO:` line naming the caller skill (or `user` for direct invocation) so the orchestrator can resume.
 
-**For long telemetry sessions (5+ iterations):** consider writing iteration notes to `workflow/wip/debug-<short-slug>.md` for traceability — but this is optional. The default is in-conversation only. Same threshold as `/debug-bisect-known-good`.
+**For long telemetry sessions (5+ iterations):** consider writing iteration notes to `workflow-system/state/wip/debug-<short-slug>.md` for traceability — but this is optional. The default is in-conversation only. Same threshold as `/debug-bisect-known-good`.
 
-**Sidebar discipline:** This skill never advances any workflow state machine. It does not write to feature/incident/task WIP files' `## Current Node` or `## Discoveries` (the caller does that, after resuming, if the telemetry outcome warrants it). The only persistent artifacts the skill itself MAY create are: (a) a SURFACE entry in `workflow/backlog.md` on the inconclusive path (§7), and (b) optional iteration notes in `workflow/wip/debug-<short-slug>.md` for long sessions.
+**Sidebar discipline:** This skill never advances any workflow state machine. It does not write to feature/incident/task WIP files' `## Current Node` or `## Discoveries` (the caller does that, after resuming, if the telemetry outcome warrants it). The only persistent artifacts the skill itself MAY create are: (a) a SURFACE entry in `workflow-system/state/backlog.md` on the inconclusive path (§7), and (b) optional iteration notes in `workflow-system/state/wip/debug-<short-slug>.md` for long sessions.
 
 **Telemetry target / bug:** {{args}}

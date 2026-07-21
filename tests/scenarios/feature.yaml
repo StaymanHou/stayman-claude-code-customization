@@ -42,7 +42,7 @@ scenarios:
   - id: F4
     name: "feature:spec → plan when spec is clear"
     skill: feature-spec
-    model: sonnet  # Haiku flakes on this scenario; sonnet is reliable. See workflow/backlog.md history (HIDDEN-FAIL-F4 → recon 2026-05-06).
+    model: sonnet  # Haiku flakes on this scenario; sonnet is reliable. See workflow-system/state/backlog.md history (HIDDEN-FAIL-F4 → recon 2026-05-06).
     args: "User notification preferences"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -1369,7 +1369,7 @@ scenarios:
     fixtures:
       claude_md: fixtures/CLAUDE.md
     system_prompt_extra: |
-      There is no docs/product/wbs.md in this project. No probe WP for
+      There is no workflow-system/product/wbs.md in this project. No probe WP for
       Stripe has been completed. Proceed with the spec as requested.
     expect:
       transition_id: F29
@@ -1412,7 +1412,7 @@ scenarios:
     system_prompt_extra: |
       You are finalizing the User Notification Preferences feature.
       The WIP file shows all phases complete with no tech debt.
-      docs/product/wbs.md exists and all work packages (WP1-WP4) are marked [x].
+      workflow-system/product/wbs.md exists and all work packages (WP1-WP4) are marked [x].
       The entire product cycle is complete.
     expect:
       transition_id: F30
@@ -1739,7 +1739,7 @@ scenarios:
     max_retries: 2
 
   # F16-order-flip: regression scenario for SURFACE-2026-05-06-FINALIZE-BEFORE-SHIP-ORDER-FLIP
-  # See workflow/archive/finalize-before-ship-order-flip.md for the full feature plan
+  # See workflow-system/state/archive/finalize-before-ship-order-flip.md for the full feature plan
   # and reproduction history. The bug: agent narration after verify-codify enumerated
   # /feature-finalize before /feature-ship in real runs. Phase 3 added a guard in
   # feature-verify-codify/SKILL.md F16 block forbidding any enumeration of finalize.
@@ -1903,13 +1903,13 @@ scenarios:
       wip: fixtures/wip/feature-finalized-no-debt.md
       backlog: fixtures/backlog/with-one-resolvable.md
     # NEUTRAL framing per the prompt-leakage Context Rule: state the situation
-    # (a backlog item this feature closed) + ask what happens to it in workflow/backlog.md.
+    # (a backlog item this feature closed) + ask what happens to it in workflow-system/state/backlog.md.
     # Do NOT recite "delete it" — that would test obedience, not the skill's delete-on-resolve prose.
     system_prompt_extra: |
       This feature's work closed the backlog item SURFACE-2026-05-12-FIXTURE-RESOLVABLE
-      (in workflow/backlog.md). The other item, SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN,
+      (in workflow-system/state/backlog.md). The other item, SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN,
       was not touched. When describing §2 (Full Backlog Review) and §3c, state what happens
-      to the resolved item's entry in workflow/backlog.md and how it relates to the
+      to the resolved item's entry in workflow-system/state/backlog.md and how it relates to the
       **Backlog resolved:** CHANGELOG line.
     expect:
       transition_id: F19

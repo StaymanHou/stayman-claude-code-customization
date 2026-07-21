@@ -175,7 +175,7 @@ ${extra_prompt}"
 
   # Build temp project dir with fixtures
   local tmpdir; tmpdir=$(mktemp -d)
-  mkdir -p "$tmpdir/.claude" "$tmpdir/workflow/wip" "$tmpdir/docs/product"
+  mkdir -p "$tmpdir/.claude" "$tmpdir/workflow-system/state/wip" "$tmpdir/workflow-system/product"
   # Honor a per-scenario fixtures.claude_md (path relative to tests/, like the other
   # fixture keys) when it names an existing file; otherwise fall back to the default
   # fixtures/CLAUDE.md. Guarded with [ -f ] like the sibling fixture keys so a missing
@@ -203,19 +203,19 @@ ${extra_prompt}"
   fi
 
   if [ -n "$fixture_wip" ] && [ -f "$SCRIPT_DIR/$fixture_wip" ]; then
-    cp "$SCRIPT_DIR/$fixture_wip" "$tmpdir/workflow/wip/"
+    cp "$SCRIPT_DIR/$fixture_wip" "$tmpdir/workflow-system/state/wip/"
   fi
 
   if [ -n "$fixture_product_dir" ] && [ -d "$SCRIPT_DIR/$fixture_product_dir" ]; then
-    cp "$SCRIPT_DIR/$fixture_product_dir"/*.md "$tmpdir/docs/product/" 2>/dev/null || true
+    cp "$SCRIPT_DIR/$fixture_product_dir"/*.md "$tmpdir/workflow-system/product/" 2>/dev/null || true
   fi
 
   if [ -n "$fixture_session" ] && [ -f "$SCRIPT_DIR/$fixture_session" ]; then
-    cp "$SCRIPT_DIR/$fixture_session" "$tmpdir/workflow/.session.md"
+    cp "$SCRIPT_DIR/$fixture_session" "$tmpdir/workflow-system/state/.session.md"
   fi
 
   if [ -n "$fixture_backlog" ] && [ -f "$SCRIPT_DIR/$fixture_backlog" ]; then
-    cp "$SCRIPT_DIR/$fixture_backlog" "$tmpdir/workflow/backlog.md"
+    cp "$SCRIPT_DIR/$fixture_backlog" "$tmpdir/workflow-system/state/backlog.md"
   fi
 
   local attempt=0

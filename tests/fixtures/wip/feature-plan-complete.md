@@ -48,4 +48,4 @@ The browser flight sim has no keyboard/mouse input handling and no camera system
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
-     Each entry is also logged to workflow/backlog.md -->
+     Each entry is also logged to workflow-system/state/backlog.md -->

@@ -44,7 +44,7 @@ You are in the **feature** workflow at the **refactor** state.
 
 ### 4. Scope Guard
 During refactoring, if you discover something that is NOT cleanup:
-- **New functionality needed:** Log to `workflow/backlog.md` as a new item, do NOT implement it
+- **New functionality needed:** Log to `workflow-system/state/backlog.md` as a new item, do NOT implement it
 - **Architectural change needed:** SURFACE to product level, do NOT implement it
 - Stay disciplined — refactor means cleanup only
 

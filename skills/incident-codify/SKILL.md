@@ -28,7 +28,7 @@ In the feature workflow, a test failure during codify usually means the new code
 
 ### 1. Load Context
 
-- Read the incident WIP file in `workflow/wip/`
+- Read the incident WIP file in `workflow-system/state/wip/`
 - Identify:
   - The **mitigation** that was applied (§ Mitigation section)
   - Whether **`## Reproduction Attempt`** is present (i.e. `/incident-reproduce` was run upstream)
@@ -106,7 +106,7 @@ Determine whether the mitigation modified code inside an existing HTTP endpoint,
    - **Reasoning:** one-paragraph human explanation of why codify is being deferred now (must be written, not implicit).
    - **Severity at time of defer:** P0/P1/P2/P3.
    - **Symptom-confirmation source:** what makes you confident the bug is gone without a regression test (telemetry pattern, customer confirmation, etc.).
-2. Append a `SURFACE-<YYYY-MM-DD>` entry to `workflow/backlog.md` targeting `task:plan` (or `feature:spec` if the test scope is non-trivial):
+2. Append a `SURFACE-<YYYY-MM-DD>` entry to `workflow-system/state/backlog.md` targeting `task:plan` (or `feature:spec` if the test scope is non-trivial):
 
 ```markdown
 ## SURFACE-<YYYY-MM-DD>-CODIFY-DEFERRED-<incident-name>

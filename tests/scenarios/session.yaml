@@ -418,7 +418,7 @@ scenarios:
       wip: fixtures/wip/feature-autopilot-active.md
     system_prompt_extra: |
       The active WIP file (feature-autopilot-active.md) has drive_mode: autopilot in its
-      YAML frontmatter. When writing workflow/.session.md, you must include the line
+      YAML frontmatter. When writing workflow-system/state/.session.md, you must include the line
       drive_mode: autopilot in the frontmatter block. Demonstrate that you read the
       drive_mode from the WIP file and include it in the session pointer — do not omit it.
     expect:
@@ -709,8 +709,8 @@ scenarios:
     name: "session:start surfaces backlog candidates when no active work and empty args"
     skill: session-start
     # No args: this exercises step 1's empty-args path where backlog surfacing fires.
-    # Fixture stages workflow/backlog.md with 3 open SURFACE entries (1 high, 1 medium,
-    # 1 low). No .session.md, no wip, no docs/product — so all three "active work"
+    # Fixture stages workflow-system/state/backlog.md with 3 open SURFACE entries (1 high, 1 medium,
+    # 1 low). No .session.md, no wip, no workflow-system/product — so all three "active work"
     # checks return empty and the backlog trigger condition holds.
     # No transition_id is asserted: the empty-args path stops at the drive-mode menu
     # (or earlier, surfacing the backlog) before classification, so the model does not

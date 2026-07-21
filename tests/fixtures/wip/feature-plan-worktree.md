@@ -48,4 +48,4 @@ Users cannot configure which notifications they receive. All notifications are s
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
-     Each entry is also logged to workflow/backlog.md -->
+     Each entry is also logged to workflow-system/state/backlog.md -->

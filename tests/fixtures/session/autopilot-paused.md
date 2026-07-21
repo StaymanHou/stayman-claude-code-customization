@@ -3,7 +3,7 @@ paused: 2026-05-04 10:30
 workflow: feature
 step: build
 resume_skill: /feature-build
-state_file: workflow/wip/feature-build-phase1-done.md
+state_file: workflow-system/state/wip/feature-build-phase1-done.md
 drive_mode: autopilot
 ---
 

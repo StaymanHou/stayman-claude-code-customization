@@ -20,10 +20,10 @@ Also entered via:
 
 ## Step 0: Product context + design-priors consult
 
-Run `ls docs/product/` to see which docs exist. Relevant here:
+Run `ls workflow-system/product/` to see which docs exist. Relevant here:
 
-- `docs/product/vision.md` — pointer-only; you read it in §1 below.
-- `docs/product/design-priors.md` — **eager-read (consult)** when present. This is the per-project record of the operator's product-design decision leans (focus-vs-breadth, perf-vs-ship, anti-persona, …). Roadmap milestone decomposition is shot through with product-design tradeoffs, so consult it before deciding milestone scope/sequencing.
+- `workflow-system/product/vision.md` — pointer-only; you read it in §1 below.
+- `workflow-system/product/design-priors.md` — **eager-read (consult)** when present. This is the per-project record of the operator's product-design decision leans (focus-vs-breadth, perf-vs-ship, anti-persona, …). Roadmap milestone decomposition is shot through with product-design tradeoffs, so consult it before deciding milestone scope/sequencing.
 
 **Consult-weighting rules (apply when a recorded prior bears on a milestone decision):**
 1. **No prior governs → decide from common sense** (the 90% path — untouched; do not invent a prior).
@@ -41,7 +41,7 @@ See `CLAUDE.snippet.md` → "Design priors (GLOBAL)" for the full contract (cons
 ## Procedure
 
 ### 1. Review Vision
-Read `docs/product/vision.md`.
+Read `workflow-system/product/vision.md`.
 
 ### 2. Create Roadmap
 Break the vision into a **flat, singly-numbered list of milestones** — `Milestone 1`, `Milestone 2`, … — each a concrete deliverable with a clear goal and exit criteria.
@@ -52,7 +52,7 @@ Break the vision into a **flat, singly-numbered list of milestones** — `Milest
 
 **Groups are cosmetic only.** You may cluster related milestones under `## Group <X> — <theme>` headings purely for readability. Groups carry **no numbering semantics and no dependency semantics** — they just visually organize the flat milestone list. Milestone numbering stays continuous across groups.
 
-Create `docs/product/roadmap.md`:
+Create `workflow-system/product/roadmap.md`:
 
 ```markdown
 ---

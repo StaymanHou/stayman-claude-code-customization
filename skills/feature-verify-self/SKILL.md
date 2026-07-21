@@ -88,7 +88,7 @@ If a boundary does not apply (the phase only adds isolated new artifacts — a n
 
 ### 1. Read inputs
 
-- Read the WIP file in `workflow/wip/`
+- Read the WIP file in `workflow-system/state/wip/`
 - Identify the current phase from `## Current Node`
 - Extract the **Observable outcomes** for that phase
 - Confirm the dev URL from `{{args}}` — if empty, stop and ask the user for it before proceeding
@@ -96,7 +96,7 @@ If a boundary does not apply (the phase only adds isolated new artifacts — a n
 
 ### 2. Spawn self-verification subagent
 
-**The spawn is unconditional.** Per `docs/product/arch.md` (Revision 2026-04-27, "verify-self runs as a subagent"), the verification work runs in a one-shot subagent so that Playwright snapshots, console-message dumps, and accessibility-tree output stay in the subagent's context — *parent context stays lean across multi-phase features*. The spawn fires regardless of whether the phase's Observable Outcomes happen to need Playwright; the design property is parent-context cleanliness, not tool availability. Do not skip the spawn because outcomes "look CLI-verifiable." The subagent's agent definition at `agents/feature-verify-self-runner/AGENTS.md` carries the job description, severity taxonomy, and procedure — you provide only the dynamic context.
+**The spawn is unconditional.** Per `workflow-system/product/arch.md` (Revision 2026-04-27, "verify-self runs as a subagent"), the verification work runs in a one-shot subagent so that Playwright snapshots, console-message dumps, and accessibility-tree output stay in the subagent's context — *parent context stays lean across multi-phase features*. The spawn fires regardless of whether the phase's Observable Outcomes happen to need Playwright; the design property is parent-context cleanliness, not tool availability. Do not skip the spawn because outcomes "look CLI-verifiable." The subagent's agent definition at `agents/feature-verify-self-runner/AGENTS.md` carries the job description, severity taxonomy, and procedure — you provide only the dynamic context.
 
 **Assemble the dynamic context:**
 

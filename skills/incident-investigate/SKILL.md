@@ -20,7 +20,7 @@ You are in the **incident** workflow at the **investigate** state.
 ## Procedure
 
 ### 1. Load Context
-- Read the incident report from `workflow/wip/`
+- Read the incident report from `workflow-system/state/wip/`
 - Check for "Session Pause Note" — if found, resume from the noted next step
 - If this is a continuation (self-loop I5), read previous findings to avoid repeating work
 

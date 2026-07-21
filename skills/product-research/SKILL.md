@@ -22,7 +22,7 @@ Also entered via:
 ## Procedure
 
 ### 1. Identify Milestone Focus
-- Read `docs/product/vision.md` and `docs/product/roadmap.md`
+- Read `workflow-system/product/vision.md` and `workflow-system/product/roadmap.md`
 - Determine the current/next active milestone from the roadmap (older roadmaps may say "phase" — read-alias)
 - Focus research on that specific milestone's needs
 
@@ -37,7 +37,7 @@ Also entered via:
 - Online official docs override model knowledge when they conflict.
 
 ### 3. Document Findings
-Create `docs/product/research.md`:
+Create `workflow-system/product/research.md`:
 
 ```markdown
 ---
@@ -65,7 +65,7 @@ updated: <YYYY-MM-DD>
 
 ### 4. Evaluate Next Step
 - If findings are solid and roadmap holds → set `state: complete` in the frontmatter, recommend `/product-arch` (P5)
-- If findings invalidate roadmap assumptions → document what changed and why, recommend `/product-roadmap` (P4). The roadmap skill will bump `docs/product/roadmap.md` back to `state: in-progress`.
+- If findings invalidate roadmap assumptions → document what changed and why, recommend `/product-roadmap` (P4). The roadmap skill will bump `workflow-system/product/roadmap.md` back to `state: in-progress`.
 - If arriving from arch back-loop (P6), evaluate whether the new findings affect the architecture or the roadmap
 
 **Focus Areas:** {{args}}

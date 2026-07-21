@@ -67,6 +67,6 @@ Per the SKILL.md inconclusive escalation procedure:
 - Run §6 Cleanup steps anyway (instrumentation should not be left behind on any exit)
 - Emit `TRANSITION: DEBUG-TELEMETRY-INCONCLUSIVE` with `RETURN-TO: feature-build`
 - Suggest alternatives (e.g., git bisect across recent changes to the queue worker; reproduce in isolated environment with debugger attached; check for external triggers like cron jobs or admin re-queue endpoints that bypass the lock)
-- Log a SURFACE entry to `workflow/backlog.md`
+- Log a SURFACE entry to `workflow-system/state/backlog.md`
 
 **Do not run a fourth telemetry round.** The signal-to-cost ratio has tipped. The bug exists but the available observables do not discriminate further.

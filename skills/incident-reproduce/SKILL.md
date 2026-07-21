@@ -30,7 +30,7 @@ This state is the **optional** post-triage step for **reproducible incidents** â
 
 ### 1. Load Context
 
-- Read the incident report from `workflow/wip/`
+- Read the incident report from `workflow-system/state/wip/`
 - Confirm the triage severity and the human's reasoning for choosing reproduce (vs. straight-to-investigate)
 - Identify the specific undesirable behavior and conditions described in the report
 

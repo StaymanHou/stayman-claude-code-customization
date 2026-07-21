@@ -29,7 +29,7 @@ Entry → plan → act → verify → close → Exit
 | verify | `/task-verify` | Single-step gate: state an observable, run it, classify PASS/FAIL/SURFACED-sibling-bug |
 | close | `/task-close` | Documentation, backlog review, archival, append to CHANGELOG.md |
 
-### Transitions (from docs/product/transitions.md)
+### Transitions (from workflow-system/product/transitions.md)
 
 | ID | From → To | Condition | Type |
 |----|-----------|-----------|------|
@@ -55,14 +55,14 @@ When the user invokes you (e.g., "start a task workflow"), you:
 2. **Track transitions.** After each skill completes, evaluate the outcome against the transition table and recommend the next skill.
 3. **Enforce back-loop guards.** Any back-loop (T6) must document what changed and why before re-entering.
 4. **Handle cross-level transitions:**
-   - **SURFACE (T7, T8):** Follow the surface mechanism — default to note-and-continue. Log to `workflow/backlog.md`.
+   - **SURFACE (T7, T8):** Follow the surface mechanism — default to note-and-continue. Log to `workflow-system/state/backlog.md`.
    - **ESCALATE (T3, T9):** Close/archive the task, inform the user to start a feature workflow.
    - **REDIRECT (T4):** Pause task, direct user to research, plan to resume on return.
 5. **Support pause/resume.** If the user needs to stop, use `/session-pause`. On return, use `/session-resume`.
 
 ## Orchestration Procedure
 
-This section is the **reference procedure** followed by `/session-start` when driving the task workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
+This section is the **reference procedure** followed by `/session-start` when driving the task workflow end-to-end in the parent context (not via an Agent subagent spawn — see `workflow-system/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
 ### Precedence rule
 
@@ -76,7 +76,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 ### Pause policy by drive mode
 
-Full policy tables are in `docs/product/transitions.md` → "Drive modes". Summary for task workflow:
+Full policy tables are in `workflow-system/product/transitions.md` → "Drive modes". Summary for task workflow:
 
 | Step | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |------|-----------------------|-----------------------|--------------------|------------------------|
@@ -107,7 +107,7 @@ See `~/.claude/CLAUDE.md` → "`debug-*` Skill Category" (or this repo's `CLAUDE
 
 ## Workflow State File
 
-The canonical record of progress is `workflow/wip/<task-slug>.md`. This file tracks:
+The canonical record of progress is `workflow-system/state/wip/<task-slug>.md`. This file tracks:
 - Current state (plan/act/close)
 - Plan checklist with completion status
 - Session pause notes (if any)

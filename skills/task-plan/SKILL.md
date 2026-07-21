@@ -1,6 +1,6 @@
 ---
 name: task-plan
-description: "Task workflow: analyze request, discover context, and create an implementation plan in workflow/wip/"
+description: "Task workflow: analyze request, discover context, and create an implementation plan in workflow-system/state/wip/"
 argument-hint: <description of the task to plan>
 ---
 
@@ -21,14 +21,14 @@ You are in the **task** workflow at the **plan** state.
 
 ## Step 0: Available product context
 
-Before planning, check whether the project has strategic product docs that should inform the task plan. Run `ls docs/product/` (silently no-op if the directory is absent). The docs you may find:
+Before planning, check whether the project has strategic product docs that should inform the task plan. Run `ls workflow-system/product/` (silently no-op if the directory is absent). The docs you may find:
 
-- `docs/product/arch.md` — architectural decisions and system design
-- `docs/product/wbs.md` — active work breakdown structure (current cycle)
-- `docs/product/vision.md` — high-level product vision
-- `docs/product/roadmap.md` — strategic roadmap
+- `workflow-system/product/arch.md` — architectural decisions and system design
+- `workflow-system/product/wbs.md` — active work breakdown structure (current cycle)
+- `workflow-system/product/vision.md` — high-level product vision
+- `workflow-system/product/roadmap.md` — strategic roadmap
 
-**Conditional read — `arch.md` only:** if the task description appears to touch architectural decisions — renaming a public API, changing a data shape, modifying a cross-module boundary, altering a workflow state machine — read `docs/product/arch.md` and reflect any constraint in the plan. If the trigger doesn't apply, skip the read; the pointer above is sufficient.
+**Conditional read — `arch.md` only:** if the task description appears to touch architectural decisions — renaming a public API, changing a data shape, modifying a cross-module boundary, altering a workflow state machine — read `workflow-system/product/arch.md` and reflect any constraint in the plan. If the trigger doesn't apply, skip the read; the pointer above is sufficient.
 
 **`wbs.md`, `vision.md`, `roadmap.md`:** pointer-only. Don't read these for task-level work — they're too coarse for atomic changes. If the task surprisingly needs WBS context, the user will paste it into args.
 
@@ -41,7 +41,7 @@ See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for t
 ## Procedure
 
 ### 1. Backlog Check
-Before planning, scan `workflow/backlog.md` (if it exists) for:
+Before planning, scan `workflow-system/state/backlog.md` (if it exists) for:
 - `high` priority items matching this task area
 - Items whose target is `task` level
 - Conflicts with what's about to be planned
@@ -60,7 +60,7 @@ Evaluate whether this is truly a task or should be escalated:
 - Otherwise → proceed with planning
 
 ### 4. Plan Creation
-Create a markdown file in `workflow/wip/<task-slug>.md` using the **Work Tree format** (task variant — no Observable Outcomes, no verify loop):
+Create a markdown file in `workflow-system/state/wip/<task-slug>.md` using the **Work Tree format** (task variant — no Observable Outcomes, no verify loop):
 
 ```markdown
 ---
@@ -96,7 +96,7 @@ docs-only: false  # set to `true` only for pure-docs tasks (CLAUDE.md prose edit
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
-     Each entry is also logged to workflow/backlog.md -->
+     Each entry is also logged to workflow-system/state/backlog.md -->
 ```
 
 Note: Task Work Tree has no Observable Outcomes and no verify loop — tasks are atomic. The `## Current Node` section is still required so that re-entry after a back-loop carries precise scope.

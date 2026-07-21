@@ -8,7 +8,7 @@
 
 ## Workflow System
 
-This machine has a state-machine-driven workflow system installed (skills + orchestrator agents). Projects that use it keep transient state in `workflow/` and strategic product docs in `docs/product/`.
+This machine has a state-machine-driven workflow system installed (skills + orchestrator agents). Projects that use it keep transient state in `workflow-system/state/` and strategic product docs in `workflow-system/product/`.
 
 **Four workflows with entry-point slash commands:**
 
@@ -25,15 +25,15 @@ Running an entry-point slash command directly (e.g., `/product-vision`) stays si
 
 **Per-project layout** (not shared between projects):
 ```
-docs/product/                        # vision.md, roadmap.md, research.md, arch.md, wbs.md, context.md
-docs/product/archive/<cycle-name>/   # cycle-scoped docs archived by /product-finalize on WBS completion
-workflow/wip/                        # active feature/task/incident items
-workflow/backlog.md                  # SURFACE discoveries
-workflow/archive/                    # completed feature/task/incident items
-workflow/.session.md                 # single-file pause pointer
+workflow-system/product/                        # vision.md, roadmap.md, research.md, arch.md, wbs.md, context.md
+workflow-system/product/archive/<cycle-name>/   # cycle-scoped docs archived by /product-finalize on WBS completion
+workflow-system/state/wip/                        # active feature/task/incident items
+workflow-system/state/backlog.md                  # SURFACE discoveries
+workflow-system/state/archive/                    # completed feature/task/incident items
+workflow-system/state/.session.md                 # single-file pause pointer
 ```
 
-When a WBS cycle completes, `/product-finalize` resyncs durable docs (`arch.md`, `roadmap.md`), sweeps the backlog, then moves cycle-scoped docs (`wbs.md`, `research.md`, diagnostics) to `docs/product/archive/<cycle-name>/`. Durable docs (`vision.md`, `arch.md`, `transitions.md`, `roadmap.md`) stay in place.
+When a WBS cycle completes, `/product-finalize` resyncs durable docs (`arch.md`, `roadmap.md`), sweeps the backlog, then moves cycle-scoped docs (`wbs.md`, `research.md`, diagnostics) to `workflow-system/product/archive/<cycle-name>/`. Durable docs (`vision.md`, `arch.md`, `transitions.md`, `roadmap.md`) stay in place.
 
 ## Work Tree Format (GLOBAL)
 
@@ -68,7 +68,7 @@ Every feature WIP file uses the Work Tree format. All skills that read or write 
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
-     Each entry is also logged to workflow/backlog.md -->
+     Each entry is also logged to workflow-system/state/backlog.md -->
 ```
 
 ### Status vocabulary
@@ -92,7 +92,7 @@ Every feature WIP file uses the Work Tree format. All skills that read or write 
 
 ## Entry-skill product-context loading (GLOBAL)
 
-Entry-point skills may consult `docs/product/*.md` at start to ground planning in strategic context. Each entry-point SKILL.md spells its own load points out concretely in a `## Step 0: Available product context` section — the snippet documents the *rules*, the SKILL.md documents the *concrete paths*.
+Entry-point skills may consult `workflow-system/product/*.md` at start to ground planning in strategic context. Each entry-point SKILL.md spells its own load points out concretely in a `## Step 0: Available product context` section — the snippet documents the *rules*, the SKILL.md documents the *concrete paths*.
 
 ### Per-skill mapping
 
@@ -101,7 +101,7 @@ Entry-point skills may consult `docs/product/*.md` at start to ground planning i
 | `task-plan` | conditional-read | `arch.md` *only if* the task touches a public API, data shape, cross-module boundary, or workflow state machine | `wbs.md`, `vision.md`, `roadmap.md` |
 | `feature-spec` | eager-read | `arch.md`, `wbs.md`, `design-priors.md` | `vision.md`, `roadmap.md`, `research.md` |
 | `feature-plan` | eager-read with context-skip | `wbs.md` — **skipped if already in conversation context** (e.g., loaded earlier by `feature-spec`) | `arch.md`, `vision.md`, `roadmap.md`, `research.md`, `design-priors.md` (already applied by `feature-spec`) |
-| `feature-reproduce` | pointer-only | (none) | All `docs/product/*.md` |
+| `feature-reproduce` | pointer-only | (none) | All `workflow-system/product/*.md` |
 | `incident-report` | conditional-read | `arch.md` *only if* the incident involves cross-component or system-architecture-level effects | `wbs.md`, `vision.md`, `roadmap.md` |
 | `product-roadmap` | eager-read | `design-priors.md` (consult for milestone-level product-design leans) | `vision.md` |
 | `product-wbs` | eager-read | `design-priors.md` (consult for WP-level product-design leans) | `wbs.md`, `roadmap.md`, `vision.md` |
@@ -111,7 +111,7 @@ Entry-point skills may consult `docs/product/*.md` at start to ground planning i
 
 ### Rules
 
-1. **Pointer-default.** Step 0 always lists which `docs/product/*.md` files exist (one-line each). Absent files are silent no-ops — no warnings.
+1. **Pointer-default.** Step 0 always lists which `workflow-system/product/*.md` files exist (one-line each). Absent files are silent no-ops — no warnings.
 2. **Size guard: 300 lines.** Eager/conditional reads exceeding ~300 lines read first 100 lines + `^#+ ` headings only, and append `[SURFACED-<date>] <skill> — <doc>.md exceeds size guard (N lines)` to the WIP `## Discoveries`.
 3. **No `context.md`.** Excluded everywhere — `CLAUDE.md` is the harness-loaded equivalent.
 
@@ -119,7 +119,7 @@ Entry-point skills may consult `docs/product/*.md` at start to ground planning i
 
 ## Design priors (GLOBAL)
 
-**Design priors** are terse, transferable, *per-project* statements of how the operator resolves recurring **product-design** tradeoffs (focus-vs-breadth, perf-vs-ship, opinionated-defaults-vs-config, an anti-persona, etc.), each paired with its *why*. They live in `docs/product/design-priors.md` (schema in `arch.md` → "File Schema: Design Priors Format"). The operator deliberately leaves product-design gaps and lets CC fill them; ~90% of the time common sense is right. Design priors capture the remaining ~10% — the project-specific lean — so CC fills *those* the operator's way without being re-taught each feature. **They are directional and overridable, never decisive.** This doc is per-project state (lives in the consuming project, not the skill repo).
+**Design priors** are terse, transferable, *per-project* statements of how the operator resolves recurring **product-design** tradeoffs (focus-vs-breadth, perf-vs-ship, opinionated-defaults-vs-config, an anti-persona, etc.), each paired with its *why*. They live in `workflow-system/product/design-priors.md` (schema in `arch.md` → "File Schema: Design Priors Format"). The operator deliberately leaves product-design gaps and lets CC fill them; ~90% of the time common sense is right. Design priors capture the remaining ~10% — the project-specific lean — so CC fills *those* the operator's way without being re-taught each feature. **They are directional and overridable, never decisive.** This doc is per-project state (lives in the consuming project, not the skill repo).
 
 ### Consult contract (planning skills: `product-roadmap`, `product-wbs`, `feature-spec`)
 
@@ -155,7 +155,7 @@ When filling a product-design gap the operator left open, load `design-priors.md
 
 ## CHANGELOG.md convention (GLOBAL)
 
-Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at the project root (`<proj_root>/CHANGELOG.md`). It is the narrative record of what shipped, closed, or resolved — and it is the **sole** canonical record of resolved backlog items. `workflow/backlog.md` (and `workflow/backlog-quality-findings.md`) carry **only open work** — a resolved item is **deleted** from the backlog on resolve, not marked with a `Status: resolved` line and not moved to a `## Resolved` section. The resolved paper trail lives in CHANGELOG alone (see the **delete-on-resolve** rule under "Append discipline" below).
+Every project that uses this workflow system maintains a human-readable `CHANGELOG.md` at the project root (`<proj_root>/CHANGELOG.md`). It is the narrative record of what shipped, closed, or resolved — and it is the **sole** canonical record of resolved backlog items. `workflow-system/state/backlog.md` (and `workflow-system/state/backlog-quality-findings.md`) carry **only open work** — a resolved item is **deleted** from the backlog on resolve, not marked with a `Status: resolved` line and not moved to a `## Resolved` section. The resolved paper trail lives in CHANGELOG alone (see the **delete-on-resolve** rule under "Append discipline" below).
 
 The four terminal-close skills append to it automatically:
 
@@ -204,12 +204,12 @@ The four terminal-close skills append to it automatically:
 
 ### Append discipline (write-side rules for closing skills)
 
-- **Append before `git mv`.** When the closing skill archives the WIP file (`git mv workflow/wip/<f>.md workflow/archive/`), the CHANGELOG append must happen *before* the move, and both files must be staged together in the same commit. Sequence: edit CHANGELOG.md → `git add CHANGELOG.md <wip-file>` → `git mv <wip-file> <archive-path>` → commit. This avoids the failure mode logged as SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV (rename commits dropping unstaged content edits).
+- **Append before `git mv`.** When the closing skill archives the WIP file (`git mv workflow-system/state/wip/<f>.md workflow-system/state/archive/`), the CHANGELOG append must happen *before* the move, and both files must be staged together in the same commit. Sequence: edit CHANGELOG.md → `git add CHANGELOG.md <wip-file>` → `git mv <wip-file> <archive-path>` → commit. This avoids the failure mode logged as SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV (rename commits dropping unstaged content edits).
 - **Delete-on-resolve (CHANGELOG-then-delete hard invariant).** When a close resolves a backlog item, the closing skill **deletes** that item's entry from the backlog in the **same commit** as the `**Backlog resolved:**` CHANGELOG append — it does **not** mark the entry `Status: resolved` and leave it in place. The invariant is: **no backlog delete is permitted unless the corresponding `**Backlog resolved:**` line lands in `CHANGELOG.md` in that same commit** (the CHANGELOG record is written *first*, then the backlog block is deleted, then both stage together — mirroring the append-before-`git mv` rule above). This is what keeps `backlog.md` open-work-only while guaranteeing the resolved paper trail is never lost.
-  - **What "delete the entry" means.** For a plain `## SURFACE-<ID>` item: delete its whole `## SURFACE-<ID>` … block from `workflow/backlog.md`. For a code-quality finding (auto-backlogged by `feature-review-quality`): the two backlog files are **coupled** — delete the full finding body from `workflow/backlog-quality-findings.md` **and** its pointer-collapsed stub in `workflow/backlog.md`.
+  - **What "delete the entry" means.** For a plain `## SURFACE-<ID>` item: delete its whole `## SURFACE-<ID>` … block from `workflow-system/state/backlog.md`. For a code-quality finding (auto-backlogged by `feature-review-quality`): the two backlog files are **coupled** — delete the full finding body from `workflow-system/state/backlog-quality-findings.md` **and** its pointer-collapsed stub in `workflow-system/state/backlog.md`.
   - **Partial-resolution carve-out.** Only a **fully-resolved** item is deleted. If a close resolves *part* of an item and open work remains, do **not** delete it — **rewrite** the entry to describe only the remaining open work (the resolved sub-part's record still goes to CHANGELOG). A `**Backlog resolved:**` line for the resolved sub-part is still emitted; the entry itself survives, slimmer.
-  - **Buried/deferred are a different lifecycle — never delete on this rule.** The `## Buried` section of `backlog.md` and `workflow/backlog-deferred-*.md` hold *deferred/buried* items, not resolved ones. Delete-on-resolve fires **only** on resolution — deferring or burying an item never triggers it.
-- **Idempotency by archival.** Re-running a closing skill on a WIP path that is already inside `workflow/archive/` is a no-op for the append step. The skill detects this and skips. Re-running on an active WIP that has not yet been archived appends normally.
+  - **Buried/deferred are a different lifecycle — never delete on this rule.** The `## Buried` section of `backlog.md` and `workflow-system/state/backlog-deferred-*.md` hold *deferred/buried* items, not resolved ones. Delete-on-resolve fires **only** on resolution — deferring or burying an item never triggers it.
+- **Idempotency by archival.** Re-running a closing skill on a WIP path that is already inside `workflow-system/state/archive/` is a no-op for the append step. The skill detects this and skips. Re-running on an active WIP that has not yet been archived appends normally.
 - **Deterministic line composition.** The skill composes the entry line from data already in the WIP file (title, completion type) plus today's date. The model does not invent wording — it follows the entry-kind vocabulary and writes one sentence drawn from the WIP's problem statement or closure message.
 - **Project root detection.** "Project root" = `git rev-parse --show-toplevel` if the working dir is in a git repo; otherwise the current working directory.
 - **No backdating.** The skill always writes today's date, regardless of when the WIP was created or when work actually finished.
@@ -228,13 +228,13 @@ All paths are project-local (`<proj-dir>/`) unless noted. "Default" is overridab
 
 | Artifact | Default | Reason |
 |---|---|---|
-| `<proj-dir>/docs/lessons/`, `<proj-dir>/docs/product/` (+ `archive/`), `<proj-dir>/docs/case-studies/` | **track** | shared project knowledge |
+| `<proj-dir>/docs/lessons/`, `<proj-dir>/workflow-system/product/` (+ `archive/`), `<proj-dir>/docs/case-studies/` | **track** | shared project knowledge |
 | `<proj-dir>/CHANGELOG.md`, `<proj-dir>/runtimes.md` | **track** | shared narrative / measurements |
-| `<proj-dir>/workflow/backlog*.md`, `workflow/archive/`, `workflow/wip/` | **track** | shared work state & history |
+| `<proj-dir>/workflow-system/state/backlog*.md`, `workflow-system/state/archive/`, `workflow-system/state/wip/` | **track** | shared work state & history |
 | `<proj-dir>/.claude/memory/`, `<proj-dir>/.claude/memory/MEMORY.md` | **track + PII-audit** | tracked by default; any skill that writes a memory MUST audit the file for secrets/PII after writing — **redact in place** if redaction preserves the memory's usefulness, else **add that specific file to `.gitignore`** (expected rare) |
 | `<proj-dir>/.claude/learnings/` | **ignore** (overridable) | global-scope learning *drafts* parked for hand-porting to a source repo; a project that IS the learning-assets repo overrides this to **track** (see §Override) |
 | `<proj-dir>/.claude/settings.local.json` | **ignore** | machine-local permission allowlist (usually also covered by `~/.config/git/ignore`) |
-| `<proj-dir>/workflow/.session.md` | **ignore** | transient single-file session pointer, deleted on resume |
+| `<proj-dir>/workflow-system/state/.session.md` | **ignore** | transient single-file session pointer, deleted on resume |
 | `<proj-dir>/tests/results/`, `.playwright-mcp/`, `tmp/`, generated screenshots, `__pycache__/`, `*.pyc`, `.DS_Store` | **ignore** | machine-local / trivially regenerable |
 
 ### The `.claude/` default is TRACK — deterministic, not per-session judgment

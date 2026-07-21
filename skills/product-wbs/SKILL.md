@@ -35,10 +35,10 @@ This extends the learning-sequence-ordering discipline below ("resolve riskiest 
 
 ## Step 0: Product context + design-priors consult
 
-Run `ls docs/product/` to see which docs exist. Relevant here:
+Run `ls workflow-system/product/` to see which docs exist. Relevant here:
 
 - `roadmap.md`, `vision.md`, `research.md`, `arch.md` — read per §1 Review Inputs below.
-- `docs/product/design-priors.md` — **eager-read (consult)** when present. Per-project record of the operator's product-design decision leans. WP decomposition (what each WP scopes, which capabilities to include/cut) embeds product-design tradeoffs, so consult it before deciding WP boundaries.
+- `workflow-system/product/design-priors.md` — **eager-read (consult)** when present. Per-project record of the operator's product-design decision leans. WP decomposition (what each WP scopes, which capabilities to include/cut) embeds product-design tradeoffs, so consult it before deciding WP boundaries.
 
 **Consult-weighting rules (apply when a recorded prior bears on a WP decision):**
 1. **No prior governs → decide from common sense** (the 90% path — untouched; do not invent a prior).
@@ -56,13 +56,13 @@ See `CLAUDE.snippet.md` → "Design priors (GLOBAL)" for the full contract (cons
 ## Procedure
 
 ### 1. Review Inputs
-- Read `docs/product/vision.md`, `docs/product/roadmap.md`, `docs/product/research.md`, `docs/product/arch.md`
+- Read `workflow-system/product/vision.md`, `workflow-system/product/roadmap.md`, `workflow-system/product/research.md`, `workflow-system/product/arch.md`
 - Identify the **immediate next milestone** in `roadmap.md` (the earliest milestone not yet complete) — this milestone is the entire scope of this WBS pass
-- If entering from SURFACE-IN (P11), read the surface note in `workflow/backlog.md` and integrate the new work item
+- If entering from SURFACE-IN (P11), read the surface note in `workflow-system/state/backlog.md` and integrate the new work item
 
 ### 2. Decompose into Work Packages
 
-Create `docs/product/wbs.md` (or update in place if returning via back-loop/SURFACE-IN). **Decompose only the immediate next milestone** (see "Scope" above).
+Create `workflow-system/product/wbs.md` (or update in place if returning via back-loop/SURFACE-IN). **Decompose only the immediate next milestone** (see "Scope" above).
 
 **Two kinds of work packages exist — use the right template for each:**
 
@@ -145,8 +145,8 @@ If new work was surfaced from a lower level:
 
 ### 8. Evaluate Next Step
 - If WBS is complete and architecture holds → set `state: complete` in the frontmatter, recommend `/product-context` (P9)
-- If decomposition reveals architectural gaps → document them, recommend `/product-arch` (P8). The arch skill will bump `docs/product/arch.md` back to `state: in-progress`.
+- If decomposition reveals architectural gaps → document them, recommend `/product-arch` (P8). The arch skill will bump `workflow-system/product/arch.md` back to `state: in-progress`.
 
-**Note on cycle close:** When all WPs in this WBS are eventually marked `[x]` by `feature-finalize` runs, `feature-finalize` will detect the complete WBS and surface `/product-finalize` (F30). That skill resyncs durable docs, sweeps the backlog, and archives cycle-scoped docs (`wbs.md`, `research.md`, diagnostics) to `docs/product/archive/<cycle-name>/`.
+**Note on cycle close:** When all WPs in this WBS are eventually marked `[x]` by `feature-finalize` runs, `feature-finalize` will detect the complete WBS and surface `/product-finalize` (F30). That skill resyncs durable docs, sweeps the backlog, and archives cycle-scoped docs (`wbs.md`, `research.md`, diagnostics) to `workflow-system/product/archive/<cycle-name>/`.
 
 **Scope:** {{args}}

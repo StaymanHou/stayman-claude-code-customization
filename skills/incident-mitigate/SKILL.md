@@ -14,7 +14,7 @@ You are in the **incident** workflow at the **mitigate** state.
 
 **Valid transitions from here:**
 - **I17 → codify (default):** Fix applied, monitoring period passed → tell user to run `/incident-codify` to lock regression coverage before resolve
-- **I9 → resolve (skip-codify defer path):** Fix applied, monitoring passed, but codify is being explicitly deferred (e.g., active P0 where writing coverage now would delay all-clear). Requires: human-written `## Codify — Deferred` reasoning in the WIP file AND a SURFACE→task:plan entry in `workflow/backlog.md` to own the coverage debt. Then tell user to run `/incident-resolve`
+- **I9 → resolve (skip-codify defer path):** Fix applied, monitoring passed, but codify is being explicitly deferred (e.g., active P0 where writing coverage now would delay all-clear). Requires: human-written `## Codify — Deferred` reasoning in the WIP file AND a SURFACE→task:plan entry in `workflow-system/state/backlog.md` to own the coverage debt. Then tell user to run `/incident-resolve`
 - **I8 → investigate (back-loop):** Fix didn't work, need more data → document what failed, tell user to run `/incident-investigate`
 
 ## Procedure
@@ -51,7 +51,7 @@ You are in the **incident** workflow at the **mitigate** state.
 **Fix works — defer-codify path (I9, exceptional):**
 - Only use when active incident pressure makes writing coverage now infeasible (P0 with customer escalation, etc.)
 - Write a `## Codify — Deferred` section to the WIP file with: reasoning, severity at defer time, and what makes you confident the bug is gone without a regression test
-- Append a `SURFACE-<YYYY-MM-DD>-CODIFY-DEFERRED-<incident-name>` entry to `workflow/backlog.md` targeting `task:plan`
+- Append a `SURFACE-<YYYY-MM-DD>-CODIFY-DEFERRED-<incident-name>` entry to `workflow-system/state/backlog.md` targeting `task:plan`
 - Tell user: "Fix applied. Codify deferred — see WIP file for reasoning and SURFACE entry. Run `/incident-resolve` to close."
 
 **Fix didn't work (I8):**

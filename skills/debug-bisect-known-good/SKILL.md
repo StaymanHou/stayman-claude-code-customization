@@ -178,7 +178,7 @@ TRANSITION: DEBUG-BISECT-NO-CONVERGE
 RETURN-TO: <caller-skill-name, or "user" if directly invoked>
 ```
 
-Log a SURFACE entry to `workflow/backlog.md` summarizing what was tried (for future learning).
+Log a SURFACE entry to `workflow-system/state/backlog.md` summarizing what was tried (for future learning).
 
 ## Pitfalls (load-bearing — read before iterating)
 
@@ -201,8 +201,8 @@ This skill emits exactly one of the following terminal tokens (test harness asse
 
 Every termination must also include a `RETURN-TO:` line naming the caller skill (or `user` for direct invocation) so the orchestrator can resume.
 
-**For long bisects (5+ iterations):** consider writing iteration notes to `workflow/wip/debug-<short-slug>.md` for traceability — but this is optional. The default is in-conversation only.
+**For long bisects (5+ iterations):** consider writing iteration notes to `workflow-system/state/wip/debug-<short-slug>.md` for traceability — but this is optional. The default is in-conversation only.
 
-**Sidebar discipline:** This skill never advances any workflow state machine. It does not write to feature/incident/task WIP files' `## Current Node` or `## Discoveries` (the caller does that, after resuming, if the bisect outcome warrants it). The only persistent artifact the skill itself MAY create is a SURFACE entry in `workflow/backlog.md` on the no-converge path (§7).
+**Sidebar discipline:** This skill never advances any workflow state machine. It does not write to feature/incident/task WIP files' `## Current Node` or `## Discoveries` (the caller does that, after resuming, if the bisect outcome warrants it). The only persistent artifact the skill itself MAY create is a SURFACE entry in `workflow-system/state/backlog.md` on the no-converge path (§7).
 
 **Bisect target / pair:** {{args}}

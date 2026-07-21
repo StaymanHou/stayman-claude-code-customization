@@ -166,7 +166,7 @@ TRANSITION: DEBUG-MINHARNESS-INCONCLUSIVE
 RETURN-TO: <caller-skill-name, or "user" if directly invoked>
 ```
 
-Log a SURFACE entry to `workflow/backlog.md` summarizing what the reproduction did and didn't show (for future learning).
+Log a SURFACE entry to `workflow-system/state/backlog.md` summarizing what the reproduction did and didn't show (for future learning).
 
 ## Pitfalls (load-bearing — read before building the harness)
 
@@ -190,10 +190,10 @@ This skill emits exactly one of the following terminal tokens (test harness asse
 
 Every termination must also include a `RETURN-TO:` line naming the caller skill (or `user` for direct invocation) so the orchestrator can resume.
 
-**For long reproduction sessions (5+ rounds):** consider writing iteration notes to `workflow/wip/debug-<short-slug>.md` for traceability — but this is optional. The default is in-conversation only. Same threshold as the sibling sidebars.
+**For long reproduction sessions (5+ rounds):** consider writing iteration notes to `workflow-system/state/wip/debug-<short-slug>.md` for traceability — but this is optional. The default is in-conversation only. Same threshold as the sibling sidebars.
 
 > **Note — the 3-round and 5-round thresholds are two different purposes, not a contradiction.** The **≥3 rounds** threshold (§6 / `DEBUG-MINHARNESS-INCONCLUSIVE`) is the *inconclusive-escalation* gate: after 3 non-converging rounds the technique has not paid off and you exit inconclusive. The **5+ rounds** threshold here is the *optional-traceability* gate: a merely-long-but-still-converging session may be worth jotting iteration notes for. A session can converge on round 4 (past the escalation gate, below the traceability gate) — the two numbers govern different decisions. Matches sibling precedent (`debug-empirical-telemetry` uses the same 3-vs-5 split).
 
-**Sidebar discipline:** This skill never advances any workflow state machine. It does not write to feature/incident/task WIP files' `## Current Node` or `## Discoveries` (the caller does that, after resuming, if the outcome warrants it). The only persistent artifacts the skill itself MAY create are: (a) a SURFACE entry in `workflow/backlog.md` on the inconclusive path (§6), and (b) optional iteration notes in `workflow/wip/debug-<short-slug>.md` for long sessions. The scratch reproduction from §2 is explicitly NOT a persistent artifact — it is deleted in §5.
+**Sidebar discipline:** This skill never advances any workflow state machine. It does not write to feature/incident/task WIP files' `## Current Node` or `## Discoveries` (the caller does that, after resuming, if the outcome warrants it). The only persistent artifacts the skill itself MAY create are: (a) a SURFACE entry in `workflow-system/state/backlog.md` on the inconclusive path (§6), and (b) optional iteration notes in `workflow-system/state/wip/debug-<short-slug>.md` for long sessions. The scratch reproduction from §2 is explicitly NOT a persistent artifact — it is deleted in §5.
 
 **Stalled behavioral bug:** {{args}}

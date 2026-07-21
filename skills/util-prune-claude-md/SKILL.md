@@ -1,6 +1,6 @@
 ---
 name: util-prune-claude-md
-description: "Compact the project-root CLAUDE.md by extracting bulky bullets to docs/lessons/<topic>.md or docs/product/arch.md. User-triggered when the Claude Code harness warns at session start that CLAUDE.md exceeds 40k chars."
+description: "Compact the project-root CLAUDE.md by extracting bulky bullets to docs/lessons/<topic>.md or workflow-system/product/arch.md. User-triggered when the Claude Code harness warns at session start that CLAUDE.md exceeds 40k chars."
 argument-hint: "<optional mode: 1=Step-by-step | 2=Batch-approve | 3=Autopilot | 4=Dry-run>"
 ---
 
@@ -10,7 +10,7 @@ You are an expert documentation editor compacting the project-root `CLAUDE.md` a
 
 ## Category
 
-**`util-*` — standalone user-triggered utility.** This skill is NOT part of any workflow state machine. It does not emit workflow transitions (no F/I/T/P/S tokens). It does not return to a caller (no `RETURN-TO:`). The operator invokes it manually via `/util-prune-claude-md` when the Claude Code harness warns at session start that `CLAUDE.md` exceeds 40k chars. See `docs/product/arch.md` → Revision 2026-06-13 → `util-*` skill category for the convention.
+**`util-*` — standalone user-triggered utility.** This skill is NOT part of any workflow state machine. It does not emit workflow transitions (no F/I/T/P/S tokens). It does not return to a caller (no `RETURN-TO:`). The operator invokes it manually via `/util-prune-claude-md` when the Claude Code harness warns at session start that `CLAUDE.md` exceeds 40k chars. See `workflow-system/product/arch.md` → Revision 2026-06-13 → `util-*` skill category for the convention.
 
 ## What it does
 
@@ -18,7 +18,7 @@ You are an expert documentation editor compacting the project-root `CLAUDE.md` a
 
 This skill inventories the bullets/sections in the project-root `CLAUDE.md`, ranks them by char count, and proposes one of three compaction actions per candidate:
 
-- **DEDUP** — bullet content is already covered by `docs/product/arch.md` → replace bullet with a one-line pointer.
+- **DEDUP** — bullet content is already covered by `workflow-system/product/arch.md` → replace bullet with a one-line pointer.
 - **EXTERNALIZE** — bullet is content-bearing (lesson, incident history, multi-paragraph recipe) → extract to `docs/lessons/<topic>.md` and leave a one-line pointer.
 - **DELETE** — bullet is explicitly self-marked HISTORICAL/retired/superseded → remove entirely (no replacement needed).
 
@@ -85,7 +85,7 @@ If `{{args}}` contains a digit 1–4, use it directly (no menu prompt). Otherwis
 
 For each candidate, classify into one of three verdicts:
 
-- **DEDUP** — Check `docs/product/arch.md` for a subsection whose heading semantically matches the bullet's leading bold phrase. If found, verdict is DEDUP — propose replacing the bullet with a one-line pointer (`- **<short name>** — see \`docs/product/arch.md\` → "<section name>".`).
+- **DEDUP** — Check `workflow-system/product/arch.md` for a subsection whose heading semantically matches the bullet's leading bold phrase. If found, verdict is DEDUP — propose replacing the bullet with a one-line pointer (`- **<short name>** — see \`workflow-system/product/arch.md\` → "<section name>".`).
 - **EXTERNALIZE** — If the bullet is multi-paragraph, contains empirical anchors (dates, SURFACE-IDs, incident references), or describes a reusable recipe/lesson, propose extracting to `docs/lessons/<topic>.md`. Propose a slug for the new file (snake-case, descriptive of the lesson's gravitational center). The bullet gets replaced with a one-line pointer (`- **<title>** — see \`docs/lessons/<slug>.md\`.`). Precedent shape: existing `docs/lessons/*.md` files use `# <Title>` first-line h1, no YAML frontmatter, 10–50 lines typical.
 - **DELETE** — If the bullet is explicitly self-marked HISTORICAL, retired, superseded, deprecated, or describes a feature/pattern that no longer exists in the codebase, propose deletion entirely (no replacement). Verify by grepping the codebase for the bullet's key identifiers before recommending DELETE.
 - **KEEP** — If the bullet is already one line, an operational fact (not a lesson), or already a pointer to an external doc, leave it alone. Excluded from the proposal.
@@ -105,7 +105,7 @@ For DEDUP and EXTERNALIZE, the proposed pointer line should be ≤ 200 chars to 
 
 **Mode 3 (Autopilot):** Apply only obvious candidates:
 - DELETE candidates: only if the bullet contains the literal string `HISTORICAL`, `retired`, `superseded`, or `deprecated` in its first ~200 chars AND a grep for the bullet's primary identifier (function/feature name) in the codebase returns 0 hits.
-- DEDUP candidates: only if `docs/product/arch.md` has a `###` heading whose text matches the bullet's leading bold phrase exactly (no fuzzy match — if the operator's rename created drift, fall through to skip).
+- DEDUP candidates: only if `workflow-system/product/arch.md` has a `###` heading whose text matches the bullet's leading bold phrase exactly (no fuzzy match — if the operator's rename created drift, fall through to skip).
 - Skip EXTERNALIZE candidates entirely — those require operator judgment on slug/title/bundling.
 - After applying, report: number applied, char delta, list of skipped (with reasons), and recommend Mode 1 or 2 for the remainder.
 

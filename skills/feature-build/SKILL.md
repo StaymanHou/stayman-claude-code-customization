@@ -42,7 +42,7 @@ When invoked by `/session-start` in orchestrated mode, the orchestrator reads `T
 ## Procedure
 
 ### 1. Context Recovery
-- Read the WIP file in `workflow/wip/`
+- Read the WIP file in `workflow-system/state/wip/`
 - **Read `## Current Node` first** — this is the authoritative position pointer
 - **If `{{args}}` contains leaf IDs** (e.g., `P1.verify-human.2,P1.verify-human.3`): you are re-entering from a back-loop. Restrict work to those specific leaves only — do not touch sibling leaves or advance to the next phase
 - If no scoped args: work on the next incomplete impl task in the current phase
@@ -77,7 +77,7 @@ This check must be completed before proceeding to implement. Its purpose: preven
 
 When you discover something new while working on a leaf:
 - Add a `SURFACED` child node under the **relevant parent phase node** in the WIP tree: `- [ ] <summary>  <!-- status: SURFACED: <summary> -->`
-- Also log to `workflow/backlog.md`:
+- Also log to `workflow-system/state/backlog.md`:
 
 ```markdown
 ## SURFACE-<timestamp>

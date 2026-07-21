@@ -48,7 +48,7 @@ Concrete examples of appropriate verify-auto checks:
 ## Procedure
 
 ### 1. Identify What to Verify
-- Read the WIP plan in `workflow/wip/`
+- Read the WIP plan in `workflow-system/state/wip/`
 - Identify the specific files changed in this build step
 - Select 2–4 cheap checks scoped to those files only
 

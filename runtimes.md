@@ -11,9 +11,10 @@ updated: 2026-07-15
 Per-project record of last-observed wall-clock runtimes for tracked long-running commands. Read before invoking a tracked command (use `**Use timeout:**`), update after completion or kill. See `~/.claude/CLAUDE.md` → `## Long-running commands (GLOBAL)` → `### Runtime registry` for the read+update discipline.
 
 ## ./tests/check-structure.sh
-- **Last:** 22s (2026-07-15)
+- **Last:** 24s (2026-07-21)
 - **Use timeout:** 90000
 - **History:**
+  - 24s — 2026-07-21  <!-- doc-layout-unification Phase 1 (WP2a) verify-auto; 416 PASS / 0 FAIL after the docs/product→workflow-system/product + workflow→workflow-system/state move + 58-file path sweep. The 12 product-path grep_check pins all resolved at the new workflow-system/product/ paths; count flat at 416 (rename is path-substitution, adds no new pins). -->
   - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 4 verify-auto; 416 PASS / 0 FAIL. Phase 4 was the migration (deleted 5+13 resolved backlog blocks, rewrote 1 partial) — pure backlog markdown-data edits; check-structure.sh does not pin backlog.md content, so count flat at 416, no regression. -->
   - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 3 verify-auto; 416 PASS / 0 FAIL. +5 from Phase 2's 411 (new Phase 11 delete-on-resolve pins: 4 close skills + 1 snippet invariant). Anchors grep-verified before pinning. Behavioral scenarios (F19/T10/I10/P13-delete-on-resolve) ran separately: 3 PASS + 1 SOFT_PASS (I10 prose-behavior shape), 0 FAIL. Runtime flat. -->
   - 22s — 2026-07-15  <!-- delete-on-resolve-backlog-convention Phase 2 verify-auto; 411 PASS / 0 FAIL. Phase 2 was prose edits to 5 close/util SKILL.md files (delete-on-resolve rule) — no NEW pins yet (Phase 11 delete-on-resolve pins land in Phase 3), so PASS count flat at 411. Confirmed no regression in Phase 9 (pause-policy), Phase 11 (close-commit), Phase 12 (path-qualification). -->

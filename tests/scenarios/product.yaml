@@ -250,7 +250,7 @@ scenarios:
       wip: fixtures/wip/feature-spec-3rdparty-no-probe.md
     system_prompt_extra: |
       You are producing the WBS for the current project. The active feature spec
-      (workflow/wip/feature-spec-3rdparty-no-probe.md) describes a Stripe
+      (workflow-system/state/wip/feature-spec-3rdparty-no-probe.md) describes a Stripe
       subscription billing feature. No Stripe probe WP has been completed.
       Apply learning-sequence ordering: the WBS must include a probe work
       package for Stripe before any build WP that assumes known Stripe API
@@ -305,15 +305,15 @@ scenarios:
       product_dir: fixtures/product/wbs-complete
     system_prompt_extra: |
       You are running product-finalize for the "API Documentation Generator" cycle.
-      All WPs in wbs.md are marked [x]. docs/product/arch.md exists and is accurate.
-      workflow/backlog.md is empty. The cycle name is "api-doc-generator-v1".
+      All WPs in wbs.md are marked [x]. workflow-system/product/arch.md exists and is accurate.
+      workflow-system/state/backlog.md is empty. The cycle name is "api-doc-generator-v1".
       Complete the finalize procedure and exit.
     expect:
       transition_id: P13
       contains_any:
         - "archive"
         - "archived"
-        - "docs/product/archive"
+        - "workflow-system/product/archive"
         - "product cycle"
       not_contains:
         - "/product-arch"
@@ -356,8 +356,8 @@ scenarios:
       product_dir: fixtures/product/wbs-complete
     system_prompt_extra: |
       You are running product-finalize for the "API Documentation Generator" cycle.
-      All WPs in wbs.md are marked [x]. docs/product/arch.md exists and is accurate.
-      workflow/backlog.md is empty. The cycle name is "api-doc-generator-v1".
+      All WPs in wbs.md are marked [x]. workflow-system/product/arch.md exists and is accurate.
+      workflow-system/state/backlog.md is empty. The cycle name is "api-doc-generator-v1".
       Per the CHANGELOG.md convention documented in ~/.claude/CLAUDE.md (injected
       from CLAUDE.snippet.md), before exiting, append one **Product cycle complete:**
       summary bullet to <proj_root>/CHANGELOG.md under today's date heading,
@@ -407,10 +407,10 @@ scenarios:
       You are running product-finalize for the "API Documentation Generator" cycle.
       All WPs in wbs.md are marked [x]. arch.md is accurate. The cycle name is
       "api-doc-generator-v1". In the §4 Backlog Sweep, the cycle's completed work
-      resolved SURFACE-2026-05-12-FIXTURE-RESOLVABLE (in workflow/backlog.md);
+      resolved SURFACE-2026-05-12-FIXTURE-RESOLVABLE (in workflow-system/state/backlog.md);
       SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN is deferred to next cycle. When
       describing §4 and the §6b operational sequence, state what happens to the
-      resolved item's entry in workflow/backlog.md and how it relates to the
+      resolved item's entry in workflow-system/state/backlog.md and how it relates to the
       **Backlog resolved:** CHANGELOG line.
     expect:
       transition_id: P13
@@ -445,7 +445,7 @@ scenarios:
       Decompose the next milestone into WPs. There is one open product-design
       question to resolve in the process: should the import feature also serve
       agencies/teams (multi-seat), or stay single-operator? Resolve it as part of
-      scoping the WPs. (docs/product/design-priors.md is present in this project.)
+      scoping the WPs. (workflow-system/product/design-priors.md is present in this project.)
     expect:
       transition_id_any: [P7, P8, P9, P9b, P11, P12]
       contains_required_any:
@@ -467,7 +467,7 @@ scenarios:
       Decompose the next milestone into WPs. One open product-design question to
       resolve while scoping: what TONE should the app's error messages use —
       terse or friendly-and-chatty? Resolve it as part of the WP work.
-      (docs/product/design-priors.md is present in this project.)
+      (workflow-system/product/design-priors.md is present in this project.)
     expect:
       transition_id_any: [P7, P8, P9, P9b, P11, P12]
       # The over-infer guard must hold: NO design-prior may FIRE on a copy-tone decision
@@ -510,7 +510,7 @@ scenarios:
       Revise the roadmap. Consider adding a teammate-collaboration milestone —
       most tools add collaboration eventually, so it looks like an obvious next
       step. Decide whether it belongs on this roadmap.
-      (docs/product/design-priors.md is present in this project.)
+      (workflow-system/product/design-priors.md is present in this project.)
     expect:
       transition_id_any: [P3, P4]
       contains_required_any:

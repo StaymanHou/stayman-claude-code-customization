@@ -70,7 +70,7 @@ A candidate that survives the DROP gates but fits none of these shapes is border
 
 **Design priors (backstop sweep):**
 - Did any decision this session reveal a durable **design prior** — a transferable product-design lean (focus-vs-breadth, perf-vs-ship, defaults-vs-config, an anti-persona, …) with a *why* that will recur on future decisions? This is the catch-all for capture checkpoints the in-the-moment capture missed (the "less-likely" steps).
-- If yes, **propose** recording it to `docs/product/design-priors.md` (propose-never-auto-write; the operator reviews/enriches the why; dedup/conflict-check existing priors first). **Exclusions:** technical/stack tradeoffs → `arch.md`, not a prior; bare facts / one-off fixes → not a prior. See `CLAUDE.snippet.md` → "Design priors (GLOBAL)".
+- If yes, **propose** recording it to `workflow-system/product/design-priors.md` (propose-never-auto-write; the operator reviews/enriches the why; dedup/conflict-check existing priors first). **Exclusions:** technical/stack tradeoffs → `arch.md`, not a prior; bare facts / one-off fixes → not a prior. See `CLAUDE.snippet.md` → "Design priors (GLOBAL)".
 
 ### 2b. Scope default — lean PROJECT; `[GLOBAL]` must earn it
 

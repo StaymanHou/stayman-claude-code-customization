@@ -41,14 +41,14 @@ In Modes 1–3 the user reviews the spec before plan — that pause is taken at 
 
 ## Step 0: Available product context
 
-Before eliciting requirements, ground the spec in current strategic context. Run `ls docs/product/` to see which docs exist. The docs you may find:
+Before eliciting requirements, ground the spec in current strategic context. Run `ls workflow-system/product/` to see which docs exist. The docs you may find:
 
-- `docs/product/arch.md` — architectural decisions and system design
-- `docs/product/wbs.md` — active work breakdown structure (current cycle)
-- `docs/product/design-priors.md` — the operator's product-design decision leans
-- `docs/product/vision.md` — high-level product vision
-- `docs/product/roadmap.md` — strategic roadmap
-- `docs/product/research.md` — cycle-scoped research findings
+- `workflow-system/product/arch.md` — architectural decisions and system design
+- `workflow-system/product/wbs.md` — active work breakdown structure (current cycle)
+- `workflow-system/product/design-priors.md` — the operator's product-design decision leans
+- `workflow-system/product/vision.md` — high-level product vision
+- `workflow-system/product/roadmap.md` — strategic roadmap
+- `workflow-system/product/research.md` — cycle-scoped research findings
 
 **Eager read — `arch.md`, `wbs.md`, AND `design-priors.md`:** spec is the most upstream complex-feature decision point, and divergence from architecture or the active WBS cycle is expensive to unwind downstream. Read all three (when present) at the start of step 1 below.
 
@@ -76,7 +76,7 @@ See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for t
 Before writing the spec, check whether this feature depends on any 3rd-party service, external API, or SDK (e.g. Stripe, Twilio, SendGrid, AWS, Google Maps, an OAuth provider, any API you don't own).
 
 **If a 3rd-party dependency is present:**
-1. Check `docs/product/wbs.md` (if it exists) for a completed Probe WP covering that integration.
+1. Check `workflow-system/product/wbs.md` (if it exists) for a completed Probe WP covering that integration.
 2. If no probe WP exists or none is marked complete — this is a **known unknown**. Flag it explicitly:
 
 > ⚠️ **Known unknown — probe required before planning**
@@ -89,7 +89,7 @@ Before writing the spec, check whether this feature depends on any 3rd-party ser
 **If no 3rd-party dependency is present:** skip this step and continue.
 
 ### 3. Create Specification
-Create `workflow/wip/<feature-name>.md` with this structure:
+Create `workflow-system/state/wip/<feature-name>.md` with this structure:
 
 ```markdown
 # Feature: <title>

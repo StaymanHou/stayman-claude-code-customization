@@ -41,7 +41,7 @@ In Modes 1–2 the user reviews research findings before continuing — that pau
 ## Procedure
 
 ### 1. Identify Questions
-- Read the spec in `workflow/wip/` if it exists
+- Read the spec in `workflow-system/state/wip/` if it exists
 - Clarify exactly what needs to be answered
 - If arriving via REDIRECT, read the pause note for specific questions
 

@@ -43,7 +43,7 @@ If the WIP file's frontmatter contains `docs-only: true` (declared at plan time 
 
 ### 1. Read inputs
 
-- Look in `workflow/wip/` for the active task WIP file
+- Look in `workflow-system/state/wip/` for the active task WIP file
 - If `{{args}}` specifies a file, use that
 - If multiple exist, ask the user which one
 - **Read `## Current Node` first** — this is the authoritative position pointer
@@ -108,7 +108,7 @@ task-verify is contractually a gate, not a fix shop: FAIL routes through T5c bac
 
 When all three gates hold (trivial extension + fresh re-verification + audit-trail entry): apply the fix in-place, re-run the verification, update the Verification Result section to reflect the post-fix PASS, append the `## Discoveries` entry, and proceed to T5b. When any gate fails: do not shortcut — emit T5c and back-loop normally.
 
-**SURFACED-sibling-bug out of scope:** If the sibling-bug is too large for the shortcut (multiple files, different bug-family, requires re-planning), append it to `workflow/backlog.md` as a new `## SURFACE-<timestamp>` entry per the standard surface protocol, note "SURFACED to backlog; original observable still PASS" in the Verification Result, and proceed to T5b. The original task is verified; the sibling-bug becomes its own future work item.
+**SURFACED-sibling-bug out of scope:** If the sibling-bug is too large for the shortcut (multiple files, different bug-family, requires re-planning), append it to `workflow-system/state/backlog.md` as a new `## SURFACE-<timestamp>` entry per the standard surface protocol, note "SURFACED to backlog; original observable still PASS" in the Verification Result, and proceed to T5b. The original task is verified; the sibling-bug becomes its own future work item.
 
 **What this shortcut is NOT.** It is not license to merge unrelated bugs into the task. It is not a fast-path for non-trivial fixes that happen to be nearby. It is not a substitute for re-planning when the task scope was wrong (use T5c → T6 chain instead). The triviality + fresh-re-verification + audit-trail gates are the boundary; agent comfort with the fix is not.
 

@@ -525,10 +525,10 @@ scenarios:
     # Incidents rarely close backlog items; this exercises the rare valid case the §4b delete covers.
     system_prompt_extra: |
       Resolving this incident also closed the backlog item
-      SURFACE-2026-05-12-FIXTURE-RESOLVABLE (in workflow/backlog.md). The other item,
+      SURFACE-2026-05-12-FIXTURE-RESOLVABLE (in workflow-system/state/backlog.md). The other item,
       SURFACE-2026-05-11-FIXTURE-UNRELATED-OPEN, was not touched. When describing the
       §4b operational sequence, state what happens to the resolved item's entry in
-      workflow/backlog.md and how it relates to the **Backlog resolved:** CHANGELOG line.
+      workflow-system/state/backlog.md and how it relates to the **Backlog resolved:** CHANGELOG line.
     expect:
       transition_id: I10
       contains_any:

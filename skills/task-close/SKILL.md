@@ -19,7 +19,7 @@ You are in the **task** workflow at the **close** state. Reached via T5b (task-v
 ## Procedure
 
 ### 1. Find Active Plan
-- Look in `workflow/wip/` for the task that was just completed
+- Look in `workflow-system/state/wip/` for the task that was just completed
 - If `{{args}}` specifies a file, use that
 - **Precondition advisory:** task-verify should have PASSed before close runs. If the WIP file's `state:` is still `act (complete)` (not `verify (complete)`), or if no `## Verification Observable` / `## Verification Result` sections exist, the workflow is mid-stream — recommend running `/task-verify` first. This is an advisory note, not a hard gate (per the workflow system's advisory-enforcement convention); proceed if the user explicitly directs close-without-verify (e.g., emergency cleanup of an aborted task).
 
@@ -28,7 +28,7 @@ You are in the **task** workflow at the **close** state. Reached via T5b (task-v
 - Update the project `CLAUDE.md` (root) if any new patterns or critical rules were discovered during this task
 
 ### 3. Full Backlog Review
-Scan `workflow/backlog.md` for ALL unresolved items (not just high-priority). For each:
+Scan `workflow-system/state/backlog.md` for ALL unresolved items (not just high-priority). For each:
 - Is it still relevant after this task's changes?
 - Should it be addressed now or deferred?
 - **Identify items this task's work resolved.** Per the **delete-on-resolve** rule (`CLAUDE.snippet.md` → `## CHANGELOG.md convention` → `### Append discipline`), a resolved item is **deleted** from the backlog — not marked `Status: resolved`. Note which items are resolved here; the deletion happens in §6 under the CHANGELOG-then-delete invariant. **Fully-resolved** items are deleted; **partially-resolved** items are **rewritten** to remaining open work. Buried/deferred items are never deleted here.
@@ -66,22 +66,22 @@ For this skill, the entries to emit under today's `## YYYY-MM-DD` heading are:
 1. **One `**Task closed:**` bullet** — composed from the task's title and one-sentence summary of what was done.
 2. **Zero or more `**Backlog resolved:**` bullets** — one per backlog item that step 3 (Full Backlog Review) identified as resolved by this task's work. Each bullet leads with the SURFACE ID.
 
-**Delete-on-resolve (CHANGELOG-then-delete hard invariant):** for each `**Backlog resolved:**` bullet you emit, also **delete** that item's entry from `workflow/backlog.md` in the **same commit** (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding). No backlog delete without the matching CHANGELOG line landing in that commit. **Partial resolutions** are **rewritten** to remaining open work, not deleted. See `CLAUDE.snippet.md` → `### Append discipline`.
+**Delete-on-resolve (CHANGELOG-then-delete hard invariant):** for each `**Backlog resolved:**` bullet you emit, also **delete** that item's entry from `workflow-system/state/backlog.md` in the **same commit** (+ `workflow-system/state/backlog-quality-findings.md` body & stub for a code-quality finding). No backlog delete without the matching CHANGELOG line landing in that commit. **Partial resolutions** are **rewritten** to remaining open work, not deleted. See `CLAUDE.snippet.md` → `### Append discipline`.
 
-**Idempotency:** if the WIP file is already inside `workflow/archive/`, skip the append.
+**Idempotency:** if the WIP file is already inside `workflow-system/state/archive/`, skip the append.
 
 ### 6. Archive
 - Update the WIP plan file: mark as "Completed", record completion date
-- Move the plan file to `workflow/archive/` (create directory if needed)
-- Clean up the `workflow/wip/` directory
+- Move the plan file to `workflow-system/state/archive/` (create directory if needed)
+- Clean up the `workflow-system/state/wip/` directory
 
 **Operational sequence (must be in this order to avoid the SURFACE-2026-05-10-FINALIZE-RETROSPECT-LOST-IN-GIT-MV failure mode):**
 
 1. Retrospect already written into the WIP file by §4.
 2. CHANGELOG already edited by §5 (the `**Backlog resolved:**` line(s) written **first**).
-3. **Delete each resolved item's entry** from `workflow/backlog.md` (+ `workflow/backlog-quality-findings.md` body & stub for a code-quality finding); rewrite any partially-resolved entry to its remaining open work. Delete-on-resolve step — happens *after* the CHANGELOG line, satisfying the hard invariant.
-4. `git add CHANGELOG.md <wip-file> workflow/backlog.md workflow/backlog-quality-findings.md` — stage CHANGELOG + the WIP file with retrospect + the backlog edits together.
-5. `git mv <wip-file> workflow/archive/<wip-file>` — perform the archive move now.
+3. **Delete each resolved item's entry** from `workflow-system/state/backlog.md` (+ `workflow-system/state/backlog-quality-findings.md` body & stub for a code-quality finding); rewrite any partially-resolved entry to its remaining open work. Delete-on-resolve step — happens *after* the CHANGELOG line, satisfying the hard invariant.
+4. `git add CHANGELOG.md <wip-file> workflow-system/state/backlog.md workflow-system/state/backlog-quality-findings.md` — stage CHANGELOG + the WIP file with retrospect + the backlog edits together.
+5. `git mv <wip-file> workflow-system/state/archive/<wip-file>` — perform the archive move now.
 6. Single commit captures retrospect edit + CHANGELOG append + backlog delete/rewrite + archive move.
 7. **Do NOT `git push`.** The close commit lands locally only. Pushing is the operator's call — they may want to review, squash with sibling work, or amend a follow-up learning (via `/session-store-learning`) before publishing. Auto-pushing here forecloses those options. If the operator explicitly requests a push, do it then; otherwise leave HEAD local.
 

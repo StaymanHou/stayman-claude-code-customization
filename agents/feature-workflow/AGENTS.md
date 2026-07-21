@@ -140,7 +140,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 
 ## Orchestration Procedure
 
-This section is the **reference procedure** followed by `/session-start` when driving the feature workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
+This section is the **reference procedure** followed by `/session-start` when driving the feature workflow end-to-end in the parent context (not via an Agent subagent spawn — see `workflow-system/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
 ### Precedence rule
 
@@ -156,7 +156,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 ### Pause policy by drive mode
 
-Full policy tables for all workflows are in `docs/product/transitions.md` → "Drive modes". Summary for feature workflow:
+Full policy tables for all workflows are in `workflow-system/product/transitions.md` → "Drive modes". Summary for feature workflow:
 
 | Step | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |------|-----------------------|-----------------------|--------------------|------------------------|

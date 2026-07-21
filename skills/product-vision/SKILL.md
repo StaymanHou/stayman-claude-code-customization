@@ -18,7 +18,7 @@ This is the entry point for all new product initiatives.
 
 ## Step 0: Available product context
 
-**Excluded — this skill reads nothing.** `product-vision` *writes* `docs/product/vision.md`; reading it (or any other product doc) at entry time would be circular — the vision is precisely what this skill is creating. If a `vision.md` already exists, you are either re-entering the workflow intentionally (in which case read it manually as part of step 1) or about to overwrite it (in which case the user should confirm first). The other docs (`arch.md`, `wbs.md`, `roadmap.md`) are downstream of vision and shouldn't constrain it.
+**Excluded — this skill reads nothing.** `product-vision` *writes* `workflow-system/product/vision.md`; reading it (or any other product doc) at entry time would be circular — the vision is precisely what this skill is creating. If a `vision.md` already exists, you are either re-entering the workflow intentionally (in which case read it manually as part of step 1) or about to overwrite it (in which case the user should confirm first). The other docs (`arch.md`, `wbs.md`, `roadmap.md`) are downstream of vision and shouldn't constrain it.
 
 See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for the canonical mapping (product-vision is marked as `excluded`).
 
@@ -33,7 +33,7 @@ Engage with the user to establish:
 - **Core Principles:** Guiding values for the product
 
 ### 2. Create Vision Document
-Product docs live under `docs/product/` with one file per stage (flat layout, one product per codebase). Create `docs/product/vision.md`:
+Product docs live under `workflow-system/product/` with one file per stage (flat layout, one product per codebase). Create `workflow-system/product/vision.md`:
 
 ```markdown
 ---
@@ -59,7 +59,7 @@ updated: <YYYY-MM-DD>
 
 ### 2b. Capture a design prior (if the operator reveals one)
 
-While defining the vision, the operator often states **identity, non-goals, or an anti-persona** ("this is a single-operator tool", "not for people who love spreadsheets") — these are exactly the **design priors** that should steer later roadmap/WBS/spec decisions. If the operator's input meets the **capture discriminant** (a product-design tradeoff or identity/non-goal/anti-persona stated with a *transferable why*), propose recording it to `docs/product/design-priors.md`:
+While defining the vision, the operator often states **identity, non-goals, or an anti-persona** ("this is a single-operator tool", "not for people who love spreadsheets") — these are exactly the **design priors** that should steer later roadmap/WBS/spec decisions. If the operator's input meets the **capture discriminant** (a product-design tradeoff or identity/non-goal/anti-persona stated with a *transferable why*), propose recording it to `workflow-system/product/design-priors.md`:
 
 - **Propose, never auto-write.** Present the inferred prior + inferred why; let the operator review, correct, and enrich the why before anything is written. Preserve the inferred-why/corrected-why gap when they differ.
 - **Dedup/conflict-check** existing priors first; surface a contradiction rather than silently appending.

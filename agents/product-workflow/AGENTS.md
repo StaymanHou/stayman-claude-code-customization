@@ -72,7 +72,7 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 
 ## Orchestration Procedure
 
-This section is the **reference procedure** followed by `/session-start` when driving the product workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
+This section is the **reference procedure** followed by `/session-start` when driving the product workflow end-to-end in the parent context (not via an Agent subagent spawn — see `workflow-system/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
 ### Precedence rule
 
@@ -86,7 +86,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 ### Pause policy by drive mode
 
-Full policy tables are in `docs/product/transitions.md` → "Drive modes". Summary for product workflow:
+Full policy tables are in `workflow-system/product/transitions.md` → "Drive modes". Summary for product workflow:
 
 | Step | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |------|-----------------------|-----------------------|--------------------|------------------------|

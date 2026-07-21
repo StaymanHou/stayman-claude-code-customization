@@ -23,9 +23,9 @@ Also entered via:
 ## Procedure
 
 ### 1. Review Inputs
-- Read `docs/product/vision.md`, `docs/product/roadmap.md`, and `docs/product/research.md`
-- If entering from WBS back-loop (P8), read `docs/product/wbs.md` for the specific gaps identified
-- If entering from SURFACE-IN (P12), read the surface note in `workflow/backlog.md` for context
+- Read `workflow-system/product/vision.md`, `workflow-system/product/roadmap.md`, and `workflow-system/product/research.md`
+- If entering from WBS back-loop (P8), read `workflow-system/product/wbs.md` for the specific gaps identified
+- If entering from SURFACE-IN (P12), read the surface note in `workflow-system/state/backlog.md` for context
 
 ### 2. Scope Definition
 - Explicitly state which milestone this architecture is for (PoC, MVP, V1, etc.) — older roadmaps may label these "phases"; treat "phase" as a read-alias for "milestone"
@@ -33,7 +33,7 @@ Also entered via:
 - **Forward Compatibility:** Ensure current choices don't make future milestones impossible
 
 ### 3. Define Architecture
-Create `docs/product/arch.md` (or update it in place if returning via a back-loop — bump `updated:` and append a `## Revision <YYYY-MM-DD>` section):
+Create `workflow-system/product/arch.md` (or update it in place if returning via a back-loop — bump `updated:` and append a `## Revision <YYYY-MM-DD>` section):
 
 ```markdown
 ---
@@ -81,6 +81,6 @@ Architecture decisions are mostly technical and **belong in this file (`arch.md`
 
 ### 4. Evaluate Next Step
 - If architecture is solid → set `state: complete` in the frontmatter, recommend `/product-wbs` (P7)
-- If unknowns emerged → document them, recommend `/product-research` (P6). The research skill will bump `docs/product/research.md` back to `state: in-progress`.
+- If unknowns emerged → document them, recommend `/product-research` (P6). The research skill will bump `workflow-system/product/research.md` back to `state: in-progress`.
 
 **Context:** {{args}}

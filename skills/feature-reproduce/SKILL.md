@@ -42,13 +42,13 @@ When invoked by `/session-start` in orchestrated mode, the orchestrator reads `T
 
 ## Step 0: Available product context
 
-Run `ls docs/product/` to see which strategic docs exist (silent no-op if absent):
+Run `ls workflow-system/product/` to see which strategic docs exist (silent no-op if absent):
 
-- `docs/product/arch.md` — architectural decisions and system design
-- `docs/product/wbs.md` — active work breakdown structure (current cycle)
-- `docs/product/vision.md` — high-level product vision
-- `docs/product/roadmap.md` — strategic roadmap
-- `docs/product/research.md` — cycle-scoped research findings
+- `workflow-system/product/arch.md` — architectural decisions and system design
+- `workflow-system/product/wbs.md` — active work breakdown structure (current cycle)
+- `workflow-system/product/vision.md` — high-level product vision
+- `workflow-system/product/roadmap.md` — strategic roadmap
+- `workflow-system/product/research.md` — cycle-scoped research findings
 
 **No eager reads.** Reproduction work is grounded in the bug itself — the failing condition, the suspected commit range, the failing test — not in strategic docs. Loading product docs at reproduce time biases the agent toward over-scoping (e.g., reframing a one-line regression as an arch-level concern). The docs are pointer-only here; read on your own initiative only if reasoning surfaces a specific question that needs them.
 
@@ -65,7 +65,7 @@ See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for t
 
 ### 1.5. Detect F36 Entry (mid-build REDIRECT source)
 
-Before deciding the reproduction surface, check whether this invocation was reached via F36 from `feature-build`. Mechanism: read the WIP file at `workflow/wip/<feature-name>.md` and inspect `## Current Node` for a sentinel line of the form `**Redirect source:** build (F36 — Phase N)`.
+Before deciding the reproduction surface, check whether this invocation was reached via F36 from `feature-build`. Mechanism: read the WIP file at `workflow-system/state/wip/<feature-name>.md` and inspect `## Current Node` for a sentinel line of the form `**Redirect source:** build (F36 — Phase N)`.
 
 **If the sentinel is present (F36-entry mode):**
 - Set `f36_entry = true` for the remainder of this skill invocation.
@@ -90,7 +90,7 @@ Choose ONE of the following based on what is most appropriate:
 - **Telemetry path:** Capture the telemetry signature (log message pattern, metric anomaly shape, error code) in the WIP file.
 
 Save artifacts to:
-- WIP file at `workflow/wip/<feature-name>.md` — create it if it does not exist (no spec or plan has run yet at this state):
+- WIP file at `workflow-system/state/wip/<feature-name>.md` — create it if it does not exist (no spec or plan has run yet at this state):
 
 ```markdown
 # Feature: <title>

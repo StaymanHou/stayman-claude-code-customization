@@ -77,7 +77,7 @@ report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → c
 
 ## Orchestration Procedure
 
-This section is the **reference procedure** followed by `/session-start` when driving the incident workflow end-to-end in the parent context (not via an Agent subagent spawn — see `docs/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
+This section is the **reference procedure** followed by `/session-start` when driving the incident workflow end-to-end in the parent context (not via an Agent subagent spawn — see `workflow-system/product/transitions.md` "Experiment: Subagent-Per-Step Orchestration" for why). Read this as an instruction set for running the workflow inline.
 
 ### Drive mode override
 

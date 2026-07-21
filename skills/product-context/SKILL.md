@@ -19,7 +19,7 @@ This is the **terminal state** of the product workflow.
 ## Procedure
 
 ### 1. Gather Inputs
-Read the product docs from `docs/product/`:
+Read the product docs from `workflow-system/product/`:
 - `vision.md` (purpose, audience, metrics)
 - `roadmap.md` (milestones; older roadmaps may say "phases" — read-alias)
 - `research.md` (tech stack, trade-offs)
@@ -31,7 +31,7 @@ Create or update **`CLAUDE.md` at the project root** with the content below. Thi
 
 If a `CLAUDE.md` already exists at the project root, preserve any user-authored sections and merge — don't overwrite.
 
-This generated `CLAUDE.md` is the **primary enforcement mechanism** for the Dev Environment decision recorded in `docs/product/arch.md`. Every skill that runs commands reads this file and respects its rules. The Dev Environment section below is **required** — pick the Docker Mandate variant or the Host-based variant to match arch.md. Do not omit it, do not soften the language.
+This generated `CLAUDE.md` is the **primary enforcement mechanism** for the Dev Environment decision recorded in `workflow-system/product/arch.md`. Every skill that runs commands reads this file and respects its rules. The Dev Environment section below is **required** — pick the Docker Mandate variant or the Host-based variant to match arch.md. Do not omit it, do not soften the language.
 
 ```markdown
 # <Project Name>
@@ -47,7 +47,7 @@ This generated `CLAUDE.md` is the **primary enforcement mechanism** for the Dev 
 
 ## Dev Environment
 
-<Pick ONE variant, matching the `Dev Environment` section in `docs/product/arch.md`.>
+<Pick ONE variant, matching the `Dev Environment` section in `workflow-system/product/arch.md`.>
 
 ### Variant A — Docker Mandate (use if arch.md declared Docker-based)
 
@@ -127,7 +127,7 @@ tests/results/*.json
 .claude/settings.local.json
 
 # Transient session pointer (deleted on resume)
-workflow/.session.md
+workflow-system/state/.session.md
 
 # Global-scope learning DRAFTS — parked for hand-porting to a source repo.
 # OMIT this line in a repo that IS the learning-assets/source repo (track them instead).
@@ -149,8 +149,8 @@ Per `~/.claude/CLAUDE.md` → `## Project-memory location — harness symlink (G
 The script is idempotent (no-op if already linked) and realpath-safe. If it exits `3` (`NEEDS-MIGRATION` — a pre-existing non-empty harness store), run `tools/memory-link/migrate-memory.sh "<proj-dir>"` first (it merges + backs up + links), then re-run ensure. The `<workflow-system-repo>` is wherever this skill's source repo is checked out (the same repo `install.sh` symlinks from).
 
 ### 3. Finalize Product Docs
-- Product docs stay in place under `docs/product/` — they are durable reference material, not ephemeral WIP, so they are **not** archived.
-- Create `docs/product/context.md` summarizing the generated root `CLAUDE.md` and noting the active roadmap milestone:
+- Product docs stay in place under `workflow-system/product/` — they are durable reference material, not ephemeral WIP, so they are **not** archived.
+- Create `workflow-system/product/context.md` summarizing the generated root `CLAUDE.md` and noting the active roadmap milestone:
 
 ```markdown
 ---
@@ -166,7 +166,7 @@ Project CLAUDE.md generated at `CLAUDE.md` (project root).
 **Active milestone:** <current roadmap milestone>
 **First feature:** <first milestone to pick up>
 ```
-- Set `state: complete` on every other file in `docs/product/` that is still `in-progress`.
+- Set `state: complete` on every other file in `workflow-system/product/` that is still `in-progress`.
 
 ### 4. Transition to Feature Workflow
 - Identify the first milestone from the roadmap

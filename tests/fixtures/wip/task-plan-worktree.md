@@ -26,4 +26,4 @@ The login button shows no feedback while the auth request is in flight, causing 
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
-     Each entry is also logged to workflow/backlog.md -->
+     Each entry is also logged to workflow-system/state/backlog.md -->

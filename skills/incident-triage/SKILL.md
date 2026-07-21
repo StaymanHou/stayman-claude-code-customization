@@ -28,7 +28,7 @@ This is a **new state** not present in the original Gemini workflow — added to
 ## Procedure
 
 ### 1. Load Context
-- Read the incident report from `workflow/wip/`
+- Read the incident report from `workflow-system/state/wip/`
 - If `{{args}}` specifies an incident, use that
 
 ### 2. Assess Severity

@@ -130,7 +130,7 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
 
 ## Work Tree
 
-- [ ] Phase 1: WP2a — Source sweep (move this repo's dirs + rewrite all path references)  <!-- status: NOT-STARTED -->
+- [ ] Phase 1: WP2a — Source sweep (move this repo's dirs + rewrite all path references)  <!-- status: in-progress; impl done, verify pending -->
   **Observable outcomes:**
   - CLI: `ls -d workflow-system/product workflow-system/state` exits 0; `ls -d docs/product workflow` exits non-zero (old dirs gone).
   - CLI: `git log --follow --oneline workflow-system/product/arch.md | wc -l` > 1 (history preserved through the `git mv`).
@@ -138,15 +138,18 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
   - CLI: NO over-rewrite of the bare concept-word — `grep -rc 'workflow-system/state' skills/ | awk -F: '{s+=$2} END{print s}'` is bounded to the ~343 path sites, and a spot-check confirms conceptual "workflow" prose ("the feature workflow", "workflow state") is untouched.
   - CLI: `bash tests/check-structure.sh` exits 0 (all path pins updated to `workflow-system/…`).
   - CLI: `bash tests/run-tests.sh --group session` (fresh-subprocess) passes — scenarios referencing `workflow/.session.md` / `workflow/wip/…` fixtures resolve at new paths.
-  - [ ] P1.1 `git mv docs/product workflow-system/product` and `git mv workflow workflow-system/state` (create `workflow-system/` parent; preserves history) — the dogfood move (D3)  <!-- status: NOT-STARTED -->
-  - [ ] P1.2 Build the path-anchored rewrite: enumerate exact match patterns from D2 (`docs/product/…` always-path; `workflow/` only trailing-slash or known-child `wip|backlog|archive|.session|learnings`), NEVER bare-word `workflow`. Dry-run the substitution and diff-review before applying.  <!-- status: NOT-STARTED -->
-  - [ ] P1.3 Apply sweep to `skills/` (38 files) — grep-driven per downstream-contract-impacts discipline; re-verify path-qualification mandate (no bare `.claude/` or bare paths introduced)  <!-- status: NOT-STARTED -->
-  - [ ] P1.4 Apply sweep to `agents/` (5 files) + `CLAUDE.md` + `CLAUDE.snippet.md`  <!-- status: NOT-STARTED -->
-  - [ ] P1.5 Apply sweep to `tests/` (14 files: `scenarios/*.yaml`, `run-tests.sh`, `check-structure.sh` path-pin literals ~30+ `docs/product/…` grep_check args, session jsonl fixtures)  <!-- status: NOT-STARTED -->
-  - [ ] P1.6 Honor state-machine-in-three-places sync: confirm `transitions.md` (now at `workflow-system/product/transitions.md`) + per-skill `SKILL.md` + `scenarios/*.yaml` all carry consistent new paths  <!-- status: NOT-STARTED -->
-  - [ ] verify-auto  <!-- status: NOT-STARTED -->
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
-  - [ ] verify-human  <!-- status: NOT-STARTED -->
+  - [x] P1.1 `git mv docs/product workflow-system/product` and `git mv workflow workflow-system/state` (create `workflow-system/` parent; preserves history) — the dogfood move (D3)  <!-- status: done — 133 renames, 0 delete+add; history follows on commit -->
+  - [x] P1.2 Build the path-anchored rewrite: enumerate exact match patterns from D2 (`docs/product/…` always-path; `workflow/` only trailing-slash or known-child `wip|backlog|archive|.session|learnings`), NEVER bare-word `workflow`. Dry-run the substitution and diff-review before applying.  <!-- status: done — 6 patterns; caught 2 false-positive classes (-workflow/AGENTS.md tails, workflow/process prose) EXCLUDED -->
+  - [x] P1.3 Apply sweep to `skills/` (all matching SKILL.md) — grep-driven per downstream-contract-impacts discipline; re-verify path-qualification mandate (no bare `.claude/` or bare paths introduced)  <!-- status: done -->
+  - [x] P1.4 Apply sweep to `agents/` (5 files) + `CLAUDE.md` + `CLAUDE.snippet.md` (+ 4 hand-fixed prose dir-name residues the anchored pattern correctly skipped)  <!-- status: done -->
+  - [x] P1.5 Apply sweep to `tests/` (scenarios/*.yaml, run-tests.sh incl. line-178 mkdir fixture-scaffold fix, check-structure.sh 12 product-path pins); EXCLUDED tests/results/*.json (gitignored) + tests/sessions/*.jsonl (frozen audited historical capture)  <!-- status: done -->
+  - [x] P1.6 Honor state-machine-in-three-places sync: `transitions.md` (now at `workflow-system/product/transitions.md`) + per-skill `SKILL.md` + `scenarios/*.yaml` all carry consistent new paths  <!-- status: done — 58 files swept, 0 stale refs remain -->
+  - [x] verify-auto  <!-- status: done — check-structure.sh 416/0; all 71 scenario fixture paths resolve on disk; 0 stale paths in scenario yamls + fixture contents; harness mkdir/copy targets aligned. Full model-driven scenario suite deferred to verify-codify (right place for behavioral coverage; 13-17min fresh-subprocess run). -->
+  - [x] verify-self  <!-- status: done — feature-verify-self-runner subagent: 6/6 PASS, 0 BLOCKING, 0 COSMETIC. Verified: new dirs exist+old gone; 133 renames/0 delete+add (history preserved); zero stale refs; concept-word preserved (9)+agent-tails uncorrupted; check-structure.sh 416/0; frozen jsonl exclusion intentional (31 old refs retained). -->
+  - [x] verify-human  <!-- status: done — operator approved all 3 leaves 2026-07-21 -->
+    - [x] P1.verify-human.1 Operator eyeballed the new top-level layout — approved  <!-- status: done -->
+    - [x] P1.verify-human.2 Operator confirmed sweep exclusions correct (frozen jsonl + gitignored results intentionally on old paths)  <!-- status: done -->
+    - [x] P1.verify-human.3 Operator OK'd committing the Phase-1 sweep now, atomic commit  <!-- status: done -->
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 - [ ] Phase 2: WP2b — Migration tool + gated cross-project run  <!-- status: NOT-STARTED; depends on Phase 1 -->
@@ -180,13 +183,17 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > Phase 1 (WP2a) > P1.1
-- **Active scope:** P1.1 (git mv the two dirs — the dogfood move)
+- **Path:** Feature > Phase 1 (WP2a) > verify-codify
+- **Active scope:** verify-codify (add regression coverage locking the new layout; run full behavioral gate)
 - **Blocked:** none
-- **Unvisited:** Phase 1 (P1.1→P1.6 + verify group) → Phase 2 (P2.1→P2.6 + verify group, P2.5 is an operator-ping coordination pause) → Phase 3 (P3.1→P3.2 + verify group)
-- **Open discoveries:** path-anchoring hard rule (see Discoveries); WP2b operator-coordination ping for in-flight projects
+- **Unvisited:** Phase 1 verify-codify → Phase 2 (P2.1→P2.6 + verify group, P2.5 is an operator-ping coordination pause) → Phase 3 (P3.1→P3.2 + verify group)
+- **Open discoveries:** WP2b operator-coordination ping for in-flight projects (Phase 2 gate)
+- **Phase-1 sweep committed** (operator-approved atomic commit 2026-07-21). verify-human approved 3/3.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary> -->
 - [SURFACED-2026-07-21] WP2 sweep — "workflow" is overloaded 803 bare-word vs 343 path occurrences; sweep MUST be path-anchored (trailing-slash / known-child match), never word-level. Highest-risk item in M7. Logged here so WP2 inherits it as a hard rule.
+- [SURFACED-2026-07-21] P1.2 false-positive classes CAUGHT by the anchored sweep (each would have been corrupted by a naive `s/workflow/…/`): (1) `-workflow/AGENTS.md` = tail of `agents/<x>-workflow/AGENTS.md` orchestrator-file refs (NOT the state dir); (2) `workflow/state` in feature-research prose ("source workflow/state"); (3) `workflow/process`, `workflow/agent` = session-reflect DROP-gate prose. All excluded from rewrite. Confirms the path-anchoring rule was load-bearing, not theoretical.
+- [SURFACED-2026-07-21] P1.5 sweep EXCLUSIONS (scope decision): `tests/results/*.json` (gitignored, regenerable test output) and `tests/sessions/*.jsonl` (a Tier-2-audited FROZEN historical session capture — its commit msg says "abandon single-shot replay harness"; nothing consumes it; rewriting would falsify the 2026-05-16 record + invalidate the AUDIT-LOG.md signoff). Both correctly left on old paths.
+- [SURFACED-2026-07-21] P1.5 harness half-migration BUG caught + fixed: `tests/run-tests.sh:178` `mkdir`'d `$tmpdir/docs/product` but line 210 (swept) copies fixtures into `$tmpdir/workflow-system/product/` — the mkdir was updated to match. Prose dir-name residues (4 in CLAUDE.md/CLAUDE.snippet.md that the trailing-slash-anchored pattern skipped) also hand-fixed.
 - [SURFACED-2026-07-21] WP2b cross-project run — operator is actively working in `neo-stayman-assistant` (#4) concurrently. **Before WP2b migrates ANY project, ping the operator to pause/commit in-flight projects (#4 neo-stayman, #7 GNIE).** WP2b is gated behind WP2a + the tool build, so this coordination pause happens later, not now — operator does NOT need to stop work yet. Reinforces the per-project pre-risky-action rule in D4.

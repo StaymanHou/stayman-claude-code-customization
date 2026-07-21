@@ -3,7 +3,7 @@ paused: 2026-04-28 16:15
 workflow: feature
 step: ship
 resume_skill: /feature-ship
-state_file: workflow/wip/feature-ship-paused.md
+state_file: workflow-system/state/wip/feature-ship-paused.md
 ---
 
 # Session Pause

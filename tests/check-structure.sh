@@ -155,7 +155,7 @@ grep_check "runtimes.md exists with shape: runtime-registry frontmatter" "runtim
 # (3) per-skill `## Step 0` sections in each entry-point SKILL.md. If any of these goes missing
 # the agent loses its load-discipline guidance. The grep_check pairs below catch each surface.
 grep_check "CLAUDE.snippet.md defines 'Entry-skill product-context loading'" "CLAUDE.snippet.md" "^## Entry-skill product-context loading" 1
-grep_check "transitions.md has 'Entry-skill context loading' cross-level subsection" "docs/product/transitions.md" "^### Entry-skill context loading" 1
+grep_check "transitions.md has 'Entry-skill context loading' cross-level subsection" "workflow-system/product/transitions.md" "^### Entry-skill context loading" 1
 grep_check "task-plan SKILL.md has Step 0 section" "skills/task-plan/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "feature-spec SKILL.md has Step 0 section" "skills/feature-spec/SKILL.md" "^## Step 0: Available product context" 1
 grep_check "feature-plan SKILL.md has Step 0 section" "skills/feature-plan/SKILL.md" "^## Step 0: Available product context" 1
@@ -281,7 +281,7 @@ grep_check "product-vision hands off to break vision into milestones" "skills/pr
 grep_check "product-workflow AGENTS.md roadmap row is milestone-forward" "agents/product-workflow/AGENTS.md" "Flat milestones with exit criteria" 1
 # transitions.md P3 condition renamed (tripartite-sync — keep state-machine doc aligned
 # with AGENTS.md + product-roadmap SKILL.md per CLAUDE.md "state machine lives in three places").
-grep_check "transitions.md P3 condition is milestone-forward (tripartite sync)" "docs/product/transitions.md" "Roadmap has milestones defined" 1
+grep_check "transitions.md P3 condition is milestone-forward (tripartite sync)" "workflow-system/product/transitions.md" "Roadmap has milestones defined" 1
 
 echo ""
 
@@ -358,7 +358,7 @@ echo ""
 #      executing the caller state knows to reach for the sidebar)
 #   2. Row in each relevant orchestrator's "Debug techniques (agent-pulled
 #      sidebars)" subsection (so /session-start can enumerate available techniques)
-#   3. Mention in docs/product/transitions.md "Sidebar skills" subsection (so
+#   3. Mention in workflow-system/product/transitions.md "Sidebar skills" subsection (so
 #      contributors editing the state machine know the category exists)
 #
 # A regression on (1) or (2) silently makes the sidebar undiscoverable from
@@ -394,9 +394,9 @@ for orch in agents/feature-workflow/AGENTS.md agents/incident-workflow/AGENTS.md
   grep_check "$orch_name lists debug-minimal-harness in Debug-techniques table" "$orch" "debug-minimal-harness" 1
 done
 
-grep_check "transitions.md has 'Sidebar skills' subsection (under Cross-level mechanisms)" "docs/product/transitions.md" "^### Sidebar skills" 1
-grep_check "transitions.md 'Sidebar skills' mentions /debug-empirical-telemetry" "docs/product/transitions.md" "debug-empirical-telemetry" 1
-grep_check "transitions.md 'Sidebar skills' mentions /debug-minimal-harness" "docs/product/transitions.md" "debug-minimal-harness" 1
+grep_check "transitions.md has 'Sidebar skills' subsection (under Cross-level mechanisms)" "workflow-system/product/transitions.md" "^### Sidebar skills" 1
+grep_check "transitions.md 'Sidebar skills' mentions /debug-empirical-telemetry" "workflow-system/product/transitions.md" "debug-empirical-telemetry" 1
+grep_check "transitions.md 'Sidebar skills' mentions /debug-minimal-harness" "workflow-system/product/transitions.md" "debug-minimal-harness" 1
 
 echo ""
 
@@ -897,7 +897,7 @@ echo ""
 # immutability pattern for editable files (`dashboard.jsx`, `data.js`):
 # direct source edits are now permitted because the cycle's UX evolution
 # (zoomable timeline, collapsible rows, etc.) exceeds what emit-time text
-# transforms can reasonably support. See docs/product/wbs.md and CLAUDE.md.
+# transforms can reasonably support. See workflow-system/product/wbs.md and CLAUDE.md.
 #
 # `index.html` and `design-canvas.jsx` stay pinned — they remain immutable
 # in v2 (the design-canvas prototype is a reference artifact, and the page
@@ -2034,7 +2034,7 @@ fi
 # Scope to live markdown TABLE ROWS only (lines beginning with `|`) — the dated changelog bullets
 # at the bottom of the file (lines beginning with `- **<date>`) are historical records that
 # correctly keep their as-of wording, so they are excluded.
-stale_transition=$( (grep -nE "^\|.*(store-learning|S20 )" docs/product/transitions.md 2>/dev/null || true) \
+stale_transition=$( (grep -nE "^\|.*(store-learning|S20 )" workflow-system/product/transitions.md 2>/dev/null || true) \
   | grep -iE "project-local, gitignored|learnings/.*gitignored" || true )
 if [ -z "$stale_transition" ]; then
   check "transitions.md store-learning/S20 rows carry no superseded 'gitignored learnings' framing" "pass"
@@ -2052,9 +2052,9 @@ echo "[Phase 13] Design priors (capture + consult contract)"
 # away. The canonical contract lives in CLAUDE.snippet.md → "Design priors (GLOBAL)".
 
 # (1) Canonical schema + global contract.
-grep_check "arch.md documents the Design Priors file schema" "docs/product/arch.md" "File Schema: Design Priors" 1
-grep_check "arch.md design-priors schema preserves inferred-why vs corrected-why gap" "docs/product/arch.md" "inferred-why" 1
-grep_check "arch.md design-priors schema names corrected-why field" "docs/product/arch.md" "corrected-why" 1
+grep_check "arch.md documents the Design Priors file schema" "workflow-system/product/arch.md" "File Schema: Design Priors" 1
+grep_check "arch.md design-priors schema preserves inferred-why vs corrected-why gap" "workflow-system/product/arch.md" "inferred-why" 1
+grep_check "arch.md design-priors schema names corrected-why field" "workflow-system/product/arch.md" "corrected-why" 1
 grep_check "CLAUDE.snippet.md defines 'Design priors (GLOBAL)'" "CLAUDE.snippet.md" "^## Design priors \(GLOBAL\)" 1
 grep_check "Design priors contract states the over-infer guard" "CLAUDE.snippet.md" "over-infer guard" 1
 grep_check "Design priors contract names the disclosure form" "CLAUDE.snippet.md" "\[PRIOR: <slug>\]" 1
@@ -2087,7 +2087,7 @@ done
 grep_check "session-reflect carries the design-priors backstop sweep" "skills/session-reflect/SKILL.md" "design prior" 1
 
 # (5) No new transition IDs introduced (design priors is behavior-within-states).
-grep_check "transitions.md documents design priors as behavior-within-states (no new IDs)" "docs/product/transitions.md" "[Dd]esign prior" 1
+grep_check "transitions.md documents design priors as behavior-within-states (no new IDs)" "workflow-system/product/transitions.md" "[Dd]esign prior" 1
 
 echo ""
 

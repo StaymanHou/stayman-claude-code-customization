@@ -44,13 +44,13 @@ In Modes 1–2 the user reviews the plan before build — that pause is taken at
 
 ## Step 0: Available product context
 
-Before planning, align phasing with the active WBS cycle. Run `ls docs/product/` to see which docs exist. The docs you may find:
+Before planning, align phasing with the active WBS cycle. Run `ls workflow-system/product/` to see which docs exist. The docs you may find:
 
-- `docs/product/arch.md` — architectural decisions and system design
-- `docs/product/wbs.md` — active work breakdown structure (current cycle)
-- `docs/product/vision.md` — high-level product vision
-- `docs/product/roadmap.md` — strategic roadmap
-- `docs/product/research.md` — cycle-scoped research findings
+- `workflow-system/product/arch.md` — architectural decisions and system design
+- `workflow-system/product/wbs.md` — active work breakdown structure (current cycle)
+- `workflow-system/product/vision.md` — high-level product vision
+- `workflow-system/product/roadmap.md` — strategic roadmap
+- `workflow-system/product/research.md` — cycle-scoped research findings
 
 **Eager read — `wbs.md` with conversation-context skip:** WBS context grounds plan phasing in the active cycle. **However**, if `wbs.md` content is already in your conversation context — typically because `feature-spec` ran earlier in this same conversation and loaded it — skip the read and note "wbs.md already in context (loaded by feature-spec)" in your reasoning. The agent (you) introspects its own conversation context to decide; do **not** inspect the WIP file's state for this decision. If the conversation is fresh (e.g., resumed via `/session-resume` after a pause, or this skill was entered directly via F2 with no prior spec), `wbs.md` is not in context — read it.
 
@@ -65,13 +65,13 @@ See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for t
 ## Procedure
 
 ### 1. Backlog Check
-Scan `workflow/backlog.md` (if it exists) for:
+Scan `workflow-system/state/backlog.md` (if it exists) for:
 - `high` priority items matching this feature area
 - Conflicts with what's about to be planned
 Mention any relevant items to the user.
 
 ### 2. Context Review
-- Read the spec in `workflow/wip/` (if complex feature)
+- Read the spec in `workflow-system/state/wip/` (if complex feature)
 - Review research findings (if any)
 - Examine existing codebase structure and patterns
 - Read the project `CLAUDE.md` at the root for project rules (also `<proj-dir>/.claude/CLAUDE.md` if present)
@@ -81,7 +81,7 @@ Mention any relevant items to the user.
 Before writing the plan, check whether this feature depends on any 3rd-party service, external API, or SDK (e.g. Stripe, Twilio, SendGrid, AWS, Google Maps, an OAuth provider, any API you don't own).
 
 **If a 3rd-party dependency is present:**
-1. Check `docs/product/wbs.md` (if it exists) for a completed Probe WP covering that integration.
+1. Check `workflow-system/product/wbs.md` (if it exists) for a completed Probe WP covering that integration.
 2. If no probe WP exists or none is marked complete — this is a **known unknown**. Flag it explicitly:
 
 > ⚠️ **Known unknown — probe required before planning**
@@ -95,7 +95,7 @@ Before writing the plan, check whether this feature depends on any 3rd-party ser
 
 ### 4. Create Phased Plan
 
-**If entering for a new feature** (F2 or F4→F7), create or update `workflow/wip/<feature-name>.md` using the **Work Tree format** (see `## Work Tree Format (GLOBAL)` in your system context):
+**If entering for a new feature** (F2 or F4→F7), create or update `workflow-system/state/wip/<feature-name>.md` using the **Work Tree format** (see `## Work Tree Format (GLOBAL)` in your system context):
 
 ```markdown
 # Feature: <Name>
@@ -140,7 +140,7 @@ Before writing the plan, check whether this feature depends on any 3rd-party ser
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
-     Each entry is also logged to workflow/backlog.md -->
+     Each entry is also logged to workflow-system/state/backlog.md -->
 ```
 
 **Rules for this template:**

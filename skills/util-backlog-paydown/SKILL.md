@@ -16,7 +16,7 @@ clears accumulated code-quality findings + small hygiene/decision items from the
 emits **no workflow transitions** (no F/I/T/P/S tokens) and **no `RETURN-TO:`** — it is not a state reached by
 a transition, and it is not a `debug-*` sidebar pulled by another workflow. The operator invokes it manually
 via `/util-backlog-paydown` at a clean cycle boundary. It produces a `shape: temporary-wbs` file that the
-operator then drives through the normal `/feature-*` and `/task-*` workflows. See `docs/product/arch.md` →
+operator then drives through the normal `/feature-*` and `/task-*` workflows. See `workflow-system/product/arch.md` →
 Revision 2026-06-13 → `util-*` skill category for the convention, and
 `docs/lessons/between-milestone-debt-paydown-sweep.md` for the full pattern + its provenance.
 
@@ -53,7 +53,7 @@ It is distinct from:
 
 ## When NOT to use
 
-- **Mid-flight** — there is an active feature/incident in `workflow/wip/`. Finish or pause it first; a sweep
+- **Mid-flight** — there is an active feature/incident in `workflow-system/state/wip/`. Finish or pause it first; a sweep
   mutates many small surfaces and races with in-flight work.
 - **The backlog is net-new feature work, not debt.** A pile of capability gaps + bugs is a mini-roadmap, not
   a debt sweep — most of it scores to Defer/milestone under the model below. (The disposition model still
@@ -171,14 +171,14 @@ sort *first*: they are the lowest-risk thing there is, so the risk key (rule 2) 
 
 ### 1. Pick mode + confirm the boundary
 
-Read the mode argument (default 2). Confirm a clean cycle boundary — check `workflow/wip/` is empty (or that
+Read the mode argument (default 2). Confirm a clean cycle boundary — check `workflow-system/state/wip/` is empty (or that
 the operator has consciously chosen to sweep alongside in-flight work). If a feature/incident is active, say so
 and recommend finishing/pausing it first (see "When NOT to use").
 
 ### 2. Inventory
 
-Read the full backlog (`workflow/backlog.md`) plus any consolidated findings file the project keeps (some
-projects split terse backlog *pointers* from full review findings into e.g. `workflow/backlog-quality-findings.md`;
+Read the full backlog (`workflow-system/state/backlog.md`) plus any consolidated findings file the project keeps (some
+projects split terse backlog *pointers* from full review findings into e.g. `workflow-system/state/backlog-quality-findings.md`;
 a project without that split inventories from the backlog + per-WIP `## Code-Quality Review` sections instead).
 **Dedup, and group repeated MINORs into themes** — ~50 individual findings often collapse into ~9 repeated
 mistakes across many files; *fix the theme once, not the instance N times.* A subagent is good for this
@@ -205,7 +205,7 @@ the unambiguous dispositions, surface only the Discuss items. Mode 4: surface ev
 
 ### 5. Author the temporary WBS
 
-Write `docs/product/<sweep-name>-wbs.md` (or the project's WBS location) with:
+Write `workflow-system/product/<sweep-name>-wbs.md` (or the project's WBS location) with:
 - Frontmatter: `shape: temporary-wbs`, `cycle:` / `created:`, `status:`, `parent-backlog:` pointer.
 - A header stating this is **NOT a roadmap milestone** and will be **deleted on completion**.
 - The disposition model (reproduced or referenced) so the build sessions apply the rules consistently.

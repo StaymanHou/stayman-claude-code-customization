@@ -1,6 +1,6 @@
 ---
 name: session-pause
-description: Pause the current workflow session — saves state to workflow/.session.md for later resumption
+description: Pause the current workflow session — saves state to workflow-system/state/.session.md for later resumption
 argument-hint: <optional notes about current status>
 ---
 
@@ -17,12 +17,12 @@ When you finish, label your output with this ID:
 **Steps:**
 
 1. **Identify the active work.** Determine the current workflow and step (e.g., `feature:build`, `task:act`, `product:roadmap`). Check recent conversation context plus:
-   - `workflow/wip/` for feature/task/incident WIP files
-   - `docs/product/` for product docs whose frontmatter shows `state: in-progress`
+   - `workflow-system/state/wip/` for feature/task/incident WIP files
+   - `workflow-system/product/` for product docs whose frontmatter shows `state: in-progress`
 
    If multiple active items exist, ask the user which one to pause.
 
-2. **Write `workflow/.session.md`** — this is a single-file session pointer (one active session per repo). Overwrite it each time:
+2. **Write `workflow-system/state/.session.md`** — this is a single-file session pointer (one active session per repo). Overwrite it each time:
 
    Before writing, read the active WIP file's YAML frontmatter. If it contains a `drive_mode:` field, include it in the session pointer. If no `drive_mode` is present, omit the field entirely (do not default it).
 
@@ -32,7 +32,7 @@ paused: <YYYY-MM-DD HH:MM>
 workflow: <product|feature|task|incident>
 step: <current step name>
 resume_skill: /<workflow>-<step>
-state_file: <path to the active state file, e.g. workflow/wip/<feature>.md or docs/product/roadmap.md>
+state_file: <path to the active state file, e.g. workflow-system/state/wip/<feature>.md or workflow-system/product/roadmap.md>
 drive_mode: <stepping|orchestrated|autopilot|fsd>  # omit if WIP has no drive_mode
 ---
 
@@ -48,7 +48,7 @@ drive_mode: <stepping|orchestrated|autopilot|fsd>  # omit if WIP has no drive_mo
 
 ```markdown
 ## Session Pause — <YYYY-MM-DD HH:MM>
-Paused. See `workflow/.session.md` to resume.
+Paused. See `workflow-system/state/.session.md` to resume.
 ```
 
 4. **Confirm** to the user:
