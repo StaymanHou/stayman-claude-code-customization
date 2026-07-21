@@ -163,12 +163,12 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
   - CLI: on a fixture project, `migrate-doc-layout.sh <fixture> --dry-run` prints planned moves and creates NOTHING; a real run moves `docs/product`→`workflow-system/product` + `workflow`→`workflow-system/state`, leaves a timestamped `.migration-backup-<date>/`, and re-running is a no-op (`OK: already migrated`).
   - CLI: drift case — a pre-existing `workflow-system/product/arch.md` with different content is preserved as `arch.harness.md`-style sidecar + a `DRIFT:` line printed, NEVER silently overwritten.
   - CLI (post-run, per migrated project): `ls -d <proj>/workflow-system/product <proj>/workflow-system/state` exits 0; old dirs gone; project's own `git log --follow` shows history preserved.
-  - [ ] P2.1 Scaffold `tools/migrate-doc-layout/` from `tools/memory-link/` template: `migrate-doc-layout.sh`, sourced `lib-*.sh` if shared logic warrants, `README.md`, `test/run-tests.sh`  <!-- status: NOT-STARTED -->
-  - [ ] P2.2 Implement the move: idempotent (re-run no-op when `workflow-system/` already present), `--dry-run`, `--date YYYY-MM-DD`, timestamped reversible backup before move, drift-keep-both rule, `git mv` when the project dir is a git repo (preserve history) else plain `mv`  <!-- status: NOT-STARTED -->
-  - [ ] P2.3 Write `test/run-tests.sh` (mirror memory-link's 27-assertion suite shape): temp fixture projects, assert dry-run/real/idempotent/backup/drift/git-history-preserved  <!-- status: NOT-STARTED -->
-  - [ ] P2.4 Write `README.md` with canonical invocations + the drift rule + the branch-agnostic + pre-risky-action notes  <!-- status: NOT-STARTED -->
-  - [ ] P2.5 **[OPERATOR PING — coordination pause]** Before running against ANY external project, ping operator to commit/stash + pause in-flight projects (#4 neo-stayman, #7 GNIE). Confirm the 9-project list is still current.  <!-- status: NOT-STARTED -->
-  - [ ] P2.6 Run `migrate-doc-layout.sh <proj> --dry-run` then real, across the 9 confirmed projects (GNIE: commit its 5 changes first; gospelherald excluded); verify each post-run  <!-- status: NOT-STARTED -->
+  - [x] P2.1 Scaffold `tools/migrate-doc-layout/` from `tools/memory-link/` template: `migrate-doc-layout.sh` + `README.md` + `test/run-tests.sh` (no shared lib needed — plain in-project dir move, no slug/symlink machinery)  <!-- status: done -->
+  - [x] P2.2 Implement the move: idempotent (no-op when old dirs absent), `--dry-run`, `--date YYYY-MM-DD`, timestamped reversible backup, drift-keep-both (`.pre-migrate` sidecar + DRIFT line; DUP-drop on identical), `git mv` per-file in a git repo else plain `mv`, empty-`docs/`-parent cleanup (only if empty — preserves docs/lessons etc.)  <!-- status: done -->
+  - [x] P2.3 Write `test/run-tests.sh` — 35 assertions (dry-run/real/idempotent/backup/drift/DUP/git-history-preserved/exit-codes/no-old-dirs-noop). Caught + fixed an empty-source-dir cleanup bug (find -empty evaluates at traversal time) → deepest-first rmdir walk. 35/35 PASS.  <!-- status: done -->
+  - [x] P2.4 Write `README.md` — canonical invocations, full safety-contract table, exit codes, per-project pre-run checklist (clean-tree/stash, branch-agnostic, dry-run-first, review+commit)  <!-- status: done -->
+  - [ ] P2.5 **[OPERATOR PING — coordination pause]** Before running against ANY external project, ping operator to commit/stash + pause in-flight projects (#4 neo-stayman ALREADY paused, #7 GNIE commit-first). Confirm the 9-project list is still current.  <!-- status: in-progress — AT THE GATE -->
+  - [ ] P2.6 Run `migrate-doc-layout.sh <proj> --dry-run` then real, across the 9 confirmed projects (GNIE: commit its 5 changes first; gospelherald excluded); verify each post-run  <!-- status: NOT-STARTED — BLOCKED on P2.5 -->
   - [ ] verify-auto  <!-- status: NOT-STARTED -->
   - [ ] verify-self  <!-- status: NOT-STARTED -->
   - [ ] verify-human  <!-- status: NOT-STARTED -->
@@ -187,9 +187,9 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > Phase 2 (WP2b) > P2.1
-- **Active scope:** Phase 1 COMPLETE. Phase 2 = build the migration tool (P2.1→P2.4), then the P2.5 operator-ping gate, then the cross-project run (P2.6).
-- **Blocked:** none
+- **Path:** Feature > Phase 2 (WP2b) > P2.5 (OPERATOR PING GATE)
+- **Active scope:** Migration tool BUILT + tested (35/35, P2.1–P2.4 done). AT the P2.5 coordination gate — awaiting operator go-ahead before P2.6 touches any external project.
+- **Blocked:** P2.6 blocked on P2.5 operator confirmation
 - **Unvisited:** Phase 2 (P2.1 scaffold → P2.2 implement → P2.3 test suite → P2.4 README → **P2.5 OPERATOR PING gate** → P2.6 cross-project run) + verify group → Phase 3 (P3.1→P3.2 + verify group)
 - **Open discoveries:** (1) WP2b P2.5 operator ping before touching in-flight projects (#4 neo-stayman ALREADY paused by operator, #7 GNIE commit-first); (2) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS — category-A live-prose refs in moved product docs, fold into WP3-M7; (3) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent).
 - **Phase-1 fully complete + committed** (6fedeb5 sweep + b455657 lock). verify: auto 420/0, self 6/6, human 3/3, codify (structural lock + behavioral suite, 3 fails proven-independent + surfaced).
