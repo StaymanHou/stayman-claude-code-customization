@@ -10,29 +10,13 @@ _Resolved findings are **deleted** from this file on close (delete-on-resolve co
 
 # doc-layout-unification — 2026-07-21
 
-## SURFACE-2026-07-21-QUALITY-BACKUP-INSIDE-REPO-STAGED
-- **Priority:** medium
-- **Severity:** MAJOR (feature-review-quality, ship a791f6a)
-- **Finding:** `tools/migrate-doc-layout/migrate-doc-layout.sh` writes its reversible backup *inside* the migration destination (`<proj>/workflow-system/.migration-backup-<date>/`); the tool neither adds it to the project's `.gitignore` nor warns that a subsequent `git add -A` will stage it. This is the exact footgun that hit the claudesk migration mid-run (backup staged into the migration commit → 134 phantom `D` deletions → required amend). The mitigation currently lives ONLY in the operator's per-project loop discipline (remove-backup-before-commit), NOT in the tool — a future run by anyone following the README's "review + commit" step reproduces the bug.
-- **Pickup shape:** teach the tool to write the backup OUTSIDE the repo (e.g. `$TMPDIR/migrate-doc-layout-backup-<date>/` or a sibling of the project dir), OR append the backup dir to the project's `.gitignore` on creation, OR (weakest) print a loud warning + the exact `git rm -r --cached`/exclude command. Prefer writing outside the repo — matches the "backup is redundant with git in a committed repo" reality. **VERIFY the suggested fix against the code before applying (review-finding-actions-are-hypotheses); the drift-sidecar path logic also references the backup location.** ~10-line fix + a new test assertion (see the paired finding below).
-
-## SURFACE-2026-07-21-QUALITY-TEST-MISSING-BACKUP-NOT-STAGED-ASSERTION
-- **Priority:** medium
-- **Severity:** MAJOR (feature-review-quality, ship a791f6a)
-- **Finding:** `tools/migrate-doc-layout/test/run-tests.sh` git-history test group (group 5) covers only the happy path (clean move → renames → `git log --follow`). There is NO assertion that the `.migration-backup-<date>/` dir is absent from — or not staged in — the resulting git status. That is the one behavior that actually failed in the production run (claudesk). Paired with the finding above: the coverage gap is exactly why the pin didn't catch the footgun.
-- **Pickup shape:** add an assertion to the git test group: after a real migration in a git repo, `git -C "$P" status --short | grep -c migration-backup` is 0 (once the backup-location fix lands), OR the backup path is gitignored. Land together with the backup-location fix so the assertion guards the fix.
+<!-- 3 of the 4 original findings RESOLVED by the post-ship refactor (2026-07-21) and deleted per delete-on-resolve — see CHANGELOG: BACKUP-INSIDE-REPO-STAGED + TEST-MISSING-BACKUP-NOT-STAGED-ASSERTION (both MAJOR, backup now written outside the repo + test guard) and HELP-FLAG-UNIMPLEMENTED (MINOR, --help implemented). The one below remains open. -->
 
 ## SURFACE-2026-07-21-QUALITY-RUN-EVAL-QUOTING
 - **Priority:** low
 - **Severity:** MINOR (feature-review-quality, ship a791f6a)
 - **Finding:** `tools/migrate-doc-layout/migrate-doc-layout.sh` `run() { ... eval "$*"; }` uses `eval` on a space-joined argument string, forcing every caller to pre-quote paths. Works because callers quote carefully, but a path with an embedded `"`/`$` would break. Inherited from the `tools/memory-link/` precedent (same pattern), not introduced by this feature.
 - **Pickup shape:** consider a `"$@"`-based dispatch or a per-command `--dry-run` guard instead of `eval`. Low priority — not triggered by the known doc-path input set; would ideally be fixed in both tools together since it's a shared inherited pattern.
-
-## SURFACE-2026-07-21-QUALITY-HELP-FLAG-UNIMPLEMENTED
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship a791f6a)
-- **Finding:** `tools/migrate-doc-layout/README.md` (and the WIP Phase-2 observable outcome) advertise a `--help`/`-h` surface (`migrate-doc-layout.sh --help exits 0 and documents <proj-dir>, --dry-run, --date`), but the arg-parse loop has no `--help`/`-h` case — such an arg falls through to the `*)` branch and is treated as `$PROJ`. The header comment block is the only usage doc.
-- **Pickup shape:** either add a `--help|-h)` case that prints the usage block and exits 0, OR soften the README to not claim a `--help` flag. Prefer implementing `--help` (cheap, matches the advertised contract). **VERIFY the arg-parse loop shape before editing.**
 
 # memory-location-symlink — 2026-07-03
 

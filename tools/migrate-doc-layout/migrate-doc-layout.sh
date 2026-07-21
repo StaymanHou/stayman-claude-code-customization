@@ -35,8 +35,33 @@ set -euo pipefail
 PROJ=""
 STAMP=""
 DRY_RUN=0
+usage() {
+  cat <<'EOF'
+migrate-doc-layout.sh — unify a project's split workflow-doc layout under one root.
+
+  docs/product/*  ->  workflow-system/product/
+  workflow/*      ->  workflow-system/state/
+
+Usage:
+  migrate-doc-layout.sh <proj-dir> [--date YYYY-MM-DD] [--dry-run]
+  migrate-doc-layout.sh                 (defaults <proj-dir> to $PWD)
+
+Options:
+  <proj-dir>            Project to migrate (defaults to the current directory).
+  --dry-run            Print planned moves; change nothing.
+  --date YYYY-MM-DD    Deterministic backup-dir naming (defaults to today).
+  -h, --help           Show this help and exit.
+
+Safety: idempotent (re-run = no-op once migrated); a reversible timestamped backup is
+written OUTSIDE the repo before any move; drift-keep-both never clobbers; `git mv`
+preserves history in a git repo. Exit codes: 0 migrated/nothing-to-do, 2 proj missing,
+4 source path is not a directory.
+EOF
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
+    -h|--help) usage; exit 0 ;;
     --dry-run) DRY_RUN=1; shift ;;
     --date) STAMP="$2"; shift 2 ;;
     *) if [ -z "$PROJ" ]; then PROJ="$1"; fi; shift ;;
@@ -54,7 +79,16 @@ fi
 PROJ="$(cd "$PROJ" && pwd -P)"
 
 NEW_ROOT="$PROJ/workflow-system"
-BACKUP="$NEW_ROOT/.migration-backup-$STAMP"
+
+# The reversible backup is written OUTSIDE the project — never under $PROJ. Writing it
+# inside the repo (the earlier `$NEW_ROOT/.migration-backup-*`) meant a subsequent
+# `git add -A` would stage the backup INTO the migration commit, corrupting it (the
+# claudesk mid-run footgun: 134 phantom deletions once the backup was removed). Outside
+# the repo, the backup is invisible to the project's git and redundant-but-harmless
+# (git itself already recovers a committed repo). Keyed by a slugged project path + stamp
+# so concurrent migrations of different projects don't collide.
+BACKUP_SLUG="$(printf '%s' "$PROJ" | sed 's/[/.]/-/g')"
+BACKUP="${TMPDIR:-/tmp}/migrate-doc-layout-backup${BACKUP_SLUG}-$STAMP"
 
 run() { if [ "$DRY_RUN" -eq 1 ]; then echo "DRY-RUN: $*"; else eval "$*"; fi; }
 

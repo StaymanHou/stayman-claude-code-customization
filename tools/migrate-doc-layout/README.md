@@ -27,6 +27,9 @@ tools/migrate-doc-layout/migrate-doc-layout.sh <proj-dir>
 # Deterministic backup-dir name (used by tests / scripted runs):
 tools/migrate-doc-layout/migrate-doc-layout.sh <proj-dir> --date 2026-07-21
 
+# Help:
+tools/migrate-doc-layout/migrate-doc-layout.sh --help
+
 # Defaults <proj-dir> to $PWD when omitted:
 cd <proj-dir> && /path/to/migrate-doc-layout.sh
 ```
@@ -37,8 +40,8 @@ cd <proj-dir> && /path/to/migrate-doc-layout.sh
 |---|---|
 | **Idempotent** | Re-running after a successful migration is a clean no-op (`OK: … nothing to do`). Detected by absence of the old `docs/product`/`workflow` dirs. |
 | **`--dry-run`** | Prints planned moves; creates/moves/removes **nothing**. |
-| **`--date YYYY-MM-DD`** | Deterministic backup-dir naming (`workflow-system/.migration-backup-<date>/`). Omitted → `date +%F`. The harness shell cannot always call date-of-now, so tests pass this explicitly. |
-| **Reversible backup** | Before any move, the entire source subtree is copied into `<proj>/workflow-system/.migration-backup-<date>/`. Delete once you've confirmed the migration. |
+| **`--date YYYY-MM-DD`** | Deterministic backup-dir naming (`$TMPDIR/migrate-doc-layout-backup<slug>-<date>/`). Omitted → `date +%F`. The harness shell cannot always call date-of-now, so tests pass this explicitly. |
+| **Reversible backup (outside the repo)** | Before any move, the entire source subtree is copied to a timestamped dir **outside the project** — `${TMPDIR:-/tmp}/migrate-doc-layout-backup<slugged-proj-path>-<date>/`. Writing it *outside* the repo is deliberate: an in-repo backup gets staged into the migration commit by a `git add -A` (the corruption footgun this tool was fixed to avoid). Delete once you've confirmed the migration. In a committed git repo the backup is belt-and-suspenders — git itself already recovers the move. |
 | **Drift-keep-both (never clobber)** | If a destination path already exists **and differs** from the source, the destination is kept as-is and the source is moved beside it as `<name>.pre-migrate`; a `DRIFT:` line is printed. Identical duplicates are dropped (`DUP:`). |
 | **History-preserving** | In a git repo, uses `git mv` per file so `git log --follow` traces history across the rename. Non-git projects use plain `mv`. |
 | **Empty-parent cleanup** | Removes a now-empty `docs/` parent after moving `docs/product`, but **only if empty** — a project keeping `docs/lessons/`, `docs/case-studies/`, etc. is preserved. |

@@ -73,9 +73,15 @@ check "workflow-system/state/wip/feature-x.md exists" "[ -f '$P/workflow-system/
 check "dotfile .session.md moved to state/" "[ -f '$P/workflow-system/state/.session.md' ]"
 check "old docs/product/ removed" "[ ! -d '$P/docs/product' ]"
 check "old workflow/ removed" "[ ! -d '$P/workflow' ]"
-check "timestamped backup dir exists" "[ -d '$P/workflow-system/.migration-backup-$DATE' ]"
-check "backup contains the old docs/product tree" "[ -f '$P/workflow-system/.migration-backup-$DATE/product/vision.md' ]"
-check "backup contains the old workflow tree" "[ -f '$P/workflow-system/.migration-backup-$DATE/workflow/backlog.md' ]"
+# The reversible backup lives OUTSIDE the repo (SURFACE-2026-07-21 fix), keyed by a
+# slugged project path + date — mirror the script's derivation to locate it.
+G2SLUG="$(printf '%s' "$(cd "$P" && pwd -P)" | sed 's/[/.]/-/g')"
+G2BACKUP="${TMPDIR:-/tmp}/migrate-doc-layout-backup${G2SLUG}-$DATE"
+TMP_ROOTS+=("$G2BACKUP")
+check "timestamped backup dir exists (outside the repo)" "[ -d \"\$G2BACKUP\" ]"
+check "backup contains the old docs/product tree" "[ -f \"\$G2BACKUP/product/vision.md\" ]"
+check "backup contains the old workflow tree" "[ -f \"\$G2BACKUP/workflow/backlog.md\" ]"
+check "backup is NOT inside the project (regression guard)" "[ ! -d '$P/workflow-system/.migration-backup-$DATE' ]"
 check "printed MOVED for docs/product" "printf '%s' \"\$MOUT\" | grep -q 'MOVED: docs/product'"
 check "printed MOVED for workflow" "printf '%s' \"\$MOUT\" | grep -q 'MOVED: workflow'"
 
@@ -113,10 +119,36 @@ check "git sees the move as renames (staged R)" \
   "[ \"\$(git -C '$P' status --short | grep -c '^R')\" -ge 1 ]"
 check "no delete+add of moved content in git" \
   "[ \"\$(git -C '$P' status --short | grep -cE '^(D|A) ')\" -eq 0 ]"
+# Regression guard for SURFACE-2026-07-21-QUALITY-BACKUP-INSIDE-REPO-STAGED:
+# the reversible backup MUST live outside the repo, so (a) no .migration-backup-* dir
+# appears anywhere under the project, and (b) `git status` shows nothing referencing it
+# (staging the backup into the migration commit was the claudesk mid-run footgun).
+check "backup dir is NOT created inside the project" \
+  "[ -z \"\$(find '$P' -name '.migration-backup-*' -not -path '*/.git/*' 2>/dev/null)\" ]"
+check "git status shows no migration-backup artifact (backup lives outside the repo)" \
+  "[ \"\$(git -C '$P' status --short | grep -c 'migration-backup')\" -eq 0 ]"
+# The external backup DOES exist (reversibility preserved) — just not inside the repo.
+BSLUG="$(printf '%s' "$(cd "$P" && pwd -P)" | sed 's/[/.]/-/g')"
+EXTBACKUP="${TMPDIR:-/tmp}/migrate-doc-layout-backup${BSLUG}-$DATE"
+TMP_ROOTS+=("$EXTBACKUP")
+check "external backup exists (reversibility preserved, outside the repo)" \
+  "[ -d \"\$EXTBACKUP\" ] && [ -f \"\$EXTBACKUP/product/arch.md\" ]"
 # commit so --follow can trace history across the rename
 ( cd "$P" && git add -A && git -c user.name=t -c user.email=t@t commit -q -m "migrate layout" )
 check "git history follows arch.md across the rename" \
   "[ \"\$(git -C '$P' log --follow --oneline workflow-system/product/arch.md | wc -l | tr -d ' ')\" -ge 2 ]"
+# After commit, the tree is clean — the backup never entered git (the actual defect).
+check "working tree clean after migration commit (backup never staged)" \
+  "[ \"\$(git -C '$P' status --porcelain | wc -l | tr -d ' ')\" -eq 0 ]"
+
+# --- Test group 5b: --help / -h prints usage and exits 0 (SURFACE-2026-07-21-QUALITY-HELP-FLAG-UNIMPLEMENTED) ---
+HOUT="$("$SCRIPT" --help 2>&1)"; RC=$?
+check "--help exits 0" "[ $RC -eq 0 ]"
+check "--help documents <proj-dir>, --dry-run, --date" \
+  "printf '%s' \"\$HOUT\" | grep -q -- '--dry-run' && printf '%s' \"\$HOUT\" | grep -q -- '--date' && printf '%s' \"\$HOUT\" | grep -q 'proj-dir'"
+check "-h short form also exits 0" "\"$SCRIPT\" -h >/dev/null 2>&1"
+check "--help does NOT migrate (no project touched)" \
+  "printf '%s' \"\$HOUT\" | grep -qv '^MOVED:'"
 
 # --- Test group 6: missing project dir -> exit 2 ---
 "$SCRIPT" "/no/such/project/dir/xyz" --date "$DATE" >/dev/null 2>&1; RC=$?
