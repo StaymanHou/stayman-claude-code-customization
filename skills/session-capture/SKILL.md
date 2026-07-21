@@ -68,30 +68,43 @@ After presenting the proposal, end this step's output with the terminal signal l
 TRANSITION: S20
 ```
 
-This marks the skill as having completed its single-turn job (classification + proposal). The write itself (Step 5) is a separate user-confirmed action.
+This marks the skill as having completed its single-turn job (classification + proposal). The write (Step 5) then follows the §4 conditional gate: a **separate user-confirmed action** in Modes 1/2 and for any `[GLOBAL]` write; an **immediate auto-write** (surfaced as a read-time veto) for a `[PROJECT]` learning in autopilot/FSD. At a clean workflow boundary, once the save lands, the boundary exit chain auto-chains onward to `session-handoff` (`S23`; see `transitions.md` → "Session-boundary exit chain").
 
-### 4. Get Confirmation
+### 4. Confirmation gate — drive-mode-conditional
 
-**STOP** and ask the user for confirmation or feedback. Do NOT execute changes yet.
+**The gate depends on the active `drive_mode` (read from the WIP frontmatter) AND the learning's scope.** This is the AC-6 streamlined-exit behavior (2026-07-21): at a clean workflow boundary the boundary exit chain should run to the handoff without a needless stop for a routine project-scope learning, while the higher-blast-radius global-scope write still gets a human beat.
 
-Present:
+Decide the branch:
+
+- **Modes 1 (Stepping) & 2 (Orchestrated) — ALWAYS confirm (unchanged).** `**STOP**` and ask the user for confirmation or feedback; do NOT execute changes yet. This is the historical behavior and stays the default for the interactive modes.
+
+- **Modes 3 (Autopilot) & 4 (FSD) — conditional:**
+  - **`[PROJECT]`-scope learning → AUTO-WRITE, no stop.** Do **not** STOP-and-ask. Proceed straight to §5, then **surface the write in chat as a read-time veto** (see §5 read-time-veto block) — path + content + scope, so the operator can `git reset` / edit after the fact. Unattended ≠ invisible. This is what lets the boundary exit chain auto-run `capture → session-handoff` (`S23`) in autopilot/FSD.
+  - **`[GLOBAL]`-scope learning → STILL CONFIRM (keep the gate even in autopilot/FSD).** `**STOP**` and ask, exactly as Modes 1/2. Rationale: global scope is the harder-to-reverse, higher-blast-radius call — every logged `session-reflect` scope-correction was `[GLOBAL]`→`[PROJECT]`, so global is precisely where a human beat catches over-broad capture. (Mirrors the "cost boundary is a human-input point" discipline from the research-tier confirm-gate.)
+
+**When confirming (Modes 1/2, or any `[GLOBAL]` write), present:**
 - The proposed storage location
 - The drafted content
 - For global-scope: a one-line reminder — "this is a draft to `<proj-dir>/.claude/learnings/`; if useful, port to the source repo (e.g. `my-claude-code-customization`) by hand."
 - Ask: "Should I save this? Any changes?"
 
+**When auto-writing (Modes 3/4, `[PROJECT]` scope):** skip the question; go to §5 and use the read-time-veto surface there instead. Do not call any user-input/confirmation tool — an inline question at an auto-write IS returning control to the user and defeats the unattended boundary exit chain (same regression class as an AUTO-transition `AskUserQuestion`).
+
 ### 5. Execute
 
-**ONLY** after receiving user confirmation:
+**Gate check (per §4):** execute **only after** the §4 gate is satisfied — that means *after explicit user confirmation* for Modes 1/2 and for any `[GLOBAL]`-scope write; or *immediately* (no confirmation) for a `[PROJECT]`-scope write in Modes 3/4 (autopilot/FSD), which uses the read-time-veto surface below instead of a pre-write stop.
+
+**Read-time-veto surface (Modes 3/4 auto-write path — REQUIRED, and it must print BEFORE the amend).** When auto-writing a `[PROJECT]` learning without confirmation, print to chat, in this order: (1) the destination path, (2) the scope (`[PROJECT]`), (3) the exact content written. Only *after* that surface is printed do you run the amend below. Rationale: the operator's veto is `git reset` — that is only actionable if they can see what landed *and* the write hasn't already been silently folded away. Auto-write must never mean silently-amended-and-gone. (Prints after the write, before `git commit --amend`.)
 
 **Project-scope:**
 - Write or append to the existing project file (CLAUDE.md, memory, skill) at the proposed `<proj-dir>/.claude/` path
 - If updating an existing file, append or merge rather than overwrite
+- **(Modes 3/4 auto-write only) print the read-time-veto surface now** — before the amend (see block above).
 - **Amend the learning into HEAD (required).** After the write, fold the learning into the most recent commit so it lives in the same commit as the work it describes (the just-completed close commit, in the typical post-reflect cadence):
   - `git add <file-path-just-written>`
   - `git commit --amend --no-edit`
   - Rationale: `/session-capture` typically runs after `/session-reflect`, which runs after a terminal-close skill (`feature-finalize`, `task-close`, `incident-resolve`, `product-finalize`). HEAD is the close commit. Amending prevents the "uncommitted learning file lost in a destructive git operation during the next cross-feature pause" failure mode (resolved `SURFACE-2026-05-22-LEARNING-COMMIT-OFTEN-AT-CROSS-FEATURE-BRANCH`).
-  - If HEAD happens to be a non-close commit (e.g., the user committed manually between reflect and session-capture), amend-to-HEAD still lands the learning into a sensible local commit rather than leaving it uncommitted. Reversible later via `git reset --soft HEAD~1` / `git rebase -i` if the operator wants to detach.
+  - If HEAD happens to be a non-close commit (e.g., the user committed manually between reflect and session-capture), amend-to-HEAD still lands the learning into a sensible local commit rather than leaving it uncommitted. Reversible later via `git reset --soft HEAD~1` / `git rebase -i` if the operator wants to detach — this is exactly the operator's read-time veto in the auto-write path.
   - Do NOT `git push` after amending — see no-auto-push contract in the four close skills.
 - Confirm what was saved and where
 

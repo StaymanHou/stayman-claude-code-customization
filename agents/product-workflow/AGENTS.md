@@ -71,6 +71,7 @@ Back-loops exist between research↔roadmap, research↔arch, and wbs↔arch.
 5. **Support session handoff/restore** via `/session-handoff` and `/session-restore`.
    - **Disambiguate "pause" — turn-level vs session boundary.** Bare **"pause"**, **"stop"**, **"hold"** (and "pause the turn", "hold the turn", "stop for a moment", "pause now") mean *interrupt the current turn / course-correct* — **do NOT** invoke `/session-handoff` and **do NOT** write `workflow-system/state/.session.md`; just stop and wait. **The going-offline family — "I need to go", "I'll /resume later", "shutting down / disconnecting", "stop so I can /exit" — is ALSO turn-level** (stop immediately; the operator uses the built-in `/resume` to continue *this turn* when back online; `/resume` ≠ `/session-restore`). Only **"hand off the session"**, "pause the session", "pause here, <X> next session", "wrap up and pause", or an explicit `/session-handoff` mean the session-boundary handoff.
    - **Agent-side guard is CONTEXTUAL (keyed on workflow position, not universal).** At a **clean workflow boundary** — after a terminal-close (`finalize`/`close`/`resolve`) → `session-reflect` with nothing to persist, or after `session-capture` once a learning is confirmed-saved — a session handoff is the *natural, expected* next step: **auto-chain it, no confirm** (even in autopilot/FSD). Only **mid-workflow, on an ambiguous word** (bare "pause"/"defer"/"wrap up"/"hold" in the middle of a phase) do you **fire the guard**: don't write `.session.md` on the ambiguous word alone — ask one line ("Turn-level hold, or write a session handoff for next time?") first. The over-reach is bidirectional (an adjacent "defer that check" can pull toward an unwanted handoff — a real misfire cost a stray `.session.md` + `rm`). Discriminator: terminal boundary → natural handoff; mid-workflow ambiguity → confirm first.
+     - **The pause-policy table is authoritative for this chaining decision** — this prose is the human-readable statement; the modeled edges (`S22` reflect→handoff, `S23` capture→handoff) and the per-mode rows live in the **"Session-boundary exit chain"** block in the pause-policy table below (and `transitions.md`). When driving, read that table row, not this bullet.
 
 ## Orchestration Procedure
 
@@ -99,6 +100,20 @@ Full policy tables are in `workflow-system/product/transitions.md` → "Drive mo
 | SURFACE-IN (P11, P12) | PAUSE | **PAUSE** | **PAUSE** | AUTO |
 | P10 exit to feature (transition summary) | PAUSE | **PAUSE** | AUTO | AUTO |
 | P14 product-finalize back-loop | PAUSE | **PAUSE** | **PAUSE** | AUTO |
+
+**Session-boundary exit chain (post-`product-finalize` → reflect → [capture] → handoff).** After `product-finalize` closes a cycle (`P13 → EXIT`) and a `session-reflect` backstop runs, the session runs the boundary exit chain. This is the **authoritative** table for that chaining decision (the §Your-Role guard bullet is the human-readable statement; this table governs). All hops are meta-ops. Canonical block: `transitions.md` → "Session-boundary exit chain".
+
+| Exit-chain step | Mode 1 | Mode 2 | Mode 3 (Autopilot) | Mode 4 (FSD) |
+|---|---|---|---|---|
+| `product-finalize → reflect` (backstop, declared-auto) | PAUSE | AUTO | AUTO | AUTO |
+| `reflect → session-handoff` (**S22**, no-learning arm) | PAUSE | AUTO | AUTO | AUTO |
+| `reflect → session-capture` (learning-found arm) | PAUSE | AUTO | AUTO | AUTO |
+| `session-capture` write — `[PROJECT]` scope | PAUSE (confirm) | PAUSE (confirm) | **AUTO-WRITE** (read-time veto) | **AUTO-WRITE** (read-time veto) |
+| `session-capture` write — `[GLOBAL]` scope | PAUSE (confirm) | PAUSE (confirm) | **PAUSE (confirm)** | **PAUSE (confirm)** |
+| `session-capture → session-handoff` (**S23**, after save) | PAUSE | AUTO | AUTO | AUTO |
+| Mid-workflow ambiguity ("pause"/"defer"/"hold" *inside* a stage) | PAUSE | **CONFIRM** | **CONFIRM** | AUTO |
+
+Clean boundary = auto-chain (the norm); the `[GLOBAL]` capture write and mid-workflow ambiguity are the only non-auto cases in autopilot/FSD.
 
 Mode 1 pauses: every step.
 Mode 2 happy-path pauses: vision scoping + roadmap review + P10 exit (3 total).

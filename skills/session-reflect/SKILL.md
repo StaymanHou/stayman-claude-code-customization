@@ -121,11 +121,15 @@ Present the learnings in **three tiers**, in this order. The tiers come directly
 - **Tier 3 is one line.** Never expand a dropped candidate into full prose; the collapsed list is the entire tier. Its purpose is an auditable veto surface, not a discussion.
 - **Default to fewer.** If §2a leaves zero tier-1 candidates, say so plainly ("No store candidates this session") — that is the common, correct outcome, not a failure.
 
-### 4. Prompt Store-Learning
+### 4. Prompt Store-Learning — then the boundary exit chain
 
 **Only tier-1 store candidates** are offered for persistence — tiers 2 and 3 are read-only and never routed to `session-capture`.
 
-- **If there are tier-1 candidates:** recommend "Run `/session-capture <the specific tier-1 learnings>` to persist them." Pass them pre-scoped (the `[PROJECT]`/`[GLOBAL]` labels from §2b) so session-capture routes without re-deciding.
-- **If there are no tier-1 candidates:** do NOT recommend `/session-capture`. State "Nothing to persist this session" and stop.
+Reflect is **not the terminus** — it forks onto the **session-boundary exit chain** (`transitions.md` → "Session-boundary exit chain"). Both arms end at `session-handoff`:
+
+- **Arm 2 — tier-1 candidates exist (learning found):** recommend "Run `/session-capture <the specific tier-1 learnings>` to persist them." Pass them pre-scoped (the `[PROJECT]`/`[GLOBAL]` labels from §2b) so session-capture routes without re-deciding. Then, at a **clean workflow boundary**, the chain continues: after the save lands, auto-chain to `session-handoff` (**S23**). (Single-step users: run `/session-capture`, then `/session-handoff` when ready.)
+- **Arm 1 — no tier-1 candidates (nothing to persist):** do NOT recommend `/session-capture`. State "Nothing to persist this session." Then, at a **clean workflow boundary**, auto-chain straight to `session-handoff` (**S22**) — reflect-with-nothing-to-persist is the natural end-of-session boundary, and the handoff is the expected next step.
+
+**Drive-mode / position note (the CONTEXTUAL guard):** the onward auto-chain to `session-handoff` is the **norm at a clean boundary** (post-terminal reflect) and is AUTO in all drive modes — see the authoritative pause-policy rows. It is NOT triggered mid-workflow: a bare "pause"/"defer"/"hold" in the *middle* of a phase is the narrow CONFIRM exception (ask "turn-level hold, or write a session handoff?" first), never an auto-handoff. Discriminator: terminal boundary → natural handoff; mid-workflow ambiguity → confirm first.
 
 **Context:** {{args}}

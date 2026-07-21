@@ -127,6 +127,26 @@ Incidents are always treated as **Mode 2 (Orchestrated)** regardless of the sele
 | surface (I11, I12) | PAUSE |
 | investigate self-loop (I5) | AUTO |
 
+#### Session-boundary exit chain — post-terminal `finalize → reflect → [capture] → handoff`
+
+After any terminal-close (`feature-finalize` F19, `feature-refactor` F21, `task-close` T11, `incident-resolve` I10) the session runs a **boundary exit chain** that ends by writing a session handoff. Every hop below is a meta-op (none is a first-class dispatched state — see "Session Operations (Cross-Cutting)"); this table makes the chaining decision **authoritative** rather than prose-only. The **norm at a clean boundary is auto-chain**; the confirm is the narrow exception (see the CONFIRM row).
+
+| Step | Mode 1 (Stepping) | Mode 2 (Orchestrated) | Mode 3 (Autopilot) | Mode 4 (FSD) |
+|------|-----------------------|-----------------------|--------------------|------------------------|
+| `finalize/refactor/close/resolve → reflect` (F19/F21/T11/I10, declared-auto) | PAUSE | AUTO | AUTO | AUTO |
+| `reflect → session-handoff` — **S22**, no-learning arm (reflect yielded nothing to persist) | PAUSE | AUTO | AUTO | AUTO |
+| `reflect → session-capture` — learning-found arm (a store-candidate survived reflect's filter) | PAUSE | AUTO | AUTO | AUTO |
+| `session-capture` write — `[PROJECT]` scope | PAUSE (confirm) | PAUSE (confirm) | **AUTO-WRITE** (read-time veto) | **AUTO-WRITE** (read-time veto) |
+| `session-capture` write — `[GLOBAL]` scope | PAUSE (confirm) | PAUSE (confirm) | **PAUSE (confirm)** | **PAUSE (confirm)** |
+| `session-capture → session-handoff` — **S23**, after save lands | PAUSE | AUTO | AUTO | AUTO |
+| **Mid-workflow ambiguity** ("pause"/"defer"/"wrap up"/"hold" *inside* a phase, NOT at a boundary) | PAUSE | **CONFIRM** | **CONFIRM** | AUTO |
+
+**Reading the table:**
+- **Clean boundary is the norm → auto-chain.** In Modes 2–4 the whole chain runs unattended to the handoff; `S22`/`S23` are AUTO in every mode. This is the behavior WP5 shipped in prose, now modeled.
+- **The capture gate is the one conditional row.** In autopilot/FSD a `[PROJECT]`-scope learning auto-writes (fully surfaced in chat as a read-time veto — the operator can `git reset` after), but a `[GLOBAL]`-scope learning still stops for confirmation even in autopilot/FSD (higher blast radius; every logged reflect scope-correction was `[GLOBAL]`→`[PROJECT]`). Modes 1/2 always confirm.
+- **Mid-workflow ambiguity is NOT this chain.** A bare "pause"/"defer"/"wrap up"/"hold" *inside* a phase is the CONFIRM exception — the agent-side guard asks "turn-level hold, or write a session handoff?" first (the WP5 bidirectional guard). It is the *absence* of the auto-chain, gated on ambiguity — not a modeled transition. Only a clean workflow boundary auto-chains.
+- **Incident caveat:** the incident workflow always runs as Mode 2 regardless of the selected mode, so `I10 → reflect` and the chain that follows use the Mode-2 column.
+
 #### Session-start prompt
 
 When `/session-start` confirms the work classification, it presents the mode choice before proceeding:
@@ -430,8 +450,8 @@ Not a state machine — meta-operations that attach to any workflow state.
 | `start` | Manual | Routes user to correct workflow entry point |
 | `pause` | Manual | Save current workflow + state + step to `workflow/wip/` file |
 | `resume` | Manual | Read state file, summarize where left off, suggest resume command |
-| `reflect` | Auto: after feature:finalize, feature:refactor, incident:resolve. Optional: after task:close. | Analyze session for wrong assumptions. **Filter candidate learnings before presenting** (behavior-within-state, no new transition): drop workflow-process-commentary / single-observation / self-documenting restatements; route already-captured insights to an "already persisted" tier with a cited location (not a store candidate); default surviving candidates to `[PROJECT]` scope (`[GLOBAL]` must clear a 3-part gate). Present in three tiers (store-candidates / already-persisted / one-line dropped). Strongly prompt user to run store-learning **only for the store-candidate tier**. |
-| `store-learning` | Manual (prompted by reflect) | Classify learning (global vs project), propose storage location, execute after human confirmation. **Project-scope** writes to the project's own `<proj-dir>/.claude/` (CLAUDE.md / memory / skills) as before. **Global-scope** drafts to the canonical `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md` — never `~/.claude/`. Git behavior follows the artifact tracking policy + project overrides (commit/amend iff the project tracks `<proj-dir>/.claude/learnings/`, else leave uncommitted for hand-porting), NOT gitignore inspection. See `CLAUDE.snippet.md` → `## Artifact tracking policy (GLOBAL)`. |
+| `reflect` | Auto: after feature:finalize, feature:refactor, incident:resolve. Optional: after task:close. | Analyze session for wrong assumptions. **Filter candidate learnings before presenting** (behavior-within-state, no new transition): drop workflow-process-commentary / single-observation / self-documenting restatements; route already-captured insights to an "already persisted" tier with a cited location (not a store candidate); default surviving candidates to `[PROJECT]` scope (`[GLOBAL]` must clear a 3-part gate). Present in three tiers (store-candidates / already-persisted / one-line dropped). Strongly prompt user to run store-learning **only for the store-candidate tier**. **Reflect is NOT the terminus — it forks onto the session-boundary exit chain:** (1) **no store-candidate survives (nothing to persist)** → auto-chain straight to `session-handoff` (`S22`); (2) **a store-candidate survives** → run `session-capture`, and after the save lands, auto-chain to `session-handoff` (`S23`). Both arms are AUTO in all drive modes at a clean boundary (the mid-workflow-ambiguous case is the narrow CONFIRM exception — see Drive-modes). |
+| `store-learning` (skill: `session-capture`) | Prompted by reflect (store-candidate tier). | Classify learning (global vs project), propose storage location, then persist. **Confirmation gate is drive-mode-conditional** (behavior-within-state): in **Modes 1/2** always STOP-and-ask before writing (unchanged); in **autopilot/FSD** a `[PROJECT]`-scope learning **auto-writes** and is **surfaced in chat as a read-time veto** (path + content + scope), while a `[GLOBAL]`-scope learning **keeps the confirm gate** even in autopilot/FSD (higher blast radius; every logged reflect scope-correction was `[GLOBAL]`→`[PROJECT]`). **Project-scope** writes to the project's own `<proj-dir>/.claude/` (CLAUDE.md / memory / skills). **Global-scope** drafts to the canonical `<proj-dir>/.claude/learnings/<YYYY-MM-DD>-<slug>.md` — never `~/.claude/`. Git behavior follows the artifact tracking policy + project overrides (commit/amend iff the project tracks `<proj-dir>/.claude/learnings/`, else leave uncommitted for hand-porting), NOT gitignore inspection. See `CLAUDE.snippet.md` → `## Artifact tracking policy (GLOBAL)`. On a clean boundary, after the save lands, auto-chain to `session-handoff` (`S23`). |
 
 ### Session transitions (dispatcher outputs)
 
@@ -455,9 +475,11 @@ Session entry skills (`session-start`, `session-restore`, `session-handoff`) are
 | S14 | session-start | (skip+chain) | Mode 4 (FSD): skip verify-human, chain to verify-codify |
 | S15 | session-restore | (mode menu) | Surface `drive_mode` from `.session.md` and present change-mode menu |
 | S16 | session-restore | (mode change) | User selects different drive mode on restore — update WIP frontmatter |
-| S17 | session-handoff | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md` |
+| S17 | session-handoff | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md`. Now also a **chain target**: reached automatically via `S22`/`S23` at a clean workflow boundary (see below). |
 | S18 | session-start | feature:reproduce | Classified as bug-shape feature (user describes undesirable behavior) — route to optional pre-spec/pre-plan red-green reproduction |
-| S20 | session-capture | (terminal) | Learning persisted: project-scope to `<proj-dir>/.claude/<dest>`, or global-scope drafted to the canonical `<proj-dir>/.claude/learnings/<date>-<slug>.md`; never `~/.claude/`. Git behavior keyed on the artifact tracking policy + project overrides, not gitignore inspection. (Skill renamed from `session-store-learning` in WP5/M9.) |
+| S20 | session-capture | (terminal) | Learning persisted: project-scope to `<proj-dir>/.claude/<dest>`, or global-scope drafted to the canonical `<proj-dir>/.claude/learnings/<date>-<slug>.md`; never `~/.claude/`. Git behavior keyed on the artifact tracking policy + project overrides, not gitignore inspection. (Skill renamed from `session-store-learning` in WP5/M9.) **Confirmation gate is now drive-mode-conditional** (see the `session-capture` meta-op row): autopilot/FSD + `[PROJECT]` scope auto-writes (surfaced as a read-time veto); `[GLOBAL]` scope keeps the confirm gate; Modes 1/2 unchanged. At a clean boundary, `S20` auto-chains onward to `S23` (→ `session-handoff`). |
+| S22 | reflect → session-handoff | (auto-chain) | **Session-boundary exit-chain, no-learning arm.** After a terminal-close → `reflect`, when reflect yields **nothing to persist**, auto-chain straight to `session-handoff`. Condition: clean workflow boundary (post-terminal reflect, no learning). Type: forward. **AUTO in all four drive modes.** The mid-workflow-ambiguous case is the narrow CONFIRM exception (a guard, not this edge — see the Drive-modes "Session-boundary exit chain" block). |
+| S23 | session-capture → session-handoff | (auto-chain) | **Session-boundary exit-chain, learning-found arm.** After `reflect` surfaces a learning → `session-capture` writes it; once the save has **landed** (post-write, per the conditional gate on `S20`), auto-chain to `session-handoff`. Condition: clean workflow boundary (learning captured AND saved). Type: forward. **AUTO in all four drive modes.** Rides *after* capture's write step — not on capture invocation. |
 
 ---
 

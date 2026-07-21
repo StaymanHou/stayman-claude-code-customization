@@ -95,7 +95,33 @@ run_test() {
   local index="$2"
   local group="$3"
 
+  # --- Cheap pre-parse filter (SURFACE-2026-07-15 fix) ---
+  # Parse ONLY the `id` first and apply --id / --filter-model BEFORE the ~20 expensive
+  # parse_scenario_field/parse_scenario_nested shell-outs below. Each of those spawns a
+  # fresh python3 that re-reads+re-parses the WHOLE yaml, so for a targeted `--id A,B` run
+  # over a large group (session.yaml = 33 scenarios) the old parse-then-filter cost ~22
+  # full-file parses per NON-matching scenario — the >5min hang that blocked WP5's S26/S27
+  # and forced deferred behavioral execution. With this gate a filtered-out scenario pays
+  # exactly ONE parse (its id) then returns.  --group and no-filter paths are unaffected:
+  # with no --id and no --filter-model, nothing short-circuits and every scenario proceeds
+  # exactly as before.
   local id; id=$(parse_scenario_field "$yaml_file" "$index" "id")
+  if [ -n "$FILTER_IDS" ]; then
+    if ! echo ",$FILTER_IDS," | grep -q ",$id,"; then
+      return
+    fi
+  fi
+  # --filter-model also gates on a single cheap field (`model:`) — hoist it too so a
+  # partitioned run (tests/run-all.sh) skips non-matching scenarios before the heavy parses.
+  if [ -n "$FILTER_MODEL" ]; then
+    local _pre_model; _pre_model=$(parse_scenario_field "$yaml_file" "$index" "model")
+    if [ "$FILTER_MODEL" = "default" ]; then
+      [ -n "$_pre_model" ] && return
+    else
+      [ "$_pre_model" != "$FILTER_MODEL" ] && return
+    fi
+  fi
+
   local name; name=$(parse_scenario_field "$yaml_file" "$index" "name")
   local skill; skill=$(parse_scenario_field "$yaml_file" "$index" "skill")
   local args; args=$(parse_scenario_field "$yaml_file" "$index" "args")
@@ -134,23 +160,10 @@ run_test() {
   local fixture_backlog; fixture_backlog=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "backlog")
   local fixture_claude_md; fixture_claude_md=$(parse_scenario_nested "$yaml_file" "$index" "fixtures" "claude_md")
 
-  # Apply filters
-  if [ -n "$FILTER_IDS" ]; then
-    if ! echo ",$FILTER_IDS," | grep -q ",$id,"; then
-      return
-    fi
-  fi
-
-  # --filter-model partitions the suite by `model:` tag (used by tests/run-all.sh):
-  #   --filter-model default  → only scenarios with NO `model:` field
-  #   --filter-model sonnet   → only scenarios with `model: sonnet`
-  if [ -n "$FILTER_MODEL" ]; then
-    if [ "$FILTER_MODEL" = "default" ]; then
-      [ -n "$scenario_model" ] && return
-    else
-      [ "$scenario_model" != "$FILTER_MODEL" ] && return
-    fi
-  fi
+  # NB: --id and --filter-model are applied at the TOP of run_test() (cheap pre-parse gate,
+  # SURFACE-2026-07-15 fix) — any scenario reaching here has already passed both filters, so
+  # no second filter check is needed. The `scenario_model` parse above is retained only for
+  # the effective-model resolution below, not for filtering.
 
   max_retries=${max_retries:-1}
   [ "$GLOBAL_RETRY" -gt 0 ] && max_retries="$GLOBAL_RETRY"

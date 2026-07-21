@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-07-20
+updated: 2026-07-21
 ---
 
 # Architecture
@@ -278,6 +278,17 @@ Inbound from `HANDOFF-from-claudesk-2026-07-20.md`. This repo owns the *mechanic
 #### AD-4 (Milestone 9) — "pause" disambiguation: pure prompt-convention
 
 - No architectural surface beyond *which prompts change*: the orchestrator AGENTS.md files + relevant SKILL.md prose. The convention (reserve bare "pause" for course-correction; require explicit `/session-pause` or a distinct phrase for the skill; confirm intent when ambiguous) is a prompt edit + behavioral scenario, no state-machine change. Detailed decomposition deferred to WBS.
+
+##### AD-4 addendum (as-built 2026-07-21) — boundary-handoff auto-chain promoted into the state machine + capture-gate conditional drop
+
+The WP5/M9 disambiguation shipped the "auto-chain the session handoff at a clean workflow boundary, even in autopilot/FSD; confirm only on mid-workflow ambiguity" rule as **advisory prose only** (in `session-handoff/SKILL.md`, the 4 orchestrator `AGENTS.md`, and `CLAUDE.snippet.md`). A follow-up feature (`boundary-handoff-autochain-state-machine`, from `SURFACE-2026-07-21-BOUNDARY-HANDOFF-AUTOCHAIN-NOT-IN-STATE-MACHINE`) **promoted that rule from prose into the state machine** — closing the same drift class as the P1 autopilot-pause incidents (a chaining decision asserted in prose the orchestrator reads inconsistently, with no transition ID or pause-policy row). Two decisions, both as-built:
+
+- **D1 — no `finalize → handoff` shortcut.** The full exit chain is always `finalize/refactor/close/resolve → reflect → [capture] → handoff`. `reflect` is never skipped — it is the only step that can judge "nothing to persist," and it is the once-per-session learning-filter + design-prior-capture backstop. The fork happens *at* reflect: **no-learning arm** auto-chains straight to `session-handoff` (edge **S22**); **learning-found arm** runs `session-capture`, then after the save lands auto-chains to `session-handoff` (edge **S23**).
+- **D2 — meta-op edges, not first-class states.** `session-handoff`, `reflect`, and `session-capture` remain *meta-operations* (the transitions.md "not a state-machine state" declaration is preserved). The chain is modeled as **modeled edges (`S22`/`S23`) + pause-policy rows**, not by promoting any meta-op to a dispatched workflow state. The new **"Session-boundary exit chain"** pause-policy block in `transitions.md` "Drive modes" AND in all 4 canonical `agents/*/AGENTS.md` cheat-sheet tables is the **authoritative** source for the chaining decision; the guard prose is re-pointed to say so ("read the table row, not this bullet"). Three-places-in-sync (transitions.md / the 4 AGENTS.md / `tests/scenarios/session.yaml`) is enforced by `tests/check-structure.sh` [Phase 18].
+
+- **Bundled behavior change — AC-6 capture-gate conditional drop.** The *one* genuine behavior change (everything else models already-shipped behavior): `session-capture`'s §4 confirmation gate is now **drive-mode-conditional**. In autopilot/FSD, a **`[PROJECT]`-scope** learning **auto-writes** (no STOP-and-ask) and is **surfaced in chat as a read-time veto** (path + content + scope printed *before* the `git amend`, so the operator can `git reset`); a **`[GLOBAL]`-scope** learning **keeps the confirm gate** even in autopilot/FSD (higher blast radius — every logged `session-reflect` scope-correction was `[GLOBAL]`→`[PROJECT]`). Modes 1/2 are unchanged (always confirm). This streamlines the unattended exit for the common project-scope case without a blind global write. Behavioral coverage: `tests/scenarios/session.yaml::S28`/`S29`/`S30`.
+
+This addendum records the state-machine change as-built; the canonical convention text lives in `CLAUDE.snippet.md` → "Session vocabulary — turn vs. session boundary (GLOBAL)".
 
 #### AD-5 (Milestone 11) — onboarding: **deferred / designed later (brainstorm-first)**
 

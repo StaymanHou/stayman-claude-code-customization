@@ -77,6 +77,7 @@ report → triage ─┬─ [reproduce] ─┬→ investigate ⇄ mitigate → c
 9. **Support session handoff/restore** via `/session-handoff` and `/session-restore`.
    - **Disambiguate "pause" — turn-level vs session boundary.** Bare **"pause"**, **"stop"**, **"hold"** (and "pause the turn", "hold the turn", "stop for a moment", "pause now") mean *interrupt the current turn / course-correct* — **do NOT** invoke `/session-handoff` and **do NOT** write `workflow-system/state/.session.md`; just stop and wait. **The going-offline family — "I need to go", "I'll /resume later", "shutting down / disconnecting", "stop so I can /exit" — is ALSO turn-level** (stop immediately; the operator uses the built-in `/resume` to continue *this turn* when back online; `/resume` ≠ `/session-restore`). Only **"hand off the session"**, "pause the session", "pause here, <X> next session", "wrap up and pause", or an explicit `/session-handoff` mean the session-boundary handoff.
    - **Agent-side guard is CONTEXTUAL (keyed on workflow position, not universal).** At a **clean workflow boundary** — after a terminal-close (`finalize`/`close`/`resolve`) → `session-reflect` with nothing to persist, or after `session-capture` once a learning is confirmed-saved — a session handoff is the *natural, expected* next step: **auto-chain it, no confirm** (even in autopilot/FSD). Only **mid-workflow, on an ambiguous word** (bare "pause"/"defer"/"wrap up"/"hold" in the middle of a phase) do you **fire the guard**: don't write `.session.md` on the ambiguous word alone — ask one line ("Turn-level hold, or write a session handoff for next time?") first. The over-reach is bidirectional (an adjacent "defer that check" can pull toward an unwanted handoff — a real misfire cost a stray `.session.md` + `rm`). Discriminator: terminal boundary → natural handoff; mid-workflow ambiguity → confirm first.
+     - **The pause-policy table is authoritative for this chaining decision** — this prose is the human-readable statement; the modeled edges (`S22` reflect→handoff, `S23` capture→handoff) and the per-mode rows live in the **"Session-boundary exit chain"** block in the pause-policy table below (and `transitions.md`). When driving, read that table row, not this bullet.
 
 ## Orchestration Procedure
 
@@ -112,6 +113,18 @@ This section is the **reference procedure** followed by `/session-start` when dr
 | Codify → investigate (I20 back-loop) | **PAUSE** | Root-cause analysis was wrong — human must acknowledge before re-investigating |
 | Before resolve (fast-close paths I4, I7 — no mitigate/codify) | **PAUSE** | Human confirms false-alarm sign-off before archiving |
 | Surface (I11, I12) | **PAUSE** | Root-cause follow-up needs human prioritization |
+
+**Session-boundary exit chain (post-`incident-resolve` → reflect → [capture] → handoff).** After `I10` exits to `reflect`, the session runs the boundary exit chain. Incident always runs as **Mode 2**, so the chain uses the Mode-2 column (auto-chain the hops; `[GLOBAL]` capture still confirms). This is the **authoritative** table for that chaining decision (the §Your-Role guard bullet is the human-readable statement; this table governs). All hops are meta-ops. Canonical block: `transitions.md` → "Session-boundary exit chain".
+
+| Exit-chain step | Policy (incident = Mode 2) | Rationale |
+|------|--------|-----------|
+| `resolve → reflect` (I10, always-auto-trigger) | AUTO | Declared-auto terminal-close exit |
+| `reflect → session-handoff` (**S22**, no-learning arm) | AUTO | Clean boundary, nothing to persist → auto-chain the handoff |
+| `reflect → session-capture` (learning-found arm) | AUTO | A store-candidate survived reflect's filter → run capture |
+| `session-capture` write — `[PROJECT]` scope | PAUSE (confirm) | Mode 2 always confirms before writing a learning |
+| `session-capture` write — `[GLOBAL]` scope | PAUSE (confirm) | Higher blast radius — confirm even were incident ever run in autopilot |
+| `session-capture → session-handoff` (**S23**, after save) | AUTO | Save landed → auto-chain the handoff |
+| Mid-workflow ambiguity ("pause"/"defer"/"hold" *inside* the incident) | **CONFIRM** | Ambiguous word mid-incident → ask "turn-level hold, or session handoff?" first |
 
 Happy path: report → triage pause → investigate → mitigate pause → (monitor) → codify (AUTO Path A or PAUSE Path B) → resolve → done. Typical: 3–4 human pauses depending on codify path.
 

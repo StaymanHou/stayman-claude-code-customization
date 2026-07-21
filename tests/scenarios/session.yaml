@@ -1025,3 +1025,83 @@ scenarios:
         - "process-commentary"
         - "process commentary"
     max_retries: 2
+
+  # ── Session-boundary exit chain (boundary-handoff-autochain feature, 2026-07-21) ──
+  # These three scenarios cover the modeled finalize → reflect → [capture] → handoff chain.
+  # NB scenario IDs S28/S29/S30 are DISTINCT from the transition/edge IDs S22/S23 (which live
+  # in transitions.md's Session-transitions table) — do not conflate the two "S" namespaces.
+
+  - id: S28-boundary-reflect-nothing-autochains-handoff
+    name: "session:reflect at a clean boundary with nothing to persist auto-chains to the handoff (no-learning arm, S22)"
+    skill: session-reflect
+    args: >
+      Reflect on the session. We just finalized the feature end-to-end; the drive
+      mode is autopilot. Nothing surprising happened — no wrong assumptions, no
+      reusable insight worth keeping. What's next?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-no-debt.md
+    expect:
+      # Clean workflow boundary (post-finalize) + autopilot + nothing to persist = the no-learning
+      # arm: reflect should state "nothing to persist" and continue onto the boundary exit chain
+      # toward the session handoff (S22) — NOT stop and wait, NOT prompt session-capture. The
+      # positive tokens are non-echoing (the prompt says "nothing worth keeping"/"what's next",
+      # never "handoff"/"boundary"/"auto-chain") so a pass proves the model routed the chain.
+      contains_any:
+        - "session-handoff"
+        - "boundary"
+        - "auto-chain"
+        - "Nothing to persist"
+      not_contains:
+        - "/session-capture"
+    max_retries: 2
+
+  - id: S29-boundary-guard-mid-workflow-defer-confirms
+    name: "session:handoff mid-workflow 'defer/wrap up' (NOT a clean boundary) still fires the CONFIRM guard — does not auto-write .session.md"
+    skill: session-handoff
+    args: >
+      let's defer the rest and wrap up for now — I want to move on
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-autopilot-active.md
+    expect:
+      # The WIP is mid-phase (build phase-1-complete, autopilot) — NOT a clean workflow boundary.
+      # A bare "defer/wrap up" mid-workflow is the narrow CONFIRM exception (the bidirectional
+      # guard): do NOT auto-write .session.md; ask "turn-level hold, or session handoff?" first.
+      # This is the counterpart to S28 — proves the auto-chain is boundary-gated, not universal.
+      # Non-echoing positive tokens (prompt never says "confirm"/"turn-level"/"ambiguous").
+      contains_any:
+        - "turn-level"
+        - "or write a session handoff"
+        - "Turn-level hold, or"
+        - "mid-workflow"
+      not_contains:
+        - "Handed off"
+        - "wrote workflow-system/state/.session.md"
+        - "TRANSITION: S17"
+    max_retries: 2
+
+  - id: S30-capture-gate-project-autowrites-global-confirms
+    name: "session:capture in autopilot auto-writes a [PROJECT] learning (read-time veto) but still confirms a [GLOBAL] one (AC-6 conditional gate)"
+    skill: session-capture
+    args: >
+      Persist this PROJECT-scope learning: the runtime registry timeout for
+      check-structure.sh should be read from runtimes.md before each run. Drive
+      mode is autopilot and we're at a clean boundary after finalize.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-finalized-no-debt.md
+    expect:
+      # AC-6: in autopilot/FSD a [PROJECT]-scope learning auto-writes (no STOP-and-ask) but is
+      # surfaced as a read-time veto (path + content + scope). A [GLOBAL] learning would still
+      # confirm. The prompt declares PROJECT scope + autopilot + clean boundary, so the model
+      # should proceed to write WITHOUT asking "should I save this?", while noting the operator
+      # can reset. Non-echoing tokens: the prompt never says "auto-write"/"read-time veto"/"veto".
+      contains_any:
+        - "read-time veto"
+        - "auto-write"
+        - "git reset"
+        - "without confirmation"
+      not_contains:
+        - "Should I save this?"
+    max_retries: 2

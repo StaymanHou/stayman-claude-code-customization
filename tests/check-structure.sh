@@ -2340,6 +2340,52 @@ grep_check "CLAUDE.snippet.md distinguishes /resume (turn-level) from /session-r
 
 echo ""
 
+# ── Phase 18: Session-boundary exit chain modeled in the state machine ────────
+# The boundary-handoff-autochain feature (2026-07-21) promoted the WP5 prose-only
+# "auto-chain the handoff at a clean boundary" rule into the state machine: the full
+# finalize → reflect → [capture] → handoff exit chain, as MODELED EDGES (S22/S23) +
+# pause-policy rows (not first-class dispatched states — D2). Plus the AC-6
+# session-capture conditional-gate behavior change (autopilot/FSD [PROJECT] auto-writes
+# as a read-time veto; [GLOBAL] keeps the confirm gate; Modes 1/2 unchanged).
+# These pins enforce the three-places-in-sync rule (transitions.md / the 4 AGENTS.md /
+# the skill prose) for that chain. Resolves
+# SURFACE-2026-07-21-BOUNDARY-HANDOFF-AUTOCHAIN-NOT-IN-STATE-MACHINE.
+echo "[Phase 18] Session-boundary exit chain modeled (S22/S23 edges + pause rows + capture conditional gate)"
+
+# (a) the two new transition/edge IDs exist in transitions.md's Session-transitions table
+grep_check "transitions.md carries the S22 reflect→session-handoff edge" "workflow-system/product/transitions.md" "^\| S22 \| reflect → session-handoff" 1
+grep_check "transitions.md carries the S23 session-capture→session-handoff edge" "workflow-system/product/transitions.md" "^\| S23 \| session-capture → session-handoff" 1
+
+# (b) reflect's Behavior row is no longer an unconditional terminus — it names the two-arm fork
+grep_check "transitions.md reflect row names the two-arm boundary fork (S22 + S23)" "workflow-system/product/transitions.md" "forks onto the session-boundary exit chain" 1
+
+# (c) the Drive-modes "Session-boundary exit chain" pause-policy block exists in transitions.md
+grep_check "transitions.md Drive-modes carries the Session-boundary exit chain block" "workflow-system/product/transitions.md" "Session-boundary exit chain" 1
+
+# (d) all 4 canonical orchestrator AGENTS.md tables carry the exit-chain block (three-places-in-sync at table level)
+grep_check "feature-workflow AGENTS.md carries the Session-boundary exit chain block" "agents/feature-workflow/AGENTS.md" "Session-boundary exit chain" 1
+grep_check "task-workflow AGENTS.md carries the Session-boundary exit chain block" "agents/task-workflow/AGENTS.md" "Session-boundary exit chain" 1
+grep_check "product-workflow AGENTS.md carries the Session-boundary exit chain block" "agents/product-workflow/AGENTS.md" "Session-boundary exit chain" 1
+grep_check "incident-workflow AGENTS.md carries the Session-boundary exit chain block" "agents/incident-workflow/AGENTS.md" "Session-boundary exit chain" 1
+
+# (e) the guard prose is re-pointed to "the table is authoritative" in all 4 AGENTS.md
+grep_check "feature-workflow AGENTS.md re-points guard to the authoritative table" "agents/feature-workflow/AGENTS.md" "pause-policy table is authoritative" 1
+grep_check "task-workflow AGENTS.md re-points guard to the authoritative table" "agents/task-workflow/AGENTS.md" "pause-policy table is authoritative" 1
+grep_check "product-workflow AGENTS.md re-points guard to the authoritative table" "agents/product-workflow/AGENTS.md" "pause-policy table is authoritative" 1
+grep_check "incident-workflow AGENTS.md re-points guard to the authoritative table" "agents/incident-workflow/AGENTS.md" "pause-policy table is authoritative" 1
+
+# (f) AC-6: session-capture's confirmation gate is drive-mode-conditional (the one behavior change)
+#     [PROJECT] auto-writes in autopilot/fsd; [GLOBAL] keeps the confirm gate; read-time veto surface.
+grep_check "session-capture §4 gate is drive-mode-conditional (AC-6)" "skills/session-capture/SKILL.md" "Confirmation gate — drive-mode-conditional" 1
+grep_check "session-capture autopilot/FSD [PROJECT]-scope auto-writes" "skills/session-capture/SKILL.md" "AUTO-WRITE, no stop" 1
+grep_check "session-capture [GLOBAL]-scope still confirms even in autopilot/FSD" "skills/session-capture/SKILL.md" "STILL CONFIRM" 1
+grep_check "session-capture auto-write is surfaced as a read-time veto" "skills/session-capture/SKILL.md" "read-time veto" 1
+
+# (g) the durable convention re-point lives in the injected snippet (mirrors Phase-17's snippet pin)
+grep_check "CLAUDE.snippet.md re-points the session-boundary handoff to the authoritative pause-policy table" "CLAUDE.snippet.md" "pause-policy table" 1
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="
