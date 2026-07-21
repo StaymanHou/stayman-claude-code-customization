@@ -2,7 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-21
-progress: 5/8 WPs (WP1, WP2, WP3-M7, WP4, WP6)
+progress: 6/8 WPs (WP1, WP2, WP3-M7, WP4, WP6, WP5)
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -92,7 +92,8 @@ The standard rule details WPs for the **next milestone only**, because later mil
 
 > **⚠️ REFRAME 2026-07-21 (operator):** WP5 and WP6 are **NOT quick wins** despite small implementation surfaces. Both are fundamentally **terminology-design** work — the *word* we settle on ("pause" vs. course-correct; "research" vs. deep-research) is the deliverable, and it must be agreed with the operator AND legible to a **brand-new user who has none of the nuance we carry**. So both are **brainstorm-first / align-on-terminology-then-implement** (closer to WP7's shape than to a mechanical task). Do NOT start either with `/feature-plan` or `/task-plan` directly — open a terminology-alignment discussion first, agree the vocabulary, THEN plan the (likely small) edit. Sizes below refer to the *implementation* only; the design conversation is the real cost.
 
-### WP5: Disambiguate "pause" (Milestone 9)
+### WP5: Disambiguate "pause" (Milestone 9) ✅ SHIPPED 2026-07-21 (commit f532b4d)
+**AS-BUILT (2026-07-21):** The terminology-alignment discussion (grounded in a 387-turn / 11-project raw-log audit → the two "pause" intents, plus two live misfires caught during the feature itself) settled the vocabulary and delivered beyond the original disambiguation-first stub. **Renamed 3 session skills** (history-preserving `git mv`, S-IDs unchanged): `session-pause`→`session-handoff`, `session-resume`→`session-restore` (kills the built-in `/resume` collision), `session-store-learning`→`session-capture` (kills the `/re**stor**e` fuzzy-collision). Added a turn-vs-session-boundary disambiguation table + a **CONTEXTUAL agent-side guard** (auto-chain the handoff at a clean workflow boundary; confirm only on mid-workflow ambiguity — keyed on workflow position, not a universal confirm) to `session-handoff/SKILL.md`, all 4 orchestrator AGENTS.md, and a new `## Session vocabulary — turn vs. session boundary (GLOBAL)` rule in `CLAUDE.snippet.md` (+ a `CLAUDE.md` pointer). Load-bearing lesson pinned: **the harness fuzzy-matcher searches DESCRIPTIONS, not just names** (reframed incident-mitigate/session-handoff/session-reflect descriptions so only `session-restore` matches "restor"). Also codified the `/resume`-is-turn-level anti-trigger (going-offline family) after a live misfire. `/project-handoff` reserved for the cross-repo analogue. `tests/check-structure.sh` [Phase 17] (14 pins, 452/0) + 2 behavioral scenarios (S26/S27, execution deferred on the known `--id` harness bug). 3 SURFACEs logged (install.sh orphan-prune ×; `--id` parse-all escalated). Resolves `SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY`.
 **Description:** AD-4 — pure prompt-convention. Reserve bare "pause" for course-correction; require explicit `/session-pause` (or a distinct phrase) for the skill; orchestrator confirms intent when ambiguous. Edit the relevant orchestrator `agents/*/AGENTS.md` + `session-pause`/`session-resume` SKILL.md prose; add a behavioral scenario for the ambiguous-input case. Honor the state-machine-in-three-places sync rule only if any transition prose changes (expected: none — behavior within existing states).
 **Milestone:** 9 · **Dependencies:** none (independent) · **Size:** S (implementation) — **terminology-alignment discussion required first (see REFRAME above)**
 **Likely shape:** terminology-alignment discussion → then a small feature or task. The vocabulary (and how it reads to a new user) must be agreed before planning.

@@ -477,12 +477,18 @@ scenarios:
       # The going-offline family ("I need to go", "I'll /resume later") reads superficially like a
       # future-session cue but is TURN-LEVEL HOLD — /resume (built-in, continues THIS turn) ≠
       # /session-restore. The skill must stop immediately and NOT write .session.md. This is the
-      # SECOND confirmed live misfire (2026-07-21). SOFT_PASS on turn-level recognition; not_contains
+      # SECOND confirmed live misfire (2026-07-21). SOFT_PASS on turn-level RECOGNITION; not_contains
       # guards the false-positive handoff.
+      #
+      # NB (review-quality MAJOR, 2026-07-21): the positive tokens must NOT be input-echoable — the
+      # args literally say "I'll /resume later", so a bare "/resume" alternative would SOFT_PASS on a
+      # model that merely quotes the operator back ("you said you'll /resume later") without proving it
+      # RECOGNIZED the going-offline family as turn-level. All tokens below are non-echoing: they only
+      # appear if the model actually classified the intent as turn-level / declined the handoff.
       contains_any:
         - "turn-level"
         - "just stop"
-        - "/resume"
+        - "continue this turn"
         - "won't write"
         - "not writing"
       not_contains:

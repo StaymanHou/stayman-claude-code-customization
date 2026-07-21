@@ -157,8 +157,8 @@ updated: 2026-07-21
 - Works invoked directly from a shell with Claudesk not present
 - Canonical install-instruction copy + commands captured for the return contract
 
-### Milestone 9: Disambiguate "pause" (course-correct vs. `/session-pause`)
-**Origin:** SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY
+### Milestone 9: Disambiguate "pause" (course-correct vs. `/session-pause`) ✅ SHIPPED 2026-07-21 (WP5, commit f532b4d)
+**Origin:** SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY (resolved)
 **Goal:** Remove the overloaded meaning of the bare word "pause" so the orchestrator never drops a wanted `session-pause` nor writes a `.session.md` when the operator only meant "stop and reconsider."
 **Deliverables:**
 - Orchestrator/skill prompt updates that reserve bare "pause" for course-correction and require explicit `/session-pause` (or a distinct phrase) for the skill — or an intent-confirm when the word is ambiguous

@@ -1,7 +1,7 @@
 # Feature: WP5 — Disambiguate "pause" (session-handoff / session-restore rename + turn-level reservation + agent-side guard)
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** COMPLETED 2026-07-21 (commit f532b4d shipped; finalized)
 **Created:** 2026-07-21
 **Milestone:** WP5 / Milestone 9 (Claudesk Handoff Cycle)
 **drive_mode:** autopilot
@@ -74,14 +74,45 @@ The bare word "pause" is overloaded across the workflow system: sometimes the op
   - [x] verify-auto/self/human/codify — N/A as a separate loop: Phase 3 is ABSORBED into Phase 2 (its P3.1 scenarios + P3.2 pins + P3.3 runs were completed under Phase 2's own verify-codify). No separate verification gate; inherits Phase 2's green (452/0).  <!-- status: complete (absorbed) -->
 
 ## Current Node
-- **Path:** Feature > verify-codify COMPLETE → ship (F16, all phases done)
-- **Active scope:** none — Phases 1 & 2 complete (Phase 3 absorbed into Phase 2). All impl + verify-auto/self/human/codify green. check-structure 452/0. Next: /feature-ship.
+- **Path:** Feature > FINALIZED (F19 → reflect). Shipped f532b4d + finalized 755946a (both local, NOT pushed; 20 ahead of origin/main). Archived. WBS 6/8 (WP7+WP8 remain).
+- **Active scope:** none — code-quality review done (0 CRITICAL, 1 MAJOR + 1 MINOR both FIXED in-place, 1 MINOR no-action). check-structure 452/0. Review edits (S27 echo-leak fix + WIP review section) uncommitted → finalize sweeps them. Next: /feature-finalize.
 - **Blocked:** none
-- **Unvisited:** ship → review-quality → finalize (finalize resolves+deletes SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY, resyncs product docs, appends CHANGELOG, archives WIP)
-- **Open discoveries:** SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE (medium — fired 3× this feature)
-- **Blocked:** none
-- **Unvisited:** Phase 2 (P2.3 CLAUDE.snippet.md GLOBAL rule + CLAUDE.md pointer — P2.1/P2.2 already done in Phase 1), Phase 3 (tests/scenarios/pins) — in that execution order
-- **Open discoveries:** SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE (install.sh additive-only; medium; note-and-continue)
+- **Unvisited:** review-quality → finalize (finalize resolves+deletes SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY, resyncs product docs, appends CHANGELOG, archives WIP). Stray pre-existing symlink `my-claude-code-customization` left untracked (not mine — flag at finalize).
+- **Ship state:** ship (complete) — feat commit f532b4d
+- **Open discoveries:** SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE (medium — fired 3× this feature); SURFACE-2026-07-15 escalated low→medium (--id parse-all blocked behavioral run)
+
+## Code-Quality Review — wp5-disambiguate-pause
+
+**Reviewer:** code-quality-reviewer subagent against ship commit f532b4d. **Verdict: 0 CRITICAL, 1 MAJOR, 2 MINOR.** Advisory; drive_mode=autopilot.
+
+### Strengths
+- Vocabulary stated identically across all 6 prose surfaces (session-handoff/SKILL.md + 4 AGENTS.md + CLAUDE.snippet.md); guard prose byte-identical across the 4 orchestrators — no drift channel.
+- Both live misfires (mid-work "defer"/"pause"; "/resume later" going-offline) encoded as dedicated regression scenarios (S26/S27), both following the prompt-leakage lesson (neutral args, no rule-recital).
+- Phase-17 anti-regression pin well-designed: old-name leakage guard (Phase-15-style exclusions) + a *mechanical* description-collision guard (scans every skill frontmatter so only session-restore matches "restor") — makes the "fuzzy-matcher searches descriptions" insight enforceable, not aspirational.
+- Contextual-guard framing (workflow-position-keyed) is sharper than blanket always-confirm; the operator-correction rationale is pinned so a regression to always-confirm fails a test.
+- Snippet content-discipline respected: only the durable GLOBAL convention landed; install.sh orphan-prune mechanics SURFACEd, not baked in.
+
+### Issues
+**CRITICAL** — (none)
+
+**MAJOR**
+- [tests/scenarios/session.yaml S27:485] `contains_any` included the bare token `"/resume"`, but the scenario's args literally say "I'll /resume later" — a model merely echoing the operator ("you said you'll /resume later") would SOFT_PASS without proving it *recognized* the going-offline family as turn-level. Echo-leak on the assertion side (same class as the prompt-leakage lesson). **→ FIXED IN-PLACE (2026-07-21):** dropped `"/resume"`, added non-echoable `"continue this turn"`; all 5 positive tokens now only appear if the model actually classified turn-level. NOT backlogged — resolved now (trivial one-line fix in a file this feature authored; the pin is the only current guarantee since behavioral run is deferred, so a weak assertion was worth fixing immediately).
+
+**MINOR**
+- [WIP ## Current Node] Duplicate/stale pointer triple (old mid-Phase-2 Blocked/Unvisited stacked under the post-ship one). **→ FIXED IN-PLACE (2026-07-21):** rewrote Current Node to a single authoritative block.
+- [tests/scenarios/session.yaml S26/S27] Behavioral scenarios committed with execution deferred on the known `--id` parse-all harness bug — structurally validated only, latent until the next full `run-all.sh` sweep. NOT a defect of this feature; honestly disclosed + backlog escalated low→medium. **No action** (Phase-17 pins carry the regression guarantee meanwhile).
+
+### Assessment
+Well-built prose/convention feature. Mechanically thorough sweep (~13 old-name refs across skills/agents/transitions/tests/CLAUDE, S-IDs held stable). Cross-surface consistency — which this kind of feature lives or dies on — is clean; the disambiguation rule reads without contradiction across all 6 surfaces, and the snippet heading matches its pin anchor. Advances the codebase (the fuzzy-matcher insight is now a mechanical guard, not a comment; the orphan-prune gap was surfaced not hacked). Only substantive concern was testing rigor (S27 echo-leak + deferred run), both now addressed (MAJOR fixed in-place; deferred-run backlogged). No CRITICAL; not ship-blocking.
+
+### If you disagree
+Operator: dismiss any finding by editing this section and marking the line `[DISMISSED]` before finalize archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** The disambiguation surface was **wider and subtler** than the plan assumed. (1) The plan targeted 2 skills (session-pause/resume); the real fix touched 3 (session-store-learning collided with `/restore` too). (2) The fuzzy-matcher searches **descriptions, not just names** — a discovery made live (incident-mitigate's "restore service" out-ranked session-restore). (3) The agent-side guard is **contextual (workflow-position-keyed)**, not a universal confirm — the operator corrected the too-broad first version. (4) `/resume` (built-in) is **turn-level**, pairing with HOLD, not session-restore — I had this backwards and it caused a live misfire.
+- **Assumptions that held:** The rename itself was mechanically clean (history-preserving `git mv`, S-IDs stable, grep-driven sweep). The structural-pin-as-regression-guarantee approach held (452/0). The WP6 "one word, two costs, confirm-before-expensive" pattern transferred as predicted.
+- **Assumptions that were wrong:** (a) "2 skills, 13 files" — actually 3 skills, ~27 files. (b) "the rename is the work" — the *behavioral guard's semantics* were the hard part, refined twice by operator correction. (c) I assumed the original rename sweep covered tests/ — it missed them for the handoff/restore rename (caught by verify-self subagent). (d) I twice mis-classified a turn-level intent ("I'll /resume later") as a session handoff — the exact misfire class this feature exists to prevent, ironically committed during the feature.
+- **Approach delta:** Plan had 3 phases (rename / behavioral / tests); in practice P2.1/P2.2 folded into Phase 1 and Phase 3 absorbed into Phase 2's verify-codify. Two F12 back-loops (the session-store-learning collision; not a back-loop but two in-verify-human corrections). The two live misfires became S26/S27 regression scenarios. Behavioral scenario execution deferred on a harness bug (structural pins carry the guarantee). Net: same deliverable, more iterations than a mechanical rename would suggest — because the vocabulary + guard semantics were the real work, exactly as the WBS REFRAME predicted ("the design conversation is the real cost").
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>

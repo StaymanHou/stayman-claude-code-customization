@@ -138,18 +138,7 @@ Buried 2026-06-12:
 
 ## Inbound from Claudesk (handoff 2026-07-20 — not yet triaged into TODO order)
 
-> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding. **UPDATE 2026-07-21: #2 folder-unify (Milestone 7) + #1 uninstall (Milestone 8) + #3/#4 research-collision (Milestone 10) SHIPPED** — their SURFACEs (CLAUDESK-UNIFY-DOC-FOLDERS, CLAUDESK-STANDALONE-UNINSTALL, CLAUDESK-RESEARCH-SKILL-COLLISION) are resolved + deleted per delete-on-resolve; see CHANGELOG. The remaining 2 (pause = WP5/M9, onboarding = WP7/M11) are still open below.
-
-## SURFACE-2026-07-20-CLAUDESK-PAUSE-AMBIGUITY
-- **Source:** Claudesk handoff 2026-07-20 (operator-observed).
-- **Target level:** skill/orchestrator prompts.
-- **Type:** ambiguity / correctness (wrong-intent risk).
-- **Summary:** The bare word "pause" is overloaded: sometimes the operator means *interrupt/course-correct the current work mid-flight*, other times *invoke the `session-pause` skill*. Disambiguate in the orchestrator/skill prompts — e.g. reserve bare "pause" for course-correction and require explicit `/session-pause` (or a distinct phrase) for the skill, or have the orchestrator confirm intent when the word is ambiguous.
-- **Context:** A misfire either drops a session-pause the operator wanted, or writes a `.session.md` when they only meant "stop and reconsider." Lives in this repo's prompts, not Claudesk.
-- **Priority:** medium (small, independent; can run in parallel).
-- **Status:** pending (inbound; not yet ordered).
-
-- **Status:** pending (inbound; not yet ordered).
+> These five SURFACEs were handed over by the **Claudesk** project (`/Users/stayman/Personal/projects/claudesk`) as this repo's part of the "secondary non-workflow user" work — see [`HANDOFF-from-claudesk-2026-07-20.md`](../HANDOFF-from-claudesk-2026-07-20.md) at this repo's root for full context, the cross-repo split, suggested sequencing, and the return contract. Claudesk gates all its workflow-coupled UI behind an opt-in with a one-time evangelistic invite + onboarding; that made these skill-system-owned items load-bearing. **Claudesk's M10.9 (gate + rich invite) is scheduled AFTER this repo ships these** — so triage + address them, then send the canonical install copy / settled folder layout / onboarding flow back to Claudesk. Suggested order (refine at your next `/product-roadmap`): #2 folder-unify → #1 install/uninstall → #3/#4 disambiguation → #5 onboarding. **UPDATE 2026-07-21: #2 folder-unify (Milestone 7) + #1 uninstall (Milestone 8) + #3/#4 research-collision (Milestone 10) + #? pause-disambiguation (Milestone 9, WP5) SHIPPED** — their SURFACEs (CLAUDESK-UNIFY-DOC-FOLDERS, CLAUDESK-STANDALONE-UNINSTALL, CLAUDESK-RESEARCH-SKILL-COLLISION, CLAUDESK-PAUSE-AMBIGUITY) are resolved + deleted per delete-on-resolve; see CHANGELOG. The remaining 1 (onboarding = WP7/M11) is still open below.
 
 ## SURFACE-2026-07-20-CLAUDESK-ONBOARDING-DESIGN
 - **Source:** Claudesk handoff 2026-07-20.

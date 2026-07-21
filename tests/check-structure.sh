@@ -2280,10 +2280,16 @@ grep_check "session-capture SKILL.md name frontmatter" "skills/session-capture/S
 
 # (b) anti-regression: old names never reappear in LIVE machinery.
 # Exclusions mirror Phase 15: frozen tests/sessions/*.jsonl, check-structure.sh self,
-# and the intentional CLAUDE.md migration notes (which literally say "renamed from …").
+# and intentional rename/migration DESCRIPTIONS. Two forms count as a description:
+#  (1) prose markers — "renamed from …", "renamed session…", "Skill renamed", "legacy",
+#      the strip-pause-footer task name;
+#  (2) the rename-ARROW form — an old name immediately followed by the → arrow pointing
+#      at its new name (e.g. `session-pause`→`session-handoff`), which is unambiguously a
+#      "this documents the rename" line, not a live reference to the old skill.
 old_session_names=$( (grep -rnE 'session-pause|session-resume|session-store-learning' skills/ agents/ tests/ CLAUDE.md CLAUDE.snippet.md 2>/dev/null || true) \
   | grep -vE 'tests/results/|tests/sessions/[^:]*\.jsonl|tests/check-structure\.sh' \
-  | grep -viE 'renamed from|renamed session|Skill renamed|strip-pause-footer|legacy' || true )
+  | grep -viE 'renamed from|renamed session|Skill renamed|strip-pause-footer|legacy' \
+  | grep -vE 'session-(pause|resume|store-learning)`?→' || true )
 old_names_count=$(printf '%s' "$old_session_names" | grep -c . || true)
 if [ "$old_names_count" -eq 0 ]; then
   check "no old session-skill name (session-pause|resume|store-learning) in live machinery" "pass"
