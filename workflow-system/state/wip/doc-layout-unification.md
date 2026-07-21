@@ -1,7 +1,7 @@
 # Feature: Doc-layout unification (M7 / WP1 decision-probe → WP2 sweep → WP3-M7 resync)
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** ship (complete)
 **Created:** 2026-07-21
 **Entry:** spec (complex feature — L-sized 59-file sweep + cross-project migration)
 **Milestone:** 7 (Claudesk Handoff Cycle)
@@ -231,8 +231,8 @@ workflow-system/product/*.md  +  workflow-system/product/*wbs*.md  +  workflow-s
   - [x] verify-codify  <!-- status: DONE — the arch as-built + return contract are documentation deliverables; check-structure.sh Phase 15 (already shipped) locks the layout convention. No behavioral test applies to a prose resync. -->
 
 ## Current Node
-- **Path:** Feature > ship (all 3 phases complete)
-- **Active scope:** ship — all phases done, ready for final checks + push decision.
+- **Path:** Feature > ship (COMPLETE) → review-quality
+- **Active scope:** SHIPPED (local commits, not pushed — operator's call). Next: review-quality (F38).
 - **Blocked:** none
 - **Unvisited:** ship → review-quality → finalize.
 - **Open discoveries:** (1) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS (medium — category-A live-prose in moved product docs; arch.md's own refs handled in P3.1, the rest is follow-up); (2) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent); (3) operational learning: migrate-doc-layout should write its backup outside the repo (loop-ordering footgun).
