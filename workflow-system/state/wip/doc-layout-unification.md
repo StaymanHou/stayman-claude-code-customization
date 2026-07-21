@@ -130,7 +130,7 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
 
 ## Work Tree
 
-- [ ] Phase 1: WP2a — Source sweep (move this repo's dirs + rewrite all path references)  <!-- status: in-progress; impl done, verify pending -->
+- [x] Phase 1: WP2a — Source sweep (move this repo's dirs + rewrite all path references)  <!-- status: COMPLETE — all impl + verify-auto/self/human/codify done; committed 6fedeb5 + b455657 -->
   **Observable outcomes:**
   - CLI: `ls -d workflow-system/product workflow-system/state` exits 0; `ls -d docs/product workflow` exits non-zero (old dirs gone).
   - CLI: `git log --follow --oneline workflow-system/product/arch.md | wc -l` > 1 (history preserved through the `git mv`).
@@ -150,9 +150,11 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
     - [x] P1.verify-human.1 Operator eyeballed the new top-level layout — approved  <!-- status: done -->
     - [x] P1.verify-human.2 Operator confirmed sweep exclusions correct (frozen jsonl + gitignored results intentionally on old paths)  <!-- status: done -->
     - [x] P1.verify-human.3 Operator OK'd committing the Phase-1 sweep now, atomic commit  <!-- status: done -->
-  - [ ] verify-codify  <!-- status: in-progress — structural pin DONE (Phase 15, 420/0); behavioral session-suite running in bg -->
+  - [x] verify-codify  <!-- status: done — structural pin (420/0) + behavioral suite run; 3 fails proven independent of rename + SURFACED, not blocking -->
     - [x] verify-codify.1 Structural regression lock: check-structure.sh Phase 15 (4 pins) — asserts NO stale docs/product|workflow/<child> reappears + both unified roots stay referenced. 420/0. Caught 8 self-match false-positives on first write → triaged (obsolete-test, high-conf) → excluded check-structure.sh from its own grep.  <!-- status: done -->
-    - [ ] verify-codify.2 Behavioral highest-level test: full session-group suite (31 scenarios, fresh-subprocess) — running in bg (id ba3ldcv7g)  <!-- status: in-progress -->
+    - [x] verify-codify.2 Behavioral highest-level test: full session-group suite (31 scenarios) ran (14 PASS, 12 SOFT_PASS, 3 FAIL, 2 FLAKY). All 3 FAIL (S2/S3/S12) PROVEN independent of the rename (byte-identical scenario blocks + 100%-path-substitution SKILL.md diff) → triaged + SURFACED (2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY), NOT blocking. S3 flaky→passed on sonnet retry.  <!-- status: done -->
+    - [x] verify-codify.3 SCOPE discovery: moved product-docs' internal refs (category A live-prose vs B historical) → SURFACED (2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS, medium) for operator decision / WP3-M7 fold-in. NOT auto-swept (needs per-ref judgment).  <!-- status: done -->
+
 
 - [ ] Phase 2: WP2b — Migration tool + gated cross-project run  <!-- status: NOT-STARTED; depends on Phase 1 -->
   **Observable outcomes:**
@@ -185,12 +187,22 @@ Swept `~/Personal/projects` **and** `~/Work/Kenosis` (belt-and-suspenders: dirs 
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 
 ## Current Node
-- **Path:** Feature > Phase 1 (WP2a) > verify-codify
-- **Active scope:** verify-codify (add regression coverage locking the new layout; run full behavioral gate)
+- **Path:** Feature > Phase 2 (WP2b) > P2.1
+- **Active scope:** Phase 1 COMPLETE. Phase 2 = build the migration tool (P2.1→P2.4), then the P2.5 operator-ping gate, then the cross-project run (P2.6).
 - **Blocked:** none
-- **Unvisited:** Phase 1 verify-codify → Phase 2 (P2.1→P2.6 + verify group, P2.5 is an operator-ping coordination pause) → Phase 3 (P3.1→P3.2 + verify group)
-- **Open discoveries:** WP2b operator-coordination ping for in-flight projects (Phase 2 gate)
-- **Phase-1 sweep committed** (operator-approved atomic commit 2026-07-21). verify-human approved 3/3.
+- **Unvisited:** Phase 2 (P2.1 scaffold → P2.2 implement → P2.3 test suite → P2.4 README → **P2.5 OPERATOR PING gate** → P2.6 cross-project run) + verify group → Phase 3 (P3.1→P3.2 + verify group)
+- **Open discoveries:** (1) WP2b P2.5 operator ping before touching in-flight projects (#4 neo-stayman ALREADY paused by operator, #7 GNIE commit-first); (2) SURFACE-2026-07-21-MOVED-PRODUCT-DOCS-INTERNAL-PATH-REFS — category-A live-prose refs in moved product docs, fold into WP3-M7; (3) SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (low, independent).
+- **Phase-1 fully complete + committed** (6fedeb5 sweep + b455657 lock). verify: auto 420/0, self 6/6, human 3/3, codify (structural lock + behavioral suite, 3 fails proven-independent + surfaced).
+
+## Test Triage — session-suite S2 / S3 / S12 (verify-codify behavioral run)
+Classification: Pre-existing scenario fragility (S2 routing-fork wobble, S12 not_contains_strict fragility), independent of this feature. S3 was flaky (passed on sonnet retry). NONE is a regression from the rename.
+Confidence: high
+Evidence — DEFINITIVE causal exoneration:
+  (1) Feature is pure path-substitution; a rename cannot change WHICH transition ID the model emits.
+  (2) S2/S3/S12 scenario blocks are BYTE-IDENTICAL pre-sweep (7210bf7) vs HEAD — sweep did not touch their assertions.
+  (3) **The full `git diff 7210bf7 HEAD -- skills/session-start/SKILL.md` (the skill these scenarios exercise) is 100% path-string substitutions** (docs/product→workflow-system/product, workflow/x→workflow-system/state) — ZERO changes to routing logic, classification prose, pause-policy behavior, or the not_contains trigger phrases. The sweep provably cannot cause S2's misclassification or S12's auto-chain-phrase trip.
+  (4) Haiku run: S2→S10, S3→S1, S12 strict-trip. Sonnet re-run: **S3 PASSED** (flaky confirmed), S2 still→S5 (routing wobble persists across models = genuine scenario ambiguity, docs/lessons/test-scenario-routing-forks.md), S12 still strict-trips on `/feature-verify-codify`+`auto-chain` (the documented not_contains_strict fragility — informational phrase in benign pause-explanation reasoning, docs/lessons/test-scenario-strict-mode.md).
+Action: NOT fixed here (session-orchestrator scenario fragility is out of scope for a doc-layout rename) and does NOT block Phase-1 verify-codify. SURFACED to backlog as SURFACE-2026-07-21-SESSION-SCENARIO-S2-S12-FRAGILITY (task:plan, low) for independent follow-up. Do NOT auto-tag model:sonnet (S2/S12 fail on sonnet too — tagging would mask, not fix).
 
 ## Test Triage — Phase 15 "no stale docs/product path" (verify-codify)
 Classification: Obsolete test — the check as first written was self-matching (its own descriptive comments + the `grep -rnE 'docs/product'` pattern literal live inside check-structure.sh, which the check greps).
@@ -202,6 +214,7 @@ Action: exclude check-structure.sh from its own docs/product grep (the check gua
 <!-- Format: [SURFACED-<date>] <target node> — <summary> -->
 - [SURFACED-2026-07-21] WP2 sweep — "workflow" is overloaded 803 bare-word vs 343 path occurrences; sweep MUST be path-anchored (trailing-slash / known-child match), never word-level. Highest-risk item in M7. Logged here so WP2 inherits it as a hard rule.
 - [SURFACED-2026-07-21] P1.2 false-positive classes CAUGHT by the anchored sweep (each would have been corrupted by a naive `s/workflow/…/`): (1) `-workflow/AGENTS.md` = tail of `agents/<x>-workflow/AGENTS.md` orchestrator-file refs (NOT the state dir); (2) `workflow/state` in feature-research prose ("source workflow/state"); (3) `workflow/process`, `workflow/agent` = session-reflect DROP-gate prose. All excluded from rewrite. Confirms the path-anchoring rule was load-bearing, not theoretical.
+- [SURFACED-2026-07-21] **SCOPE DISCOVERY (operator decision needed) — the MOVED dirs' own internal contents were NOT in the 58-file sweep** (they moved wholesale via git mv; only *external* references were rewritten). `workflow-system/state/` internal contents = 0 stale refs (clean). But `workflow-system/product/` has 6 docs with internal `docs/product/|workflow/` refs (transitions 11, arch 18, research 12, vision 4, roadmap 3) — a **MIX** requiring per-ref human judgment, NOT a mechanical sweep: (A) LIVE operational prose describing *current* behavior → SHOULD update (e.g. vision.md "state lives in `workflow/wip/`", transitions.md "log to `workflow/backlog.md`"); (B) HISTORICAL/subject-matter refs that MUST NOT be rewritten — rewriting falsifies the record (arch.md AD-1 migration mapping "`docs/product/*` → `workflow-system/product/`"; research.md Option-A/blast-radius table; roadmap M7 goal; the CLAUDESK-UNIFY SURFACE — all describe the OLD layout as the problem-being-solved). Autopilot deliberately did NOT auto-resolve this — paused to operator. See the two backlog SURFACEs.
 - [SURFACED-2026-07-21] P1.5 sweep EXCLUSIONS (scope decision): `tests/results/*.json` (gitignored, regenerable test output) and `tests/sessions/*.jsonl` (a Tier-2-audited FROZEN historical session capture — its commit msg says "abandon single-shot replay harness"; nothing consumes it; rewriting would falsify the 2026-05-16 record + invalidate the AUDIT-LOG.md signoff). Both correctly left on old paths.
 - [SURFACED-2026-07-21] P1.5 harness half-migration BUG caught + fixed: `tests/run-tests.sh:178` `mkdir`'d `$tmpdir/docs/product` but line 210 (swept) copies fixtures into `$tmpdir/workflow-system/product/` — the mkdir was updated to match. Prose dir-name residues (4 in CLAUDE.md/CLAUDE.snippet.md that the trailing-slash-anchored pattern skipped) also hand-fixed.
 - [SURFACED-2026-07-21] WP2b cross-project run — operator is actively working in `neo-stayman-assistant` (#4) concurrently. **Before WP2b migrates ANY project, ping the operator to pause/commit in-flight projects (#4 neo-stayman, #7 GNIE).** WP2b is gated behind WP2a + the tool build, so this coordination pause happens later, not now — operator does NOT need to stop work yet. Reinforces the per-project pre-risky-action rule in D4.
