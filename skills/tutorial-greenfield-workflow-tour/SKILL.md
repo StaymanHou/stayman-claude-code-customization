@@ -19,16 +19,18 @@ and lose the plot — this gives me structure on a blank page."*
 **`tutorial-*` — a standalone onboarding skill (greenfield arm).** Like the rest of the family, it
 **owns no workflow state** and **emits no transition** — no `F`/`I`/`T`/`P`/`S` token, no `DEBUG-*`
 token, no `RETURN-TO:`. It is invoked **inline** by `tutorial-getting-started` after the user picks
-the "new project" path; it does not return control to the dispatcher (the two paths diverge and
-stay diverged). Minimal frontmatter (`name` / `description` / `argument-hint`); no `skills:` list,
-no `tools:` key. See `workflow-system/product/onboarding-flow-spec.md` for the design contract.
+the "new project" path; it **runs the tour to its close** — the dispatcher is not resumed for further
+steps (the two paths diverge and stay diverged). Minimal frontmatter (`name` / `description` /
+`argument-hint`); no `skills:` list, no `tools:` key. See
+`workflow-system/product/onboarding-flow-spec.md` for the design contract.
 
 ## Framing (inherited — keep it honest)
 
 `tutorial-getting-started` already set the honest expectation (a real, guided **~10–15 minute** run,
-not a scripted demo reel, and the user should already be in **accept-edits** mode). You don't need
-to repeat all of it — but keep every beat honest: when you say "watch it check the running code,"
-**actually run and check it**. **Never** compress the promise into a "quick 5-minute" claim.
+not a scripted demo reel, and the user should already be in **`auto`** permission mode if it's
+available to them — see the dispatcher's Step 1). You don't need to repeat all of it — but keep every
+beat honest: when you say "watch it check the running code," **actually run and check it**. **Never**
+compress the promise into a "quick 5-minute" claim.
 
 ## The environment — a tiny runnable sample (from WP7c)
 
@@ -59,8 +61,11 @@ invocations.
 
 Drive these beats in order. Beat disposition per spec §7 is annotated on each — **STAGED** beats are
 guaranteed and you engineer them; **BEAT** beats occur naturally along the work thread (just don't
-skip them); **FRAME** is a one-line reframe, not a scene. Keep the run in the default
-**stepping/orchestrated** cadence so the human-pause beat stays visible.
+skip them); **FRAME** is a one-line reframe, not a scene. **Run the whole tour in `stepping` drive
+mode** — the dispatcher set it deliberately and you must not change it: stepping pauses after every
+skill so the human-pause beat (Step 4) stays *visible*, which the Step-8 graduation reveal depends
+on. (This is the workflow drive mode; it is independent of the `auto` permission mode the dispatcher
+also recommended — both apply.) Do **not** switch to orchestrated/autopilot/FSD mid-tour.
 
 ### Step 1 — Frame it (beat G — FRAME)
 One line as you begin: *"You steer, the workflow keeps the plot — you'll see it pause and ask you at
@@ -94,7 +99,7 @@ exists after any step) and it's foundational — it's what makes the later hando
 Continue until the work reaches a verify gate (plan review or verify-human). **Let it pause and ask.**
 This is the trust beat. Reinforce **G** right here: *"See — it paused to ask you before moving on.
 And even here, you can redirect it. You're not watching it run away with your codebase."* Because the
-tour stays in stepping/orchestrated, this pause is *visible* — do not autopilot past it.
+tour runs in **stepping** mode, this pause is *visible* — do not autopilot past it.
 
 ### Step 5 — Grounding (STAGED — verify-self on the runnable sample)
 **This is a staged beat — engineer it.** Have the agent run the sample and observe it via
@@ -136,46 +141,67 @@ which is what keeps this beat honest for a skeptic.)
 ### Step 7 — Bookend 1: the boundary (STAGED — handoff → restore)
 **The emotional peak** — placed near the end so there's real state to lose and recover. By now the
 user has a WIP state file (from Step 3), a real check that ran (Step 5), and a backlog entry (Step
-6). That accumulated state is what makes this beat land: there is genuinely something to walk away
-from and get back.
+6). That accumulated state is what makes this beat land: there is genuinely something to reset the
+context window around and get back intact.
 
-Drive it as three scenes. Keep it in the tour's stepping/orchestrated cadence — narrate each move
-just before you make it so the user follows what's happening.
+**The primary value to sell here is context-window management** — NOT "close the laptop till
+tomorrow." The real pain this solves: a long session fills the context window, and the built-in
+`/compact` squeezes it by *summarizing the conversation* — which is exactly when the agent loses the
+plot (drops a decision, forgets the plan, starts tunnel-visioning on the last thing it saw). Handoff
+→ restore is the **curated alternative**: you deliberately reset the window to near-empty, and the
+load-bearing context (the plan, the WBS, progress, open blockers, the backlog note) comes back **not
+because it was crammed into a summary, but because it was written to disk and gets re-read fresh**.
+Cross-session continuity ("come back tomorrow") is a real *secondary* benefit — but the headline is
+"free up the window without losing the plot, better than `/compact`."
 
-**Scene 1 — pre-frame, then hand off.** Before running anything, set it up:
-> *"Here's the moment that sold me. You've got real work in flight — a plan, a check that ran, a
-> note in the backlog. Watch what happens when you have to stop. I'll hand the session off, then
-> pretend you've closed the laptop and come back tomorrow."*
+Drive it as three scenes. Keep it in the tour's **stepping** cadence — narrate each move just before
+you make it so the user follows what's happening.
+
+**Scene 1 — check the window, pre-frame, then hand off.** First, have the user *look at their current
+context usage* (the context-left indicator in the Claude Code UI) so the before/after is concrete:
+> *"Here's the moment that sold me — and it's not really about walking away, it's about your context
+> window. Glance at how much context you've got left right now; we've done real work, so it's filled
+> up. Normally you'd `/compact` to reclaim it — but `/compact` works by *summarizing our chat*, and
+> that's the exact moment the agent quietly forgets a decision or loses the thread. Watch a cleaner
+> way. I'll hand the session off, then we start completely fresh — and nothing gets lost."*
 
 Then run **`/session-handoff`**. Point at exactly what it does as it does it: it writes a small
 pointer file, `<proj-dir>/workflow-system/state/.session.md`, that records the workflow, the step,
 and the next action — and it drops a one-line marker into your WIP state file too. *"That's it —
-one tiny file. Everything it needs to bring you back is on disk, not in the model's head."*
+one tiny pointer. It doesn't copy your whole plan into itself; it points at the files on disk that
+already hold it. Everything needed to bring you back is in your project, not in the model's head."*
 
-**Scene 2 — enact the leave (no real exit needed).** You don't have to actually quit; narrate the
-boundary so the point is felt:
-> *"Now pretend this session is over — you've walked away, the context window is gone, tomorrow-you
-> starts cold with none of this conversation in memory."*
+**Scene 2 — reset the window (the real point).** This is the beat, so make it real if you can:
+> *"Now the part that matters: we throw the context window away. `/exit` this session and start a
+> brand-new one — a genuinely empty window, none of our conversation in memory. This is what you'd
+> reach for instead of `/compact` when the window's getting heavy and you don't want to risk a lossy
+> summary."*
 
-(If the user *wants* to make it real they can `/exit` and come back — but the tour works fully by
-just narrating the gap. The claim being demonstrated is that nothing depends on this conversation
-surviving.)
+(The user *can* actually `/exit` and relaunch here for the full effect — and since restore reads off
+disk, it genuinely works. If they'd rather not break the tour flow, narrating the reset makes the
+point too: the claim is that nothing depends on this conversation surviving.)
 
-**Scene 3 — restore, and show that it all came back.** Run **`/session-restore`**. Narrate what it
+**Scene 3 — restore, then check the window again.** Run **`/session-restore`**. Narrate what it
 pulls off disk: it reads that `.session.md` pointer, re-opens the WIP state file, and reconstructs
-where you were — the workflow, the step, the next action, any open blockers — *without* replaying
-the conversation. Then land the beat by tying it back to the file the user opened in Step 3:
-> *"There it is — the whole plan, the state, the next step, all back. And notice **where** it came
-> from: that same plain file you opened earlier in the tour. It didn't remember you from our chat —
-> it read your work off disk. That's why you can close the laptop mid-task and not lose the plot."*
+where you were — the workflow, the step, the next action, any open blockers — *without* replaying the
+conversation. Then land the beat two ways — the window, then the plot:
+> *"Look at your context usage now — nearly empty again, the whole window reclaimed. And yet:
+> the plan, the state, the next step, the backlog note — all back. Notice **where** it came from:
+> that same plain file you opened earlier in the tour. It didn't remember you from our chat, and it
+> didn't summarize anything — it re-read your work off disk. So it comes back with the *full* detail,
+> not a lossy compression. That's the difference from `/compact`: you reset the window to keep working
+> fast, and the agent doesn't tunnel-vision or lose the big picture, because the big picture was never
+> in the window — it's in your repo. (Same reason you can close the laptop mid-task and pick up
+> tomorrow: it's just re-reading the files.)"*
 
 This is the payoff for beat A (state-is-a-file, Step 3): because the state was always a real file,
-walking away and coming back is just re-reading it. Don't rush the reveal — for the target user
-who's lost context to a crashed or compacted session before, this is often the beat that converts.
+resetting the window — or walking away and coming back — is just re-reading it. Don't rush the
+reveal — for the target user who's watched a compacted session lose the thread, this is often the
+beat that converts.
 
 ### Step 8 — Bookend 2: the graduation, LAST + un-pushed (STAGED reveal) → close
 **Deliberately the last thing, deliberately not pushed.** The whole tour so far ran in
-stepping/orchestrated cadence precisely so the user *saw* the pause in Step 4. Only now — after
+**stepping** mode precisely so the user *saw* the pause in Step 4. Only now — after
 they've watched it pause, ask, check reality, and survive a walk-away — reveal that the pauses are
 tunable:
 
@@ -206,7 +232,9 @@ you're ready," never staged (these are delayed-gratification and would feel fake
 > something real — point it at your own repo next time with the existing-code path."*
 
 That closing line reinforces beat **G** one final time (you kept the wheel) and hands the user back
-to their real work — which is the whole value prop.
+to their real work — which is the whole value prop. **The tour ends here** — once you've delivered
+the close, there is nothing further to invoke and no transition to emit; the run is complete (see
+`## Transitions`).
 
 ## "Don't force it" (spec §7 — binding)
 

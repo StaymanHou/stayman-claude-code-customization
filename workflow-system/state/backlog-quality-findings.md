@@ -6,23 +6,16 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
-# wp7d-staged-beats-wiring — 2026-07-22
+# wp7g-tour-copy-corrections — 2026-07-22
 
-<!-- 2 MINOR findings from feature-review-quality, ship ae733ab (drive_mode=autopilot → auto-backlogged, no refactor). Both prose-polish on the tutorial-* skills. Verify each against the real text before applying (review-finding-actions-are-hypotheses). -->
+<!-- 1 MINOR from feature-review-quality (baseline a1d4c2b, drive_mode=autopilot). The other 2 review MINORs (stale acceptEdits self-references at onboarding-flow-spec.md:15 & :36) were own-session drift and FIXED inline, not backlogged. Verify against the real code before applying (review-finding-actions-are-hypotheses). -->
 
-## SURFACE-2026-07-22-QUALITY-ARM-CATEGORY-CONTROL-RETURN-SCOPE-SYMMETRY
+## SURFACE-2026-07-22-QUALITY-WP7G-STEP0-AUTO-CAVEAT-ORDERING
 - **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship ae733ab)
-- **Finding:** Both arm-skill `## Category` sections still carry the "it does not return control to the dispatcher" literal-mechanics overstatement — the SAME phrasing the consumed `SURFACE-2026-07-22-QUALITY-DISPATCHER-CONTROL-RETURN-PHRASING` finding flagged and that WP7d P2.3 softened **in the dispatcher only** (`tutorial-getting-started`). A one-shot `Skill` invocation *does* mechanically return to its caller on completion; a cold reader of the arm skill could take "does not return control" literally. Scope-symmetry gap per the repo's own "Scope-symmetry at mitigate time" convention (grep the mechanism, apply uniformly). MINOR because each arm's surrounding "the two paths diverge and stay diverged" already softens it.
-- **Suggested action (HYPOTHESIS — verify against the code):** in BOTH `skills/tutorial-greenfield-workflow-tour/SKILL.md` and `skills/tutorial-brownfield-workflow-tour/SKILL.md` Category sections, replace "it does not return control to the dispatcher" with the same divergence-semantics phrasing used in the dispatcher fix (the arm runs the tour to its close; the dispatcher is not resumed) — WITHOUT the literal control-flow claim. Verify the exact current arm-Category wording first.
-- **Pickup shape:** cheap+safe prose edit to 2 files; strong next-`/util-backlog-paydown`-sweep pickup (or fold into the operator's hands-on-tour follow-up). Extends the P2.3 fix to scope-symmetry.
-
-## SURFACE-2026-07-22-QUALITY-ARM-CLOSE-TERMINAL-ACTION-IMPLICIT
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship ae733ab)
-- **Finding:** Both arm skills' closing paragraphs hand the user "back to their real work" but neither states the terminal action explicitly (stop; emit no transition) — the run-end is only stated in the separate `## Transitions` section a reader may not reach. Low-value polish.
-- **Suggested action (HYPOTHESIS — verify):** optionally add a one-clause "the tour ends here — nothing further to invoke" at each arm's close. Verify the real closing prose first; likely bundle with the scope-symmetry fix above if that task runs.
-- **Pickup shape:** trivial cosmetic; lowest priority — fold in with the sibling MINOR or a sweep.
+- **Severity:** MINOR (feature-review-quality, baseline a1d4c2b)
+- **Finding:** `skills/tutorial-getting-started/SKILL.md` Step-0's **brownfield** branch instructs the user to `/exit` and relaunch `claude --permission-mode auto` — but auto mode, its safety framing, and (load-bearingly) the "if auto mode isn't available" availability caveat are all introduced in **Step 1**, which the user only reaches *after* relaunching + re-running the tour. A user on an older model (no auto) is told to launch with `--permission-mode auto` before being told it may be unavailable. Forward-ref "(in auto mode — see the next step)" softens it; not a correctness bug (the caveat is hit on the second pass through Step 1).
+- **Suggested action (HYPOTHESIS — verify against the code):** add a half-sentence to the Step-0 brownfield copy — e.g. "if auto isn't available to you, just launch `claude` normally; Step 1 explains" — so the availability caveat is surfaced at the point the user is first told to launch with `--permission-mode auto`. Verify the exact current Step-0 brownfield wording first.
+- **Pickup shape:** trivial copy tweak to 1 file; natural fold-in with WP7i/WP7j (which also touch the tour arms) or the operator's eventual hands-on run. Low priority.
 
 # wp7c-greenfield-onboarding-scaffold — 2026-07-22
 

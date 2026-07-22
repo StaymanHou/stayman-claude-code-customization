@@ -1,6 +1,6 @@
 ---
 name: tutorial-getting-started
-description: "First-run guided tour of the workflow system for a brand-new user. Recommends accept-edits mode, asks new-project vs. existing-code, then runs the matching hands-on walkthrough of one small real unit of work end-to-end. A narrated real run (~10-15 min), not a demo reel."
+description: "First-run guided tour of the workflow system for a brand-new user. Recommends auto permission mode (if available), asks new-project vs. existing-code, then runs the matching hands-on walkthrough of one small real unit of work end-to-end in stepping mode. A narrated real run (~10-15 min), not a demo reel."
 argument-hint: "(no arguments — just run it)"
 ---
 
@@ -49,25 +49,66 @@ real agent run, and a user who feels misled trusts the system less, not more. Ke
 
 ## Procedure
 
-### Step 1 — Recommend `accept edits` mode (universal, both paths)
+### Step 0 — Where to run this (pre-flight, before anything else)
 
-Before anything else, get the user into **accept-edits** mode so the tour can make its file changes
-without a permission prompt on every single step — while still asking before it runs any shell
-command or touches the network.
+Make sure the tour runs in the *right directory* before you set the mode — this branches by which
+path the user is about to take, so ask the new-vs-existing question (Step 2's fork) informally here
+first, or just cover both:
 
-Say to the user (this is the settled reassurance copy — deliver it close to verbatim):
+- **New project (greenfield):** **you don't need to `cd` anywhere or make an empty folder.** The
+  tour spins up its **own throwaway sample project** (a fresh disposable copy) and works inside that,
+  so nothing you do touches your real files. Just run the tour from wherever you are. Say so, so the
+  user isn't confused about "where is this happening":
+  > *"You don't need to set anything up or pick a folder — I'll create a small throwaway sample
+  > project for us to work in, so there's genuinely nothing of yours to lose."*
 
-> *"First, press **Shift+Tab** until Claude Code shows **'accept edits'** mode — that lets the tour
-> make its file changes without a prompt on every step, while still asking you before it runs any
-> shell command or touches the network. It's safe here: all work stays inside this one project
-> directory, nothing is pushed or published, and **you keep the wheel** (the workflow still pauses
-> to ask you at the decisions that matter)."*
+- **Existing code (brownfield):** the tour must run **inside your real project's root directory** so
+  the workflow operates on the right code. If this Claude Code session isn't already at your repo
+  root, have the user do this first:
+  > *"Since we'll work in your real repo: **`/exit` this session, `cd` into your project's root
+  > directory, relaunch `claude` there** (in auto mode — see the next step — e.g.
+  > `claude --permission-mode auto`), then run `/tutorial-getting-started` again. That way the tour
+  > operates on your actual codebase from the start."*
 
-**Recommend `accept edits`, NOT bypass-permissions.** These are two different modes:
-`accept edits` auto-accepts file edits but **still gates arbitrary shell commands and network
-calls**, so the "stays local" promise is honestly true. Bypass-permissions skips *all* checks and
-is meant for isolated containers — it's overkill for a tour and trains the wrong mental model. If
-the user asks, explain the distinction, but the recommendation is always `accept edits`.
+  (If the session is already at the repo root, skip the exit/relaunch — just note that's where
+  we're working.)
+
+### Step 1 — Recommend `auto` mode (universal, both paths)
+
+Before anything else, get the user into **auto** mode so the tour runs without a permission prompt
+on every single step — the tour really *runs* things (it executes the sample, writes files, hands
+off and restores), and in a more restrictive mode the user gets prompted on every shell command,
+which drowns the beats the tour is built to show.
+
+**`auto` mode is low-friction AND safe.** It lets file edits, shell commands, and network calls run
+without routine prompts, but a **classifier reviews every action** and blocks anything dangerous
+(downloading-and-running code, force-push, production deploys, mass deletion, sending secrets out,
+destructive resets). So the "you can trust it here, nothing bad escapes" reassurance stays
+**honestly true** — unlike bypass-permissions, which has *no* guardrails at all (it's for isolated
+containers, and it's the wrong mental model for a first run).
+
+Say to the user (deliver this close to verbatim):
+
+> *"First, let's put Claude Code in **auto** mode so the tour can actually run — execute the sample,
+> write files, hand off and restore — without stopping to ask you on every single step. Auto mode
+> isn't a free-for-all: a safety classifier still checks each action and blocks anything genuinely
+> dangerous (nothing gets force-pushed, deployed, or deleted out from under you). It's safe here —
+> all work stays inside this one project directory — and **you keep the wheel**: the workflow itself
+> still pauses to ask you at the decisions that matter."*
+
+**How to switch into `auto`:**
+- If your Claude Code shows **auto** in the `Shift+Tab` cycle, press **Shift+Tab** until you see it.
+- Otherwise, the reliable way is to **launch a session in auto mode**:
+  ```bash
+  claude --permission-mode auto
+  ```
+  (or set `"permissions": { "defaultMode": "auto" }` in `~/.claude/settings.json`).
+
+> **If auto mode isn't available to you** (it needs a recent model — Opus 4.6+/Sonnet 4.6+/Fable 5 —
+> and an account/provider that allows it), that's fine: just take the tour in whatever mode you have.
+> It simply means Claude Code will ask permission more often as we go — the tour still works exactly
+> the same, you'll just click **Yes** a few more times. Do **not** reach for bypass-permissions as a
+> substitute; a few extra prompts is the right tradeoff over turning off all the guardrails.
 
 Wait for the user to confirm they've switched (or to say they'd rather leave permissions as-is —
 that's fine, the tour just prompts more often).
@@ -94,10 +135,17 @@ but brownfield is **one keystroke away, not gated behind the tutorial**:
 they'd rather use — brownfield is a first-class peer. Recommend greenfield only as the reliable
 first-timer default.
 
-**Do NOT present a drive-mode menu here.** The tour deliberately runs in the default
-stepping/orchestrated cadence so the human-in-the-loop pause is *visible* later. Drive modes
-(autopilot / FSD) are revealed only at the very end, as a graduation — surfacing them now would
-invite the user to autopilot past the exact beat the tour exists to show.
+**The tour runs in `stepping` drive mode — set it, name it, do not change it.** This is the
+**workflow drive mode** (how the *workflow* chains its steps), which is distinct from the **permission
+mode** (`auto`) set in Step 1 (how *Claude Code* gates tool calls) — the two are independent and both
+apply. Stepping mode makes the workflow **pause after every skill** so the human-in-the-loop pause
+(beat B) is unmistakably *visible*. This is load-bearing: the Step-8 graduation reveal only works if
+the user actually *saw* the workflow stop and ask them.
+
+- **Do NOT present a drive-mode menu here**, and do **NOT** run the tour in orchestrated/autopilot/FSD
+  — those auto-chain steps and would skip past the exact pause the tour exists to show.
+- Drive the whole tour in **stepping** mode from here through Step 8. Drive modes (autopilot / FSD)
+  are revealed only at the very end, as a graduation.
 
 ### Step 3 — Dispatch inline to the matching arm
 

@@ -17,9 +17,10 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
   - 4s — 2026-07-21  <!-- uninstall-sh (WP4) Phase 3 verify-codify; 40/40 PASS. Runs the real install.sh+uninstall.sh against ~9 throwaway fake-$HOME sandboxes; each install is fast (~0.4s), so the whole suite lands at ~4s. `env HOME=<sandbox>` per-call isolation (SURFACE-2026-07-21-UNINSTALL-TEST-HOME-EXPORT-HAZARD). -->
 
 ## ./tests/check-structure.sh
-- **Last:** 22s (2026-07-22)
-- **Use timeout:** 93000
+- **Last:** 25s (2026-07-22)
+- **Use timeout:** 98000
 - **History:**
+  - 25s — 2026-07-22 (WP7g Phase 1 verify-auto)
   - 22s — 2026-07-22 (WP7d Phase 1 verify-auto)
   - 22s — 2026-07-22  <!-- WP7c greenfield-onboarding-scaffold Phase 2 verify-codify; 472 PASS / 0 FAIL. Edited skills/tutorial-greenfield-workflow-tour/SKILL.md (wired to scaffold). No structural-count change (472 flat), no regression. Runtime flat. -->
   - 22s — 2026-07-22  <!-- WP7c greenfield-onboarding-scaffold Phase 1 verify-codify; 472 PASS / 0 FAIL. Added tools/onboarding-scaffold/ (sample greet.sh + README, new-sample.sh scaffolder, tool README, test/run-tests.sh smoke). check-structure.sh does not pin tools/ content, count rose to 472 (unrelated Phase count drift, all green). Runtime flat. -->

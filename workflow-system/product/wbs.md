@@ -2,7 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-22
-progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ + WP7b ✅ + WP7c ✅ + WP7d ✅ (2026-07-22); WP7e pending; WP8 pending
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ (2026-07-22); walkthrough-driven expansion RATIFIED 2026-07-22 → WP7h/WP7i/WP7j pending + WP7e codifies last; WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -159,6 +159,126 @@ The standard rule details WPs for the **next milestone only**, because later mil
 - [ ] 7e.2 `check-structure.sh` structural pins (new skill sections; staged-vs-named invariants; three-places if a transition was added)
 - [ ] 7e.3 Full-group behavioral run green (subject to the `--id` harness path — now fixed by the boundary-handoff Phase 3)
 
+---
+
+> ## ✅ RATIFIED — walkthrough-driven M11 expansion (recorded 2026-07-22, operator-ratified same session)
+>
+> **Provenance:** Operator's **live hands-on tour walkthrough** (Round-2 feedback in the now-consumed
+> `tmp/wp7e-tour-walkthrough-feedback.md` lines 223–232, + Round-1 FB-1…FB-5). Verdict: *"the overarching
+> flow feels solid, but all the details need to be addressed."* The scope grew materially — this is a
+> **multi-WP expansion with the full product-cycle tour now IN M11 scope** (operator ruling). Kept in the
+> WBS (not the backlog) by operator instruction. Ratified via `AskUserQuestion` 2026-07-22; per-item
+> rulings recorded inline below.
+>
+> **Sequencing note (load-bearing):** the tour-copy/redesign corrections (WP7g, WP7i) must land **and be
+> operator-accepted via a fresh hands-on run** BEFORE WP7e freezes pins/scenarios — pins lock *accepted*
+> copy, not current copy. Revised M11 tail: **{WP7g ∥ WP7i ∥ WP7j} → hands-on acceptance → WP7e (codify)**.
+> WP7f is done. WP7h (full product-cycle tour) is now in-scope and gates M11 completion alongside WP7e.
+>
+> ### WP7f: `install.sh` recommends the tour (FB-1) ✅ SHIPPED 2026-07-22 (commit 63dc3e3, folded into the WP7g commit)
+> **Description:** Make `install.sh` the real entry point — its closing output now recommends the new
+> user run `/tutorial-getting-started` first, honest ~10–15-min framing (no "5-min" claim), §6-consistent.
+> **Milestone:** 11 · **Dependencies:** WP7b · **Size:** XS
+> **Status:** Applied this session (install.sh tail block). Not yet committed — folds into the WP7g commit.
+> - [x] 7f.1 Add the "New here? Take the guided tour" block to install.sh's final echo
+> - [x] 7f.2 README / snippet onboarding pointer — **RATIFIED YES** (operator): add a `/tutorial-getting-started` pointer to the README and/or CLAUDE.snippet onboarding surface
+>
+> ### WP7g: Tour-copy corrections before pins freeze (FB-3, FB-4, FB-5 + live items 0/6) — ✅ SHIPPED 2026-07-22 (commit 63dc3e3)
+> **AS-BUILT (2026-07-22):** Three phases. **P1** dispatcher + spec §5a/§5b: permission mode → **`auto`** (availability caveat "if auto mode is available" + `claude --permission-mode auto` launch cmd; SUPERSEDES the acceptEdits recommendation the operator never endorsed — memory `reference_claude-code-permission-modes` updated), explicit imperative **stepping** drive mode (distinct from the `auto` permission mode — stated at every site), new **Step-0 pre-flight "where to run this"** (greenfield: tour stamps its OWN throwaway copy, do NOT cd-to-empty-dir; brownfield: /exit + cd repo-root + relaunch). **P2** both arms' Step-7 handoff→restore rewrite → **context-window-management headline** + explicit `/compact` contrast + check-usage→exit→restore→check-usage demonstrable beat (mechanics-faithful: pointer references on-disk files, restore re-reads fresh, does NOT copy the plan in; cross-session "close the laptop" demoted to secondary) + explicit stepping in both arms' cadence lines (+ swept stale accept-edits→auto in both Framings). **P3** folded the 2 WP7d MINORs (arm-Category scope-symmetry: literal "does not return control to the dispatcher" → "runs the tour to its close"; + explicit terminal-action at each arm close). verify-auto=check-structure.sh 472/0; verify-self 7/7 (P1) + 5/5 (P2, incl. load-bearing honesty read) all PASS; **verify-human SKIPPED by operator override** (copy accepted from the feedback loop, NOT a fresh hands-on run → the deferred acceptance SURFACE is accepted-without-live-run, left OPEN); verify-codify=structural pins hold (full scenarios+pins = WP7e). Review-quality 0C/0MAJ/**3 MINOR** (2 stale-self-ref MINORs fixed inline; 1 Step-0 auto-caveat-ordering MINOR auto-backlogged). Prose/spec-only; no transition/state-machine change. **Does NOT complete M11** (WP7i/WP7j/WP7h/WP7e still pending).
+> **Description:** Operator-raised copy/spec corrections to the shipped `tutorial-*` copy, applied +
+> accepted via a fresh hands-on run BEFORE WP7e codifies:
+> - **Item 0 — permission mode → `auto` (SUPERSEDES acceptEdits).** The operator never endorsed
+>   `acceptEdits` (a prior-session inference in WP7a §5b); the live run flagged it prompts on every step.
+>   **Ruling: recommend `auto` mode** — classifier-gated so it's low-friction (no prompt on `greet.sh`
+>   etc.) AND keeps the "stays safe/local" reassurance honestly true (unlike bypass). Rewrite dispatcher
+>   Step 1 + spec §5b: recommend auto, **caveat "if auto mode is available"** (auto needs Opus 4.6+/
+>   Sonnet 4.6+/Fable 5 + an allowing account/provider), and **provide the `claude --permission-mode auto`
+>   launch command**. Update `reference_claude-code-permission-modes` memory (DONE this session).
+> - **FB-3 / item 6 (the load-bearing one) — handoff value-prop rewrite.** Both arms' Step-7 bookend
+>   headlines handoff→restore as cross-session "close the laptop." Real primary value: **freeing/resetting
+>   the context window WITHOUT losing load-bearing strategic context** (roadmap/WBS/progress/obstacles/
+>   relevant open backlog) — a curated, better-than-`/compact` alternative. Rewrite Step-7 pre-frame +
+>   payoff in BOTH arms to lead with context-window management + explicit `/compact` contrast; cross-session
+>   continuity becomes secondary. **Item 6 adds a concrete demonstrable beat:** have the user *check context
+>   usage → exit → new session → `/session-restore` → check usage again*, and highlight on restore that
+>   although the window was cleaned up, the WIP/WBS/big-picture details survived (agent didn't tunnel-vision).
+>   **Mechanics-faithful (§6, VERIFIED this session):** `/session-handoff` writes `.session.md` (a pointer:
+>   workflow/step/resume_skill/state_file/drive_mode + Last-completed/Next-action/Blockers/Notes) + a state-
+>   file marker; the strategic context survives because the pointer references the on-disk state files (WBS,
+>   WIP) that `/session-restore` re-reads fresh — NOT because it copies them into the pointer. Scope the copy
+>   to that honest mechanism (don't claim it "saves the whole plan into the pointer").
+> - **FB-4 / item 2 — explicit STEPPING mode.** The three skills say the ambiguous "stepping/orchestrated"
+>   and never SET/NAME a mode; the live run confirmed G1–G6 auto-chained with no checkpoints. **Ruling: the
+>   tour runs in STEPPING mode explicitly** — imperative in dispatcher Step-2 no-menu block + both arms'
+>   cadence lines + spec §5a; WP7e pins it. (Beat B's visible pause depends on it.)
+> - **FB-5 — pre-flight "where to run this" instruction.** Add one, branching by path: **brownfield** →
+>   `/exit`, `cd` to repo root, relaunch, re-run the tour (+ item-4 git safety, see WP7j); **greenfield** →
+>   **RESOLVED: clarify the disposable-copy mental model** (the tour stamps its OWN throwaway copy via
+>   `new-sample.sh`) — do NOT tell the user to cd to an empty folder (that conflicts with WP7c's shipped
+>   scaffold model). Pre-flight explains the tour makes its own scratch project.
+> **Milestone:** 11 · **Dependencies:** WP7b–WP7d · **Size:** S–M (grew from item 0 + item 6 beat)
+> **Gates:** WP7e (accepted copy before pins). **Prose/spec-only**, no transition.
+> - [x] 7g.1 Item 0: permission mode → auto (dispatcher Step 1 + spec §5b; availability caveat + launch cmd)
+> - [x] 7g.2 FB-3/item 6: handoff value-prop rewrite (both arms Step 7) — context-window-mgmt headline, `/compact` contrast, the check-usage→exit→restore→check-usage demonstrable beat; mechanics-faithful
+> - [x] 7g.3 FB-4/item 2: make STEPPING mode explicit + imperative (dispatcher + both arms + spec §5a)
+> - [x] 7g.4 FB-5: pre-flight "where to run this" (brownfield exit+cd+relaunch; greenfield clarify disposable-copy model)
+> - [x] 7g.5 Fold the two open WP7d MINORs (**RATIFIED**): `SURFACE-2026-07-22-QUALITY-ARM-CATEGORY-CONTROL-RETURN-SCOPE-SYMMETRY` + `...-CLOSE-TERMINAL-ACTION-IMPLICIT` into this copy sweep
+> - [ ] 7g.6 Operator fresh hands-on `/tutorial-getting-started` acceptance run — **SKIPPED by operator 2026-07-22** (copy accepted from the feedback loop, not a live run). The deferred acceptance SURFACE stays OPEN as accepted-without-live-run; a genuine hands-on run can still happen at any later WP or the operator's discretion.
+>
+> ### WP7h: Full product-cycle "full experience" tour + pointer (FB-2) — RATIFIED IN-SCOPE
+> **Description:** The greenfield tour keeps the product entry a deliberate *light taste*; that implies a
+> heavier counterpart. **Operator ruling: the full product-flow tour IS in M11 scope** (not a deferred
+> follow-on). Two parts: **(a)** add a **pointer note** in the greenfield arm (Step 2 and/or Step-8
+> named-at-close) to the full product-cycle tour; **(b)** design + build a new `tutorial-product-cycle-*`
+> (name TBD) tour that walks the full product lifecycle (vision → roadmap → research → arch → wbs →
+> features), honest-framing §6 preserved (this is the heavier, longer counterpart). Part (a) rides WP7g;
+> part (b) is its own sizeable build within M11.
+> **Milestone:** 11 · **Dependencies:** WP7b (light-taste arm exists) · **Size:** XS (pointer) + M–L (full tour)
+> - [ ] 7h.1 Pointer note in greenfield arm → the full-cycle tour (rides WP7g)
+> - [ ] 7h.2 Design the full product-cycle tour (name + flow + spec update) — its own `/feature-spec` or `/feature-plan`
+> - [ ] 7h.3 Build the full product-cycle tour skill + wire it; codify (scenarios + pins) with WP7e or its own codify
+>
+> ### WP7i: Richer greenfield sample skeleton + upfront project framing (items 1, 3, 5) — RATIFIED
+> **Description:** The shipped hello-world scaffold (`tools/onboarding-scaffold/sample/` = one `greet.sh`
+> + README) is **too shallow to demonstrate the workflow's value** (operator, live run). **Ruling: redesign
+> the sample now.** Keep WP7c's copy-per-run stamper (`new-sample.sh`) — the mechanism is sound and matches
+> the operator's "fixed pre-generated skeleton the tutorial copies after the vision step" idea — but replace
+> the shallow skeleton with a **richer pre-generated project skeleton** with enough real surface (a couple
+> of modules, a runnable observable, a planting-worthy authentic tangent) that planning / verify-self /
+> SURFACE land meaningfully. Plus: **explain the vision/project info UPFRONT** in the tour output before G1
+> ("here's what this sample project is / what we're building"). Plus the **replay invitation** (items 3/5):
+> both arms CLOSE with a highlighted invitation to re-run from the same starting point in **autopilot/FSD** —
+> greenfield "start over"; brownfield "stash/revert your changes, then retry." (Replay-invite tracked as its
+> own sub-WP below, WP7j, since it also carries the brownfield git-safety piece; the sample-redesign +
+> upfront-framing is WP7i proper.)
+> **Milestone:** 11 · **Dependencies:** WP7c (scaffold), WP7b (greenfield arm) · **Size:** M (touches scaffold + tests + arm copy)
+> - [ ] 7i.1 Redesign the pre-generated skeleton (richer, still no-runtime/no-deps; keep copy-per-run stamper)
+> - [ ] 7i.2 Update `new-sample.sh` + its 10-assertion smoke to the new skeleton
+> - [ ] 7i.3 Upfront "what this project is / what we're building" framing before G1 (greenfield arm)
+> - [ ] 7i.4 Re-cite the real observable + real tangent in Step 5 (grounding) + Step 6 (SURFACE) for the new skeleton
+>
+> ### WP7j: Replay invitation + brownfield git-safety (items 3, 4, 5) — RATIFIED (own small WP)
+> **Description:** Operator ruling: track the replay invitation as its **own small WP** (not folded into
+> WP7g, not a bare task). Two pieces: **(a)** both arms CLOSE (Step 8) with a highlighted invitation to
+> re-run from the same starting point in **autopilot/FSD** — greenfield "start over with a fresh copy";
+> brownfield "stash/revert your changes, then retry from the same point." **(b)** brownfield B1 pre-flight
+> **git-safety check** (item 4): if git is present, check for unstaged/uncommitted changes; recommend the
+> user commit first (or make a safe copy / use a different repo), and warn them of unexpected changes if
+> uncommitted. If no git, recommend initializing it. (This complements the WP7g FB-5 brownfield exit+cd.)
+> **Milestone:** 11 · **Dependencies:** WP7b–WP7d (arms), WP7g (stepping-mode explicit — the graduation reveal the replay invite extends) · **Size:** S
+> - [ ] 7j.1 Greenfield Step-8 replay invitation → re-run in autopilot/FSD (fresh copy)
+> - [ ] 7j.2 Brownfield Step-8 replay invitation → stash/revert + retry in autopilot/FSD
+> - [ ] 7j.3 Brownfield B1 git-safety pre-flight (uncommitted-changes check + commit/safe-copy recommendation + warning)
+>
+> **Ratified rulings log (2026-07-22):** (i) permission mode = **auto** (not acceptEdits/bypass), with
+> availability caveat + launch command; (ii) replay invite = **own small WP** (WP7j); (iii) sample =
+> **redesign now**, richer skeleton, keep copy-per-run stamper; (iv) full product-cycle tour = **in M11
+> scope** (WP7h part-b promoted); (v) README/snippet pointer = **yes** (WP7f.2); (vi) WP7d MINORs = **fold
+> into WP7g** (7g.5). M11 no longer completes at WP7e alone — it completes when {WP7g, WP7h, WP7i, WP7j}
+> land + are accepted + WP7e codifies.
+
+---
+
 **M11 sub-WP ordering (WP7a → WP7b → {WP7c ∥ WP7d} → WP7e):** spec first (WP7a fixes the name + flow every other sub-WP builds against — resolves the cheapest-to-change unknown first); then the entry skill (WP7b, the spine); WP7c (scaffold) and WP7d (bookend/graduation wiring) can proceed in parallel once the arms exist; WP7e codifies last. No probe WP (no external integration, no unknown API shapes — the "unknown" was the *design*, resolved by the brainstorm). No environment/orchestration WPs (no such surface). **AD-5 as-built resync** (deferred→built) happens at `/product-context` or finalize, not as its own WP.
 
 ### WP8: Cross-repo return contract to Claudesk (Milestone 12)
@@ -181,7 +301,7 @@ M7: WP1 (decide layout+migration) → WP2 (sweep + migrate tool + run) → WP3-M
 ```
 
 - **Critical path:** WP1 → WP2 → WP3-M7 → WP4 → **WP7a → WP7b → WP7c/WP7d → WP7e** → WP8. (WP7a's onboarding-spec gates WP8; WP4 gates WP8 on the install-copy deliverable; M7 gates WP8 on the settled-layout deliverable.)
-- **M11 internal critical path:** WP7a → WP7b → WP7e (WP7c and WP7d parallelize between WP7b and WP7e).
+- **M11 internal critical path:** WP7a → WP7b → WP7e (WP7c and WP7d parallelize between WP7b and WP7e). **Walkthrough expansion (2026-07-22):** after WP7d, the corrections/redesign track {WP7g ∥ WP7h ∥ WP7i ∥ WP7j} runs, then a fresh operator hands-on acceptance run, then WP7e codifies against the *accepted* copy. M11 completes when that whole set lands — not at WP7e alone.
 - **Parallel track:** WP5 (pause) and WP6 (research collision) — DONE (both shipped 2026-07-21).
 - **Operator pause points:** WP7.1 onboarding brainstorm — **DONE 2026-07-21** (co-design settled; `onboarding-brainstorm.md`). Remaining M11 pause points are the normal per-feature plan-review + verify-human gates as each sub-WP runs through the feature workflow. AD-1 Option A operator-ratified.
 

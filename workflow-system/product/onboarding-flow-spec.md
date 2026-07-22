@@ -12,8 +12,8 @@ updated: 2026-07-22
 > promotes the operator co-design in [`onboarding-brainstorm.md`](onboarding-brainstorm.md)
 > (2026-07-21) into a precise, buildable spec. **This is a promotion, not a revision** — every
 > settled brainstorm decision is preserved in intent; where this doc corrects the brainstorm it
-> is called out explicitly (only one place: the `acceptEdits` vs `bypassPermissions`
-> distinction in §5).
+> is called out explicitly (the permission-mode distinction in §5 — originally `acceptEdits`
+> vs `bypassPermissions`, further revised to `auto` in WP7g; see §5b).
 >
 > **Who reads it.** WP7b (entry skill) / WP7c (scaffold) / WP7d (beats-wiring) / WP7e
 > (scenarios + pins) build against this contract. **WP8** hands the Claudesk-facing part (§4)
@@ -33,7 +33,8 @@ prose is left in place for provenance with an inline pointer to this revision.
 
 1. **Three-skill family, not one skill with an internal fork.** The single-entry `workflow-tour`
    skill is replaced by a **family of three `tutorial-`-prefixed skills**:
-   - **`tutorial-getting-started`** — the entry/dispatcher. Recommends `acceptEdits`, presents the
+   - **`tutorial-getting-started`** — the entry/dispatcher. Recommends `auto` mode (revised from
+     `acceptEdits` in WP7g — see §5b), presents the
      new-vs-existing fork (greenfield recommended-default / brownfield first-class peer), then
      **invokes the chosen arm skill inline**. This is the single command Claudesk points at.
    - **`tutorial-greenfield-workflow-tour`** — the greenfield narrated-real-run arm.
@@ -111,9 +112,9 @@ through a toy tutorial** — that is the skeptic-bounce this spec is engineered 
 - **The greenfield tour is a NARRATED REAL RUN, honestly labeled** — see §6 (the honest-framing
   invariant). It drives *real* skills with *real* reasoning; it is **not** a faked/scripted demo
   reel. Each beat is **pre-framed** so the user knows what they're watching and why.
-- **The walkthrough opens (both paths) by recommending `acceptEdits` mode** with a one-line "why
-  it's safe" — see §5 (7a.4). Universal, at the start, regardless of path.
-- **The first run stays in stepping/orchestrated** so the human-pause beat (B) is **visible** —
+- **The walkthrough opens (both paths) by recommending `auto` mode (if available)** with a one-line
+  "why it's safe" — see §5b (revised 2026-07-22). Universal, at the start, regardless of path.
+- **The first run stays in stepping** so the human-pause beat (B) is **visible** —
   drive modes are revealed only at the very end as a graduation (see §3 beat 7, §6).
 
 ---
@@ -142,10 +143,10 @@ outcome to check).
 
 | # | Step | Beats fired | Staged? |
 |---|------|-------------|---------|
-| 1 | **Entry** → recommend `acceptEdits` (universal) → pick path → framing line ("you keep the wheel") | **G** (FRAME) | framing |
+| 1 | **Entry** → recommend `auto` mode, if available (universal; see §5b) → pick path → framing line ("you keep the wheel") | **G** (FRAME) | framing |
 | 2 | **Enter top-of-hierarchy:** fuzzy idea → `/product-vision` → roadmap → … (or `/session-start` classifying a smaller new feature). Light **product→feature lifecycle taste** lands here (greenfield-only). | **Hierarchy** (light taste), **Grounding**: probe-first/plan-around-real-shapes named as it occurs — *this probe-first surface is a natural **BEAT/NAMED**, NOT staged; only the verify-self surface at step 5 is the **STAGED** grounding beat (§7)* | taste |
 | 3 | **Do one small real thing** → plan becomes a **Work Tree** → open the state file: **A — it's a file you can open, and it's yours** (~free; the WIP already exists after any step). | **A** (BEAT) | natural |
-| 4 | **Hit a verify gate** → **B — it pauses and asks** (verify-human / plan review). The trust beat. Onboarding stays in stepping/orchestrated so this is visible; reinforce G here ("it paused to ask — and even here you can redirect"). | **B** (BEAT), **G** reinforce | natural (kept visible) |
+| 4 | **Hit a verify gate** → **B — it pauses and asks** (verify-human / plan review). The trust beat. Onboarding stays in stepping so this is visible; reinforce G here ("it paused to ask — and even here you can redirect"). | **B** (BEAT), **G** reinforce | natural (kept visible) |
 | 5 | **Grounding (STAGED):** agent runs the runnable scaffold, **observes** it via `verify-self`, reports **PASS/FAIL** vs an observable outcome — the user watches it **CHECK reality** instead of guessing. Pre-framed ("watch — it's about to actually run it and check the output; this is the grounding moment"). | **Grounding** (STAGED — verify-self) | **STAGED** |
 | 6 | **SURFACE (STAGED):** agent hits the planted authentic tangent → runs SURFACE → logs to backlog → continues without losing the plot. **C** = the rabbit-hole caught; backlog is C's flip side (folded in, not a separate aha). | **C** (STAGED greenfield), backlog folded into C | **STAGED** |
 | 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → full context survives. The **emotional peak**; placed near the end so there's real state to lose-and-recover. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
@@ -159,15 +160,15 @@ half-finishing things across sessions."*
 **Environment:** **bring-your-own real code — NO demo.** This path's headline aha is *strongest on
 the user's real repo* and *weakest on a seed* — a brownfield demo would reduce it to a parlor
 trick and actively weaken the strongest brownfield moment. At the vision/arch stage the work is
-read-heavy + additive (low blast radius), so BYO + `acceptEdits` is acceptable.
+read-heavy + additive (low blast radius), so BYO + `auto` mode (classifier-gated) is acceptable.
 
 | # | Step | Beats fired | Staged? |
 |---|------|-------------|---------|
-| 1 | **Entry** → recommend `acceptEdits` (universal) → pick path → framing line (G). | **G** (FRAME) | framing |
+| 1 | **Entry** → recommend `auto` mode, if available (universal; see §5b) → pick path → framing line (G). | **G** (FRAME) | framing |
 | 2 | **`/init` first** → generates a first-cut `CLAUDE.md` from the existing code. | (setup) | — |
 | 3 | **Product workflow reverse-engineers** vision / roadmap / arch from the existing code. **The headline aha:** *"it read my actual code and reconstructed the strategic layer I never wrote down."* This IS the brownfield grounding beat (reconstructs strategy from real code). | **Grounding** (brownfield headline — `/init`→reverse-engineer) | natural (the headline) |
 | 4 | **`product-context` revises** the `CLAUDE.md` that `/init` generated → durable project context now reflects the reconstructed strategy. Open the file: **A — state is a file you can open** lands here. | **A** (BEAT) | natural |
-| 5 | **Do one small real unit of work** on the real repo → plan → Work Tree → **hit a verify gate → B** (it pauses and asks). Trust beat, kept visible (stepping/orchestrated). Reinforce G. | **B** (BEAT), **G** reinforce | natural (kept visible) |
+| 5 | **Do one small real unit of work** on the real repo → plan → Work Tree → **hit a verify gate → B** (it pauses and asks). Trust beat, kept visible (stepping). Reinforce G. | **B** (BEAT), **G** reinforce | natural (kept visible) |
 | 6 | **Grounding + SURFACE = NAMED/opportunistic here** (not staged): probe-first and verify-self **fire naturally** if the real work touches an integration or a runnable surface; SURFACE is pointed-at when a tangent occurs ("when you hit a tangent, here's what SURFACE does"). | **Grounding** (NAMED), **C** (NAMED) | NAMED / opportunistic |
 | 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → context survives on the real repo. Emotional peak. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
 | 8 | **Bookend 2 — the graduation (STAGED, LAST):** reveal drive modes, un-pushed. **Close:** point at what we did NOT demo — **Hierarchy** (CUT on brownfield — too big to feel in run one) + **Reflect/Capture-learns-you** — "here's what's here when you're ready." | **Drive-modes** (STAGED reveal, LAST), **Hierarchy** (CUT/named), **Reflect** (NAMED at close) | **STAGED** reveal + NAMED close |
@@ -208,9 +209,10 @@ them would dilute both headlines.
 - **Must NOT** hardcode the **greenfield/brownfield path choice** — the path fork happens *inside*
   `tutorial-getting-started`, after entry (it dispatches to the arm skill). Claudesk does not
   pre-select a path.
-- **Must NOT** hardcode the **permission-mode instruction** — `acceptEdits` guidance is delivered by
-  the skill (§5), not by Claudesk's invite copy (so a future mode-guidance change is a one-repo
-  edit).
+- **Must NOT** hardcode the **permission-mode instruction** — permission-mode guidance (`auto`; see
+  §5b) is delivered by the skill (§5), not by Claudesk's invite copy, so a future mode-guidance change
+  is a one-repo edit. (Proven by the WP7g `acceptEdits`→`auto` change: it landed entirely in this repo,
+  no Claudesk change needed.)
 - **The ONLY stable coupling Claudesk may depend on is the command name `/tutorial-getting-started`.**
   (Updated 2026-07-22 — was `/workflow-tour`; WP8's M12 return contract communicates this name.) If
   that name ever changes, it is a return-contract change communicated back through the same channel — so
@@ -241,7 +243,7 @@ entry point itself). It drives other skills inline (a `session-start`-like exper
 itself the entry point, not a workflow state or a pulled sidebar.
 
 **No drive-mode menu at entry.** The mode-menu-encouraged util-* precedent (`util-prune-claude-md`)
-does **not** apply here: the tour deliberately runs in **stepping/orchestrated** so beat B (the
+does **not** apply here: the tour deliberately runs in **stepping** so beat B (the
 human pause) is visible. Exposing a drive-mode menu at entry would invite the user to autopilot
 past the very beat the tour is built to show.
 
@@ -273,34 +275,57 @@ signal — but the operator preferred the more evocative `workflow-tour`); `sess
 (**rejected** — the `session-` prefix invites the exact fuzzy collision with the session-* family
 that WP5 spent a milestone disambiguating, and onboarding is NOT a session meta-op).
 
-### 5b. Permission-mode recommendation + reassurance copy (7a.4) — SETTLED (operator 2026-07-22, corrected)
+### 5b. Permission-mode recommendation + reassurance copy (7a.4) — REVISED (operator 2026-07-22, WP7g)
 
-**Recommend `acceptEdits` mode — NOT `bypassPermissions`.** These are **two distinct Claude Code
-modes**; the brainstorm's "auto-accept / bypass-permissions" phrasing conflated them (operator
-correction). Confirmed against the official docs (https://code.claude.com/docs/en/permission-modes.md):
+> **⚠️ REVISED by the operator's live-walkthrough ruling (WP7g, 2026-07-22): recommend `auto`, NOT
+> `acceptEdits`.** The `acceptEdits` recommendation below was a prior-session inference the operator
+> **never endorsed**; during the hands-on tour run the operator flagged that `acceptEdits` "doesn't
+> give enough permission" — it still prompts on every shell command, so the tour (which really *runs*
+> the sample, hands off, restores) gets a prompt on nearly every beat, drowning the moments the tour
+> exists to show. **Current decision: recommend `auto`.** The superseded `acceptEdits` text is
+> retained below the revision for provenance.
 
-| Mode | File edits | Safe filesystem cmds | Arbitrary shell / network |
-|---|---|---|---|
-| **`acceptEdits`** | auto | auto | **still prompts** (gated) |
-| **`bypassPermissions`** | auto | auto | auto — skips **all** checks (circuit-breakers only) |
+**Recommend `auto` mode (if available) — NOT `acceptEdits`, NOT `bypassPermissions`.** Confirmed
+against the official docs (https://code.claude.com/docs/en/permission-modes.md):
 
-`acceptEdits` is the correct fit for a guided tour: it removes edit-prompt friction while **still
-gating arbitrary shell commands and network calls**, so the blast-radius claim ("stays local") is
-*honestly true*. `bypassPermissions` skips all gates — overkill for a tour, and it trains the wrong
-mental model (the docs note it's meant for isolated containers/VMs). **Toggle: Shift+Tab cycles
-modes; land on `acceptEdits`.**
+| Mode | File edits | Safe fs cmds | Arbitrary shell / network | Guardrails |
+|---|---|---|---|---|
+| `acceptEdits` | auto | auto | **still prompts** (gated) | — (prompts do the gating) |
+| **`auto`** | auto | auto | **auto** | **classifier reviews each action**, blocks escalations (curl\|bash, force-push, prod deploy, mass delete, secret exfil, destructive resets) |
+| `bypassPermissions` | auto | auto | auto | **none** (only `rm -rf /`\|`~` circuit-breaker) |
+
+`auto` is the right fit for a guided tour: it removes the **routine**-prompt friction on shell/network
+(which `acceptEdits` does NOT — that mode prompts on every `greet.sh` etc.) **while a classifier keeps
+the "stays safe/local" reassurance honestly true** (unlike `bypassPermissions`, which has no
+guardrails at all and trains the wrong mental model). **Availability caveat — MUST be in the copy:**
+`auto` requires a recent model (Opus 4.6+/Sonnet 4.6+/Fable 5) and an account/provider that allows it;
+if unavailable, the user takes the tour in whatever mode they have (it just prompts more often) — do
+**not** fall back to `bypassPermissions`. **Launch:** `claude --permission-mode auto` (or
+`defaultMode:"auto"` in `~/.claude/settings.json`, ignored from project settings; or Shift+Tab if
+`auto` is in the cycle).
 
 **Reassurance one-liner (universal open, both paths):**
-> *"First, press Shift+Tab until Claude Code shows 'accept edits' mode — that lets the tour make
-> its file changes without a prompt on every step, while still asking you before it runs any shell
-> command or touches the network. It's safe here: all work stays inside this one project
-> directory, nothing is pushed or published, and you keep the wheel (the workflow still pauses to
-> ask you at the decisions that matter)."*
+> *"First, let's put Claude Code in **auto** mode so the tour can actually run — execute the sample,
+> write files, hand off and restore — without stopping to ask you on every single step. Auto mode
+> isn't a free-for-all: a safety classifier still checks each action and blocks anything genuinely
+> dangerous (nothing gets force-pushed, deployed, or deleted out from under you). It's safe here —
+> all work stays inside this one project directory — and you keep the wheel: the workflow itself
+> still pauses to ask you at the decisions that matter."*
 
-The copy ties reassurance to (a) the **accurate** mode behavior (edits auto; shell/network still
-gated), (b) blast-radius containment (one dir, no push/publish), and (c) the **G** advisory-framing
+The copy ties reassurance to (a) the **accurate** `auto` behavior (routine actions auto; a classifier
+blocks the dangerous ones), (b) blast-radius containment (one dir), and (c) the **G** advisory-framing
 beat ("you keep the wheel") — so it reinforces the human-in-the-loop trust story rather than
-undercutting it.
+undercutting it. The availability caveat keeps the copy honest for users on older models.
+
+<details><summary>Superseded (2026-07-22): the earlier <code>acceptEdits</code> recommendation</summary>
+
+**Recommend `acceptEdits` mode — NOT `bypassPermissions`.** [Superseded — the operator never
+endorsed this and the live run rejected it for prompting on every shell command. `acceptEdits` auto-
+accepts file edits + safe fs cmds but **still prompts for arbitrary shell/network**, so the blast-
+radius claim was honestly true but the friction was too high for a tour that really runs things.
+Retained for provenance only; the current decision is `auto` above.]
+
+</details>
 
 ---
 
@@ -336,12 +361,12 @@ mention/point-at, never staged · **CUT** = out of first run.
 |-----|-------------|-------|
 | **Structured approach (the two paths)** | STAGED (both paths) | The core family; greenfield = structure-on-blank, brownfield = discipline-on-real. |
 | **A — State is a file you can open** | BEAT (both) | Foundational (Core Principle #1); nearly free — the WIP/state file already exists after any step. Makes handoff/restore believable. |
-| **B — Human-in-the-loop pause** (verify-human / plan review) | BEAT (both) | The trust beat + honest counterweight to drive-modes. **Keep onboarding in stepping/orchestrated so this is VISIBLE** (don't autopilot past it — would be ironic). |
+| **B — Human-in-the-loop pause** (verify-human / plan review) | BEAT (both) | The trust beat + honest counterweight to drive-modes. **Keep onboarding in stepping so this is VISIBLE** (don't autopilot past it — would be ironic). |
 | **C — SURFACE (rabbit-hole caught)** | STAGED greenfield-only; NAMED brownfield | Authentic staging needs controlled code → the greenfield scaffold. Brownfield keeps it real → C reverts to named/opportunistic there. |
 | **G — Advisory / you keep the wheel** | FRAME (both) | Anxiety-reducer for the skeptical invitee. One line in entry + reinforced at the pause. |
 | **Grounding — the workflow checks reality instead of guessing** | STAGED greenfield (verify-self); NAMED brownfield | **Epistemic-honesty aha.** Three surfaces: probe-first roadmap/WBS (plan around *documented* real API shapes); **verify-self** (agent *observes the running system* before claiming done); brownfield `/init`→reverse-engineer (reconstructs strategy from *real code*). For a skeptic burned by agents declaring broken code "done," *"it actually went and looked"* may be the strongest trust beat. **Greenfield:** stage a verify-self beat ⇒ **the scaffold MUST be runnable** (WP7c constraint). **Brownfield:** probe-first + verify-self named/opportunistic; `/init`→reverse-engineer carries the grounding headline. |
 | **Session handoff → restore** (context survival) | STAGED bookend (both) | The **emotional peak.** Near the end so there's real state to lose-and-recover. `/session-handoff` → "leave" → `/session-restore`. |
-| **Drive modes / autopilot / FSD** | STAGED graduation reveal, **LAST** | **NOT the first-run recommendation.** First walkthrough runs stepping/orchestrated so pauses are visible → THEN reveal modes, deliberately un-pushed ("not recommended yet"). Showing autopilot first would hide beat B. |
+| **Drive modes / autopilot / FSD** | STAGED graduation reveal, **LAST** | **NOT the first-run recommendation.** First walkthrough runs stepping so pauses are visible → THEN reveal modes, deliberately un-pushed ("not recommended yet"). Showing autopilot first would hide beat B. |
 | **Hierarchy (product→feature→task) as one record** | Greenfield: light taste; Brownfield: CUT | Too big to *feel* in run one; greenfield users are already at the top so a light taste lands there. Named otherwise. |
 | **Reflect / capture — system learns you** | NAMED at close (both) | Delayed-gratification (value shows next session). Great closing note; wrong as a staged beat. |
 | **Backlog as durable idea-catcher** | FOLD into C | Flip side of SURFACE, not a separate aha. |
@@ -350,7 +375,7 @@ mention/point-at, never staged · **CUT** = out of first run.
 
 Only these beats are **GUARANTEED STAGED**, because only these can be staged **authentically**:
 1. **A** — state-is-a-file (both paths; ~free)
-2. **B** — human-in-the-loop pause (both paths; kept visible by staying stepping/orchestrated)
+2. **B** — human-in-the-loop pause (both paths; kept visible by staying stepping)
 3. **Greenfield-grounding** — verify-self on the runnable scaffold (greenfield only)
 4. **Greenfield-SURFACE** — the planted authentic tangent (greenfield only)
 5. **Handoff → restore** — the emotional-peak bookend (both paths)

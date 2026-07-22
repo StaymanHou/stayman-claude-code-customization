@@ -211,3 +211,14 @@ echo '  "Read(~/.claude/**)"'
 echo '  "Edit(~/.claude/**)"'
 echo "  \"Read($SOURCE_DIR/**)\""
 echo "  \"Edit($SOURCE_DIR/**)\""
+echo
+echo "─────────────────────────────────────────────────────────────"
+echo "New here? Take the guided tour first:"
+echo
+echo "  Run  /tutorial-getting-started  in Claude Code"
+echo
+echo "It's a real, guided ~10–15 min run of the workflow on one small"
+echo "piece of work — new project or your own existing code. You'll see"
+echo "it plan, pause to ask you, check its own work, and pick back up"
+echo "where you left off. (A real run, not a demo reel.)"
+echo "─────────────────────────────────────────────────────────────"

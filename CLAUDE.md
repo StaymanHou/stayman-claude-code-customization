@@ -145,7 +145,7 @@ This repo dogfoods the product workflow but **skips `/product-context`** — the
 ## Current Phase
 
 **Active cycle:** Claudesk Handoff Cycle (Milestones 7–12) — see `workflow-system/product/wbs.md`
-**WBS progress:** 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6). M11 (WP7) decomposed into WP7a–WP7e: WP7a ✅ + WP7b ✅ + WP7c ✅ + WP7d ✅ (2026-07-22); WP7e pending. WP8 pending.
+**WBS progress:** 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6). M11 (WP7): WP7a ✅ + WP7b ✅ + WP7c ✅ + WP7d ✅ + WP7f ✅(uncommitted) (2026-07-22). **Operator's live tour walkthrough (2026-07-22) ratified a multi-WP expansion:** WP7g (copy corrections: permission mode → `auto`, handoff-value-prop rewrite, explicit stepping, pre-flight where-to-run) ∥ WP7h (full product-cycle tour — now in M11 scope) ∥ WP7i (richer greenfield sample + upfront framing) ∥ WP7j (replay invite + brownfield git-safety) → fresh hands-on acceptance → WP7e codifies last. WP8 pending.
 
 - **WP1–WP3-M7 (Milestone 7)** ✅ — Doc-layout unification (Option A physical move): `docs/product/*` → `workflow-system/product/`, `workflow/*` → `workflow-system/state/`; 58-file sweep + `tools/migrate-doc-layout/` primitive (9 projects migrated) + `check-structure.sh` Phase-15 lock
 - **WP4 (Milestone 8)** ✅ — Standalone defensive `uninstall.sh` (commit 74cbb7c): into-repo-guarded symlink removal, block-only CLAUDE.md excise, `--project`-gated memory-symlink removal, print-only settings; 45-assertion E2E harness (`tools/uninstall/test/`) + 6 dry-run-only structure pins

@@ -76,11 +76,11 @@
 - **Priority:** low
 - **Status:** open
 
-## Code-quality findings — wp7d-staged-beats-wiring (2026-07-22)
-- **Pointer:** 2 MINOR findings (feature-review-quality, ship ae733ab, drive_mode=autopilot → auto-backlogged, no refactor). (1) **scope-symmetry:** both `tutorial-{greenfield,brownfield}-workflow-tour` Category sections still carry the "does not return control to the dispatcher" literal-mechanics overstatement that WP7d P2.3 fixed in the *dispatcher* only — cheap+safe, extends the consumed DISPATCHER-CONTROL-RETURN fix to scope-symmetry; (2) both arm closes state the terminal action only in `## Transitions`, not at the close paragraph (trivial). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** low (all)
+## Code-quality findings — wp7g-tour-copy-corrections (2026-07-22)
+- **Pointer:** 1 MINOR finding (feature-review-quality, baseline a1d4c2b, drive_mode=autopilot → auto-backlogged). Step-0 brownfield pre-flight tells the user to relaunch `claude --permission-mode auto` before Step 1 introduces auto + its availability caveat — a half-sentence "if auto isn't available, launch normally" would close the ordering seam. (The other 2 review MINORs — stale acceptEdits self-refs at onboarding-flow-spec.md:15 & :36 — were own-session drift, FIXED inline, not backlogged.) Full body in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low
 - **Status:** pending
-- **Pickup shape:** finding (1) is the strong next-`/util-backlog-paydown`-or-hands-on-follow-up pickup (2-file prose edit mirroring the P2.3 divergence-semantics wording); (2) folds in with it. **Verify each against the real skill text first (review-finding-actions-are-hypotheses).**
+- **Pickup shape:** trivial 1-file copy tweak; natural fold-in with WP7i/WP7j (also touch the tour arms) or the operator's hands-on run. **Verify against the real Step-0 wording first (review-finding-actions-are-hypotheses).**
 
 ## Code-quality findings — wp7c-greenfield-onboarding-scaffold (2026-07-22)
 - **Pointer:** 1 MAJOR + 2 MINOR findings (feature-review-quality, ship 287ff86, drive_mode=autopilot → auto-backlogged). **MAJOR (medium):** `new-sample.sh` `--help` leaks script code (`sed -n '2,20p'` reads past the header comment block into `set -euo pipefail` + the `SCRIPT_DIR=`/`SRC=` assignments — reproduced; user-facing bug on a surface the tour exposes). **MINOR (low):** (1) `sample/greet.sh` planted-tangent `TODO` restates WHAT (likely NO CHANGE — it's intentional tour scaffolding, do NOT "fix" the tangent); (2) `new-sample.sh` mktemp default double-slashes when `$TMPDIR` ends in `/` (cosmetic). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
