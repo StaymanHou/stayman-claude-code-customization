@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# todo — a tiny command-line todo list for the workflow-system tour's sample project.
+#
+# Three subcommands over a plain-text store (todos.txt), one per file in lib/:
+#   ./todo add "<text>"   -> append a new unchecked item
+#   ./todo list           -> print the numbered list ("N. [ ] text" / "N. [x] text")
+#   ./todo done <index>   -> mark item <index> as checked
+#
+# Observable behavior (this is what verify-self checks):
+#   ./todo add "buy milk" && ./todo list   -> exit 0, a line reading exactly:  1. [ ] buy milk
+#
+# Run it, read the output, compare to the line above. That is the whole contract.
+# POSIX-ish bash, no dependencies; the store is a plain text file.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB="$SCRIPT_DIR/lib"
+# The store lives next to this script. Each subcommand reads/writes it.
+export TODO_STORE="${TODO_STORE:-$SCRIPT_DIR/todos.txt}"
+
+usage() {
+  cat <<'EOF'
+usage: todo <command> [args]
+
+commands:
+  add "<text>"   add a new unchecked item
+  list           print the numbered list
+  done <index>   mark item <index> as done
+
+example:
+  ./todo add "buy milk" && ./todo list   # -> 1. [ ] buy milk
+EOF
+}
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift || true
+
+case "$cmd" in
+  add)  exec "$LIB/add.sh"  "$@" ;;
+  list) exec "$LIB/list.sh" "$@" ;;
+  done) exec "$LIB/done.sh" "$@" ;;
+  ""|-h|--help|help) usage ;;
+  *) echo "todo: unknown command '$cmd'" >&2; usage >&2; exit 2 ;;
+esac

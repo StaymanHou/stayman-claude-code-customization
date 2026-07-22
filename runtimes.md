@@ -20,6 +20,9 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
 - **Last:** 25s (2026-07-22)
 - **Use timeout:** 98000
 - **History:**
+  - 25s — 2026-07-22  <!-- WP7i richer-greenfield-sample Phase 3 verify-codify; 472 PASS / 0 FAIL. No new pins (tour scenarios + tutorial-prefix pins are WP7e's charter, not pulled forward); arm↔scaffold wiring codified by the scaffold smoke group [8]. No regression. Runtime flat. -->
+  - 25s — 2026-07-22  <!-- WP7i richer-greenfield-sample Phase 3 verify-auto; 472 PASS / 0 FAIL. Phase 3 re-cited skills/tutorial-greenfield-workflow-tour/SKILL.md to the todo CLI (+ upfront framing); check-structure.sh pins skill structure but not the sample content — count flat at 472, no regression. Runtime flat. -->
+  - 25s — 2026-07-22  <!-- WP7i richer-greenfield-sample Phase 2 verify-codify; 472 PASS / 0 FAIL. Phase 2 edited only tools/onboarding-scaffold/ (new-sample.sh + smoke + tool README) which check-structure.sh does not pin — count flat at 472, no regression. Runtime flat. -->
   - 25s — 2026-07-22 (WP7g Phase 1 verify-auto)
   - 22s — 2026-07-22 (WP7d Phase 1 verify-auto)
   - 22s — 2026-07-22  <!-- WP7c greenfield-onboarding-scaffold Phase 2 verify-codify; 472 PASS / 0 FAIL. Edited skills/tutorial-greenfield-workflow-tour/SKILL.md (wired to scaffold). No structural-count change (472 flat), no regression. Runtime flat. -->

@@ -22,8 +22,14 @@ SRC="$SCRIPT_DIR/sample"
 dest=""
 force=0
 
+# Print the header comment block as help: the contiguous run of `#` lines that
+# follows the shebang, stopping at the first non-comment line. Delimiter-anchored
+# (not a magic line range) so it can't leak `set -euo pipefail` or the assignments
+# below if the header is later edited.
 usage() {
-  sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  awk 'NR==1 && /^#!/ {next}
+       /^#/ {sub(/^# ?/, ""); print; next}
+       {exit}' "${BASH_SOURCE[0]}"
 }
 
 while [ $# -gt 0 ]; do
@@ -42,7 +48,12 @@ fi
 
 # Default destination: a fresh throwaway dir.
 if [ -z "$dest" ]; then
-  dest="$(mktemp -d "${TMPDIR:-/tmp}/onboarding-sample.XXXXXX")/greeter"
+  # Strip ALL trailing slashes from $TMPDIR (macOS default ends in /) so the
+  # printed path the user copies has no double-slash. `%/` strips only one, so
+  # loop until none remain.
+  tmpbase="${TMPDIR:-/tmp}"
+  while [ "${tmpbase%/}" != "$tmpbase" ]; do tmpbase="${tmpbase%/}"; done
+  dest="$(mktemp -d "$tmpbase/onboarding-sample.XXXXXX")/todo"
 fi
 
 # No-clobber guard: refuse a non-empty existing dest unless --force.
@@ -52,8 +63,8 @@ if [ -e "$dest" ] && [ "$(ls -A "$dest" 2>/dev/null)" ] && [ "$force" -ne 1 ]; t
 fi
 
 mkdir -p "$dest"
-# Copy contents of the sample into dest (preserves the +x bit on greet.sh).
+# Copy contents of the sample into dest (preserves the +x bits on todo + lib/*.sh).
 cp -R "$SRC"/. "$dest"/
 
 echo "Created fresh sample at: $dest"
-echo "Try it:  cd \"$dest\" && ./greet.sh World   # expect exactly:  Hello, World!"
+echo "Try it:  cd \"$dest\" && ./todo add \"buy milk\" && ./todo list   # expect:  1. [ ] buy milk"

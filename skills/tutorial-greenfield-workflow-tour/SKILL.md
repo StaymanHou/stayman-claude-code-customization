@@ -32,12 +32,15 @@ available to them — see the dispatcher's Step 1). You don't need to repeat all
 beat honest: when you say "watch it check the running code," **actually run and check it**. **Never**
 compress the promise into a "quick 5-minute" claim.
 
-## The environment — a tiny runnable sample (from WP7c)
+## The environment — a tiny runnable sample (from WP7c; redesigned in WP7i)
 
 This arm runs inside a **tiny, shipped, runnable sample project** that lives in this repo at
-`<proj-dir>/tools/onboarding-scaffold/sample/` (a "greeter"). **Drop the user into a fresh copy
-before Step 1** by running the scaffolder — it stamps a throwaway copy so the user's real edits, the
-SURFACE, and the handoff/restore all happen against something disposable, never the shipped source:
+`<proj-dir>/tools/onboarding-scaffold/sample/` — a small **command-line `todo` list** (a dispatcher
+plus one module per subcommand: `add` / `list` / `done`, over a plain-text store). It's deliberately
+more than a one-liner: a couple of real modules and a visible data file give planning, verify-self,
+and SURFACE something real to bite on. **Drop the user into a fresh copy before Step 1** by running
+the scaffolder — it stamps a throwaway copy so the user's real edits, the SURFACE, and the
+handoff/restore all happen against something disposable, never the shipped source:
 
 ```bash
 tools/onboarding-scaffold/new-sample.sh          # prints the fresh copy's path + a run hint
@@ -46,16 +49,31 @@ tools/onboarding-scaffold/new-sample.sh          # prints the fresh copy's path 
 `cd` into the printed path and run the tour from there (nothing real to lose). Two properties of the
 sample are load-bearing, and the two staged beats below depend on them directly:
 
-- **Runnable with one observable outcome** — `./greet.sh World` prints exactly `Hello, World!` and
-  exits 0. This is what the staged **grounding** beat (Step 5) has the agent *run and check*
-  (PASS/FAIL against that exact line).
-- **A planted, authentic-feeling tangent** — running `./greet.sh` with **no argument** prints the
-  ungrammatical `Hello, !`, and `sample/README.md` flags it under a `TODO`. It is a *real* small bug
-  (not a fake breadcrumb), so the staged **SURFACE** beat (Step 6) has a reliable, honest rabbit-hole
-  to catch.
+- **Runnable with one observable outcome** — `./todo add "buy milk" && ./todo list` prints exactly
+  `1. [ ] buy milk` and exits 0. This is what the staged **grounding** beat (Step 5) has the agent
+  *run and check* (PASS/FAIL against that exact line).
+- **A planted, authentic-feeling tangent** — `./todo done <index>` doesn't range-check the index, so
+  `./todo done 99` on a short list reports success and changes nothing; `sample/README.md` and
+  `lib/done.sh` both flag it under a `TODO`. It is a *real* small bug (not a fake breadcrumb), so the
+  staged **SURFACE** beat (Step 6) has a reliable, honest rabbit-hole to catch.
 
 See `<proj-dir>/tools/onboarding-scaffold/README.md` for the scaffold's shape and canonical
 invocations.
+
+### Say what the project is, upfront (before Step 1 — WP7i)
+
+Right after you stamp the fresh copy and `cd` in — **before** the Step 1 framing line — tell the
+user in a sentence or two *what this sample project is and what you're about to build on it*, so the
+run doesn't open on an unexplained pile of files. Keep it concrete and short:
+
+> *"Here's your sandbox: a tiny command-line to-do list — a `todo` script that routes three
+> subcommands (`add`, `list`, `done`) over a plain-text file, `todos.txt`. It already runs. We're
+> going to add one small thing to it end-to-end — nothing you can break matters here, it's a
+> throwaway copy — and you'll watch the workflow give that little bit of work real structure. Take a
+> quick look: `ls` and `cat todos.txt` if you like, then we'll start."*
+
+This grounds the user in the *what* before the walkthrough shows them the *how*. It is framing copy
+(beat **G**'s neighbor), not a staged beat — one short orientation, then move into Step 1.
 
 ## The walkthrough (spec §3-greenfield spine)
 
@@ -106,11 +124,11 @@ tour runs in **stepping** mode, this pause is *visible* — do not autopilot pas
 `verify-self`: it actually executes the runnable outcome and reports **PASS/FAIL** against a real
 observable. The user watches it **check reality instead of guessing**.
 
-**The concrete check:** run `./greet.sh World` in the sample copy and confirm stdout is exactly the
-one line `Hello, World!` (exit 0). That single, checkable line *is* the observable outcome — the
-agent runs it, compares the real output to the claim, and reports **PASS** (or **FAIL**, and
-back-loops) rather than just asserting "done." (`sample/README.md` states this expected output, so
-the check is against a documented contract, not an invented one.)
+**The concrete check:** run `./todo add "buy milk" && ./todo list` in the sample copy and confirm
+`list`'s stdout is exactly the one line `1. [ ] buy milk` (exit 0). That single, checkable line *is*
+the observable outcome — the agent runs it, compares the real output to the claim, and reports
+**PASS** (or **FAIL**, and back-loops) rather than just asserting "done." (`sample/README.md` states
+this expected output, so the check is against a documented contract, not an invented one.)
 
 **Pre-frame it before it runs** (so a real ~minute of work doesn't read as dead time):
 > *"Watch this next part closely — it's about to actually run the thing and check the output against
@@ -126,12 +144,13 @@ a rabbit-hole, runs **SURFACE** to log it to the backlog, and **continues withou
 Beat **C** (rabbit-hole caught) and the backlog (its flip side) are folded into one beat here — not
 two.
 
-**The concrete tangent:** the sample's `greet.sh` mishandles the no-argument case — `./greet.sh`
-(no name) prints the ungrammatical `Hello, !`, and `sample/README.md` already flags it under a
-`TODO`. It's a genuine small bug that's *tempting* to fix right now but isn't the thing we set out to
-build. That is exactly the rabbit-hole: the agent notices it, runs **SURFACE** to write it to the
-backlog so it survives, and stays on the actual task. (It's a real defect, not a staged breadcrumb —
-which is what keeps this beat honest for a skeptic.)
+**The concrete tangent:** the sample's `todo done` doesn't range-check its index — `./todo done 99`
+on a short list reports `marked item 99 as done` and exits 0, but changes nothing (there is no item
+99). `sample/README.md` and `lib/done.sh` already flag it under a `TODO`. It's a genuine small bug
+that's *tempting* to fix right now but isn't the thing we set out to build. That is exactly the
+rabbit-hole: the agent notices it, runs **SURFACE** to write it to the backlog so it survives, and
+stays on the actual task. (It's a real defect, not a staged breadcrumb — which is what keeps this
+beat honest for a skeptic.)
 
 **Pre-frame it:**
 > *"Here's a thing that would normally derail me for an hour. Watch what it does — instead of
