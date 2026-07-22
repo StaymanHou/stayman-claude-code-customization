@@ -2,7 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-21
-progress: 6/8 WPs (WP1, WP2, WP3-M7, WP4, WP6, WP5)
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); WP7 now decomposed into M11 sub-WPs (WP7a–WP7e); WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -104,16 +104,58 @@ The standard rule details WPs for the **next milestone only**, because later mil
 **Milestone:** 10 · **Dependencies:** none (independent) · **Size:** XS–S (implementation) — **terminology-alignment discussion required first (see REFRAME above)**
 **Likely shape:** terminology-alignment discussion → then a task (description-wording edit + orchestrator prose). The naming (and its legibility to a new user unaware of the workflow-vs-CC-deep-research nuance) must be agreed before planning.
 
-### WP7: Probe — new-user onboarding + "aha" design (Milestone 11)
-**Type:** probe (design spike — knowledge output, NOT software)
-**Milestone:** 11 · **Dependencies:** M7 (settled layout: WP1–WP3-M7) + WP4 (settled install/uninstall flow) · **Size:** M
-**Learning objective:** What is the fastest "aha" for a brand-new workflow user, what first-run path produces it, and does it need a dedicated onboarding SKILL.md and/or a throwaway tutorial project?
-**Timebox:** co-design session with the operator (brainstorm-first — explicitly NOT auto-generated).
-**Success criterion:** a written onboarding flow spec Claudesk can render against (what the user does first, the aha moment, the surface + when), plus a go/no-go decision on a dedicated onboarding skill and/or tutorial project.
+### WP7 → Milestone 11: New-user onboarding — DECOMPOSED (co-design complete 2026-07-21)
+
+> **WP7 grew from a design-spike stub into a full milestone.** The WP7.1 brainstorm (the mandatory operator co-design pause point) is **DONE** — settled shape in `workflow-system/product/onboarding-brainstorm.md` + roadmap M11 "Revision 2026-07-21". The operator chose **FULL BUILD** (not spec-only): the WBS below carves M11 into build-WPs WP7a–WP7e. AD-5 predicted exactly this ("onboarding shape is a WBS/brainstorm output, not an arch decision") and the co-designed shape (a dedicated skill + a greenfield scaffold, no new runtime, no architectural surface) lands **inside AD-5's envelope** — so this is a normal decomposition, **not a P8 arch back-loop**. AD-5 gets a light as-built resync at `/product-context` / finalize time (deferred→designed→built).
+>
+> **Design invariants carried from the brainstorm (bind every sub-WP):** single entry point → **two fully-separate paths** (greenfield / brownfield, diverge and stay diverged); **entry recommends greenfield as the first-timer DEFAULT with brownfield a first-class PEER** (a default, not a funnel — greenfield is the reliable high-fidelity path, brownfield is one keystroke away, never gated behind the tutorial); the **greenfield tour is a NARRATED REAL RUN, honestly labeled** (~10–15 min, real reasoning + real skills, each beat pre-framed — NOT a faked/scripted demo reel; canning the grounding/verify-self/SURFACE beats would defeat the exact ahas the skeptic cares most about; **no "5-min" claim**); **greenfield ships a tiny RUNNABLE scaffold** hosting the **staged SURFACE beat** AND the **staged verify-self grounding beat** (runnable so verify-self has an observable outcome to check); **brownfield is bring-your-own real code** (`/init` → product-workflow reverse-engineers vision/roadmap/arch → `product-context` revises the generated `CLAUDE.md`), **NO demo**; walkthrough **opens recommending bypass-permissions universally** (+ reassurance copy); **first run stays stepping/orchestrated so the human-pause beat is visible**; **drive-modes are the LAST, un-pushed graduation reveal**; **handoff→restore is the staged emotional-peak bookend**; **grounding** ("the workflow checks reality instead of guessing" — probe-first/verify-self/`init`-reverse-engineer) is **staged greenfield (verify-self) / named brownfield**; **"don't force it"** — only authentically-stageable beats (A state-is-a-file, B human-pause, greenfield-verify-self-grounding, greenfield-SURFACE, handoff/restore, drive-modes reveal) are guaranteed staged; C-brownfield / grounding-brownfield / hierarchy-brownfield / reflect-capture are named/opportunistic.
+>
+> **Repo conventions binding all sub-WPs:** no-runtime (prompt/markdown/skill/scenario/pin edits only); **state-machine-in-three-places sync** (`transitions.md` / SKILL.md / scenarios) for any transition the entry skill introduces; **path-qualification mandate** (`~/.claude/` vs `<proj-dir>/.claude/`, never bare); re-run `install.sh` after any new skill dir (and note `SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE` — install.sh is additive-only).
+
+#### WP7a: Onboarding flow spec (the written per-path flow)
+**Description:** Author the onboarding flow spec doc: per-path (greenfield / brownfield) first-run flow, the aha beats + their ordering, the "don't force it" staged-vs-named disposition table, and the **surface contract Claudesk renders against + when it points at the entry command**. This is simultaneously (i) the design contract WP7b–WP7d build against and (ii) the **M12 return-contract deliverable** (feeds WP8). Promote/refine `onboarding-brainstorm.md` into this durable spec.
+**Milestone:** 11 · **Dependencies:** brainstorm complete (done) · **Size:** S–M
 **Tasks:**
-- [ ] 7.1 Operator co-design/brainstorm session (pause point — do not auto-produce)
-- [ ] 7.2 Write the onboarding flow spec (feeds M12 return contract)
-- [ ] 7.3 Decide: dedicated onboarding skill? tutorial project? (if yes → spawns its own feature WP in a later WBS pass)
+- [ ] 7a.1 Write the per-path flow (greenfield spine + brownfield spine) with the aha beats mapped to each step
+- [ ] 7a.2 Write the Claudesk surface contract (what Claudesk shows, when it points at the entry command, what it must NOT hardcode)
+- [ ] 7a.3 Settle the entry-skill name + category (`session-*` vs new vs `util-*`) — decided here so WP7b builds against a fixed name
+- [ ] 7a.4 Settle the bypass-permissions reassurance copy (the one-line "why it's safe")
+
+#### WP7b: The entry skill (single entry → two separate paths)
+**Description:** Build the dedicated onboarding entry skill (`skills/<name>/SKILL.md`): a single entry point that asks new-vs-existing, then runs the **greenfield** arm or the **brownfield** arm, each staging its own beats per the spec. Brownfield arm scripts the `/init` → product-workflow-reverse-engineer → `product-context`-revises-`CLAUDE.md` sequence against the user's real code. Greenfield arm drives top-of-hierarchy entry + the hierarchy taste. Opens with the universal bypass-permissions recommendation. Keeps the run in stepping/orchestrated so the human-pause beat is visible; ends with the drive-modes graduation reveal.
+**Milestone:** 11 · **Dependencies:** WP7a (name + flow settled) · **Size:** M
+**Tasks:**
+- [ ] 7b.1 SKILL.md scaffold + frontmatter (name/description per path-qualification + fuzzy-matcher-description-collision discipline from WP5)
+- [ ] 7b.2 Entry + path-fork (new-vs-existing) with **greenfield recommended-default / brownfield first-class peer** framing (a default, not a funnel) + universal bypass-permissions recommendation + reassurance copy + the honest ~10–15-min narrated-real-run expectation (no "5-min" claim)
+- [ ] 7b.3 Greenfield arm as a **narrated real run** (per-beat pre-framing): top-of-hierarchy entry, hierarchy taste, staged SURFACE beat + staged verify-self grounding beat driving the WP7c runnable scaffold, A/B/G beats
+- [ ] 7b.4 Brownfield arm (`/init` → reverse-engineer → `product-context` revise; A/B/G beats; SURFACE named-only)
+- [ ] 7b.5 Any transition surface the skill introduces → three-places-in-sync (`transitions.md` + SKILL.md + scenarios); if it emits no transition (util-*/session-* meta-op), document that explicitly. Re-run `install.sh`.
+
+#### WP7c: Greenfield scaffold (runnable) + planted authentic tangent
+**Description:** Build the tiny shipped greenfield scaffold the onboarding drops the user into (fixture dir copied in, or a scaffolder that seeds a temp dir — decide at plan time). Two hard constraints from the brainstorm: (1) it must contain a **planted, authentic-feeling tangent** so the **staged SURFACE beat fires reliably** without feeling fake; (2) it must be **RUNNABLE with at least one observable outcome** so the **staged verify-self grounding beat** has something real to observe (agent runs it, reports PASS/FAIL — user watches it *check* reality). Greenfield-only (brownfield is BYO real code — no scaffold). Must be maintainable (it rides path/skill/layout changes — keep it minimal so it doesn't rot; cf. M7 moved every folder). Balance minimal-so-it-doesn't-rot against runnable-enough-to-verify.
+**Milestone:** 11 · **Dependencies:** WP7a (what the beats need) · **Size:** S–M
+**Tasks:**
+- [ ] 7c.1 Decide scaffold delivery (shipped fixture dir vs. temp-dir scaffolder) + where it lives in-repo; decide the minimal runnable shape + its observable outcome (for verify-self)
+- [ ] 7c.2 Author the minimal runnable scaffold content + the planted tangent that makes SURFACE authentic
+- [ ] 7c.3 Wire WP7b's greenfield arm to drop the user into it + trigger the staged SURFACE beat AND the staged verify-self grounding beat
+
+#### WP7d: Staged-beats wiring (bookends + graduation)
+**Description:** Wire the beats that are choreography rather than plain skill invocations: the **handoff → restore emotional-peak bookend** (run `/session-handoff`, simulate/enact leave, `/session-restore` restores full context), the **drive-modes graduation reveal** (LAST, explicitly un-pushed — "not recommended yet"), and **verify-pause visibility** (ensure the onboarding run stays in stepping/orchestrated so beat B is seen, never autopilots past it). Also the **named-at-close** pointers (hierarchy, reflect-capture-learns-you).
+**Milestone:** 11 · **Dependencies:** WP7b (arms exist to wire into) · **Size:** S
+**Tasks:**
+- [ ] 7d.1 Handoff→restore bookend choreography (both paths)
+- [ ] 7d.2 Drive-modes graduation reveal at the end (un-pushed framing)
+- [ ] 7d.3 Verify-pause-visibility guard (stay stepping/orchestrated during the tour) + the named-at-close pointers
+
+#### WP7e: Behavioral scenarios + structural pins
+**Description:** Cover the onboarding: behavioral scenario(s) for the entry skill's path-fork + the staged beats (using the established scenario shape — `transition_id` / `contains_any`→SOFT_PASS for prose-behavior beats), and `tests/check-structure.sh` structural pins for the new skill's required sections + the "don't force it" invariants + (if any) the transition surface. Mirror the WP5/WP6 codify shape.
+**Milestone:** 11 · **Dependencies:** WP7b–WP7d · **Size:** S–M
+**Tasks:**
+- [ ] 7e.1 Behavioral scenarios (path-fork; staged-beat presence; bypass-permissions-recommended; drive-modes-reveal-is-last)
+- [ ] 7e.2 `check-structure.sh` structural pins (new skill sections; staged-vs-named invariants; three-places if a transition was added)
+- [ ] 7e.3 Full-group behavioral run green (subject to the `--id` harness path — now fixed by the boundary-handoff Phase 3)
+
+**M11 sub-WP ordering (WP7a → WP7b → {WP7c ∥ WP7d} → WP7e):** spec first (WP7a fixes the name + flow every other sub-WP builds against — resolves the cheapest-to-change unknown first); then the entry skill (WP7b, the spine); WP7c (scaffold) and WP7d (bookend/graduation wiring) can proceed in parallel once the arms exist; WP7e codifies last. No probe WP (no external integration, no unknown API shapes — the "unknown" was the *design*, resolved by the brainstorm). No environment/orchestration WPs (no such surface). **AD-5 as-built resync** (deferred→built) happens at `/product-context` or finalize, not as its own WP.
 
 ### WP8: Cross-repo return contract to Claudesk (Milestone 12)
 **Description:** M12 — send back the three deliverables Claudesk's M10.9/M11 need: (1) canonical install-instruction copy + install/uninstall commands (from WP4.5), (2) the settled doc-folder layout (from M7 WP3-M7 — **now Option A: the new roots `workflow-system/product/*.md` + `workflow-system/state/...`; Claudesk M11's `docs_list` MUST be updated to glob these** — a required change, not an optional note), (3) the onboarding flow spec (from WP7.2). Delivered as a reciprocal handoff doc or a backlog SURFACE in `/Users/stayman/Personal/projects/claudesk`.
@@ -127,20 +169,26 @@ The standard rule details WPs for the **next milestone only**, because later mil
 ```
 M7: WP1 (decide layout+migration) → WP2 (sweep + migrate tool + run) → WP3-M7 (resync/capture)
                                                                           → WP4 (uninstall) → ... → WP8 (return contract)
-                                        ┌→ WP5 (pause)      [parallel, independent]
-                                        ├→ WP6 (research)   [parallel, independent]
-                                        └→ WP7 (onboarding spike) → feeds WP8
+                                        ┌→ WP5 (pause)      [DONE]
+                                        ├→ WP6 (research)   [DONE]
+                                        └→ M11 (onboarding — brainstorm DONE, now FULL BUILD):
+                                             WP7a (flow spec) → WP7b (entry skill) → {WP7c scaffold ∥ WP7d beats-wiring} → WP7e (scenarios+pins)
+                                             WP7a's spec feeds WP8
 ```
 
-- **Critical path:** WP1 → WP2 → WP3-M7 → WP4 → WP7 → WP8. (WP7 gates WP8 on the onboarding-spec deliverable; WP4 gates WP8 on the install-copy deliverable; M7 gates WP8 on the settled-layout deliverable.)
-- **Parallel track:** WP5 (pause) and WP6 (research collision) are fully independent — can run any time after the cycle starts, in either order, without blocking the critical path.
-- **Operator pause points:** WP7.1 (onboarding brainstorm — mandatory human co-design). AD-1 Option A is now operator-ratified (no longer a veto point). WP1's rename map + migration strategy is a natural review checkpoint before the L-sized WP2 sweep runs.
+- **Critical path:** WP1 → WP2 → WP3-M7 → WP4 → **WP7a → WP7b → WP7c/WP7d → WP7e** → WP8. (WP7a's onboarding-spec gates WP8; WP4 gates WP8 on the install-copy deliverable; M7 gates WP8 on the settled-layout deliverable.)
+- **M11 internal critical path:** WP7a → WP7b → WP7e (WP7c and WP7d parallelize between WP7b and WP7e).
+- **Parallel track:** WP5 (pause) and WP6 (research collision) — DONE (both shipped 2026-07-21).
+- **Operator pause points:** WP7.1 onboarding brainstorm — **DONE 2026-07-21** (co-design settled; `onboarding-brainstorm.md`). Remaining M11 pause points are the normal per-feature plan-review + verify-human gates as each sub-WP runs through the feature workflow. AD-1 Option A operator-ratified.
 
 ## Ordering rationale
 - **M7 before everything** — the settled layout (Option A physical roots) is what every later WP and the return contract reference (AD-1). WP1 (decide) before WP2 (sweep) resolves the riskiest unknown (existing-project migration) cheaply before the wide mechanical change.
 - **WP4 (uninstall) after M7** — uninstall must be written against the *settled* post-move layout, not the pre-move one.
 - **WP4 before WP8** — the install/uninstall command copy is a return-contract deliverable.
-- **WP5/WP6 unordered** — no learning or build dependency; smallest items, safe to interleave; do NOT block on M7.
-- **WP7 last-but-one** — brainstorm-first, depends on settled layout + install flow; its spec feeds WP8.
-- **WP8 terminal** — aggregates deliverables back to Claudesk (**including the required M11 `docs_list` path change**).
-- No environment/Docker WP (this repo is host-based shell + prompt files, no services). No 3rd-party probe WPs (no external integrations). No orchestration/async WPs (none in scope). Deviations from the standard ordering sequence are all "N/A — no such surface in this cycle."
+- **WP5/WP6 unordered** — no learning or build dependency; smallest items, safe to interleave; do NOT block on M7. (Both DONE.)
+- **M11 last-but-one** — brainstorm-first (DONE), depends on settled layout + install flow; now FULL BUILD, decomposed WP7a–WP7e. Internal order = spec-first (WP7a fixes the name/flow everything builds against), then the entry-skill spine (WP7b), then scaffold ∥ beats-wiring (WP7c/WP7d), then codify (WP7e). WP7a's spec feeds WP8.
+- **WP8 terminal** — aggregates deliverables back to Claudesk (**including the required M11 `docs_list` path change** + the onboarding flow spec from WP7a).
+- No environment/Docker WP (this repo is host-based shell + prompt files, no services). No 3rd-party probe WPs (no external integrations). No orchestration/async WPs (none in scope). **No M11 probe WP** — the only unknown was the *design*, resolved by the brainstorm; the sub-WPs are all build. Deviations from the standard ordering sequence are all "N/A — no such surface in this cycle."
+
+## Session Handoff — 2026-07-21 23:30
+Handed off. See `workflow-system/state/.session.md` to restore.

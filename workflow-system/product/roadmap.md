@@ -177,15 +177,37 @@ updated: 2026-07-21
 - Saying "research" in a workflow context no longer risks firing CC's built-in deep-research (or vice versa)
 - All three state-machine locations stay in sync if IDs/names change
 
-### Milestone 11: New-user onboarding + "aha" design (brainstorm-first)
+### Milestone 11: New-user onboarding + "aha" design (co-designed 2026-07-21)
 **Origin:** SURFACE-2026-07-20-CLAUDESK-ONBOARDING-DESIGN
-**Goal:** Design the deliberate first-run path a brand-new user takes when Claudesk invites them in — the fastest "aha" (the moment the workflow's value clicks) — and decide whether it needs a dedicated onboarding skill and/or a throwaway tutorial project.
+**Co-design output:** `workflow-system/product/onboarding-brainstorm.md` (the settled shape; source of truth for the WBS)
+**Scope note:** Co-design (2026-07-21) revealed this is **not a single WP** — it is a milestone with multiple deliverables (spec + entry skill + greenfield scaffold + staged-beats wiring + coverage), so it **needs its own WBS** (`/product-wbs`).
+
+**Goal:** Design AND deliver the deliberate first-run path a brand-new user takes when Claudesk invites them in — the fastest "aha" per entry scenario (the moment the workflow's value clicks). The onboarding sells the *real-work* value prop (structure + durable state + human-in-the-loop discipline) to a skeptical working developer, not a toy demo.
+
+**Settled shape (full detail in the brainstorm doc):**
+- **Single entry point** (likely a dedicated skill; name TBD) → **two fully-separate paths** (diverge and stay diverged):
+  - **Greenfield** — "structure on a blank page": top-of-hierarchy entry (`/product-vision` / `/session-start`) + a light product→feature **hierarchy taste** + **one tiny shipped scaffold** that hosts the **staged SURFACE beat** (planted authentic tangent). Nothing real to lose, so a seed doesn't undercut the value prop.
+  - **Brownfield** — "it read MY real code and reconstructed what I never wrote down": **`/init` first → the product workflow reverse-engineers vision/roadmap/arch from the existing code → `product-context` revises the `CLAUDE.md` that `/init` generated.** **Bring-your-own real code — NO demo** (this aha is strongest on real code; a seed would weaken it).
+- **Walkthrough opens by recommending the user switch CC to auto-accept / bypass-permissions — universally, at the start** (+ a one-line "why it's safe" reassurance).
+- **Aha dispositions** (staged / beat / framing / named / cut — full table in brainstorm doc):
+  - **A** state-is-a-file — beat (both paths); **B** human-in-the-loop pause — beat (both; keep onboarding in stepping/orchestrated so it's *visible*); **G** advisory/you-keep-the-wheel — framing line.
+  - **C** SURFACE — **staged greenfield-only**, named/opportunistic on brownfield.
+  - **Handoff → restore** (context survival) — staged **emotional-peak bookend**, near the end.
+  - **Drive modes / autopilot / FSD** — staged **graduation reveal, LAST, deliberately un-pushed** (first run stays in stepping/orchestrated so trust is built before modes are revealed).
+  - **Hierarchy** — greenfield-light taste / brownfield-cut. **Reflect-capture-learns-you** — named at close.
+- **"Don't force it" discipline:** only A, B, greenfield-SURFACE, handoff/restore, and the drive-modes reveal are guaranteed *staged* beats (all authentically stageable); C-brownfield, hierarchy-brownfield, and reflect/capture are named/opportunistic, never faked.
+
 **Deliverables:**
-- An onboarding flow spec (what a new user does first, the aha moment, the surface Claudesk should render + when)
-- A decision on a dedicated onboarding skill and/or tutorial project
+- An onboarding flow spec (per-path first-run flow, the aha beats + ordering, the surface Claudesk renders + when) — the M12 return-contract deliverable
+- The dedicated **entry skill** (single entry → two paths) — build vs. spec-only split is a WBS decision
+- The **greenfield scaffold** (with the planted tangent that makes staged SURFACE authentic)
+- Staged-beats wiring (handoff/restore bookend, drive-modes graduation reveal, verify-pause visibility)
+- Behavioral scenarios + structural pins covering the above
+
 **Exit Criteria:**
-- A written onboarding flow spec Claudesk can render against
-- ⚠️ **Brainstorm-first / co-design:** this milestone is explicitly designed *with* the operator — depends on the settled Milestone 7 layout + Milestone 8 install flow; not auto-generated
+- A written onboarding flow spec Claudesk can render against (the return-contract artifact)
+- The two-path first-run experience is decided and (per the WBS's build/spec-only call) either specced or runnable
+- ⚠️ **Co-design:** the *design* is settled with the operator (2026-07-21, brainstorm doc); the WBS decomposition + any build proceed from that settled shape. Depends on the settled Milestone 7 layout + Milestone 8 install flow.
 
 ### Milestone 12: Cross-repo return contract to Claudesk
 **Origin:** Handoff return contract (HANDOFF-from-claudesk-2026-07-20.md → "What Claudesk needs back from you")
@@ -207,3 +229,18 @@ updated: 2026-07-21
 - **M12 (return contract) terminal** — aggregates M7/M8/M11 deliverables back to Claudesk.
 
 **Assumptions:** This cycle does NOT reopen this repo's `vision.md` Target Audience section — the audience-stance refinement (adding a non-workflow secondary user) is assigned to the *Claudesk* side per the handoff; this repo delivers the mechanics only. `docs/product/design-priors.md` is absent in this repo, so no design-prior consult applied (silent no-op).
+
+## Revision 2026-07-21 — Milestone 11 co-design (onboarding)
+
+**What changed:** Revised **Milestone 11** in place after a brainstorm-first co-design session with the operator (output: `workflow-system/product/onboarding-brainstorm.md`). Roadmap frontmatter reopened (`state: complete` → `in-progress`) for the revision.
+
+**Key scope change — M11 grew from a single WP into a milestone needing its own WBS.** The co-design surfaced multiple distinct deliverables (onboarding flow spec + a single entry skill + a greenfield scaffold + staged-beats wiring + coverage), so M11 is no longer atomic. Next step is `/product-wbs` to decompose it.
+
+**Settled design decisions (operator co-design, 2026-07-21):**
+- **Two entry scenarios, two fully-separate paths** (single entry point, diverge and stay diverged): greenfield (structure-on-blank + hierarchy taste + a tiny shipped scaffold hosting the staged SURFACE beat) vs. brownfield (`/init` → product-workflow reverse-engineers vision/roadmap/arch → `product-context` revises the generated `CLAUDE.md`; **bring-your-own real code, no demo**).
+- **Demo-vs-BYO split by path** (not one policy): greenfield ships a tiny scaffold (nothing real to lose; the one place SURFACE can be staged authentically); brownfield is BYO real code (the reverse-engineer aha is strongest on real code — a demo would weaken it). Minimizes what rots.
+- **Bypass-permissions recommended universally at walkthrough start** (+ reassurance copy).
+- **Aha ordering is a design principle:** first run stays in stepping/orchestrated so the human-in-the-loop **pause is visible** and trust is built; drive modes (autopilot/FSD) are revealed **last as an un-pushed graduation**, never the first-run recommendation. Handoff→restore is the staged emotional peak, near the end.
+- **"Don't force it":** only authentically-stageable beats are guaranteed (A state-is-a-file, B human-pause, greenfield SURFACE, handoff/restore, drive-modes reveal); C-brownfield / hierarchy-brownfield / reflect-capture are named or opportunistic, never faked.
+
+**Assumptions corrected:** the original M11 framing treated onboarding as a spec-only deliverable and a single unit; co-design showed it's a multi-deliverable milestone and that the *brownfield* aha is best served by real code (BYO), not a shipped tutorial repo. No `design-priors.md` present → no consult/capture (silent no-op). Still depends on the settled M7 layout + M8 install flow.
