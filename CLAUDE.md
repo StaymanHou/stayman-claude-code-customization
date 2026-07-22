@@ -145,13 +145,14 @@ This repo dogfoods the product workflow but **skips `/product-context`** — the
 ## Current Phase
 
 **Active cycle:** Claudesk Handoff Cycle (Milestones 7–12) — see `workflow-system/product/wbs.md`
-**WBS progress:** 6/8 WPs done (WP1, WP2, WP3-M7, WP4, WP6, WP5)
+**WBS progress:** 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6). M11 (WP7) decomposed into WP7a–WP7e: WP7a ✅ + WP7b ✅ + WP7c ✅ (2026-07-22); WP7d–WP7e pending. WP8 pending.
 
 - **WP1–WP3-M7 (Milestone 7)** ✅ — Doc-layout unification (Option A physical move): `docs/product/*` → `workflow-system/product/`, `workflow/*` → `workflow-system/state/`; 58-file sweep + `tools/migrate-doc-layout/` primitive (9 projects migrated) + `check-structure.sh` Phase-15 lock
 - **WP4 (Milestone 8)** ✅ — Standalone defensive `uninstall.sh` (commit 74cbb7c): into-repo-guarded symlink removal, block-only CLAUDE.md excise, `--project`-gated memory-symlink removal, print-only settings; 45-assertion E2E harness (`tools/uninstall/test/`) + 6 dry-run-only structure pins
 - **WP5 (Milestone 9)** ✅ — Session vocabulary disambiguation (commit f532b4d): renamed `session-pause`→`session-handoff`, `session-resume`→`session-restore` (kills `/resume` collision), `session-store-learning`→`session-capture` (kills `/re**stor**e` collision); turn-vs-session-boundary disambiguation + a CONTEXTUAL agent-side guard (auto-chain at clean boundary, confirm only on mid-workflow ambiguity) in `session-handoff/SKILL.md` + 4 orchestrator AGENTS.md + `## Session vocabulary (GLOBAL)` snippet rule; load-bearing lesson pinned: *fuzzy-matcher searches DESCRIPTIONS not just names*; `check-structure.sh` [Phase 17] (14 pins, 452/0) + S26/S27 scenarios. 387-turn/11-project audit + two live misfires caught in-feature
 - **WP6 (Milestone 10)** ✅ — Research cost-tier disambiguation (commit 17fe152): new standalone `quick-research` skill (light web pass + confidence labels + known-unknowns + human-confirmed deep-research escalation gate, never auto-launch), `## Research cost tiers (GLOBAL)` snippet rule, orchestrator reinforcement, sharpened (not renamed) product/feature-research descriptions; `research.yaml` + `check-structure.sh` [Phase 16] (11 pins, 438/0). Root cause was a cost-tier jump, not topic confusion (14-day/602-log audit)
-- **Remaining:** WP7 (onboarding spike / M11, brainstorm-first), WP8 (M12 return contract to Claudesk — aggregates WP4 + M7 + WP7 deliverables)
+- **WP7 (Milestone 11)** 🚧 — New-user onboarding, FULL BUILD (co-design complete 2026-07-21; decomposed WP7a–WP7e). Shipped: **WP7a** (`onboarding-flow-spec.md`, commit 4a43713), **WP7b** (three-skill `tutorial-*` family — `tutorial-getting-started` entry + `tutorial-greenfield-workflow-tour` / `tutorial-brownfield-workflow-tour` arms, commit 40ec14f), **WP7c** (runnable greenfield scaffold `tools/onboarding-scaffold/` + arm wiring, commit 287ff86). Pending: **WP7d** (staged-beats wiring — handoff→restore bookend + drive-modes graduation reveal + the 2 backlogged WP7b MINORs), **WP7e** (behavioral scenarios + `tutorial-`-prefix structural pins). WP7c and WP7d parallelize; WP7e codifies last.
+- **Remaining:** WP7d + WP7e (finish M11), WP8 (M12 return contract to Claudesk — aggregates WP4 + M7 + WP7 deliverables)
 
 ## Claude-time visualize URL-hash state
 

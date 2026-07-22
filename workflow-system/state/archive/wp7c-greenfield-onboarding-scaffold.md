@@ -1,8 +1,9 @@
 # Feature: WP7c — Greenfield onboarding scaffold (runnable) + planted authentic tangent
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** COMPLETED 2026-07-22 (shipped 287ff86; finalized — archived)
 **Created:** 2026-07-22
+**Completed:** 2026-07-22
 **Milestone:** 11 (M11 onboarding) · **WBS:** WP7c
 **drive_mode:** autopilot
 
@@ -52,16 +53,50 @@
   - [x] verify-codify  <!-- status: complete — added §5 wiring-contract assertions (3) to tools/onboarding-scaffold/test/run-tests.sh pinning arm↔scaffold linkage (scaffold path + both observables). Smoke 10/10 pass. Full check-structure.sh 472/0 no regression. Integration boundary satisfied (consuming-surface = arm SKILL.md referencing the scaffold, now asserted). Tour behavioral scenarios + structural pins deliberately deferred to WP7e per WBS. No test failures → no triage. -->
 
 ## Current Node
-- **Path:** Feature > (all phases complete) > ship
-- **Active scope:** none — Phase 1 + Phase 2 both [x]; ready for /feature-ship
+- **Path:** Feature > review-quality (complete) > finalize
+- **Active scope:** none — shipped 287ff86; review-quality done (0C/1MAJ/2MIN, all auto-backlogged, Mode-3 F39); ready for /feature-finalize
 - **Blocked:** none
-- **Unvisited:** none (both phases complete)
-- **Open discoveries:** SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED (operator hands-on acceptance test pending — non-blocking, returns as follow-up)
+- **Unvisited:** none (both phases complete; finalize next)
+- **Open discoveries:** SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED (operator hands-on acceptance — non-blocking follow-up) + 3 code-quality findings auto-backlogged (1 MAJOR --help bug + 2 MINOR)
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
      Each entry is also logged to workflow-system/state/backlog.md -->
 [SURFACED-2026-07-22] Phase 2 verify-human — Operator DEFERRED the manual copy read-through; will run /tutorial-getting-started hands-on once usable and give feedback then (the real acceptance test). Logged to backlog as SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED. Feedback returns as a follow-up task/SURFACE, not a back-loop on this shipped gate.
+
+## Code-Quality Review — wp7c-greenfield-onboarding-scaffold
+
+*(feature-review-quality, ship 287ff86, 2026-07-22 — drive_mode=autopilot. 0 CRITICAL / 1 MAJOR / 2 MINOR. Per Mode-3 policy: MAJOR auto-backlogged with prominent chat surface, MINORs auto-backlogged; F39 → finalize. Operator read-time veto: mark a finding `[DISMISSED]` here before finalize archives this file.)*
+
+### Strengths
+- Two load-bearing sample properties (runnable observable + planted authentic tangent) documented consistently across sample header comments, `sample/README.md`, and the wired arm SKILL.md — same exact `Hello, World!` / `Hello, !` strings; smoke §5 pins the arm↔scaffold linkage so drift is caught mechanically.
+- `new-sample.sh` disciplined: `set -euo pipefail`, genuine no-clobber guard (verifies non-empty before refusing), `--force` escape hatch, `cp -R "$SRC"/.` preserves +x, source-missing preflight; mirrors the established `tools/migrate-doc-layout/` shape.
+- Smoke test asserts behaviors honestly (independence check actually mutates the copy + greps the source; no-clobber check verifies "wrote nothing", not just non-zero exit).
+- Delivery-shape rationale (`tools/` not `tests/fixtures/` — user-facing tour content; not `skills/` — data a skill consumes) captured in WIP + tool README.
+- Deferred-acceptance handling clean: verify-human deferral logged as a well-formed SURFACE with "returns as follow-up, NOT a back-loop" disposition.
+
+### Issues
+**CRITICAL**
+- (none)
+
+**MAJOR**
+- [`tools/onboarding-scaffold/new-sample.sh` `usage()` `sed -n '2,20p'`] `--help` output leaks script code. The header comment block ends at `# POSIX-ish bash, no dependencies.` (line 15) but `sed -n '2,20p'` reads through line 20, so `--help` prints a trailing blank line, `set -euo pipefail`, and the `SCRIPT_DIR=`/`SRC=` assignments verbatim as if they were help text (reproduced). Real defect on a user-facing tool the tour surfaces to a brand-new skeptical user; hard-coded line-range is fragile. Fix: delimiter-anchored extraction (print the contiguous `#`-comment block after the shebang, stop at first non-comment line), not a magic `20`. → auto-backlogged (Mode 3).
+
+**MINOR**
+- [`tools/onboarding-scaffold/sample/greet.sh:13-15`] The `TODO:` comment restates WHAT (the no-arg `Hello, !`) which the behavior already shows; but it's arguably load-bearing tour scaffolding (self-documents the planted tangent for the agent driving Step 6). Soft flag — the WHY ("Left as-is on purpose... Don't fix it inline mid-task") is the useful half and should stay. → auto-backlogged (Mode 3).
+- [`tools/onboarding-scaffold/new-sample.sh` mktemp default] `mktemp -d "${TMPDIR:-/tmp}/onboarding-sample.XXXXXX"` produces a double-slash path on systems where `$TMPDIR` ends in `/` (macOS default), which propagates into the printed "Created fresh sample at:"/"Try it: cd ..." hints the user copies. Cosmetic; path still resolves. Fix: `${TMPDIR%/}` trim. → auto-backlogged (Mode 3).
+
+### Assessment
+Well-built, appropriately-scoped feature that does exactly what its plan said and stops cleanly at the WP7c boundary (WP7d/WP7e forward-declarations preserved, not pulled forward); no-runtime convention honored. Strong discipline: scaffolder mirrors an existing primitive, smoke test asserts behaviors not incantations, tripartite documentation keeps arm+scaffold from drifting. Accrues essentially no debt beyond the one `--help` extraction bug, which is contained to a diagnostic path but touches the exact user-facing surface this WP exists to polish — worth resolving before the tour goes live.
+
+### If you disagree
+Dismiss any finding by editing this section in the WIP and marking the line `[DISMISSED]` before `feature-finalize` archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** The delivery-shape question ("fixture dir vs. scaffolder") turned out to be a false either/or — the right answer was **both**: a shipped canonical fixture + a per-run copier. The tour's "drop into a fresh copy, nothing real to lose" requirement forces the copier; the "shipped, reviewable, minimal" requirement forces the fixture. Neither alone satisfies both.
+- **Assumptions that held:** No-runtime (POSIX shell + markdown) was sufficient for a runnable observable AND an authentic tangent — no need for a real language/runtime. The `tools/migrate-doc-layout/` shape (script + README + test/) transferred cleanly. verify-self on a CLI observable worked exactly like the web-app case (the subagent spawn is about parent-context cleanliness, not Playwright).
+- **Assumptions that were wrong:** The plan under-specified the scaffolder's `--help`; the review caught a real `sed` line-range bug (`--help` leaks code) that the observable-outcomes didn't exercise — a reminder that "runnable + observable" doesn't cover every user-facing path (the diagnostic path escaped the plan's outcomes).
+- **Approach delta:** Matched the plan closely. One deliberate deviation: verify-human was **deferred** (not walked) at the operator's request — the operator will do the real acceptance test by running the tour hands-on; recorded honestly as DEFERRED + a tracked follow-up SURFACE, not marked as approved copy. Also added a §5 wiring-contract assertion to the smoke test at codify (beyond the plan's 4 observables) to guard arm↔scaffold drift without pulling WP7e pins forward.
 
 ## Notes
 - **No-runtime convention:** POSIX shell + markdown only. No new deps — this is what keeps the scaffold from rotting and honors §8.

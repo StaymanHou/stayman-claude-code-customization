@@ -6,6 +6,31 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
+# wp7c-greenfield-onboarding-scaffold — 2026-07-22
+
+<!-- 1 MAJOR + 2 MINOR findings from feature-review-quality, ship 287ff86 (drive_mode=autopilot; MAJOR auto-backlogged with prominent chat surface per Mode-3 policy, MINORs auto-backlogged). All three touch the WP7c scaffold; the MAJOR is a real, reproduced --help bug on a user-facing surface. Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-22-QUALITY-NEW-SAMPLE-HELP-LEAKS-CODE
+- **Priority:** medium
+- **Severity:** MAJOR (feature-review-quality, ship 287ff86)
+- **Finding:** `tools/onboarding-scaffold/new-sample.sh` `usage()` extracts help via `sed -n '2,20p'`, but the header comment block ends at `# POSIX-ish bash, no dependencies.` (line 15). Lines 16–20 are a blank line, `set -euo pipefail`, another blank, and the `SCRIPT_DIR=`/`SRC=` assignments — so `--help` prints those verbatim as if they were help text (reproduced by the reviewer). Real user-facing defect on a tool the onboarding tour surfaces to a brand-new skeptical user; the hard-coded line range silently re-corrupts on any future header edit.
+- **Suggested action (HYPOTHESIS — verify against the code):** replace the magic `sed -n '2,20p'` with a delimiter-anchored extraction — print the contiguous `#`-comment block that follows the shebang and stop at the first non-comment line (e.g. an `awk 'NR>1 && /^#/ {sub(/^# ?/,"");print} NR>1 && !/^#/ {exit}'`). Confirm the resulting `--help` shows only the usage prose and stops before `set -euo pipefail`.
+- **Pickup shape:** small self-contained task/refactor against `new-sample.sh`; low blast radius (diagnostic path only). Worth doing before the tour goes live (operator's hands-on run — see SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED — will hit `--help` naturally).
+
+## SURFACE-2026-07-22-QUALITY-GREET-TODO-RESTATES-WHAT
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 287ff86)
+- **Finding:** `tools/onboarding-scaffold/sample/greet.sh:13-15` `TODO:` comment restates WHAT the no-arg path does (`Hello, !`), which the behavior already shows. Soft flag only — the comment is arguably load-bearing tour scaffolding (self-documents the planted tangent for the agent driving the SURFACE beat), and the WHY half ("Left as-is on purpose... Don't fix it inline mid-task") is genuinely useful and should stay.
+- **Suggested action (HYPOTHESIS — verify):** likely NO CHANGE — the WHAT-restatement is intentional here (it's what makes the tangent self-documenting). Noted only so it isn't copied as a comment-style precedent into non-tour code. If touched at all, trim only the redundant WHAT clause, keep the WHY.
+- **Pickup shape:** trivial / likely close-as-wontfix; do NOT "fix" the planted tangent itself.
+
+## SURFACE-2026-07-22-QUALITY-NEW-SAMPLE-MKTEMP-DOUBLE-SLASH
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 287ff86)
+- **Finding:** `tools/onboarding-scaffold/new-sample.sh` default `mktemp -d "${TMPDIR:-/tmp}/onboarding-sample.XXXXXX"` yields a double-slash path (`.../T//onboarding-sample...`) when `$TMPDIR` ends in `/` (macOS default), which propagates into the printed "Created fresh sample at:" / "Try it: cd ..." hints the user copies. Cosmetic — the path still resolves.
+- **Suggested action (HYPOTHESIS — verify):** trim the trailing slash: `${TMPDIR:-/tmp}` → `"${TMPDIR:-/tmp}"` with a `%/` strip, e.g. `d="${TMPDIR:-/tmp}"; d="${d%/}"; mktemp -d "$d/onboarding-sample.XXXXXX"`. Confirm the printed hint has no `//`.
+- **Pickup shape:** trivial cosmetic; fold in with the MAJOR `--help` fix if that task runs.
+
 # wp7b-workflow-tour-entry-skill — 2026-07-22
 
 <!-- 2 MINOR findings from feature-review-quality, ship 40ec14f (a 3rd MINOR — WIP verify-leaf duplication — was fixed in-place at review time, so not backlogged). Both remaining findings are prose-tightening the reviewer itself judged "land more naturally in the WP7d wiring pass than in a refactor." Verify each against the real skill text before applying (review-finding-actions-are-hypotheses). -->

@@ -76,6 +76,12 @@
 - **Priority:** low
 - **Status:** open
 
+## Code-quality findings — wp7c-greenfield-onboarding-scaffold (2026-07-22)
+- **Pointer:** 1 MAJOR + 2 MINOR findings (feature-review-quality, ship 287ff86, drive_mode=autopilot → auto-backlogged). **MAJOR (medium):** `new-sample.sh` `--help` leaks script code (`sed -n '2,20p'` reads past the header comment block into `set -euo pipefail` + the `SCRIPT_DIR=`/`SRC=` assignments — reproduced; user-facing bug on a surface the tour exposes). **MINOR (low):** (1) `sample/greet.sh` planted-tangent `TODO` restates WHAT (likely NO CHANGE — it's intentional tour scaffolding, do NOT "fix" the tangent); (2) `new-sample.sh` mktemp default double-slashes when `$TMPDIR` ends in `/` (cosmetic). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** medium (the MAJOR --help fix) + low (2 MINOR)
+- **Status:** pending
+- **Pickup shape:** the MAJOR is a small self-contained task on `new-sample.sh` worth doing before the operator's hands-on tour run (SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED will hit `--help`); the 2 MINOR fold in with it (or a `/util-backlog-paydown` sweep). **Verify each against the real code first (review-finding-actions-are-hypotheses) — esp. the greet.sh TODO, which is likely close-as-wontfix.**
+
 ## Code-quality findings — wp7b-workflow-tour-entry-skill (2026-07-22)
 - **Pointer:** 2 MINOR findings (feature-review-quality, ship 40ec14f), both prose-tightening on the new tutorial-* skills that the reviewer judged land in the WP7d wiring pass, not a refactor: (1) `tutorial-getting-started` Step 3 "control does not return" slightly overstates one-shot Skill-tool mechanics — clarify at WP7d; (2) `tutorial-greenfield-workflow-tour` Step 2 product-entry is unbounded vs spec §3's "light taste" — add a "keep it a light taste, then pivot" bound at WP7d. (A 3rd MINOR — WIP verify-leaf duplication — was fixed in-place at review time.) Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)
