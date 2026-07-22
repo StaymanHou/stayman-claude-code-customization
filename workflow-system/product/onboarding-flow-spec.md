@@ -24,6 +24,60 @@ updated: 2026-07-22
 
 ---
 
+## Revision 2026-07-22 (WP7b co-design — structure + naming)
+
+State: `complete` → back to `in-progress` for this revision, then `complete`. At the start of the
+WP7b build, the operator refined the settled structure and naming. These changes **supersede** the
+corresponding parts of §2, §4, §5a, and §3-brownfield below where they conflict; the superseded
+prose is left in place for provenance with an inline pointer to this revision.
+
+1. **Three-skill family, not one skill with an internal fork.** The single-entry `workflow-tour`
+   skill is replaced by a **family of three `tutorial-`-prefixed skills**:
+   - **`tutorial-getting-started`** — the entry/dispatcher. Recommends `acceptEdits`, presents the
+     new-vs-existing fork (greenfield recommended-default / brownfield first-class peer), then
+     **invokes the chosen arm skill inline**. This is the single command Claudesk points at.
+   - **`tutorial-greenfield-workflow-tour`** — the greenfield narrated-real-run arm.
+   - **`tutorial-brownfield-workflow-tour`** — the brownfield BYO-real-code arm.
+   **Why:** three separate skill files enforce §2's "diverge and stay diverged (NOT
+   branch-then-reconverge)" **structurally** instead of by prose discipline inside one file. The
+   long arm names are deliberate (max explicitness for a cold reader scanning the skill list;
+   these are rarely invoked, so length is acceptable).
+
+2. **`tutorial-` prefix (reverses the §5a no-prefix decision AND its "no util-prefix pin"
+   binding).** §5a settled `workflow-tour` with a deliberate no-`util-`-prefix divergence and a
+   binding note telling WP7e **not** to pin a prefix check. This revision reverses both: all three
+   skills carry the **`tutorial-` prefix**, which restores a self-documenting signal, and **WP7e
+   SHALL pin a `tutorial-` prefix check** on the three skills. (The tour is a `tutorial-` *family*,
+   its own concept — it is no longer described as a `util-*` skill for categorization purposes; it
+   is still true that these skills own no workflow state and emit no transition. The category
+   nuance is recorded in the AD-5 as-built resync.)
+
+3. **Claudesk stable coupling command changes: `/workflow-tour` → `/tutorial-getting-started`**
+   (updates §4a/§4c). The published-interface command name Claudesk points at is now
+   `/tutorial-getting-started`; the two arm skills are internal (Claudesk never names them). WP8's
+   M12 return contract communicates this name.
+
+4. **Brownfield `/init` is OPTIONAL (refines §3-brownfield step 2).** Many real repos are already
+   `/init`-ed. The brownfield arm **detects an existing `CLAUDE.md`** (or asks) and **skips `/init`
+   when already initialized**, going straight to the product-workflow reverse-engineer. `/init`
+   is run only when no project context exists yet. The headline aha is the reverse-engineering of
+   the strategic layer, not `/init` itself — so making `/init` conditional strengthens, not
+   weakens, the brownfield headline.
+
+**Fuzzy-matcher collision re-check (WP5 discipline) for the new names:** `tutorial-getting-started`,
+`tutorial-greenfield-workflow-tour`, `tutorial-brownfield-workflow-tour` — the `tutorial-` prefix
+and the words `getting-started` / `greenfield` / `brownfield` / `workflow` / `tour` share **no**
+ranking substring with the session-* family (`start`/`restore`/`resume`/`session`). Note
+`getting-**started**` contains the substring `start` — acceptable because the full token is
+`getting-started` (a distinct compound) and it ranks against `session-start` far more weakly than a
+bare `start`; the entry skill's `description:` must still avoid the bare tokens `start`/`restore`/
+`resume`/`session` per §5a to keep ranking clean.
+
+Everything else in the spec (§3 flows, §6 honest-framing invariant, §7 "don't force it" staged set,
+§8 build constraints except the retired no-util-prefix-pin line) is unchanged.
+
+---
+
 ## 1. Audience & value prop (fixed)
 
 A **plain Claude Code user, invited via Claudesk**, who has **never seen the workflow system**
@@ -41,8 +95,9 @@ through a toy tutorial** — that is the skeptic-bounce this spec is engineered 
 
 ## 2. Settled structure (the shape every sub-WP binds to)
 
-- **Single entry point:** the **`workflow-tour`** skill (name settled — see §5). Claudesk renders
-  the invite surface and points at this one command.
+- **Single entry point:** the **`tutorial-getting-started`** skill (name updated by the 2026-07-22
+  revision above — superseding the `workflow-tour` name; see §5a). It dispatches inline to one of
+  two arm skills. Claudesk renders the invite surface and points at this one command.
 - **Two fully separate paths right after entry** — they **diverge and stay diverged** (NOT
   branch-then-reconverge):
   - **Greenfield** — starting something new / an empty dir.
@@ -132,27 +187,31 @@ them would dilute both headlines.
 ### 4a. What Claudesk renders
 - A **one-time evangelistic invite surface** for the workflow system, shown to a user who has
   opted in (gated behind Claudesk's own opt-in per its M10.9).
-- **A pointer to the single entry command: `/workflow-tour`.** That's the whole coupling — Claudesk
-  points the user at one slash command; everything after that is owned by this repo's skill.
+- **A pointer to the single entry command: `/tutorial-getting-started`.** (Command name updated by
+  the 2026-07-22 revision — was `/workflow-tour`.) That's the whole coupling — Claudesk points the
+  user at one slash command; everything after that is owned by this repo's skill family (the entry
+  skill dispatches inline to the greenfield or brownfield arm).
 
 ### 4b. When Claudesk points at the entry command
 - **Once, as a one-time invite** — not a persistent nag. After the user has run (or explicitly
-  dismissed) `/workflow-tour`, Claudesk does not re-surface the invite.
+  dismissed) `/tutorial-getting-started`, Claudesk does not re-surface the invite.
 - The invite fires **only when Claudesk's workflow-coupled UI opt-in is active** (Claudesk gates
   all workflow-coupled behavior behind an opt-in with a one-time evangelistic invite — that is what
   made these skill-system-owned items load-bearing; see the Claudesk handoff).
 
 ### 4c. What Claudesk must NOT hardcode (the anti-brittleness clause)
 - **Must NOT** hardcode the tour's **flow, steps, beats, or copy** — those live in this repo's
-  `workflow-tour` skill and evolve independently. Claudesk renders an invite and a command
+  `tutorial-*` skill family and evolve independently. Claudesk renders an invite and a command
   pointer, nothing more.
 - **Must NOT** hardcode the **greenfield/brownfield path choice** — the path fork happens *inside*
-  `workflow-tour`, after entry. Claudesk does not pre-select a path.
+  `tutorial-getting-started`, after entry (it dispatches to the arm skill). Claudesk does not
+  pre-select a path.
 - **Must NOT** hardcode the **permission-mode instruction** — `acceptEdits` guidance is delivered by
   the skill (§5), not by Claudesk's invite copy (so a future mode-guidance change is a one-repo
   edit).
-- **The ONLY stable coupling Claudesk may depend on is the command name `/workflow-tour`.** If that
-  name ever changes, it is a return-contract change communicated back through the same channel — so
+- **The ONLY stable coupling Claudesk may depend on is the command name `/tutorial-getting-started`.**
+  (Updated 2026-07-22 — was `/workflow-tour`; WP8's M12 return contract communicates this name.) If
+  that name ever changes, it is a return-contract change communicated back through the same channel — so
   the name is treated as a published interface (this is why §5 pins it and WP7e guards it).
 
 ### 4d. Return-contract delivery note (for WP8)
@@ -166,6 +225,12 @@ WP4.5; the settled `workflow-system/product/*` + `workflow-system/state/*` doc l
 ## 5. Settled decisions (7a.3 name/category · 7a.4 permission mode)
 
 ### 5a. Entry-skill name + category (7a.3) — SETTLED (operator 2026-07-22)
+
+> **⚠️ SUPERSEDED by the 2026-07-22 WP7b-co-design revision at the top of this doc.** The name is
+> now a three-skill `tutorial-`-prefixed family (`tutorial-getting-started` entry +
+> `tutorial-greenfield-workflow-tour` / `tutorial-brownfield-workflow-tour` arms), the `tutorial-`
+> prefix is pinned by WP7e, and it is no longer categorized as `util-*`. The text below is retained
+> for provenance; read the revision block for the current decision.
 
 **Name: `workflow-tour`. Category: `util-*`** — a standalone user-invoked entry point that owns no
 workflow state and emits **no transition** (the `util-*` contract: no F/I/T/P/S token, no
@@ -310,7 +375,9 @@ feel fake — which for this skeptical audience costs *more* trust than the aha 
   real to check. It must also contain a **planted, authentic-feeling tangent** so the staged
   SURFACE beat (§3 greenfield step 6) fires reliably without feeling fake. Keep it minimal so it
   doesn't rot (it rides path/skill/layout changes — cf. M7 moved every folder).
-- **WP7e must NOT pin a `util-`-prefix check** against `workflow-tour` (§5a divergence).
+- ~~**WP7e must NOT pin a `util-`-prefix check** against `workflow-tour` (§5a divergence).~~
+  **RETIRED by the 2026-07-22 revision:** WP7e SHALL pin a **`tutorial-`-prefix check** on the
+  three `tutorial-` family skills (the prefix is now the self-documenting signal).
 
 ---
 
