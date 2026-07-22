@@ -1,8 +1,8 @@
 ---
 stage: wbs
 state: complete
-updated: 2026-07-21
-progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); WP7 now decomposed into M11 sub-WPs (WP7a–WP7e); WP8 pending
+updated: 2026-07-22
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ (2026-07-22); WP7b–WP7e pending; WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -112,14 +112,15 @@ The standard rule details WPs for the **next milestone only**, because later mil
 >
 > **Repo conventions binding all sub-WPs:** no-runtime (prompt/markdown/skill/scenario/pin edits only); **state-machine-in-three-places sync** (`transitions.md` / SKILL.md / scenarios) for any transition the entry skill introduces; **path-qualification mandate** (`~/.claude/` vs `<proj-dir>/.claude/`, never bare); re-run `install.sh` after any new skill dir (and note `SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE` — install.sh is additive-only).
 
-#### WP7a: Onboarding flow spec (the written per-path flow)
+#### WP7a: Onboarding flow spec (the written per-path flow) ✅ SHIPPED 2026-07-22 (commit 4a43713)
+**AS-BUILT (2026-07-22):** Promoted `onboarding-brainstorm.md` into the durable design contract `workflow-system/product/onboarding-flow-spec.md` (§1 audience · §2 structure · §3 two per-path flows w/ aha-beat mapping · §4 Claudesk surface contract · §5 settled decisions · §6 honest-framing invariant · §7 disposition table + "don't force it" · §8 build constraints · §9 cross-links). **Settled 7a.3:** entry skill = **`workflow-tour`**, category **`util-*`**, emits **no transition** (deliberate divergence from the `util-` file-prefix — WP7e must NOT pin a util-prefix check; noted for the AD-5 as-built resync); fuzzy-matcher-collision-checked per WP5. **Settled 7a.4 (corrected):** recommend **`acceptEdits`** (NOT `bypassPermissions` — two distinct modes; brainstorm conflated them), reassurance copy keeps "stays local" honestly true. Codify deferred pins to WP7e (target the shipped skill, not a living doc — WP5/WP6 precedent); pin-charter captured forward in the spec. Review-quality 0C/0MAJ/3 MINOR (copy-time polish, backlogged). check-structure.sh 469/0.
 **Description:** Author the onboarding flow spec doc: per-path (greenfield / brownfield) first-run flow, the aha beats + their ordering, the "don't force it" staged-vs-named disposition table, and the **surface contract Claudesk renders against + when it points at the entry command**. This is simultaneously (i) the design contract WP7b–WP7d build against and (ii) the **M12 return-contract deliverable** (feeds WP8). Promote/refine `onboarding-brainstorm.md` into this durable spec.
 **Milestone:** 11 · **Dependencies:** brainstorm complete (done) · **Size:** S–M
 **Tasks:**
-- [ ] 7a.1 Write the per-path flow (greenfield spine + brownfield spine) with the aha beats mapped to each step
-- [ ] 7a.2 Write the Claudesk surface contract (what Claudesk shows, when it points at the entry command, what it must NOT hardcode)
-- [ ] 7a.3 Settle the entry-skill name + category (`session-*` vs new vs `util-*`) — decided here so WP7b builds against a fixed name
-- [ ] 7a.4 Settle the bypass-permissions reassurance copy (the one-line "why it's safe")
+- [x] 7a.1 Write the per-path flow (greenfield spine + brownfield spine) with the aha beats mapped to each step
+- [x] 7a.2 Write the Claudesk surface contract (what Claudesk shows, when it points at the entry command, what it must NOT hardcode)
+- [x] 7a.3 Settle the entry-skill name + category (`session-*` vs new vs `util-*`) — decided here so WP7b builds against a fixed name → **`workflow-tour` / `util-*` / no-transition**
+- [x] 7a.4 Settle the bypass-permissions reassurance copy (the one-line "why it's safe") → recommend **`acceptEdits`** (corrected from bypass)
 
 #### WP7b: The entry skill (single entry → two separate paths)
 **Description:** Build the dedicated onboarding entry skill (`skills/<name>/SKILL.md`): a single entry point that asks new-vs-existing, then runs the **greenfield** arm or the **brownfield** arm, each staging its own beats per the spec. Brownfield arm scripts the `/init` → product-workflow-reverse-engineer → `product-context`-revises-`CLAUDE.md` sequence against the user's real code. Greenfield arm drives top-of-hierarchy entry + the hierarchy taste. Opens with the universal bypass-permissions recommendation. Keeps the run in stepping/orchestrated so the human-pause beat is visible; ends with the drive-modes graduation reveal.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-22
+
+- **Feature shipped:** WP7a onboarding flow spec (M11) — promoted the M11 onboarding co-design brainstorm into the durable design contract `workflow-system/product/onboarding-flow-spec.md` that WP7b–WP7e build against and WP8 hands back to Claudesk (M12 return contract): the per-path greenfield/brownfield first-run flow with aha-beat ordering, the STAGED/BEAT/FRAME/NAMED/CUT disposition table + "don't force it" guaranteed-staged set, the Claudesk surface contract (renders / when-it-points / must-NOT-hardcode), and the honest-framing invariant (narrated real run ~10–15 min, no "5-min" claim); settled the entry skill as `workflow-tour` (`util-*` category, emits no transition) and corrected the permission-mode recommendation to `acceptEdits` (not `bypassPermissions` — two distinct modes the brainstorm had conflated), with structural pins deferred to WP7e per the WP5/WP6 precedent.
+
 ## 2026-07-21
 
 - **Feature shipped:** Doc-layout unification (M7) — the workflow system's two per-project doc folders were physically unified under one root (`docs/product/*` → `workflow-system/product/`, `workflow/*` → `workflow-system/state/`) so a newcomer learns one place instead of two; delivered as a path-anchored 58-file source sweep in this repo, a new `tools/migrate-doc-layout/` migration primitive (idempotent, `--dry-run`, reversible backup, drift-keep-both, git-mv history preservation, 35-assertion test suite) that migrated 9 consuming projects (gospelherald excluded), a `check-structure.sh` Phase-15 anti-regression lock (4 pins, 420/0), and an `arch.md` AS-BUILT resync + M12 return-contract capture of the settled layout for Claudesk M11's `docs_list`.

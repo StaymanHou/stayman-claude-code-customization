@@ -6,6 +6,30 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
+# wp7a-onboarding-flow-spec — 2026-07-22
+
+<!-- 3 MINOR findings from feature-review-quality, ship 4a43713. All copy-time polish on the new product doc workflow-system/product/onboarding-flow-spec.md — addressable at WP7b/WP7d authoring, none refactor-worthy. Verify each against the real doc text before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-22-QUALITY-ACCEPTEDITS-TABLE-MIDDLE-COLUMN
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 4a43713)
+- **Finding:** `onboarding-flow-spec.md` §5b (~L215-218) permission-mode table's `acceptEdits` "Safe filesystem cmds → auto" column is imprecise. Per the Claude Code model, `acceptEdits` auto-accepts file *edits* plus a specific safe-filesystem-command set (`mkdir`/`touch`/`rm`/`mv`/`cp`/`sed`); it is not a blanket "safe filesystem commands auto-approve" tier. The load-bearing distinction the section makes (acceptEdits gates arbitrary shell/network; bypassPermissions doesn't) is CORRECT, and the reassurance copy (~L226-231) only claims accurate behavior — so this is a table-column overstatement in a precision-critical section, not a functional error.
+- **Pickup shape:** tighten the middle column at **WP7b copy time** (where the skill copy is authored) so the correcting table is airtight — e.g. "safe FS cmds (mkdir/touch/rm/mv/cp/sed) auto; other shell prompts". Verify against docs (https://code.claude.com/docs/en/permission-modes.md) + the real doc text first.
+
+## SURFACE-2026-07-22-QUALITY-SPLIT-GREENFIELD-GROUNDING
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 4a43713)
+- **Finding:** `onboarding-flow-spec.md` describes greenfield "grounding" across two surfaces — probe-first/plan-around-real-shapes at §3 greenfield step 2 (a natural BEAT) and verify-self-on-scaffold at step 5 (STAGED) — but only the verify-self surface appears in the §7 "don't force it" guaranteed-staged set. Internally consistent (probe-first is opportunistic, not staged), but a WP7d author wiring "the grounding beat" must reconcile the two surfaces themselves.
+- **Pickup shape:** add a one-clause pointer at §3 greenfield step 2 ("probe-first grounding is a natural BEAT; only the verify-self surface is STAGED") at **WP7d** wiring time to remove the reconciliation burden. Verify against the real §3/§7 text first.
+
+## SURFACE-2026-07-22-QUALITY-SECTION3-LEGEND-NO-DISPOSITION-TOKENS
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 4a43713)
+- **Finding:** `onboarding-flow-spec.md` §3's beat-annotation legend (~L73) enumerates beat keys (A, B, C, G, Grounding, …) but omits the disposition tokens (STAGED/BEAT/FRAME/NAMED/CUT) that the §3 flow-table "Staged?" column and §7 actually use; the two legends live in different sections with no cross-pointer.
+- **Pickup shape:** trivial — add a "see §7 for disposition tokens" cross-pointer at §3 so it is self-contained for a first-time reader. Bundle into the next `/util-backlog-paydown` sweep or WP7 authoring. Verify against the real doc first.
+
+---
+
 _Resolved findings are **deleted** from this file on close (delete-on-resolve convention, 2026-07-15) — CHANGELOG.md is the canonical per-SURFACE-ID resolution record. Only open findings remain below, grouped by source feature._
 
 # doc-layout-unification — 2026-07-21

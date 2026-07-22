@@ -1,8 +1,10 @@
 # Feature: WP7a — Onboarding Flow Spec (M11)
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** finalize (complete) — archived
 **Created:** 2026-07-22
+**Completed:** 2026-07-22
+**Ship commit:** 4a43713
 **Entry:** spec (complex feature; cross-workflow handoff from product:wbs)
 **Milestone:** 11
 **drive_mode:** autopilot
@@ -37,8 +39,8 @@
 
 
 ## Current Node
-- **Path:** Feature > ship (all phases complete)
-- **Active scope:** ship (Phase 1 complete — verify-codify PASS, check-structure.sh 469/0; single-phase feature done)
+- **Path:** Feature > finalize (review-quality complete)
+- **Active scope:** finalize (review-quality: 0 CRITICAL / 0 MAJOR / 3 MINOR auto-backlogged → F39; no refactor)
 - **Blocked:** none
 - **Unvisited:** none (single-phase feature — the spec is one coherent document)
 - **Open discoveries:** none
@@ -255,3 +257,37 @@ Ties the reassurance to (a) the accurate mode behavior (edits auto, shell/networ
 
 No open unknowns remain — both were **wording/naming confirmations, not research unknowns**, and
 both are settled. The spec is clear → next transition is **F4 → plan** (no research needed).
+
+## Code-Quality Review — wp7a-onboarding-flow-spec
+
+Reviewer: `code-quality-reviewer` subagent, ship commit `4a43713`, drive_mode autopilot (Mode 3).
+Result: **0 CRITICAL / 0 MAJOR / 3 MINOR** → Case C: 3 MINOR auto-backlogged to
+`workflow-system/state/backlog-quality-findings.md` (`# wp7a-onboarding-flow-spec — 2026-07-22`),
+pointer added to `workflow-system/state/backlog.md`. No refactor triggered → F39 to finalize.
+
+### Strengths
+- The one correction the promotion makes (§5b `acceptEdits` vs `bypassPermissions`) is explicitly flagged, ships with a comparison table, and traces to a real conflation in the brainstorm — "promote, don't silently revise."
+- Every settled brainstorm decision maps forward: §3 flow tables and the §7 disposition table agree on all 11 beats; the "don't force it" guaranteed-staged set is identical to what §3 marks STAGED — no drift between the two representations WP7d/WP7e both read.
+- The WP7e pin-charter is precise and correctly anti-directional (what to pin + what NOT to pin, grounded in actual arch.md state).
+- The `util-` divergence is well-defended (harness-builtin analogy matches arch.md:344; fuzzy-matcher-collision check applies the WP5 description-token discipline).
+- §4 Claudesk contract names the single stable coupling (`/workflow-tour`) + four must-NOT-hardcode clauses — a non-brittle cross-repo interface.
+
+### Issues
+**CRITICAL** — (none)
+**MAJOR** — (none)
+**MINOR**
+- [`onboarding-flow-spec.md` §5b ~L215-218] permission-mode table's `acceptEdits` "safe filesystem cmds → auto" column is imprecise (blanket wording; the reassurance copy at ~L226-231 is already airtight). Tighten at WP7b copy time. → SURFACE-2026-07-22-QUALITY-ACCEPTEDITS-TABLE-MIDDLE-COLUMN
+- [`onboarding-flow-spec.md` §3 step 2 / step 5 / §7] greenfield "grounding" split across probe-first (BEAT, step 2) + verify-self (STAGED, step 5); only verify-self in §7's staged set. Add a one-clause pointer at WP7d. → SURFACE-2026-07-22-QUALITY-SPLIT-GREENFIELD-GROUNDING
+- [`onboarding-flow-spec.md` §3 ~L73] beat legend omits the STAGED/BEAT/FRAME/NAMED/CUT disposition tokens used by the flow tables + §7; add a cross-pointer. → SURFACE-2026-07-22-QUALITY-SECTION3-LEGEND-NO-DISPOSITION-TOKENS
+
+### Assessment
+A well-built design contract: fixes the shape without re-deciding it, flags its single deviation loudly, and front-loads the downstream-drift defenses (WP7e pin-charter, AD-5 as-built-resync note, §4 Claudesk coupling boundary). High internal consistency; no runtime, no state-machine change, no premature pin, and the codify-defer-to-WP7e decision is correctly reasoned + WP5/WP6-consistent. Only soft spots are the §5b table middle column + the split greenfield-grounding framing — both MINOR, both addressable at WP7b/WP7d copy time, no refactor pass warranted.
+
+### If you disagree
+Dismiss any finding by editing this section and marking the line `[DISMISSED]` before `feature-finalize` archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** The brainstorm's "auto-accept / bypass-permissions" phrasing was a factual conflation — `acceptEdits` and `bypassPermissions` are two distinct Claude Code modes with materially different blast radius (acceptEdits still gates arbitrary shell/network; bypass skips all checks). The operator flagged this at the spec pause; confirming it against the official docs surfaced that the correct guided-tour recommendation is `acceptEdits`, and that the reassurance-copy's "stays local" claim is only *honestly true* under `acceptEdits`. That correction is now the one deliberate deviation the spec makes from its source.
+- **Assumptions that held:** The design was genuinely settled by the brainstorm — WP7a was a promotion, not a re-decision. The single-phase / doc-authoring shape was right (one coherent artifact; splitting into sibling phases would have fragmented it). CLI-grep observable outcomes were the correct verification surface for a no-runtime doc. Deferring structural pins to WP7e (pin the shipped skill, not a living design doc) matched WP5/WP6 precedent cleanly.
+- **Assumptions that were wrong:** Only the entry-skill name — I recommended `util-onboard` (keeping the `util-` prefix's self-documenting signal); the operator preferred the more evocative `workflow-tour`, accepting a deliberate divergence from the `util-` file-prefix convention. Captured as a WP7e "do-not-pin" charter so the divergence doesn't later read as drift.
+- **Approach delta:** Matched the plan. The only mid-flight work not in the plan was verifying the permission-mode distinction via the claude-code-guide subagent (triggered by the operator's correction) — a fact-check, not a scope change. Verify-human auto-skipped cleanly (no integration boundary; isolated new product doc). No back-loops.

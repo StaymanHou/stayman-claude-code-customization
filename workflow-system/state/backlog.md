@@ -66,6 +66,12 @@
 - **Priority:** low
 - **Status:** open
 
+## Code-quality findings — wp7a-onboarding-flow-spec (2026-07-22)
+- **Pointer:** 3 MINOR findings (feature-review-quality, ship 4a43713), all copy-time polish on the new product doc `workflow-system/product/onboarding-flow-spec.md`: (1) §5b permission-mode table's `acceptEdits` middle column overstates "safe FS cmds auto" (precision nit in the one correcting section — the reassurance copy is already airtight; tighten at WP7b copy time); (2) greenfield "grounding" split across §3 step 2 (probe-first BEAT) + step 5 (verify-self STAGED) with only the latter in §7's staged set (add a one-clause pointer at WP7d); (3) §3 beat legend omits the STAGED/BEAT/FRAME/NAMED/CUT disposition tokens (add a cross-pointer to §7). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** all 3 are prose polish — (1)/(2) fold naturally into WP7b/WP7d authoring; (3) is a trivial cross-pointer. **Verify each against the real doc text first (review-finding-actions-are-hypotheses).**
+
 ## Code-quality findings — boundary-handoff-autochain-state-machine (2026-07-21)
 - **Pointer:** 3 MINOR findings (feature-review-quality, ship 3104205), all cosmetic/docs: (1) `transitions.md` S-ID gap (S19/S21 unused) undocumented; (2) the "table is authoritative" guard bullet nested at 5-space instead of 3-space peer across the 4 AGENTS.md; (3) S29's `not_contains: TRANSITION: S17` is near-inert. Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)
