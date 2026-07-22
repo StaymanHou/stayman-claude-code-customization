@@ -32,16 +32,28 @@ to repeat all of it — but keep every beat honest: when you say "watch it check
 
 ## The environment — a tiny runnable sample (from WP7c)
 
-This arm runs inside a **tiny, shipped, runnable sample project** (built by WP7c — forward
-touchpoint; wire the drop-in when that scaffold lands). Two properties of the sample are
-load-bearing, and this arm depends on both:
+This arm runs inside a **tiny, shipped, runnable sample project** that lives in this repo at
+`<proj-dir>/tools/onboarding-scaffold/sample/` (a "greeter"). **Drop the user into a fresh copy
+before Step 1** by running the scaffolder — it stamps a throwaway copy so the user's real edits, the
+SURFACE, and the handoff/restore all happen against something disposable, never the shipped source:
 
-- It is **runnable with at least one observable outcome**, so the staged **grounding** beat
-  (verify-self) has something *real* to observe (agent runs it, reports PASS/FAIL).
-- It contains a **planted, authentic-feeling tangent** (a small mess the user will plausibly want
-  to chase), so the staged **SURFACE** beat fires *reliably* without feeling manufactured.
+```bash
+tools/onboarding-scaffold/new-sample.sh          # prints the fresh copy's path + a run hint
+```
 
-Drop the user into a fresh copy of the sample (nothing real to lose) before Step 1.
+`cd` into the printed path and run the tour from there (nothing real to lose). Two properties of the
+sample are load-bearing, and the two staged beats below depend on them directly:
+
+- **Runnable with one observable outcome** — `./greet.sh World` prints exactly `Hello, World!` and
+  exits 0. This is what the staged **grounding** beat (Step 5) has the agent *run and check*
+  (PASS/FAIL against that exact line).
+- **A planted, authentic-feeling tangent** — running `./greet.sh` with **no argument** prints the
+  ungrammatical `Hello, !`, and `sample/README.md` flags it under a `TODO`. It is a *real* small bug
+  (not a fake breadcrumb), so the staged **SURFACE** beat (Step 6) has a reliable, honest rabbit-hole
+  to catch.
+
+See `<proj-dir>/tools/onboarding-scaffold/README.md` for the scaffold's shape and canonical
+invocations.
 
 ## The walkthrough (spec §3-greenfield spine)
 
@@ -81,6 +93,12 @@ tour stays in stepping/orchestrated, this pause is *visible* — do not autopilo
 `verify-self`: it actually executes the runnable outcome and reports **PASS/FAIL** against a real
 observable. The user watches it **check reality instead of guessing**.
 
+**The concrete check:** run `./greet.sh World` in the sample copy and confirm stdout is exactly the
+one line `Hello, World!` (exit 0). That single, checkable line *is* the observable outcome — the
+agent runs it, compares the real output to the claim, and reports **PASS** (or **FAIL**, and
+back-loops) rather than just asserting "done." (`sample/README.md` states this expected output, so
+the check is against a documented contract, not an invented one.)
+
 **Pre-frame it before it runs** (so a real ~minute of work doesn't read as dead time):
 > *"Watch this next part closely — it's about to actually run the thing and check the output against
 > what it claimed it would do. Most tools tell you 'done'; this one goes and looks. This is the
@@ -94,6 +112,13 @@ is often the strongest trust beat in the whole tour — don't rush it, and don't
 a rabbit-hole, runs **SURFACE** to log it to the backlog, and **continues without losing the plot**.
 Beat **C** (rabbit-hole caught) and the backlog (its flip side) are folded into one beat here — not
 two.
+
+**The concrete tangent:** the sample's `greet.sh` mishandles the no-argument case — `./greet.sh`
+(no name) prints the ungrammatical `Hello, !`, and `sample/README.md` already flags it under a
+`TODO`. It's a genuine small bug that's *tempting* to fix right now but isn't the thing we set out to
+build. That is exactly the rabbit-hole: the agent notices it, runs **SURFACE** to write it to the
+backlog so it survives, and stays on the actual task. (It's a real defect, not a staged breadcrumb —
+which is what keeps this beat honest for a skeptic.)
 
 **Pre-frame it:**
 > *"Here's a thing that would normally derail me for an hour. Watch what it does — instead of

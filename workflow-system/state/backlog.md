@@ -6,6 +6,16 @@
 
 ## TODO
 
+## SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED
+- **Source:** feature:verify-human (wp7c-greenfield-onboarding-scaffold, Phase 2)
+- **Target level:** feature (follow-up task)
+- **Type:** gap (deferred acceptance test)
+- **Summary:** WP7c's Phase-2 verify-human copy read-through was DEFERRED by the operator (2026-07-22). The operator will run `/tutorial-getting-started` → greenfield arm hands-on once the tour is usable and give feedback then. That hands-on run is the real acceptance test for the wired greenfield arm (environment drop-in, Step 5 grounding cite, Step 6 SURFACE tangent) — verify-self only confirmed the mechanical facts (paths named, stale forward-decl gone, no bare .claude/).
+- **Context:** Autopilot forward-progress was approved on verify-self evidence; the prose-reads-well-for-a-cold-skeptic judgment is inherently human and was deferred, not skipped. WP7c ships/finalizes now; feedback returns HERE as a follow-up, NOT as a back-loop on the shipped gate.
+- **Suggested action:** After the operator's hands-on run, capture any copy/flow feedback as a `/task-plan` (or fold into WP7d if it's beats-wiring copy) against `skills/tutorial-greenfield-workflow-tour/SKILL.md`. Resolve this SURFACE when the hands-on run is done (pass → delete per delete-on-resolve; issues → spawn the follow-up).
+- **Priority:** medium
+- **Status:** pending
+
 ## SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE
 - **Source:** feature:build (wp5-disambiguate-pause, Phase 1)
 - **Target level:** product:wbs
