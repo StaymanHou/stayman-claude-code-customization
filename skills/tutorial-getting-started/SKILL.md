@@ -20,7 +20,9 @@ sibling arm skills) is **NOT part of any workflow state machine**:
   pulled sidebar.
 - It **dispatches inline** to one of two arm skills — `tutorial-greenfield-workflow-tour` or
   `tutorial-brownfield-workflow-tour` — by invoking that skill in the same conversation (a
-  `session-start`-like experience). The arm continues the tour; control does not "return" here.
+  `session-start`-like experience). The arm you dispatch to **runs the tour to its close** — you do
+  not resume this dispatcher afterward or run any further steps here; entering an arm is the last
+  thing this skill does.
 - Frontmatter is the minimal shape: `name` / `description` / `argument-hint`. No `skills:` list
   (it is not an orchestrator) and no `tools:` key (it is not an executable subagent).
 
@@ -100,8 +102,9 @@ invite the user to autopilot past the exact beat the tour exists to show.
 ### Step 3 — Dispatch inline to the matching arm
 
 Based on the user's choice, **invoke the matching arm skill inline** (in this same conversation)
-and let it drive the rest of the tour. The two paths **diverge and stay diverged** — there is no
-reconvergence back to this skill.
+and let it drive the rest of the tour. The two paths **diverge and stay diverged**: the arm runs the
+tour through to its close, and you do not come back here to run more steps or pick up a second path —
+whatever the arm does *is* the rest of the run.
 
 - **New project → invoke `tutorial-greenfield-workflow-tour`.** It sets up the tiny runnable sample
   and drives the greenfield walkthrough (structure on a blank page: hierarchy taste, the state file,

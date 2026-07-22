@@ -126,7 +126,9 @@ shape but never reconverge.
 
 ### Legend for the beat annotations
 Beats are keyed to the disposition table in §7 (`A`, `B`, `C`, `G`, `Grounding`, `Handoff/Restore`,
-`Drive-modes`, `Hierarchy`, `Reflect/Capture`).
+`Drive-modes`, `Hierarchy`, `Reflect/Capture`). The **disposition tokens** used in the "Staged?"
+column and throughout the flow tables below (**STAGED** / **BEAT** / **FRAME** / **NAMED** / **CUT**)
+are defined in **§7** — see the §7 legend for what each means.
 
 ### Greenfield flow — "structure on a blank page"
 
@@ -141,7 +143,7 @@ outcome to check).
 | # | Step | Beats fired | Staged? |
 |---|------|-------------|---------|
 | 1 | **Entry** → recommend `acceptEdits` (universal) → pick path → framing line ("you keep the wheel") | **G** (FRAME) | framing |
-| 2 | **Enter top-of-hierarchy:** fuzzy idea → `/product-vision` → roadmap → … (or `/session-start` classifying a smaller new feature). Light **product→feature lifecycle taste** lands here (greenfield-only). | **Hierarchy** (light taste), **Grounding**: probe-first/plan-around-real-shapes named as it occurs | taste |
+| 2 | **Enter top-of-hierarchy:** fuzzy idea → `/product-vision` → roadmap → … (or `/session-start` classifying a smaller new feature). Light **product→feature lifecycle taste** lands here (greenfield-only). | **Hierarchy** (light taste), **Grounding**: probe-first/plan-around-real-shapes named as it occurs — *this probe-first surface is a natural **BEAT/NAMED**, NOT staged; only the verify-self surface at step 5 is the **STAGED** grounding beat (§7)* | taste |
 | 3 | **Do one small real thing** → plan becomes a **Work Tree** → open the state file: **A — it's a file you can open, and it's yours** (~free; the WIP already exists after any step). | **A** (BEAT) | natural |
 | 4 | **Hit a verify gate** → **B — it pauses and asks** (verify-human / plan review). The trust beat. Onboarding stays in stepping/orchestrated so this is visible; reinforce G here ("it paused to ask — and even here you can redirect"). | **B** (BEAT), **G** reinforce | natural (kept visible) |
 | 5 | **Grounding (STAGED):** agent runs the runnable scaffold, **observes** it via `verify-self`, reports **PASS/FAIL** vs an observable outcome — the user watches it **CHECK reality** instead of guessing. Pre-framed ("watch — it's about to actually run it and check the output; this is the grounding moment"). | **Grounding** (STAGED — verify-self) | **STAGED** |

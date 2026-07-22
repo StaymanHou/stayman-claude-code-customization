@@ -73,8 +73,16 @@ Take the user's fuzzy idea and enter the hierarchy near the top: run `/product-v
 give the idea a shape. This is where the **light product→feature taste** lands (greenfield-only — the
 user is already at the top, so a taste of the hierarchy is cheap here). As planning grounds itself in
 *documented real shapes* rather than guesses, **name** it in one line ("notice it's planning around
-what's actually there, not inventing an API it hopes exists") — grounding is *named* here, *staged*
-later at verify-self.
+what's actually there, not inventing an API it hopes exists") — grounding is *named* here (a natural
+BEAT, not staged; the *staged* grounding is verify-self at Step 5).
+
+**Keep it a light taste, then pivot — don't run the whole lifecycle.** On a tiny sample the point is
+for the user to *feel* the top of the hierarchy exist, not to grind through
+vision→roadmap→arch→wbs before anything tangible happens. Take the idea just far enough that a shape
+exists (a vision line and a first milestone, or a single classified feature), then **pivot straight
+to Step 3** — the first concrete unit of work, where beat A (the state file) lands. If you find
+yourself several product skills deep with no file the user can open yet, you've overshot the "taste"
+— stop and pivot.
 
 ### Step 3 — Do one small real thing → open the state file (beat A — BEAT, natural)
 Do one concrete small unit of work so a plan becomes a **Work Tree** and a WIP state file exists.
@@ -126,29 +134,79 @@ which is what keeps this beat honest for a skeptic.)
 > actually doing. That backlog is where your good-but-not-now ideas go to survive."*
 
 ### Step 7 — Bookend 1: the boundary (STAGED — handoff → restore)
-**The emotional peak** — placed near the end so there's real state to lose and recover.
-`/session-handoff` → the user "leaves" (simulate stepping away) → `/session-restore` → full context
-comes back. *"You just walked away mid-task and came back to exactly where you were — nothing
-reconstructed from memory, it's all in that file you opened earlier."*
+**The emotional peak** — placed near the end so there's real state to lose and recover. By now the
+user has a WIP state file (from Step 3), a real check that ran (Step 5), and a backlog entry (Step
+6). That accumulated state is what makes this beat land: there is genuinely something to walk away
+from and get back.
 
-> **WP7d wiring touchpoint (forward-declared).** The full scene-by-scene choreography of this
-> bookend — how the "leave" is enacted, the exact narration — is authored by **WP7d**
-> (staged-beats-wiring). This arm marks the beat and its position; WP7d writes the scene copy.
+Drive it as three scenes. Keep it in the tour's stepping/orchestrated cadence — narrate each move
+just before you make it so the user follows what's happening.
+
+**Scene 1 — pre-frame, then hand off.** Before running anything, set it up:
+> *"Here's the moment that sold me. You've got real work in flight — a plan, a check that ran, a
+> note in the backlog. Watch what happens when you have to stop. I'll hand the session off, then
+> pretend you've closed the laptop and come back tomorrow."*
+
+Then run **`/session-handoff`**. Point at exactly what it does as it does it: it writes a small
+pointer file, `<proj-dir>/workflow-system/state/.session.md`, that records the workflow, the step,
+and the next action — and it drops a one-line marker into your WIP state file too. *"That's it —
+one tiny file. Everything it needs to bring you back is on disk, not in the model's head."*
+
+**Scene 2 — enact the leave (no real exit needed).** You don't have to actually quit; narrate the
+boundary so the point is felt:
+> *"Now pretend this session is over — you've walked away, the context window is gone, tomorrow-you
+> starts cold with none of this conversation in memory."*
+
+(If the user *wants* to make it real they can `/exit` and come back — but the tour works fully by
+just narrating the gap. The claim being demonstrated is that nothing depends on this conversation
+surviving.)
+
+**Scene 3 — restore, and show that it all came back.** Run **`/session-restore`**. Narrate what it
+pulls off disk: it reads that `.session.md` pointer, re-opens the WIP state file, and reconstructs
+where you were — the workflow, the step, the next action, any open blockers — *without* replaying
+the conversation. Then land the beat by tying it back to the file the user opened in Step 3:
+> *"There it is — the whole plan, the state, the next step, all back. And notice **where** it came
+> from: that same plain file you opened earlier in the tour. It didn't remember you from our chat —
+> it read your work off disk. That's why you can close the laptop mid-task and not lose the plot."*
+
+This is the payoff for beat A (state-is-a-file, Step 3): because the state was always a real file,
+walking away and coming back is just re-reading it. Don't rush the reveal — for the target user
+who's lost context to a crashed or compacted session before, this is often the beat that converts.
 
 ### Step 8 — Bookend 2: the graduation, LAST + un-pushed (STAGED reveal) → close
-**Deliberately the last thing, deliberately not pushed.** Only now reveal drive modes:
-> *"One more thing, now that you've seen it work: you can let it chain the safe steps automatically
-> (autopilot), or even skip the human checks entirely (FSD). Powerful once you trust it — but
-> **not recommended yet**. The pause you saw earlier is the point; keep it for a while."*
+**Deliberately the last thing, deliberately not pushed.** The whole tour so far ran in
+stepping/orchestrated cadence precisely so the user *saw* the pause in Step 4. Only now — after
+they've watched it pause, ask, check reality, and survive a walk-away — reveal that the pauses are
+tunable:
 
-Then **close** by *naming* what you did NOT demo — full **Hierarchy** (product→feature→task as one
-record) and **Reflect/Capture** ("the system learns your preferences over sessions") — as "here's
-what's here when you're ready," never as staged beats (they're delayed-gratification and would feel
-fake if forced).
+> *"One last thing, now that you've seen it actually work. You watched it stop and ask you back in
+> Step 4 — that pause is a setting, not a law. There are faster gears: **autopilot** chains the safe
+> steps for you and only stops at the human checkpoints; **FSD** skips even those. They're real, and
+> once you trust the workflow they're worth it."*
 
-> **WP7d wiring touchpoint (forward-declared).** The drive-modes graduation reveal copy and the
-> named-at-close pointers are authored by **WP7d**. This arm fixes their position (LAST, un-pushed)
-> and disposition (STAGED reveal + NAMED close); WP7d writes the scene copy.
+Then immediately **un-push it** — the honest counterweight is the point of putting this last:
+
+> *"But I'd genuinely leave those alone for now. The pause you just saw — where it asked before
+> moving on — is the single most valuable thing here while the workflow is still new to you. Earn
+> the trust first, then shift gears. **Not recommended yet.**"*
+
+(Do **not** demonstrate autopilot/FSD live in the tour — showing it in action would hide the very
+beat B the tour is built around. This is a *named* reveal, not a staged run.)
+
+**Then close by naming what you did NOT demo** — one or two lines, framed as "here's what's here when
+you're ready," never staged (these are delayed-gratification and would feel fake if forced):
+
+> *"Two things we didn't get into, so you know they're there:*
+> - *the full **hierarchy** — product → feature → task all live in this same kind of on-disk record,
+>   so a big initiative and a one-line fix use the one system;*
+> - *and it **learns you** — a reflect/capture step at the end of sessions quietly records your
+>   preferences and corrections, so it fits you better next time than it did today.*
+>
+> *That's the tour. You steered, it kept the plot, and it's all sitting in files you own. Go build
+> something real — point it at your own repo next time with the existing-code path."*
+
+That closing line reinforces beat **G** one final time (you kept the wheel) and hands the user back
+to their real work — which is the whole value prop.
 
 ## "Don't force it" (spec §7 — binding)
 

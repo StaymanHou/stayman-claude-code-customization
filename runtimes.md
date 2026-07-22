@@ -20,6 +20,7 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
 - **Last:** 22s (2026-07-22)
 - **Use timeout:** 93000
 - **History:**
+  - 22s — 2026-07-22 (WP7d Phase 1 verify-auto)
   - 22s — 2026-07-22  <!-- WP7c greenfield-onboarding-scaffold Phase 2 verify-codify; 472 PASS / 0 FAIL. Edited skills/tutorial-greenfield-workflow-tour/SKILL.md (wired to scaffold). No structural-count change (472 flat), no regression. Runtime flat. -->
   - 22s — 2026-07-22  <!-- WP7c greenfield-onboarding-scaffold Phase 1 verify-codify; 472 PASS / 0 FAIL. Added tools/onboarding-scaffold/ (sample greet.sh + README, new-sample.sh scaffolder, tool README, test/run-tests.sh smoke). check-structure.sh does not pin tools/ content, count rose to 472 (unrelated Phase count drift, all green). Runtime flat. -->
   - 22s — 2026-07-22  <!-- WP7a onboarding-flow-spec Phase 1 verify-auto; 469 PASS / 0 FAIL. Pure product-doc authoring (added workflow-system/product/onboarding-flow-spec.md); check-structure.sh does not pin product-doc content, so count flat at 469, no regression. Runtime flat. -->

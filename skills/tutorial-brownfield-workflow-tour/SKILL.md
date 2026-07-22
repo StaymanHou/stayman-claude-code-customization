@@ -95,28 +95,83 @@ This is the deliberate greenfield/brownfield asymmetry (spec §7): C and groundi
 greenfield sample, NAMED-only on the real brownfield repo.
 
 ### Step 7 — Bookend 1: the boundary (STAGED — handoff → restore)
-**The emotional peak**, on the real repo. `/session-handoff` → the user "leaves" → `/session-restore`
-→ full context comes back. *"You just walked away mid-task on your real codebase and came back to
-exactly where you were — the plan, the state, all of it, from that context file, not reconstructed
-from memory."*
+**The emotional peak**, and it hits *harder* here than on a sample — this is the user's real
+codebase, with real work in flight (the reverse-engineered strategy from Step 3, the revised
+`CLAUDE.md` from Step 4, a real unit of work mid-flight from Step 5). Walking away from *that* and
+getting it all back is the beat that answers their actual pain: *"Claude keeps forgetting context /
+half-finishing things across sessions."*
 
-> **WP7d wiring touchpoint (forward-declared).** The full scene-by-scene choreography of this
-> bookend is authored by **WP7d** (staged-beats-wiring). This arm marks the beat + position; WP7d
-> writes the scene copy.
+Drive it as three scenes, same shape as the sample would use — narrate each move just before you
+make it.
+
+**Scene 1 — pre-frame, then hand off.** Before running anything:
+> *"This is the one I think you'll feel most, because it's your real project. You've got a plan in
+> flight, the reconstructed context, real work started. Watch what happens when you have to stop —
+> I'll hand the session off, then we'll pretend you've closed the laptop and come back tomorrow."*
+
+Then run **`/session-handoff`**. Point at what it does: it writes a small pointer file,
+`<proj-dir>/workflow-system/state/.session.md`, recording the workflow, the step, and the next
+action — and drops a one-line marker into the WIP state file. *"One tiny file plus your context
+doc. Everything it needs to bring you back is on disk — not in the model's memory of this chat."*
+
+**Scene 2 — enact the leave (no real exit needed).** Narrate the boundary:
+> *"Now pretend this session is over — laptop closed, context window gone. Tomorrow-you opens a
+> fresh session on this repo with none of today's conversation in memory."*
+
+(The user can `/exit` and come back for real if they want to — but narrating the gap makes the point
+just as well. The claim being demonstrated is that nothing depends on this conversation surviving.)
+
+**Scene 3 — restore, and show it all came back.** Run **`/session-restore`**. Narrate what it pulls
+off disk: it reads that `.session.md` pointer, re-opens the WIP state file, and reconstructs where
+you were — the workflow, step, next action, any blockers — *without* replaying the conversation.
+Then land the beat by tying it back to the durable context file the user opened in Step 4:
+> *"There it is — the plan, the state, the next step, all back on your real repo. And notice where
+> it came from: your project's own context file, the one you opened in Step 4, plus that little
+> pointer. It didn't remember you from our chat — it read your work off disk. **That** is why it
+> stops drifting and forgetting across sessions: the context isn't in its head, it's in your
+> repo."*
+
+This is the payoff for beat A (state-is-a-file, Step 4): because the durable context lives in real
+files, coming back cold is just re-reading them. For the target user who's lost real work to a
+compacted or crashed session, don't rush this — it's usually the beat that converts.
 
 ### Step 8 — Bookend 2: the graduation, LAST + un-pushed (STAGED reveal) → close
-**Deliberately last, deliberately not pushed.** Only now reveal drive modes:
-> *"Now that you've seen it work on your own code: you can let it chain the safe steps automatically
-> (autopilot), or skip the human checks entirely (FSD). Powerful once you trust it — but **not
-> recommended yet**. Keep the pauses for a while."*
+**Deliberately last, deliberately not pushed.** The whole tour ran in stepping/orchestrated cadence
+so the user *saw* the pause in Step 5. Only now — after they've watched it reconstruct their
+strategy, pause and ask on their own code, and survive a walk-away — reveal that the pauses are
+tunable:
 
-Then **close** by *naming* what you did NOT demo: the full **Hierarchy** (product→feature→task as one
-record — **CUT** on brownfield: too big to *feel* in run one) and **Reflect/Capture** ("the system
-learns your preferences over sessions") — as "here's what's here when you're ready," never staged.
+> *"One last thing, now that you've watched it work on your own codebase. You saw it stop and ask you
+> back in Step 5 — that pause is a setting, not a law. There are faster gears: **autopilot** chains
+> the safe steps and only stops at the human checkpoints; **FSD** skips even those. They're real, and
+> once you trust the workflow on your repo they're worth reaching for."*
 
-> **WP7d wiring touchpoint (forward-declared).** The drive-modes reveal copy + named-at-close
-> pointers are authored by **WP7d**. This arm fixes their position (LAST, un-pushed) and disposition;
-> WP7d writes the scene copy.
+Then immediately **un-push it** — the honest counterweight is why this goes last:
+
+> *"But I'd genuinely leave those alone for now. The pause you just saw — where it checked with you
+> before moving on, on your real code — is the single most valuable thing here while this is new to
+> you. Earn the trust first, then shift gears. **Not recommended yet.**"*
+
+(Do **not** demonstrate autopilot/FSD live in the tour — showing it in action would hide the very
+beat B the tour is built around. This is a *named* reveal, not a staged run.)
+
+**Then close by naming what you did NOT demo** — framed as "here's what's here when you're ready,"
+never staged:
+
+> *"Two things we didn't get into, so you know they're there:*
+> - *the full **hierarchy** — product → feature → task all live in this same kind of on-disk record.
+>   We only touched a slice of it today; on a real codebase the whole thing is more than you'd feel
+>   in one run, but it's there when a big initiative needs it;*
+> - *and it **learns you** — a reflect/capture step at the end of sessions quietly records your
+>   preferences and corrections, so it fits your project and your habits better next session than it
+>   did today.*
+>
+> *That's the tour — on your own code, which is the real test. You steered, it kept the plot and
+> reconstructed what you'd never written down, and it's all in files you own. Go keep building."*
+
+That closing line reinforces beat **G** one final time (you kept the wheel) and hands the user back
+to their real work — which is the whole value prop. (Note: the full hierarchy is **CUT** as a felt
+beat on brownfield — too big to land in run one — so it is *named* at close, never staged.)
 
 ## "Don't force it" (spec §7 — binding)
 
