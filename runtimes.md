@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-07-21
+updated: 2026-07-22
 ---
 
 
@@ -17,9 +17,10 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
   - 4s — 2026-07-21  <!-- uninstall-sh (WP4) Phase 3 verify-codify; 40/40 PASS. Runs the real install.sh+uninstall.sh against ~9 throwaway fake-$HOME sandboxes; each install is fast (~0.4s), so the whole suite lands at ~4s. `env HOME=<sandbox>` per-call isolation (SURFACE-2026-07-21-UNINSTALL-TEST-HOME-EXPORT-HAZARD). -->
 
 ## ./tests/check-structure.sh
-- **Last:** 24s (2026-07-21)
-- **Use timeout:** 90000
+- **Last:** 22s (2026-07-22)
+- **Use timeout:** 93000
 - **History:**
+  - 22s — 2026-07-22  <!-- WP7a onboarding-flow-spec Phase 1 verify-auto; 469 PASS / 0 FAIL. Pure product-doc authoring (added workflow-system/product/onboarding-flow-spec.md); check-structure.sh does not pin product-doc content, so count flat at 469, no regression. Runtime flat. -->
   - 24s — 2026-07-21  <!-- boundary-handoff-autochain Phase 2 verify-auto; 469 PASS / 0 FAIL. +17 from WP5's 452 — new [Phase 18] session-boundary-exit-chain pins (S22/S23 edges in transitions.md + reflect-fork + Drive-modes exit-chain block; exit-chain block × 4 AGENTS.md + guard re-point × 4; session-capture §4 conditional-gate + [PROJECT]-auto-write + [GLOBAL]-confirm + read-time-veto; snippet re-point). WP5 [Phase 17] pins all green (edited the 4 AGENTS.md guard bullets + snippet without regression). Runtime flat. -->
   - 24s — 2026-07-21  <!-- WP6 (research-cost-tier) Phase 2 verify-auto; 438 PASS / 0 FAIL. +11 from Phase 1's 427 — new [Phase 16] research cost-tier disambiguation pins (5 quick-research anchors + 2 snippet-rule + 2 sharpened-description + 2 orchestrator-reinforcement). All anchors grep-verified present before pinning. Runtime flat. -->
   - 23s — 2026-07-21  <!-- WP6 (research-cost-tier) Phase 1 verify-codify; 427 PASS / 0 FAIL. +1 from the uninstall baseline 426: fixed a PRE-EXISTING Phase-15 failure (CLAUDE.md:150 M7 migration-mapping prose `docs/product/* → workflow-system/product/` counted as a stale ref) by adding a category-B mapping-prose exclusion (`→.*workflow-system/(product|state)`) to BOTH Phase-15 stale-path filters — narrow (still catches live stale paths, only skips old→new mapping lines). Also fixed a latent BSD-grep "brackets not balanced" warning (raw-newline char class → `.*`). WP6 Phase 1 added skills/quick-research/ (auto-covered by dynamic per-skill phases; content pins deferred to Phase 2/P2.5). Runtime flat. -->
