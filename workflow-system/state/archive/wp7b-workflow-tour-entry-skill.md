@@ -1,7 +1,7 @@
 # Feature: WP7b — the `tutorial-*` onboarding skill family (M11 onboarding)
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** COMPLETED 2026-07-22 (shipped 40ec14f; finalized)
 **Created:** 2026-07-22
 **drive_mode:** autopilot
 **Milestone:** 11 (WP7b) — Claudesk Handoff Cycle
@@ -59,10 +59,6 @@ The audience is a brand-new, mildly-skeptical, real-developer user invited via C
   - [x] P3.1 Create `skills/tutorial-brownfield-workflow-tour/SKILL.md`: frontmatter + `## Category` + intro; write the brownfield spine (spec §3-brownfield) with **optional `/init`** conditional (skip when `CLAUDE.md` exists) → reverse-engineer (headline grounding, natural not staged) → `product-context` revise (beat A) → real work → verify gate (beat B) → grounding + SURFACE NAMED-only; handoff/restore + drive-modes forward-declared as WP7d touchpoints; reinforce G at pause  <!-- status: [x] -->
   - [x] P3.2 Add explicit "Transitions: none" documentation to all three skills (util-family meta-op — 7b.5): each owns no state, emits no transition; state-machine-in-three-places sync is N/A (no transition → no `transitions.md`/scenario edit for a transition; WP7e adds behavioral scenarios + the `tutorial-`-prefix pin separately)  <!-- status: [x] — all 3 skills carry `## Transitions` = None + Category-body no-transition statement -->
   - [x] P3.3 Re-run `install.sh` to symlink all three new `skills/tutorial-*/` dirs (7b.5); heed `SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE` (install.sh is additive-only — three brand-new dirs, no rename → no orphan to prune)  <!-- status: [x] — all 3 symlinks resolve into repo; verified via readlink; harness picked them up live this session (no bootstrap-skip) -->
-  - [ ] verify-auto  <!-- status: NOT-STARTED -->
-  - [ ] verify-self  <!-- status: NOT-STARTED -->
-  - [ ] verify-human  <!-- status: NOT-STARTED -->
-  - [ ] verify-codify  <!-- status: NOT-STARTED -->
   - [x] verify-auto  <!-- status: [x] — scoped: brownfield frontmatter YAML valid, headings, no bare .claude/ -->
   - [x] verify-self  <!-- status: [x] — subagent read-through, all 8 outcomes PASS incl. 2 family-wide (no-transition doc + frontmatter shape across all 3 skills). No integration boundary. -->
   - [x] verify-human  <!-- status: [x] — AUTO-SKIP (gate clean). Family framing operator-approved at Phase 1; optional-/init refinement was operator-directed. Affirmation printed as read-time veto. -->
@@ -92,6 +88,28 @@ When WP7e writes `check-structure.sh` pins + scenarios for the `tutorial-*` fami
 6. **acceptEdits-not-bypass** — entry skill recommends `accept edits` + `Shift+Tab`; `bypassPermissions` appears only as contrast (a placement-level pin: the recommendation verb attaches to accept-edits).
 7. **Behavioral scenario(s)** for the entry skill's path-fork (new→greenfield arm, existing→brownfield arm) + the staged-vs-named beat invariants — use the established `transition_id`-absent + `contains_any`→SOFT_PASS prose-behavior shape (these skills emit no transition, so assert on output prose).
 Also: the fuzzy-matcher-description-collision guard (WP5) — only `session-restore` may match "restor"; the tutorial names must not shadow session-* prefixes (spec Revision re-check already confirmed clean).
+
+## Code-Quality Review — wp7b-workflow-tour-entry-skill
+
+Reviewer subagent against ship commit `40ec14f`. Result: **0 CRITICAL / 0 MAJOR / 3 MINOR** (Case C — MINORs auto-backlogged per drive_mode=autopilot). Escape hatch: mark a finding `[DISMISSED]` here before finalize archives the WIP.
+
+**Strengths (summary):** three-file split enforces spec §2 "diverge and stay diverged" structurally; honest-framing invariant implemented with real teeth (prohibition + verbatim copy across all 3 files); acceptEdits-vs-bypass distinction precise and correct; beat dispositions annotated inline vs spec §7; forward-declaration (WP7c/WP7d) discipline clean.
+
+**MINOR findings:**
+1. `[skills/tutorial-getting-started/SKILL.md Step 3]` — "control does not return here" slightly overstates one-shot `Skill`-tool mechanics; a half-sentence ("the arm runs to close; you don't resume the dispatcher") removes ambiguity for the WP7d wiring pass. → **auto-backlogged** (folds into WP7d).
+2. `[skills/tutorial-greenfield-workflow-tour/SKILL.md Step 2]` — greenfield product-entry (`/product-vision`) is unbounded in the prose; spec §3 says "light taste," and an explicit "keep it a light taste, then pivot to the small unit" bound would stop a literal reading running a full vision→roadmap→arch→wbs on a tiny sample. → **auto-backlogged** (folds into WP7d wiring).
+3. `[WIP Phase-3 verify group]` — duplicated stale `NOT-STARTED` verify leaves (leaf-substitution anti-pattern). → **FIXED IN-PLACE 2026-07-22** (stale block deleted; WIP-housekeeping only, does not touch the shipped commit).
+
+**Assessment:** well-built prompt-authoring feature; spec-faithful; honors every named repo convention; advances the codebase cleanly with no debt; the two remaining prose softnesses land naturally in WP7d, not a refactor. No CRITICAL/MAJOR.
+
+## Retrospect
+- **What changed in our understanding:** The single-entry-skill shape settled in WP7a (`workflow-tour`) was superseded at build start by the operator's three-skill `tutorial-` family idea — a genuinely better design (three files enforce spec §2's "diverge and stay diverged" *structurally*, not by prose discipline). The lesson: even a "settled" WP7a spec decision is worth re-opening when the operator proposes a structurally-cleaner alternative — and the right move was to record it as a spec Revision *before* re-planning, not to silently build the new shape (kept the durable contract and the build in sync for WP7c–WP7e + WP8).
+- **Assumptions that held:** The verification model for a prompt-authoring feature (scoped per-file greps + subagent read-through instead of a running-system observation; full check-structure.sh suite deferred as a ship gate) held cleanly — mirrors WP5/WP6. The forward-declaration discipline (WP7c scaffold + WP7d bookend/graduation as touchpoints) let the arms be written now without WP7c/WP7d existing.
+- **Assumptions that were wrong:** Minor — my loose `grep 5.?min` self-check false-positived on the honest "10–15 min" label and the prohibition sentence; caught and noted forward for WP7e's pin (assert honest-framing PRESENT + prohibition PRESENT, not absence-of-a-substring). Also introduced a stale-leaf duplication in the WIP tree (the exact leaf-substitution anti-pattern the convention warns about) — the code-quality reviewer caught it; fixed in-place.
+- **Approach delta:** Delivered as 3 skills instead of 1 (co-design revision); brownfield `/init` made optional (operator refinement); otherwise matched the spec §3/§5/§6/§7 contract exactly. No runtime, no transition surface, no arch back-loop (lands inside AD-5's envelope).
+
+## Communicate — closure notice
+**Feature complete:** WP7b — the `tutorial-*` onboarding skill family — has shipped (commit `40ec14f`). It gives a brand-new user a single entry command (`/tutorial-getting-started`) that recommends accept-edits mode, forks into greenfield (narrated real run on a sample) or brownfield (BYO real code, reconstructs the strategic layer) paths, and walks one small real unit of work end-to-end. To see it: the three skills are live in `~/.claude/skills/tutorial-*` this session; the full staged bookends (handoff→restore, drive-modes graduation) + the runnable greenfield sample land in WP7c/WP7d. Requester = operator — closure notice for self-record.
 
 ## Scope boundary (what WP7b does NOT do — downstream sub-WPs)
 - **WP7c (scaffold):** the tiny RUNNABLE greenfield scaffold + planted authentic tangent. The greenfield arm *references* it as a forward touchpoint; not built here.

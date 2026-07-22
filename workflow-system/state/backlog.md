@@ -66,6 +66,12 @@
 - **Priority:** low
 - **Status:** open
 
+## Code-quality findings — wp7b-workflow-tour-entry-skill (2026-07-22)
+- **Pointer:** 2 MINOR findings (feature-review-quality, ship 40ec14f), both prose-tightening on the new tutorial-* skills that the reviewer judged land in the WP7d wiring pass, not a refactor: (1) `tutorial-getting-started` Step 3 "control does not return" slightly overstates one-shot Skill-tool mechanics — clarify at WP7d; (2) `tutorial-greenfield-workflow-tour` Step 2 product-entry is unbounded vs spec §3's "light taste" — add a "keep it a light taste, then pivot" bound at WP7d. (A 3rd MINOR — WIP verify-leaf duplication — was fixed in-place at review time.) Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** both fold naturally into WP7d authoring (the skill-copy wiring pass); neither is refactor-worthy. **Verify each against the real skill text first (review-finding-actions-are-hypotheses).**
+
 ## Code-quality findings — wp7a-onboarding-flow-spec (2026-07-22)
 - **Pointer:** 3 MINOR findings (feature-review-quality, ship 4a43713), all copy-time polish on the new product doc `workflow-system/product/onboarding-flow-spec.md`: (1) §5b permission-mode table's `acceptEdits` middle column overstates "safe FS cmds auto" (precision nit in the one correcting section — the reassurance copy is already airtight; tighten at WP7b copy time); (2) greenfield "grounding" split across §3 step 2 (probe-first BEAT) + step 5 (verify-self STAGED) with only the latter in §7's staged set (add a one-clause pointer at WP7d); (3) §3 beat legend omits the STAGED/BEAT/FRAME/NAMED/CUT disposition tokens (add a cross-pointer to §7). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)

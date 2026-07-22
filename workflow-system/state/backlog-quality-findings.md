@@ -6,6 +6,24 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
+# wp7b-workflow-tour-entry-skill — 2026-07-22
+
+<!-- 2 MINOR findings from feature-review-quality, ship 40ec14f (a 3rd MINOR — WIP verify-leaf duplication — was fixed in-place at review time, so not backlogged). Both remaining findings are prose-tightening the reviewer itself judged "land more naturally in the WP7d wiring pass than in a refactor." Verify each against the real skill text before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-22-QUALITY-DISPATCHER-CONTROL-RETURN-PHRASING
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 40ec14f)
+- **Finding:** `skills/tutorial-getting-started/SKILL.md` Step 3 says the dispatcher "hands off inline" and "control does not 'return' here," but a one-shot `Skill`-tool invocation does return to the caller when the invoked skill completes. The divergence intent is correct (the arm owns the rest of the run), but "control does not return" slightly overstates the tool mechanics — a cold reader could take it literally and wonder whether the dispatcher is expected to stay live after the arm finishes.
+- **Pickup shape:** at **WP7d wiring time**, add a half-sentence clarifying "the arm runs to close; you don't resume the dispatcher afterward" so the divergence semantics read unambiguously. Verify against the real Step-3 prose first.
+
+## SURFACE-2026-07-22-QUALITY-GREENFIELD-PRODUCT-ENTRY-UNBOUNDED
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 40ec14f)
+- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` Step 2 tells the agent to "run `/product-vision` (or `/session-start`…)" then Step 3 pivots to "do one small real thing," but the arm never bounds how far the product lifecycle runs before the pivot. Spec §3-greenfield row 2 says "**light** product→feature lifecycle **taste**" — the bounding word ("taste") is doing work the arm prose doesn't fully carry, so a literal reading risks a full vision→roadmap→arch→wbs detour on a tiny sample before the first tangible beat (A/state-is-a-file).
+- **Pickup shape:** at **WP7d wiring time**, add an explicit "keep the product entry to a light taste, then pivot to the small unit" bound to Step 2. Verify against the real Step-2 prose + spec §3 first.
+
+---
+
 # wp7a-onboarding-flow-spec — 2026-07-22
 
 <!-- 3 MINOR findings from feature-review-quality, ship 4a43713. All copy-time polish on the new product doc workflow-system/product/onboarding-flow-spec.md — addressable at WP7b/WP7d authoring, none refactor-worthy. Verify each against the real doc text before applying (review-finding-actions-are-hypotheses). -->
