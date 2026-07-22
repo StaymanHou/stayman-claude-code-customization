@@ -1,8 +1,9 @@
 # Feature: WP7i — Richer greenfield sample skeleton + upfront project framing
 
 **Workflow:** feature
-**State:** ship (complete)
+**State:** COMPLETED
 **Created:** 2026-07-22
+**Completed:** 2026-07-22 (commit 5ca1723)
 **Milestone:** 11 (WP7 onboarding) · **WBS:** WP7i
 **drive_mode:** autopilot
 
@@ -82,15 +83,21 @@ The shipped greenfield onboarding scaffold (`tools/onboarding-scaffold/sample/` 
     - [x] P3.verify-human.3 Step 5/6 copy reads honestly  <!-- status: [x] — DEFERRED-to-operator-2nd-walkthrough -->
   - [x] verify-codify  <!-- status: [x] — arm↔scaffold wiring codified by scaffold smoke group [8] (consuming-surface test: greps the real arm SKILL.md for tools/onboarding-scaffold + '1. [ ] buy milk' + 'done 99'). Tour behavioral scenarios + tutorial-prefix pins = WP7e's charter, NOT pulled forward. Full suite: smoke 15/0 + check-structure 472/0, no regression, no test failure → no triage. -->
 
+## Retrospect
+- **What changed in our understanding:** The operator's "fixed pre-generated skeleton the tutorial copies after the vision step" idea (floated at handoff) turned out to already BE the shipped WP7c model (`sample/` + `new-sample.sh` copy-per-run) — so WP7i was a *content-depth* change, not a mechanism change. Confirming that early avoided re-architecting a sound stamper.
+- **Assumptions that held:** The 3-phase decomposition (sample → scaffolder+smoke → arm re-cite) mapped cleanly onto the natural blast radius; the integration boundary landed exactly where predicted (Phase 2 new-sample.sh CLI + Phase 3 arm SKILL.md); the two in-blast-radius quality findings folded in naturally (both in `new-sample.sh`, the file Phase 2 rewrites).
+- **Assumptions that were wrong:** The first-cut mktemp double-slash fix (`${x%/}`, single-slash strip) was incomplete — it only handles ONE trailing slash, but macOS's real `TMPDIR` already ends in `/` and the test appended another, producing `.../T//`. The smoke running under the *real* environment caught it; a naive test with a clean `/tmp` would have passed a still-buggy fix. Lesson reinforced: run shell-path fixes under the real hostile input, not a sanitized one.
+- **Approach delta:** Close to plan. One unplanned discovery: WP7i's fixes fully resolve all THREE WP7c quality findings (the --help leak + double-slash were folded-in targets; the greet-TODO finding is resolved-by-redesign since greet.sh is deleted) — so finalize resolves the WP7c backlog pointer entirely, not just the two explicitly-targeted findings.
+
 ## Reverting this feature
 Prose/scaffold-only; no transition, no state-machine change. To revert: `git revert <ship-commit>` restores the greet.sh sample + old arm citations + old smoke. The 3 fold-in quality fixes (--help leak, mktemp double-slash — both in new-sample.sh; greet.sh TODO resolved-by-redesign) would revert with it. No install.sh re-run needed (no new/renamed skill dir — the arm was edited in place, already symlinked).
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** ALL phases complete (Phase 1, 2, 3 [x]); ready for /feature-ship
+- **Path:** Feature > finalize
+- **Active scope:** shipped (5ca1723) + review-quality done (0C/0MAJ/3MIN auto-backlogged, Case C); ready for /feature-finalize
 - **Blocked:** none
-- **Unvisited:** none — ship next
-- **Open discoveries:** none — all phases [x]. Copy-acceptance deferred to operator 2nd walkthrough (SURFACE, not a blocker).
+- **Unvisited:** none — finalize next
+- **Open discoveries:** none blocking. Copy-acceptance deferred to operator 2nd walkthrough (SURFACE). NOTE for finalize: WP7c's backlog pointer's MAJOR (--help leak) + mktemp-double-slash MINOR + greet-TODO MINOR were RESOLVED by this feature (fixes folded in P2.1 / greet.sh deleted) → resolve those SURFACEs at finalize (CHANGELOG-then-delete).
 
 ## Build log — Phase 3 (2026-07-22)
 Re-cited the greenfield arm (`skills/tutorial-greenfield-workflow-tour/SKILL.md`) to the todo CLI: environment section now describes the todo CLI + both load-bearing properties (P3.2); Step 5 grounding cites `todo add "buy milk" && todo list`→`1. [ ] buy milk`; Step 6 SURFACE cites the `todo done 99` no-op tangent. Added the upfront "### Say what the project is, upfront" framing subsection before Step 1 (P3.1) — 2-sentence todo-CLI intro + ls/cat orientation, honest-framing §6 preserved (no "5-min" claim; the ~10–15-min framing untouched). Verified: zero stale greet.sh/Hello strings; all 3 wiring-contract anchors present; no bare .claude/. Smoke now 15/15 PASS (the 2 previously-red arm-wiring assertions satisfied). Integration boundary: the arm is the consuming surface of the scaffold — Phase 3 modifies it directly.
@@ -100,6 +107,30 @@ Updated `new-sample.sh` (P2.1): `usage()` now uses a delimiter-anchored awk (pri
 
 ## Build log — Phase 1 (2026-07-22)
 Authored the todo CLI sample (`sample/todo` dispatcher + `sample/lib/{add,list,done}.sh` + empty `sample/todos.txt` store + rewritten `sample/README.md`); `git rm`'d the retired `greet.sh`. Smoke-verified during build: observable 1 (`add "buy milk" && list` → `1. [ ] buy milk`) ✓; observable 2 (`done 1 && list` → `1. [x] buy milk`) ✓; planted tangent (`done 99` on 1-item list → "marked item 99 as done", exit 0, list unchanged — authentic out-of-range no-op) ✓; edge cases (empty-list message, non-numeric-index guard exit 2, multi-item, re-done prefix-strip preserves text, dispatcher unknown/help) all correct; shipped `todos.txt` stayed 0 bytes (edits hit throwaway stores). `bash -n` clean on all 4 scripts.
+
+## Code-Quality Review — wp7i-richer-greenfield-sample
+_feature-review-quality, ship baseline 5ca1723, drive_mode=autopilot → 0 CRITICAL / 0 MAJOR / 3 MINOR (all auto-backlogged, Mode-3 Case C)._
+
+### Strengths
+- Test rewrite genuinely rigorous: per-scenario isolated `fresh_store()`; the intermediate 13/15 state correctly predicted at plan time + satisfied by Phase 3 (clean phased-contract handoff).
+- Both folded-in quality fixes are real fixes not symptom-patches: delimiter-anchored `usage()` (structurally can't leak even if header grows) + loop-strip trailing slashes, both regression-pinned ([7]).
+- No-runtime discipline enforced mechanically (test [4] `bash -n` + non-bash-shebang reject), not just prose.
+- Planted tangent honestly load-bearing: `done` guards numeric but deliberately not in-range; the `TODO` explains WHY not WHAT (avoids the prior GREET-TODO pattern).
+- greet→todo migration landed atomically (arm re-cite + smoke anchors + tool README in one commit; [8] is the anti-drift pin).
+
+### Issues
+**CRITICAL** — (none)
+**MAJOR** — (none)
+**MINOR**
+- [tools/onboarding-scaffold/sample/lib/done.sh:30] `line="[x] ${line#??? }"` — the `??? ` 4-char status-prefix strip is correct + verified but opaque; a one-line comment naming the "4-char status prefix" assumption would lower future-reader cost. Cosmetic.
+- [tools/onboarding-scaffold/test/run-tests.sh:120] group [5] independence check assumes the copy's `todo` is present/writable; would assert against a missing artifact rather than fail loudly if the scaffold ever stopped copying `todo`. Low-likelihood robustness nit.
+- [tools/onboarding-scaffold/sample/todos.txt:1] shipped store is a tracked 0-byte file; a stray in-source run (default `TODO_STORE`) would dirty a tracked file. By design (tour always stamps a fresh copy; smoke isolates every store) + intended teaching surface — no change recommended.
+
+### Assessment
+Well-built, tightly-scoped work that advances the codebase rather than accruing debt. Defensive shell (strict mode, `${VAR:?}`, numeric guard, no-clobber preserved); sample kept at minimum surface. Coverage grew 4→8 assertion groups pinning both quality-fix regressions + the no-runtime invariant. Scoping exemplary: folded-in fixes genuinely in-blast-radius; deferrals (WP7e scenarios/pins, operator 2nd-walkthrough copy judgment) documented with audit trails. As a `tutorial-*` skill the arm owns no state / emits no transition — feature-workflow canonical/pause-policy surface out of scope by design.
+
+### If you disagree
+Dismiss any finding by marking the line `[DISMISSED]` in this section before finalize archives the WIP.
 
 ## Notes / design constraints (from spec §8 + WBS ratified block)
 - **No-runtime / no-deps:** POSIX-ish bash + markdown + a plain-text store only. No node/python/etc. It must not rot (rides path/skill/layout changes — cf. M7 moved every folder).

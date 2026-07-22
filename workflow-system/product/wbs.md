@@ -2,7 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-22
-progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ (2026-07-22); walkthrough-driven expansion RATIFIED 2026-07-22 → WP7h/WP7i/WP7j pending + WP7e codifies last; WP8 pending
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ WP7i ✅ (2026-07-22); walkthrough-driven expansion RATIFIED 2026-07-22 → WP7j/WP7h pending + WP7e codifies last; WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -238,7 +238,8 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > - [ ] 7h.2 Design the full product-cycle tour (name + flow + spec update) — its own `/feature-spec` or `/feature-plan`
 > - [ ] 7h.3 Build the full product-cycle tour skill + wire it; codify (scenarios + pins) with WP7e or its own codify
 >
-> ### WP7i: Richer greenfield sample skeleton + upfront project framing (items 1, 3, 5) — RATIFIED
+> ### WP7i: Richer greenfield sample skeleton + upfront project framing (items 1, 3, 5) — ✅ SHIPPED 2026-07-22 (commit 5ca1723)
+> **AS-BUILT (2026-07-22):** Redesigned the greenfield sample from the one-file hello-world greeter into a small **command-line `todo` list** (operator-chosen via AskUserQuestion): a `todo` dispatcher + `lib/{add,list,done}.sh` modules over a plain-text `todos.txt` store — richer surface so planning/verify-self/SURFACE land meaningfully, still no-runtime/no-deps (POSIX shell + markdown). **Observable:** `todo add "buy milk" && todo list` → exactly `1. [ ] buy milk`. **Planted authentic tangent** (re-instantiated from the retired greet.sh's no-arg bug): `todo done <index>` guards numeric but NOT in-range, so `todo done 99` on a short list reports success + no-ops silently — TODO-flagged in `sample/README.md` + `lib/done.sh` (WHY not WHAT, per the prior GREET-TODO ruling). Kept WP7c's copy-per-run stamper `new-sample.sh` (operator's "fixed skeleton the tutorial copies" model IS the current design). Three phases: P1 authored the sample + retired greet.sh; P2 updated the stamper + rewrote the 8-group smoke to the todo CLI (folded in + fixed the 2 in-blast-radius quality findings: `--help` code-leak via delimiter-anchored awk + mktemp multi-trailing-slash strip, both regression-pinned); P3 re-cited the greenfield arm (env section + Step 5 grounding + Step 6 SURFACE) + added the upfront "what this project is" framing before Step 1 (honest-framing §6 preserved, no "5-min" claim). verify-auto/self green each phase; **verify-human copy-judgment DEFERRED to the operator's 2nd hands-on walkthrough** (mechanical facts verify-self-confirmed; SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED now spans WP7c/WP7g/WP7i). Smoke 15/0, check-structure.sh 472/0. Review-quality 0C/0MAJ/**3 MINOR** (all low, 2 "no change recommended" — auto-backlogged). Tour behavioral scenarios + `tutorial-`-prefix pins remain WP7e's charter. Prose/scaffold-only; no transition/state-machine change.
 > **Description:** The shipped hello-world scaffold (`tools/onboarding-scaffold/sample/` = one `greet.sh`
 > + README) is **too shallow to demonstrate the workflow's value** (operator, live run). **Ruling: redesign
 > the sample now.** Keep WP7c's copy-per-run stamper (`new-sample.sh`) — the mechanism is sound and matches
@@ -252,10 +253,10 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > own sub-WP below, WP7j, since it also carries the brownfield git-safety piece; the sample-redesign +
 > upfront-framing is WP7i proper.)
 > **Milestone:** 11 · **Dependencies:** WP7c (scaffold), WP7b (greenfield arm) · **Size:** M (touches scaffold + tests + arm copy)
-> - [ ] 7i.1 Redesign the pre-generated skeleton (richer, still no-runtime/no-deps; keep copy-per-run stamper)
-> - [ ] 7i.2 Update `new-sample.sh` + its 10-assertion smoke to the new skeleton
-> - [ ] 7i.3 Upfront "what this project is / what we're building" framing before G1 (greenfield arm)
-> - [ ] 7i.4 Re-cite the real observable + real tangent in Step 5 (grounding) + Step 6 (SURFACE) for the new skeleton
+> - [x] 7i.1 Redesign the pre-generated skeleton (richer, still no-runtime/no-deps; keep copy-per-run stamper) — todo CLI (dispatcher + add/list/done + todos.txt store)
+> - [x] 7i.2 Update `new-sample.sh` + its smoke to the new skeleton — stamper run-hint → todo CLI; smoke rewritten to 8 assertion groups (15 assertions); folded in + fixed the --help-leak + double-slash quality findings with regression pins
+> - [x] 7i.3 Upfront "what this project is / what we're building" framing before G1 (greenfield arm) — new "### Say what the project is, upfront" block before Step 1
+> - [x] 7i.4 Re-cite the real observable + real tangent in Step 5 (grounding) + Step 6 (SURFACE) for the new skeleton — Step 5 cites `todo add … && todo list`→`1. [ ] buy milk`; Step 6 cites `todo done 99` no-op
 >
 > ### WP7j: Replay invitation + brownfield git-safety (items 3, 4, 5) — RATIFIED (own small WP)
 > **Description:** Operator ruling: track the replay invitation as its **own small WP** (not folded into

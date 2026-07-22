@@ -6,6 +6,31 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
+# wp7i-richer-greenfield-sample — 2026-07-22
+
+<!-- 3 MINOR findings from feature-review-quality, ship 5ca1723 (drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. Two of the three are explicitly "no change recommended" by the reviewer (todos.txt tracked-by-design; independence-test robustness nit). Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-22-QUALITY-WP7I-DONE-PREFIX-STRIP-OPAQUE
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 5ca1723)
+- **Finding:** `tools/onboarding-scaffold/sample/lib/done.sh:30` flips the checkbox with `line="[x] ${line#??? }"` — a `?`-glob strip of exactly 4 leading chars. Correct (both `[ ] ` and `[x] ` prefixes are 4 chars) and verified (re-`done` preserves text + glob-char content), but the `??? ` idiom is opaque: a future maintainer changing the store prefix format has no in-code cue that `??? ` encodes "the 4-char status prefix."
+- **Suggested action (HYPOTHESIS — verify against the code):** add a one-line comment naming the "4-char status prefix" assumption (or switch to an intent-revealing form like `${line#"[?] "}` if it round-trips both prefixes). Cosmetic; behavior is sound — do not change behavior.
+- **Pickup shape:** trivial 1-line comment; fold into a `/util-backlog-paydown` sweep or any future touch of `done.sh` (e.g. if a later WP fixes the planted tangent).
+
+## SURFACE-2026-07-22-QUALITY-WP7I-INDEPENDENCE-TEST-ASSUMES-COPY
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 5ca1723)
+- **Finding:** `tools/onboarding-scaffold/test/run-tests.sh` group [5]'s independence check appends a marker to the copy's `todo` and greps the source `todo` — correct, but silently assumes the copy's `todo` is present/writable; if the scaffold ever stopped copying the extensionless `todo`, this would assert independence against a possibly-missing file rather than fail loudly. Low-likelihood (the earlier run-check in [5] already exercises the copied `todo`).
+- **Suggested action (HYPOTHESIS — verify):** optionally add a `[ -f "$D/s/todo" ]` precondition assertion before the marker-append so a missing copied artifact fails loudly. Robustness nit only.
+- **Pickup shape:** trivial; fold into a sweep or any future smoke edit.
+
+## SURFACE-2026-07-22-QUALITY-WP7I-TODOS-TXT-TRACKED-EMPTY
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 5ca1723)
+- **Finding:** `tools/onboarding-scaffold/sample/todos.txt` is a tracked 0-byte file; running the sample from the source tree with the default `TODO_STORE` writes into it (would dirty a tracked file). **Reviewer: no change recommended** — this is by design (the tour always stamps a fresh copy via `new-sample.sh`; the smoke isolates every store via `fresh_store()`) and the visible store IS the intended "the store is your state, nothing hidden" teaching surface.
+- **Suggested action (HYPOTHESIS — likely NO CHANGE):** leave as-is; flagged only so the operator is aware a stray in-source run would dirty a tracked file. If ever a concern, a `.gitignore` on the store or a git pre-commit reset could guard it — but that undercuts the teaching surface. Likely close-as-wontfix.
+- **Pickup shape:** likely wontfix; no action expected.
+
 # wp7g-tour-copy-corrections — 2026-07-22
 
 <!-- 1 MINOR from feature-review-quality (baseline a1d4c2b, drive_mode=autopilot). The other 2 review MINORs (stale acceptEdits self-references at onboarding-flow-spec.md:15 & :36) were own-session drift and FIXED inline, not backlogged. Verify against the real code before applying (review-finding-actions-are-hypotheses). -->
@@ -16,31 +41,6 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 - **Finding:** `skills/tutorial-getting-started/SKILL.md` Step-0's **brownfield** branch instructs the user to `/exit` and relaunch `claude --permission-mode auto` — but auto mode, its safety framing, and (load-bearingly) the "if auto mode isn't available" availability caveat are all introduced in **Step 1**, which the user only reaches *after* relaunching + re-running the tour. A user on an older model (no auto) is told to launch with `--permission-mode auto` before being told it may be unavailable. Forward-ref "(in auto mode — see the next step)" softens it; not a correctness bug (the caveat is hit on the second pass through Step 1).
 - **Suggested action (HYPOTHESIS — verify against the code):** add a half-sentence to the Step-0 brownfield copy — e.g. "if auto isn't available to you, just launch `claude` normally; Step 1 explains" — so the availability caveat is surfaced at the point the user is first told to launch with `--permission-mode auto`. Verify the exact current Step-0 brownfield wording first.
 - **Pickup shape:** trivial copy tweak to 1 file; natural fold-in with WP7i/WP7j (which also touch the tour arms) or the operator's eventual hands-on run. Low priority.
-
-# wp7c-greenfield-onboarding-scaffold — 2026-07-22
-
-<!-- 1 MAJOR + 2 MINOR findings from feature-review-quality, ship 287ff86 (drive_mode=autopilot; MAJOR auto-backlogged with prominent chat surface per Mode-3 policy, MINORs auto-backlogged). All three touch the WP7c scaffold; the MAJOR is a real, reproduced --help bug on a user-facing surface. Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
-
-## SURFACE-2026-07-22-QUALITY-NEW-SAMPLE-HELP-LEAKS-CODE
-- **Priority:** medium
-- **Severity:** MAJOR (feature-review-quality, ship 287ff86)
-- **Finding:** `tools/onboarding-scaffold/new-sample.sh` `usage()` extracts help via `sed -n '2,20p'`, but the header comment block ends at `# POSIX-ish bash, no dependencies.` (line 15). Lines 16–20 are a blank line, `set -euo pipefail`, another blank, and the `SCRIPT_DIR=`/`SRC=` assignments — so `--help` prints those verbatim as if they were help text (reproduced by the reviewer). Real user-facing defect on a tool the onboarding tour surfaces to a brand-new skeptical user; the hard-coded line range silently re-corrupts on any future header edit.
-- **Suggested action (HYPOTHESIS — verify against the code):** replace the magic `sed -n '2,20p'` with a delimiter-anchored extraction — print the contiguous `#`-comment block that follows the shebang and stop at the first non-comment line (e.g. an `awk 'NR>1 && /^#/ {sub(/^# ?/,"");print} NR>1 && !/^#/ {exit}'`). Confirm the resulting `--help` shows only the usage prose and stops before `set -euo pipefail`.
-- **Pickup shape:** small self-contained task/refactor against `new-sample.sh`; low blast radius (diagnostic path only). Worth doing before the tour goes live (operator's hands-on run — see SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED — will hit `--help` naturally).
-
-## SURFACE-2026-07-22-QUALITY-GREET-TODO-RESTATES-WHAT
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 287ff86)
-- **Finding:** `tools/onboarding-scaffold/sample/greet.sh:13-15` `TODO:` comment restates WHAT the no-arg path does (`Hello, !`), which the behavior already shows. Soft flag only — the comment is arguably load-bearing tour scaffolding (self-documents the planted tangent for the agent driving the SURFACE beat), and the WHY half ("Left as-is on purpose... Don't fix it inline mid-task") is genuinely useful and should stay.
-- **Suggested action (HYPOTHESIS — verify):** likely NO CHANGE — the WHAT-restatement is intentional here (it's what makes the tangent self-documenting). Noted only so it isn't copied as a comment-style precedent into non-tour code. If touched at all, trim only the redundant WHAT clause, keep the WHY.
-- **Pickup shape:** trivial / likely close-as-wontfix; do NOT "fix" the planted tangent itself.
-
-## SURFACE-2026-07-22-QUALITY-NEW-SAMPLE-MKTEMP-DOUBLE-SLASH
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 287ff86)
-- **Finding:** `tools/onboarding-scaffold/new-sample.sh` default `mktemp -d "${TMPDIR:-/tmp}/onboarding-sample.XXXXXX"` yields a double-slash path (`.../T//onboarding-sample...`) when `$TMPDIR` ends in `/` (macOS default), which propagates into the printed "Created fresh sample at:" / "Try it: cd ..." hints the user copies. Cosmetic — the path still resolves.
-- **Suggested action (HYPOTHESIS — verify):** trim the trailing slash: `${TMPDIR:-/tmp}` → `"${TMPDIR:-/tmp}"` with a `%/` strip, e.g. `d="${TMPDIR:-/tmp}"; d="${d%/}"; mktemp -d "$d/onboarding-sample.XXXXXX"`. Confirm the printed hint has no `//`.
-- **Pickup shape:** trivial cosmetic; fold in with the MAJOR `--help` fix if that task runs.
 
 # wp7a-onboarding-flow-spec — 2026-07-22
 
