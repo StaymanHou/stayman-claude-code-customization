@@ -2,7 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-22
-progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ + WP7b ✅ + WP7c ✅ (2026-07-22); WP7d–WP7e pending; WP8 pending
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ + WP7b ✅ + WP7c ✅ + WP7d ✅ (2026-07-22); WP7e pending; WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -142,13 +142,14 @@ The standard rule details WPs for the **next milestone only**, because later mil
 - [x] 7c.2 Author the minimal runnable scaffold content + the planted tangent that makes SURFACE authentic — `greet.sh` (happy path + no-arg `Hello, !` tangent) + `sample/README.md` (observable + TODO)
 - [x] 7c.3 Wire WP7b's greenfield arm to drop the user into it + trigger the staged SURFACE beat AND the staged verify-self grounding beat — arm's environment section + Steps 5/6 now cite the concrete scaffold, observable, and tangent
 
-#### WP7d: Staged-beats wiring (bookends + graduation)
+#### WP7d: Staged-beats wiring (bookends + graduation) ✅ SHIPPED 2026-07-22 (commit ae733ab)
+**AS-BUILT (2026-07-22):** Replaced the two `> **WP7d wiring touchpoint (forward-declared).**` placeholder blocks in BOTH arm skills with real scene-by-scene choreography + per-beat pre-framing copy (spec §3 bookend/graduation, §6 per-beat framing, §7 staged-set). **Step 7 handoff→restore bookend** (both arms): a 3-scene choreography (pre-frame + `/session-handoff` writes `.session.md` + WIP marker / enact-leave / `/session-restore` reads pointer off disk + reconstructs without replaying the conversation), grounded in the REAL skill mechanics, payoff tied back to beat A (greenfield: the Step-3 state file; brownfield: the Step-4 revised `CLAUDE.md` + the drift/forgetting pain). **Step 8 drive-modes graduation** (both arms): reveal LAST + explicitly un-pushed ("Not recommended yet."), no-live-demo, then NAMED-not-staged close (Hierarchy — light-taste greenfield / CUT brownfield — + Reflect/Capture). **Verify-pause visibility** already enforced structurally by WP7b (`tutorial-getting-started` Step 2 "Do NOT present a drive-mode menu here… default stepping/orchestrated" + both arms' cadence lines); WP7d added the Step-8 reinforcement + named-at-close half. Honest-framing §6 preserved (no "5-min" claim; prohibition kept). Also **consumed 4 review findings** in real prose (verified-against-code first): greenfield Step-2 "light taste, then pivot" bound (GREENFIELD-PRODUCT-ENTRY-UNBOUNDED), dispatcher divergence-semantics fix in Category + Step 3 both spots (DISPATCHER-CONTROL-RETURN-PHRASING), spec §3-greenfield-step2 grounding-not-staged clause (SPLIT-GREENFIELD-GROUNDING), spec §3-legend disposition-token cross-pointer (SECTION3-LEGEND-NO-DISPOSITION-TOKENS). Prose-only; no new skill dir (all 3 skills already symlinked live → install.sh not needed); no transition/state-machine change. Both phases through full build→verify-auto→verify-self→verify-human(Mode-3 auto-skip, no integration boundary)→verify-codify; independent verify-self subagent coherence reads all-PASS; check-structure.sh 472/0. Review-quality 0C/0MAJ/**2 MINOR** auto-backlogged (scope-symmetry: the dispatcher control-return fix not yet mirrored into the two arm Category blocks — cheap next-sweep pickup; + terminal-action-implicit-at-close). Behavioral scenarios + `tutorial-`-prefix pins remain **WP7e's** charter (deliberately not pulled forward). verify-human copy acceptance still deferred to the operator's hands-on run (SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED).
 **Description:** Wire the beats that are choreography rather than plain skill invocations: the **handoff → restore emotional-peak bookend** (run `/session-handoff`, simulate/enact leave, `/session-restore` restores full context), the **drive-modes graduation reveal** (LAST, explicitly un-pushed — "not recommended yet"), and **verify-pause visibility** (ensure the onboarding run stays in stepping/orchestrated so beat B is seen, never autopilots past it). Also the **named-at-close** pointers (hierarchy, reflect-capture-learns-you).
 **Milestone:** 11 · **Dependencies:** WP7b (arms exist to wire into) · **Size:** S
 **Tasks:**
-- [ ] 7d.1 Handoff→restore bookend choreography (both paths)
-- [ ] 7d.2 Drive-modes graduation reveal at the end (un-pushed framing)
-- [ ] 7d.3 Verify-pause-visibility guard (stay stepping/orchestrated during the tour) + the named-at-close pointers
+- [x] 7d.1 Handoff→restore bookend choreography (both paths) — 3-scene bookend in both arms, mechanics-faithful, payoff tied to beat A
+- [x] 7d.2 Drive-modes graduation reveal at the end (un-pushed framing) — reveal LAST + "Not recommended yet." + no-live-demo, both arms
+- [x] 7d.3 Verify-pause-visibility guard (stay stepping/orchestrated during the tour) + the named-at-close pointers — guard already enforced by WP7b Step-2 no-mode-menu; WP7d added Step-8 reinforcement + the named-at-close (Hierarchy/Reflect-Capture) pointers in both arms
 
 #### WP7e: Behavioral scenarios + structural pins
 **Description:** Cover the onboarding: behavioral scenario(s) for the entry skill's path-fork + the staged beats (using the established scenario shape — `transition_id` / `contains_any`→SOFT_PASS for prose-behavior beats), and `tests/check-structure.sh` structural pins for the new skill's required sections + the "don't force it" invariants + (if any) the transition surface. Mirror the WP5/WP6 codify shape.

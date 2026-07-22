@@ -76,23 +76,23 @@
 - **Priority:** low
 - **Status:** open
 
+## Code-quality findings — wp7d-staged-beats-wiring (2026-07-22)
+- **Pointer:** 2 MINOR findings (feature-review-quality, ship ae733ab, drive_mode=autopilot → auto-backlogged, no refactor). (1) **scope-symmetry:** both `tutorial-{greenfield,brownfield}-workflow-tour` Category sections still carry the "does not return control to the dispatcher" literal-mechanics overstatement that WP7d P2.3 fixed in the *dispatcher* only — cheap+safe, extends the consumed DISPATCHER-CONTROL-RETURN fix to scope-symmetry; (2) both arm closes state the terminal action only in `## Transitions`, not at the close paragraph (trivial). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** finding (1) is the strong next-`/util-backlog-paydown`-or-hands-on-follow-up pickup (2-file prose edit mirroring the P2.3 divergence-semantics wording); (2) folds in with it. **Verify each against the real skill text first (review-finding-actions-are-hypotheses).**
+
 ## Code-quality findings — wp7c-greenfield-onboarding-scaffold (2026-07-22)
 - **Pointer:** 1 MAJOR + 2 MINOR findings (feature-review-quality, ship 287ff86, drive_mode=autopilot → auto-backlogged). **MAJOR (medium):** `new-sample.sh` `--help` leaks script code (`sed -n '2,20p'` reads past the header comment block into `set -euo pipefail` + the `SCRIPT_DIR=`/`SRC=` assignments — reproduced; user-facing bug on a surface the tour exposes). **MINOR (low):** (1) `sample/greet.sh` planted-tangent `TODO` restates WHAT (likely NO CHANGE — it's intentional tour scaffolding, do NOT "fix" the tangent); (2) `new-sample.sh` mktemp default double-slashes when `$TMPDIR` ends in `/` (cosmetic). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** medium (the MAJOR --help fix) + low (2 MINOR)
 - **Status:** pending
 - **Pickup shape:** the MAJOR is a small self-contained task on `new-sample.sh` worth doing before the operator's hands-on tour run (SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED will hit `--help`); the 2 MINOR fold in with it (or a `/util-backlog-paydown` sweep). **Verify each against the real code first (review-finding-actions-are-hypotheses) — esp. the greet.sh TODO, which is likely close-as-wontfix.**
 
-## Code-quality findings — wp7b-workflow-tour-entry-skill (2026-07-22)
-- **Pointer:** 2 MINOR findings (feature-review-quality, ship 40ec14f), both prose-tightening on the new tutorial-* skills that the reviewer judged land in the WP7d wiring pass, not a refactor: (1) `tutorial-getting-started` Step 3 "control does not return" slightly overstates one-shot Skill-tool mechanics — clarify at WP7d; (2) `tutorial-greenfield-workflow-tour` Step 2 product-entry is unbounded vs spec §3's "light taste" — add a "keep it a light taste, then pivot" bound at WP7d. (A 3rd MINOR — WIP verify-leaf duplication — was fixed in-place at review time.) Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** low (all)
-- **Status:** pending
-- **Pickup shape:** both fold naturally into WP7d authoring (the skill-copy wiring pass); neither is refactor-worthy. **Verify each against the real skill text first (review-finding-actions-are-hypotheses).**
-
 ## Code-quality findings — wp7a-onboarding-flow-spec (2026-07-22)
-- **Pointer:** 3 MINOR findings (feature-review-quality, ship 4a43713), all copy-time polish on the new product doc `workflow-system/product/onboarding-flow-spec.md`: (1) §5b permission-mode table's `acceptEdits` middle column overstates "safe FS cmds auto" (precision nit in the one correcting section — the reassurance copy is already airtight; tighten at WP7b copy time); (2) greenfield "grounding" split across §3 step 2 (probe-first BEAT) + step 5 (verify-self STAGED) with only the latter in §7's staged set (add a one-clause pointer at WP7d); (3) §3 beat legend omits the STAGED/BEAT/FRAME/NAMED/CUT disposition tokens (add a cross-pointer to §7). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** low (all)
+- **Pointer:** 1 MINOR finding remaining (2 of the original 3 RESOLVED by WP7d — SPLIT-GREENFIELD-GROUNDING + SECTION3-LEGEND-NO-DISPOSITION-TOKENS, see CHANGELOG). Remaining: §5b permission-mode table's `acceptEdits` middle column overstates "safe FS cmds auto" (precision nit in the one correcting section — the reassurance copy is already airtight; tighten when the §5b table is next touched). Full body in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low
 - **Status:** pending
-- **Pickup shape:** all 3 are prose polish — (1)/(2) fold naturally into WP7b/WP7d authoring; (3) is a trivial cross-pointer. **Verify each against the real doc text first (review-finding-actions-are-hypotheses).**
+- **Pickup shape:** trivial precision edit to the §5b table middle column; verify against the Claude Code permission-modes docs + the real doc text first (review-finding-actions-are-hypotheses). Bundle into the next `/util-backlog-paydown` sweep.
 
 ## Code-quality findings — boundary-handoff-autochain-state-machine (2026-07-21)
 - **Pointer:** 3 MINOR findings (feature-review-quality, ship 3104205), all cosmetic/docs: (1) `transitions.md` S-ID gap (S19/S21 unused) undocumented; (2) the "table is authoritative" guard bullet nested at 5-space instead of 3-space peer across the 4 AGENTS.md; (3) S29's `not_contains: TRANSITION: S17` is near-inert. Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).

@@ -6,6 +6,24 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
+# wp7d-staged-beats-wiring — 2026-07-22
+
+<!-- 2 MINOR findings from feature-review-quality, ship ae733ab (drive_mode=autopilot → auto-backlogged, no refactor). Both prose-polish on the tutorial-* skills. Verify each against the real text before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-22-QUALITY-ARM-CATEGORY-CONTROL-RETURN-SCOPE-SYMMETRY
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship ae733ab)
+- **Finding:** Both arm-skill `## Category` sections still carry the "it does not return control to the dispatcher" literal-mechanics overstatement — the SAME phrasing the consumed `SURFACE-2026-07-22-QUALITY-DISPATCHER-CONTROL-RETURN-PHRASING` finding flagged and that WP7d P2.3 softened **in the dispatcher only** (`tutorial-getting-started`). A one-shot `Skill` invocation *does* mechanically return to its caller on completion; a cold reader of the arm skill could take "does not return control" literally. Scope-symmetry gap per the repo's own "Scope-symmetry at mitigate time" convention (grep the mechanism, apply uniformly). MINOR because each arm's surrounding "the two paths diverge and stay diverged" already softens it.
+- **Suggested action (HYPOTHESIS — verify against the code):** in BOTH `skills/tutorial-greenfield-workflow-tour/SKILL.md` and `skills/tutorial-brownfield-workflow-tour/SKILL.md` Category sections, replace "it does not return control to the dispatcher" with the same divergence-semantics phrasing used in the dispatcher fix (the arm runs the tour to its close; the dispatcher is not resumed) — WITHOUT the literal control-flow claim. Verify the exact current arm-Category wording first.
+- **Pickup shape:** cheap+safe prose edit to 2 files; strong next-`/util-backlog-paydown`-sweep pickup (or fold into the operator's hands-on-tour follow-up). Extends the P2.3 fix to scope-symmetry.
+
+## SURFACE-2026-07-22-QUALITY-ARM-CLOSE-TERMINAL-ACTION-IMPLICIT
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship ae733ab)
+- **Finding:** Both arm skills' closing paragraphs hand the user "back to their real work" but neither states the terminal action explicitly (stop; emit no transition) — the run-end is only stated in the separate `## Transitions` section a reader may not reach. Low-value polish.
+- **Suggested action (HYPOTHESIS — verify):** optionally add a one-clause "the tour ends here — nothing further to invoke" at each arm's close. Verify the real closing prose first; likely bundle with the scope-symmetry fix above if that task runs.
+- **Pickup shape:** trivial cosmetic; lowest priority — fold in with the sibling MINOR or a sweep.
+
 # wp7c-greenfield-onboarding-scaffold — 2026-07-22
 
 <!-- 1 MAJOR + 2 MINOR findings from feature-review-quality, ship 287ff86 (drive_mode=autopilot; MAJOR auto-backlogged with prominent chat surface per Mode-3 policy, MINORs auto-backlogged). All three touch the WP7c scaffold; the MAJOR is a real, reproduced --help bug on a user-facing surface. Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
@@ -31,45 +49,15 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 - **Suggested action (HYPOTHESIS — verify):** trim the trailing slash: `${TMPDIR:-/tmp}` → `"${TMPDIR:-/tmp}"` with a `%/` strip, e.g. `d="${TMPDIR:-/tmp}"; d="${d%/}"; mktemp -d "$d/onboarding-sample.XXXXXX"`. Confirm the printed hint has no `//`.
 - **Pickup shape:** trivial cosmetic; fold in with the MAJOR `--help` fix if that task runs.
 
-# wp7b-workflow-tour-entry-skill — 2026-07-22
-
-<!-- 2 MINOR findings from feature-review-quality, ship 40ec14f (a 3rd MINOR — WIP verify-leaf duplication — was fixed in-place at review time, so not backlogged). Both remaining findings are prose-tightening the reviewer itself judged "land more naturally in the WP7d wiring pass than in a refactor." Verify each against the real skill text before applying (review-finding-actions-are-hypotheses). -->
-
-## SURFACE-2026-07-22-QUALITY-DISPATCHER-CONTROL-RETURN-PHRASING
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 40ec14f)
-- **Finding:** `skills/tutorial-getting-started/SKILL.md` Step 3 says the dispatcher "hands off inline" and "control does not 'return' here," but a one-shot `Skill`-tool invocation does return to the caller when the invoked skill completes. The divergence intent is correct (the arm owns the rest of the run), but "control does not return" slightly overstates the tool mechanics — a cold reader could take it literally and wonder whether the dispatcher is expected to stay live after the arm finishes.
-- **Pickup shape:** at **WP7d wiring time**, add a half-sentence clarifying "the arm runs to close; you don't resume the dispatcher afterward" so the divergence semantics read unambiguously. Verify against the real Step-3 prose first.
-
-## SURFACE-2026-07-22-QUALITY-GREENFIELD-PRODUCT-ENTRY-UNBOUNDED
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 40ec14f)
-- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` Step 2 tells the agent to "run `/product-vision` (or `/session-start`…)" then Step 3 pivots to "do one small real thing," but the arm never bounds how far the product lifecycle runs before the pivot. Spec §3-greenfield row 2 says "**light** product→feature lifecycle **taste**" — the bounding word ("taste") is doing work the arm prose doesn't fully carry, so a literal reading risks a full vision→roadmap→arch→wbs detour on a tiny sample before the first tangible beat (A/state-is-a-file).
-- **Pickup shape:** at **WP7d wiring time**, add an explicit "keep the product entry to a light taste, then pivot to the small unit" bound to Step 2. Verify against the real Step-2 prose + spec §3 first.
-
----
-
 # wp7a-onboarding-flow-spec — 2026-07-22
 
-<!-- 3 MINOR findings from feature-review-quality, ship 4a43713. All copy-time polish on the new product doc workflow-system/product/onboarding-flow-spec.md — addressable at WP7b/WP7d authoring, none refactor-worthy. Verify each against the real doc text before applying (review-finding-actions-are-hypotheses). -->
+<!-- 1 MINOR finding remaining (2 of the original 3 — SPLIT-GREENFIELD-GROUNDING + SECTION3-LEGEND-NO-DISPOSITION-TOKENS — RESOLVED by WP7d and deleted per delete-on-resolve; see CHANGELOG). The remaining one is copy-time polish on the §5b permission-mode table. Verify against the real doc text before applying (review-finding-actions-are-hypotheses). -->
 
 ## SURFACE-2026-07-22-QUALITY-ACCEPTEDITS-TABLE-MIDDLE-COLUMN
 - **Priority:** low
 - **Severity:** MINOR (feature-review-quality, ship 4a43713)
 - **Finding:** `onboarding-flow-spec.md` §5b (~L215-218) permission-mode table's `acceptEdits` "Safe filesystem cmds → auto" column is imprecise. Per the Claude Code model, `acceptEdits` auto-accepts file *edits* plus a specific safe-filesystem-command set (`mkdir`/`touch`/`rm`/`mv`/`cp`/`sed`); it is not a blanket "safe filesystem commands auto-approve" tier. The load-bearing distinction the section makes (acceptEdits gates arbitrary shell/network; bypassPermissions doesn't) is CORRECT, and the reassurance copy (~L226-231) only claims accurate behavior — so this is a table-column overstatement in a precision-critical section, not a functional error.
 - **Pickup shape:** tighten the middle column at **WP7b copy time** (where the skill copy is authored) so the correcting table is airtight — e.g. "safe FS cmds (mkdir/touch/rm/mv/cp/sed) auto; other shell prompts". Verify against docs (https://code.claude.com/docs/en/permission-modes.md) + the real doc text first.
-
-## SURFACE-2026-07-22-QUALITY-SPLIT-GREENFIELD-GROUNDING
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 4a43713)
-- **Finding:** `onboarding-flow-spec.md` describes greenfield "grounding" across two surfaces — probe-first/plan-around-real-shapes at §3 greenfield step 2 (a natural BEAT) and verify-self-on-scaffold at step 5 (STAGED) — but only the verify-self surface appears in the §7 "don't force it" guaranteed-staged set. Internally consistent (probe-first is opportunistic, not staged), but a WP7d author wiring "the grounding beat" must reconcile the two surfaces themselves.
-- **Pickup shape:** add a one-clause pointer at §3 greenfield step 2 ("probe-first grounding is a natural BEAT; only the verify-self surface is STAGED") at **WP7d** wiring time to remove the reconciliation burden. Verify against the real §3/§7 text first.
-
-## SURFACE-2026-07-22-QUALITY-SECTION3-LEGEND-NO-DISPOSITION-TOKENS
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 4a43713)
-- **Finding:** `onboarding-flow-spec.md` §3's beat-annotation legend (~L73) enumerates beat keys (A, B, C, G, Grounding, …) but omits the disposition tokens (STAGED/BEAT/FRAME/NAMED/CUT) that the §3 flow-table "Staged?" column and §7 actually use; the two legends live in different sections with no cross-pointer.
-- **Pickup shape:** trivial — add a "see §7 for disposition tokens" cross-pointer at §3 so it is self-contained for a first-time reader. Bundle into the next `/util-backlog-paydown` sweep or WP7 authoring. Verify against the real doc first.
 
 ---
 

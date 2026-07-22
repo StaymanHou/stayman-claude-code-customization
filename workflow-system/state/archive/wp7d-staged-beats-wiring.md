@@ -1,7 +1,7 @@
 # Feature: WP7d — Staged-beats wiring (bookends + graduation)
 
 **Workflow:** feature
-**State:** verify-codify (all phases complete)
+**State:** COMPLETED 2026-07-22 — commit ae733ab on main, not pushed
 **Created:** 2026-07-22
 **drive_mode:** autopilot
 
@@ -44,10 +44,10 @@ WP7b/WP7c shipped the `tutorial-*` onboarding family with two beats left **forwa
   - [x] verify-codify  <!-- status: [x] — lightweight (WP7e owns full scenarios+pins). 14/14 codified regression assertions PASS + committed check-structure.sh 472/0. 1 FAIL triaged as check-string line-wrap artifact (obsolete/incorrect test, high-confidence) — fixed the check, no SKILL.md prose changed (see ## Test Triage). All 3 review findings confirmed consumed in real prose. All phases complete → F16 to ship. -->
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** all phases complete (Phase 1 + Phase 2 both [x], full verify loops passed); ready for /feature-ship
+- **Path:** Feature > finalize
+- **Active scope:** ship (ae733ab) + review-quality complete (0C/0MAJ/2 MINOR auto-backlogged, F39); ready for /feature-finalize
 - **Blocked:** none
-- **Unvisited:** none — both phases complete. Next: ship → review-quality → finalize.
+- **Unvisited:** none — both phases complete, shipped, reviewed. Next: finalize.
 - **Open discoveries:** none
 - **Note for verify-codify:** the "un-pushed framing present" observable must be **case-insensitive** (copy uses `**Not recommended yet.**` with capital N); the "no 5-min claim" observable must NOT use a naive `grep 5.?min` — it will false-positive on the honest `~10–15 min` framing and on the §6 prohibition line. Assert honest-framing PRESENT + prohibition PRESENT, per the WP7e forward pin-spec.
 
@@ -70,6 +70,41 @@ Evidence:
   - O3c: the no-live-demo prose IS present at `skills/tutorial-greenfield-workflow-tour/SKILL.md:193` — "Do **not** demonstrate autopilot/FSD live in the tour". My check grepped the fixed string `not demonstrate autopilot/FSD live`, but the copy bolds the word as `**not** demonstrate`, so the literal substring differs by the `**` markers. Check-string bug.
   - O4c: this is the **exact naive-grep false positive** the WIP note + WP7e forward pin-spec warned about. `grep 5.?minute` matches "1**5 minute**" inside the HONEST "~10–15 minute" framing (L28), which is correct+required prose, not an affirmative 5-min promise. The only *literal* "5-minute" token is the required prohibition (L31 "quick 5-minute"). Naive-grep check bug — NOT prose. The durable WP7e pin must assert honest-framing PRESENT + prohibition PRESENT, never a bare `grep 5.?min`.
 Action: fixed all three ad-hoc check expressions (bold-tolerant substring for O3c; and for O4c: assert the ONLY literal "quick 5-minute" occurrence is the prohibition — no affirmative "the tour is/takes 5 minutes" promise — rather than a range-blind `5.?minute` grep) and re-ran. These are throwaway verify-auto/codify greps, not committed tests. The durable structural pins are WP7e's charter (deferred by design); check-structure.sh (472/0) is the committed regression gate and stays green. No SKILL.md prose was changed.
+
+## Code-Quality Review — wp7d-staged-beats-wiring
+
+Reviewer: `code-quality-reviewer` subagent against ship commit `ae733ab` (drive_mode=autopilot → Mode-3: 0 CRITICAL / 0 MAJOR / 2 MINOR auto-backlogged, F39).
+
+### Strengths
+- Bookend mechanics faithfully narrated: Step-7 three-scene choreography matches the real `/session-handoff` (writes `.session.md` pointer + state-file marker) and `/session-restore` (reads pointer, reopens WIP, offers mode menu, strips marker, deletes `.session.md`) skills verbatim — no invented mechanics; honors the §6 "narrated real run, not a demo reel" invariant.
+- §6 honest-framing preserved with care: no "5-min" claim introduced, `~10–15 min` framing + explicit prohibition both kept, un-push "Not recommended yet." counterweight placed exactly where §7 puts it (LAST, un-pushed, named-not-staged).
+- Greenfield/brownfield asymmetry respected end-to-end: brownfield Step 7 ties surviving state to the Step-4 `CLAUDE.md` + the drift/forgetting pain; hierarchy CUT-then-named on brownfield vs. light-taste on greenfield — arm-flavored, not copy-pasted.
+- Each staged beat pre-framed before the move it narrates (§6 per-beat pre-framing).
+- Every consumed finding verified against real text first (review-finding-actions-are-hypotheses); the two codify FAILs correctly triaged as check-authoring bugs with zero prose changed to chase a bad grep.
+
+### Issues
+**CRITICAL** — (none)
+**MAJOR** — (none)
+**MINOR**
+- [`skills/tutorial-greenfield-workflow-tour/SKILL.md` Category §, `skills/tutorial-brownfield-workflow-tour/SKILL.md` Category §] Both arm-skill Category sections still say "it does not return control to the dispatcher" — the identical literal-mechanics overstatement the consumed DISPATCHER-CONTROL-RETURN-PHRASING finding flagged and that P2.3 softened *in the dispatcher only*. A one-shot `Skill` invocation does mechanically return to its caller; the finding's concern applies verbatim to these two arm copies. Scope-symmetry gap (repo's "Scope-symmetry at mitigate time" convention). MINOR because the surrounding "the two paths diverge and stay diverged" already softens it. — *Reintroduces the exact ambiguity the consumed finding removed, one hop away.*
+- [both arm skills, closing paragraphs] The closing lines hand the user "back to their real work" but neither closing paragraph states the terminal action explicitly (stop; emit no transition) — the run-end is only stated in the separate `## Transitions` section. A one-clause "the tour ends here — nothing further to invoke" would close the loop. — *A prose-only skill's terminal behavior should be unambiguous at the close.*
+
+### Assessment
+Well-built prose feature that advances the codebase without accruing debt. Wiring is coherent, mechanics-faithful, beat dispositions match §7 exactly, §6 honest-framing survives intact, all four consumed findings genuinely resolved (verified-against-code first), and the codify triage correctly refused to mutate correct prose for a fragile grep. Only residual is the scope-symmetry MINOR (the dispatcher fix not mirrored into the two arm Category blocks) — genuinely minor, cheaply swept. Nothing requires a refactor.
+
+### If you disagree
+Operator: dismiss any finding by editing this section and marking the line `[DISMISSED]` before `feature-finalize` archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** Nothing about the *design* — WP7a's spec + WP7b/WP7c's forward-declarations gave WP7d fully-specified targets, so this was straight execution. What *did* surface (twice, then a third time) is a reusable **test-authoring** lesson: naive single-line grep observables FALSE-FAIL against this repo's hard-wrapped + `**bold**` SKILL.md prose (a phrase crossing a line-wrap; a `**` mid-phrase) and FALSE-PASS on the honest "~10–15 min" framing (`5.?min` matches "1**5 min**"). Recorded as a NOTE-for-WP7e in the WIP Discoveries so WP7e's durable pins don't inherit the trap.
+- **Assumptions that held:** prose-only + no-transition + no-new-skill-dir (all 3 skills already symlinked live → install.sh untouched); Mode-3 auto-skip gate applied cleanly (no integration boundary — within-skill prose + a spec doc); all 4 consumed findings were real on contact (verified-against-code first, none was a mis-scoped hypothesis).
+- **Assumptions that were wrong:** none material. The only friction was my own throwaway grep checks (3 FAILs, all triaged as check-authoring bugs, zero prose changed) — a self-inflicted verification-tooling issue, not a feature-shape surprise.
+- **Approach delta:** matched the plan exactly (Phase 1 greenfield → Phase 2 brownfield + dispatcher + spec MINORs). One additive review-finding surfaced (scope-symmetry: the dispatcher control-return fix wants mirroring into the two arm Category blocks) — correctly Mode-3 auto-backlogged, not pulled into this feature.
+
+## Communicate
+> **Feature complete:** WP7d (staged-beats wiring) has shipped. It replaces the two forward-declared beat placeholders in both `tutorial-*` tour arms with real scene-by-scene choreography — the `/session-handoff`→`/session-restore` emotional-peak bookend and the LAST/un-pushed drive-modes graduation reveal — and consumes 4 prior review findings. Verify by reading Steps 7–8 of `skills/tutorial-{greenfield,brownfield}-workflow-tour/SKILL.md` (commit ae733ab); the real acceptance is the operator's upcoming hands-on `/tutorial-getting-started` run.
+
+Requester = operator — closure notice for self-record.
 
 ## Notes on codify + verify-human
 - **verify-codify (both phases):** WP7e owns the behavioral scenarios + `tutorial-`-prefix structural pins for the whole family (explicitly deferred there by WP7b/WP7c). WP7d's codify is therefore **lightweight**: assert the grep-able observable outcomes above (forward-declaration blocks gone, `/session-handoff`+`/session-restore` present, "not recommended yet" present, no "5-min" claim, "light taste" bound present) hold, and note that the richer behavioral coverage is WP7e's charter. Do NOT pull WP7e's scenario/pin work forward.
