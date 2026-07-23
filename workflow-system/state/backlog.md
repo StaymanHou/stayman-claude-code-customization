@@ -76,17 +76,17 @@
 - **Priority:** low
 - **Status:** open
 
+## Code-quality findings — wp7j-replay-invite-brownfield-git-safety (2026-07-23)
+- **Pointer:** 3 MINOR findings (feature-review-quality, ship f90446d, drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. (1) flow-doc says "cross real session boundaries, NOT by narrating," but both arms' Step 7 permit an in-place-narration fallback — a reconciliation seam a future editor should settle (WP7e territory); (2) wbs 7j.3–7j.6 checkboxes stale `[ ]` at ship though shipped in the commit — likely auto-resolved at product-finalize wbs resync; (3) Step-0 brownfield git-safety convergence line says "relaunch in **this directory**" but the safe-copy/different-project escape branch means it may not be this directory. Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low (all)
+- **Status:** pending
+- **Pickup shape:** all trivial coherence/housekeeping; #1 fold into WP7e (the narrate-vs-do-for-real tension is a codify decision), #2 verify at product-finalize (likely already fixed), #3 trivial 1-line copy tweak. **Verify each against the real code first (review-finding-actions-are-hypotheses).**
+
 ## Code-quality findings — wp7i-richer-greenfield-sample (2026-07-22)
 - **Pointer:** 3 MINOR findings (feature-review-quality, ship 5ca1723, drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. (1) `lib/done.sh:30` opaque `${line#??? }` 4-char-prefix strip — a naming comment would help (cosmetic); (2) smoke group [5] independence check assumes the copied `todo` is present (robustness nit); (3) `sample/todos.txt` tracked 0-byte store — a stray in-source run dirties it, but **reviewer: no change recommended** (tour always stamps a fresh copy; it's the intended teaching surface). Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)
 - **Status:** pending
 - **Pickup shape:** all trivial; fold into a `/util-backlog-paydown` sweep or any future touch of the scaffold/smoke. #3 is likely close-as-wontfix. **Verify each against the real code first (review-finding-actions-are-hypotheses).**
-
-## Code-quality findings — wp7g-tour-copy-corrections (2026-07-22)
-- **Pointer:** 1 MINOR finding (feature-review-quality, baseline a1d4c2b, drive_mode=autopilot → auto-backlogged). Step-0 brownfield pre-flight tells the user to relaunch `claude --permission-mode auto` before Step 1 introduces auto + its availability caveat — a half-sentence "if auto isn't available, launch normally" would close the ordering seam. (The other 2 review MINORs — stale acceptEdits self-refs at onboarding-flow-spec.md:15 & :36 — were own-session drift, FIXED inline, not backlogged.) Full body in [`backlog-quality-findings.md`](backlog-quality-findings.md).
-- **Priority:** low
-- **Status:** pending
-- **Pickup shape:** trivial 1-file copy tweak; natural fold-in with WP7i/WP7j (also touch the tour arms) or the operator's hands-on run. **Verify against the real Step-0 wording first (review-finding-actions-are-hypotheses).**
 
 ## Code-quality findings — wp7a-onboarding-flow-spec (2026-07-22)
 - **Pointer:** 1 MINOR finding remaining (2 of the original 3 RESOLVED by WP7d — SPLIT-GREENFIELD-GROUNDING + SECTION3-LEGEND-NO-DISPOSITION-TOKENS, see CHANGELOG). Remaining: §5b permission-mode table's `acceptEdits` middle column overstates "safe FS cmds auto" (precision nit in the one correcting section — the reassurance copy is already airtight; tighten when the §5b table is next touched). Full body in [`backlog-quality-findings.md`](backlog-quality-findings.md).

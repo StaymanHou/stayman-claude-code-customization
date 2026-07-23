@@ -1,8 +1,8 @@
 ---
 stage: wbs
 state: complete
-updated: 2026-07-22
-progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ WP7i ✅ (2026-07-22); walkthrough-driven expansion RATIFIED 2026-07-22 → WP7j/WP7h pending + WP7e codifies last; WP8 pending
+updated: 2026-07-23
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ WP7i ✅ (2026-07-22) WP7j ✅ (2026-07-23, grew S→L: session-chain flow correction + replay + git-safety + mode-aware close + scaffold re-home); M11 tail remaining → WP7h (full product-cycle tour) + WP7e (codify, last); WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -291,12 +291,13 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > directory symlink + resolves from `~/.claude/skills/…` on any install. Touches WP7c's shipped structure,
 > the arm env-section path refs, `new-sample.sh`'s copy-source path, its test harness, and the WP8 return contract.
 > **Milestone:** 11 · **Dependencies:** WP7b–WP7d (arms), WP7c (scaffold — (d) re-homes it), WP7g (stepping-mode explicit — the graduation reveal the replay extends) · **Size:** M (grown from S)
+> **✅ SHIPPED 2026-07-23 (commit f90446d)** — grew S→L: the live walkthrough exposed a foundational premise error (getting-started was built to dispatch the arm inline; the operator's real flow is a CHAIN of session boundaries — authoritative doc `docs/lessons/tutorial-tour-session-chain-flow.md`), so WP7j was **re-planned to 6 phases**: (1) getting-started point+cd+/exit (kill dispatch-inline) + superseded pointers + discoverable flow doc; (2) arm first-run-vs-replay entry question + the mode-switch menu (the arm presents 1–4 on replay; teaches "mode is a menu not a command") + greenfield agent-auto-stamps; (3) Step-8 replay invites rebuilt on the corrected foundation; (4) brownfield git-safety pre-flight (resolves the WP7g caveat MINOR by restructure); (5) full mode-aware Step-8 graduation (Branch A first-run reveal / Branch B replay acknowledge); (6) scaffold re-home `tools/onboarding-scaffold/`→`skills/tutorial-greenfield-workflow-tour/scripts/` (self-contained-on-install, no install.sh change). All 6 phases through full build→verify loop, operator-approved; check-structure.sh 472/0 throughout; scaffold smoke 15/15 from new home. Review-quality 0C/0MAJ/**3 MINOR** (coherence/housekeeping, auto-backlogged). Operator's batch hands-on acceptance DEFERRED (SURFACE-...-ACCEPTANCE-DEFERRED, now spans WP7c/g/i/j). **Does NOT complete M11** — WP7h + WP7e still pending.
 > - [x] 7j.1 Greenfield Step-8 replay invitation → new-session + direct arm-skill re-entry in autopilot/FSD (agent auto-stamps fresh copy)
 > - [x] 7j.2 Brownfield Step-8 replay invitation → stash/restore-clean + new-session + direct arm-skill re-entry in autopilot/FSD
-> - [ ] 7j.3 Brownfield git-safety pre-flight (dispatcher Step-0: uncommitted-changes check + commit/safe-copy recommendation + warning; no-git → git init) + fold in WP7g Step-0 auto-caveat-ordering MINOR
-> - [ ] 7j.4 NEW — mode-aware Step-8 graduation: branch the close copy on the current drive mode (stepping-entry vs direct-faster-gear-entry); arm must not assume dispatcher ran when entered directly (both arms)
-> - [ ] 7j.5 NEW — scaffold re-home: move `tools/onboarding-scaffold/` → into the greenfield arm skill dir; fix path refs (arm env-section + `new-sample.sh` copy-source + test harness) + `install.sh`/WP8-contract note; verify self-contained-on-install
-> - [ ] 7j.6 Spec reflection updated for (a)/(c)/(d) — replay = session-boundary/arm-direct, mode-aware close, scaffold-in-skill (onboarding-flow-spec.md §3/§7 + §4 return contract + §5-adjacent)
+> - [x] 7j.3 Brownfield git-safety pre-flight (dispatcher Step-0: uncommitted-changes check + commit/safe-copy recommendation + warning; no-git → git init) + WP7g Step-0 auto-caveat-ordering MINOR resolved-by-restructure
+> - [x] 7j.4 mode-aware Step-8 graduation: two-branch (Branch A first-run reveal / Branch B replay acknowledge-the-gear), replaced the interim guard; arm doesn't assume dispatcher ran when entered directly (both arms)
+> - [x] 7j.5 scaffold re-home: `git mv tools/onboarding-scaffold/` → `skills/tutorial-greenfield-workflow-tour/scripts/`; path refs fixed (arm env-section + test harness wiring assertion; scripts were already $0-relative) + WP8-contract note; self-contained-on-install verified (no install.sh change needed)
+> - [x] 7j.6 Spec reflection updated — replay = session-boundary/arm-direct/gear-from-arm-menu, mode-aware close, scaffold-in-skill (onboarding-flow-spec.md Revision 2026-07-23 + §3/§4d/§7/§8)
 >
 > **Ratified rulings log (2026-07-22):** (i) permission mode = **auto** (not acceptEdits/bypass), with
 > availability caveat + launch command; (ii) replay invite = **own small WP** (WP7j); (iii) sample =

@@ -31,17 +31,6 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 - **Suggested action (HYPOTHESIS — likely NO CHANGE):** leave as-is; flagged only so the operator is aware a stray in-source run would dirty a tracked file. If ever a concern, a `.gitignore` on the store or a git pre-commit reset could guard it — but that undercuts the teaching surface. Likely close-as-wontfix.
 - **Pickup shape:** likely wontfix; no action expected.
 
-# wp7g-tour-copy-corrections — 2026-07-22
-
-<!-- 1 MINOR from feature-review-quality (baseline a1d4c2b, drive_mode=autopilot). The other 2 review MINORs (stale acceptEdits self-references at onboarding-flow-spec.md:15 & :36) were own-session drift and FIXED inline, not backlogged. Verify against the real code before applying (review-finding-actions-are-hypotheses). -->
-
-## SURFACE-2026-07-22-QUALITY-WP7G-STEP0-AUTO-CAVEAT-ORDERING
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, baseline a1d4c2b)
-- **Finding:** `skills/tutorial-getting-started/SKILL.md` Step-0's **brownfield** branch instructs the user to `/exit` and relaunch `claude --permission-mode auto` — but auto mode, its safety framing, and (load-bearingly) the "if auto mode isn't available" availability caveat are all introduced in **Step 1**, which the user only reaches *after* relaunching + re-running the tour. A user on an older model (no auto) is told to launch with `--permission-mode auto` before being told it may be unavailable. Forward-ref "(in auto mode — see the next step)" softens it; not a correctness bug (the caveat is hit on the second pass through Step 1).
-- **Suggested action (HYPOTHESIS — verify against the code):** add a half-sentence to the Step-0 brownfield copy — e.g. "if auto isn't available to you, just launch `claude` normally; Step 1 explains" — so the availability caveat is surfaced at the point the user is first told to launch with `--permission-mode auto`. Verify the exact current Step-0 brownfield wording first.
-- **Pickup shape:** trivial copy tweak to 1 file; natural fold-in with WP7i/WP7j (which also touch the tour arms) or the operator's eventual hands-on run. Low priority.
-
 # wp7a-onboarding-flow-spec — 2026-07-22
 
 <!-- 1 MINOR finding remaining (2 of the original 3 — SPLIT-GREENFIELD-GROUNDING + SECTION3-LEGEND-NO-DISPOSITION-TOKENS — RESOLVED by WP7d and deleted per delete-on-resolve; see CHANGELOG). The remaining one is copy-time polish on the §5b permission-mode table. Verify against the real doc text before applying (review-finding-actions-are-hypotheses). -->
@@ -161,3 +150,30 @@ _Resolved findings are **deleted** from this file on close (delete-on-resolve co
 - **Severity:** MINOR (feature-review-quality, ship 3104205)
 - **Finding:** `tests/scenarios/session.yaml::S29` carries `not_contains: TRANSITION: S17`, but the real mis-fire (an unwanted handoff) surfaces as a written `.session.md` / "Handed off" string — already guarded by the sibling `not_contains` lines. The `TRANSITION: S17` guard is near-inert (session-handoff rarely emits a structured token in this prose-behavior path). Not wrong, just lower-signal than its prominence suggests.
 - **Pickup shape:** optional — drop the `TRANSITION: S17` line from S29's `not_contains` (or replace with a stronger `.session.md`-side anchor). Low value; leave unless touching S29 for another reason. **Verify against the current S29 block first.**
+
+---
+
+# wp7j-replay-invite-brownfield-git-safety — 2026-07-23
+
+<!-- 3 MINOR findings from feature-review-quality, ship f90446d (drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. All three are coherence/housekeeping seams, not behavior bugs. Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-23-QUALITY-WP7J-FLOWDOC-ARM-NARRATE-SEAM
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship f90446d)
+- **Finding:** `docs/lessons/tutorial-tour-session-chain-flow.md` (declared authoritative) says the pedagogical point is that the user *actually crosses real session boundaries* "**not by narrating it**," and its session-table places handoff (B) / restore+graduate (C) / replay (D) as strictly separate real sessions. But both arms' Step 7 (`skills/tutorial-greenfield-workflow-tour/SKILL.md:265`, `skills/tutorial-brownfield-workflow-tour/SKILL.md:202`) explicitly permit the opposite as a fallback: "If they'd rather not break the tour flow, narrating the reset makes the point too." A future editor reconciling the two won't know which wins on that beat.
+- **Suggested action (HYPOTHESIS — verify against the code):** add a one-line note to the flow doc acknowledging the in-place-narration fallback as a deliberate concession (or a note in the arm that it's a concession to the flow doc's do-for-real ideal). Prose-only; no behavior change.
+- **Pickup shape:** trivial note; fold into WP7e (which codifies the tour) or a `/util-backlog-paydown` sweep. **This is the operator-facing "narrate vs do-for-real" tension — WP7e's codify charter may want to settle it explicitly.**
+
+## SURFACE-2026-07-23-QUALITY-WP7J-WBS-STALE-CHECKBOXES
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship f90446d)
+- **Finding:** `workflow-system/product/wbs.md:296-299` — WP7j checklist items 7j.3–7j.6 are still `[ ]` unchecked at the ship SHA, though 7j.5 (scaffold re-home) and 7j.6 (spec reflection) were completed *in the ship commit itself*. Stale planning-tracker checkboxes make the wbs unreliable as a progress record.
+- **Suggested action (HYPOTHESIS — verify against the code):** tick 7j.3–7j.6 `[x]` (all shipped in f90446d). **Likely resolved at `/product-finalize` when the wbs is resynced on M11 completion — verify then and only backlog-carry if still stale.**
+- **Pickup shape:** trivial checkbox ticks; natural fold-in at product-finalize's wbs resync, or WP7e.
+
+## SURFACE-2026-07-23-QUALITY-WP7J-GITSAFETY-CONVERGENCE-EDGECASE
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship f90446d)
+- **Finding:** `skills/tutorial-getting-started/SKILL.md:96-108` — the brownfield git-safety branch offers a "safe copy (`cp -r`/fresh clone)" or "different, less precious project" escape hatch, but the convergence line at ~L107 asserts "Both paths converge on the same next move: you'll `/exit` and relaunch in **this directory**." If the user took the safe-copy/different-project branch, "this directory" is no longer the tour target (they'd need to `cd` to their chosen alternative first).
+- **Suggested action (HYPOTHESIS — verify against the code):** soften the convergence line (e.g. "relaunch in the directory you chose to work in") so it doesn't silently assume the user stayed in the original repo. Rare branch; trivial 1-line fix.
+- **Pickup shape:** trivial 1-line copy tweak; fold into WP7e or the operator's hands-on run.

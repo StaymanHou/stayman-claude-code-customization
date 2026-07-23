@@ -1,7 +1,7 @@
 # Feature: WP7j — Session-chain tour flow + replay + brownfield git-safety + mode-aware close + scaffold re-home
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** COMPLETED 2026-07-23 — shipped f90446d (NOT pushed); finalized (archived) this commit
 **Created:** 2026-07-22
 **Revised:** 2026-07-23 (F23 back-loop — re-planned from the corrected session-chain flow; scope grew M→L)
 **drive_mode:** autopilot
@@ -160,10 +160,10 @@ root-cause shift. 3/4 sibling leaves (.1–.4) already operator-approved — not
   - [x] verify-codify  <!-- status: [x] — REAL-CODE phase: the scaffold's own smoke (15/15, codified in scripts/test/run-tests.sh — travels with the scaffold) IS the regression coverage; full suite 472/0 (21s), no failures → no triage. WP7e charter to pin the scaffold-in-skill location (scripts/, not tools/) + the self-contained-on-install property added to Notes. -->
 
 ## Current Node
-- **Path:** Feature > ALL 6 PHASES COMPLETE → ship (verify-codify of the final phase done; all phases [x] + operator-approved)
-- **Active scope:** WP7j build+verify loop is DONE for all 6 phases. Next: `/feature-ship`. (Then review-quality → finalize. At finalize: delete-on-resolve the WP7g caveat MINOR from backlog + emit CHANGELOG; the operator's batch hands-on acceptance is deferred, tracked in the acceptance SURFACE.)
+- **Path:** Feature > finalize (COMPLETE) — feature archived
+- **Active scope:** DONE. WBS WP7j ticked ✅ + SHIPPED tag; CHANGELOG `**Feature shipped:**` + `**Backlog resolved:**` (WP7g caveat MINOR, delete-on-resolve — body + pointer stub both deleted) written; retrospect written; WIP archived. No `**Milestone:**` line — WP7j does NOT complete M11 (WP7h + WP7e still pending) → F19 (not F30). Tech-debt: 3 MINORs auto-backlogged (no refactor warranted). Next: session-reflect.
 - **Blocked:** none
-- **Unvisited (sequence-of-execution):** (none — all 6 phases complete) → ship → review-quality → finalize.
+- **Unvisited (sequence-of-execution):** (none — feature complete) → reflect.
 - **Open discoveries:** none blocking. Deferred: operator's batch hands-on acceptance run (SURFACE-2026-07-22-WP7C-...-ACCEPTANCE-DEFERRED, now spans WP7c/g/i/j).
 - **Unvisited (sequence-of-execution):** Phase 5 (mode-aware graduation — replaces Phase-2's interim Step-8 guard with the full branch) → Phase 6 (scaffold re-home).
 - **Open discoveries:** none
@@ -195,6 +195,36 @@ root-cause shift. 3/4 sibling leaves (.1–.4) already operator-approved — not
 - **Scaffold re-home (Phase 6) — DONE:** `tools/onboarding-scaffold/` → `skills/tutorial-greenfield-workflow-tour/scripts/` (portability: travels with the skill's dir symlink). Confirmed: whole-dir symlink carries `scripts/`, NO install.sh change needed, self-contained-on-install proven through the ~/.claude symlink. **WP7e codify charter (Phase 6):** pin the scaffold lives at `skills/tutorial-greenfield-workflow-tour/scripts/` (NOT repo-root `tools/`); the scaffold's own smoke (`scripts/test/run-tests.sh`) travels with it + is its regression coverage; the arm references the in-skill `scripts/` path (0 refs to `tools/onboarding-scaffold`).
 - **WP7e** codifies scenarios + `tutorial-`-prefix pins LAST against accepted copy — this WP ships the flow correction + copy + scaffold move only.
 - **PRIOR WORK SUPERSEDED:** the prior Phase-1 replay copy (greenfield/brownfield Step-8, verify-self 8/8 on 2026-07-22) was built on the dispatch-inline premise. Its arm-direct / session-boundary / agent-stamp mechanics were correct and CARRY FORWARD (Phase 3), but the surrounding "skip the setup intro" framing assumed getting-started ran in the replay session and is re-cut. The disk edits from that session remain and are refined, not reverted.
+
+## Retrospect
+- **What changed in our understanding:** The entire tour was built on a WRONG architectural premise — that `tutorial-getting-started` dispatches the arm skill inline. The operator's real flow (recovered from the origin session raw log, `fd4a9b17`) is a **chain of real session boundaries**. This was invisible from the compressed handoff/WIP; it only surfaced when the operator said "it's never dispatched by getting-started!!!" — which is exactly the standing rule I violated at the start of this session (re-derived the flow instead of reading the origin session's raw log first).
+- **Assumptions that held:** The prior 2026-07-22 replay copy's *core mechanics* (arm-direct re-entry, session-boundary crossing, agent-auto-stamp) were correct and carried forward — only the surrounding "skip the setup intro" framing (which assumed the dispatch model) needed re-cutting. The scaffold scripts were already `$0`-relative, so the re-home needed no logic change.
+- **Assumptions that were wrong:** (1) "getting-started dispatches the arm inline" — the foundational error. (2) The initial plan was 4 phases (copy-only); the flow correction made it 6 phases (L). (3) I initially planned to grep for step-numbering consistency, but literal greps have blind spots for en-dash step-ranges ("Steps 0–3") and markdown-bold-wrapped phrases — the verify-self subagent's *coherence read* caught what greps missed (twice: the Steps-0–3 stale range in P1, and the Step-7/8 stepping-hardcodes in P2).
+- **Approach delta:** Re-planned from scratch via F23 once the flow error surfaced. Two verify-self back-loops (F12 auto-relocation in P1; F9b Step-7/8 run-awareness in P2) — both were the subagent's coherence read catching real cross-reference seams the objective greps passed. The operator settled two live design decisions mid-flight (auto-placement → cd+relaunch; replay runs the full arc incl. Steps 7+8 mode-aware). Net: a copy WP became a foundational-correction-plus-portability WP, but the state machine caught every seam before ship.
+
+## Code-Quality Review — wp7j-replay-invite-brownfield-git-safety
+*(feature-review-quality, ship f90446d, drive_mode=autopilot. 0 CRITICAL / 0 MAJOR / 3 MINOR — Case C, MINORs auto-backlogged to `backlog-quality-findings.md` + pointer in `backlog.md`; F39 → finalize.)*
+
+### Strengths
+- Scaffold re-home executed cleanly: `sample/` byte-identical, only path-comments + the one wiring assertion changed, history preserved; portability rationale documented at every consuming surface.
+- `tutorial-tour-session-chain-flow.md` is an exemplary authoritative-source artifact (verbatim operator quote, session-table, numbered invariants, root-cause) — every touched file back-references it.
+- `new-sample.sh` help/tmpdir mechanics are defensively engineered + test-covered (delimiter-anchored awk, `%/`-loop slash-strip).
+- The first-run-vs-replay entry mechanic + "mode is a menu, not a command" framing is consistent across all 3 skill files + spec §7.
+- The mode-aware Step-8 graduation fixes a factual-wrongness bug (hardcoded "you did it in stepping" false on a replay) rather than papering over it.
+
+### Issues
+**CRITICAL** — (none)
+**MAJOR** — (none)
+**MINOR**
+- [flow-doc vs. both arms' Step 7] flow doc says "cross real session boundaries, **not by narrating**" but Step 7 permits an in-place-narration fallback — reconciliation seam. → `SURFACE-2026-07-23-QUALITY-WP7J-FLOWDOC-ARM-NARRATE-SEAM` (WP7e territory).
+- [wbs.md:296-299] 7j.3–7j.6 checkboxes stale `[ ]` at ship though shipped in the commit. → `SURFACE-2026-07-23-QUALITY-WP7J-WBS-STALE-CHECKBOXES` (likely auto-resolved at product-finalize wbs resync).
+- [getting-started SKILL.md:96-108] git-safety convergence line "relaunch in **this directory**" doesn't account for the safe-copy/different-project escape branch. → `SURFACE-2026-07-23-QUALITY-WP7J-GITSAFETY-CONVERGENCE-EDGECASE` (trivial 1-line).
+
+### Assessment
+Well-built, disciplined feature. The single executable change (scaffold move + 1-line wiring fix) is minimal, faithful, well-tested. The 900-line multi-file prose edit is unusually coherent: corrected premise propagates consistently, superseded pointers left for provenance, authoritative flow doc gives one conformance target enforced from 4 directions. Path-qualification clean, no dangling `tools/onboarding-scaffold` ref. Debt is 3 cosmetic seams, none affecting correctness or installed behavior. Advances the codebase.
+
+### If you disagree
+Operator: dismiss any finding by marking it `[DISMISSED]` in this section before `feature-finalize` archives the WIP.
 
 ## Reverting this feature
 Prose edits to three `skills/tutorial-*/SKILL.md` files + `onboarding-flow-spec.md` + `wbs.md`, PLUS (Phase 6) a `git mv` of `tools/onboarding-scaffold/` → `skills/tutorial-greenfield-workflow-tour/scripts/` + internal path-ref fixes in `new-sample.sh` + its test harness. Revert = `git revert` the WP7j feat commit(s); the `git mv` reverses cleanly (history preserved). No state-machine change to unwind. WP7e pins are not added by this WP. The authoritative flow doc + memory remain regardless (they document the operator's spec, not this feature's impl).
