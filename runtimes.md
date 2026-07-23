@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-07-22
+updated: 2026-07-23
 ---
 
 
@@ -17,9 +17,11 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
   - 4s — 2026-07-21  <!-- uninstall-sh (WP4) Phase 3 verify-codify; 40/40 PASS. Runs the real install.sh+uninstall.sh against ~9 throwaway fake-$HOME sandboxes; each install is fast (~0.4s), so the whole suite lands at ~4s. `env HOME=<sandbox>` per-call isolation (SURFACE-2026-07-21-UNINSTALL-TEST-HOME-EXPORT-HAZARD). -->
 
 ## ./tests/check-structure.sh
-- **Last:** 25s (2026-07-22)
-- **Use timeout:** 98000
+- **Last:** 22s (2026-07-23)
+- **Use timeout:** 93000
 - **History:**
+  - 22s — 2026-07-23
+  - 25s — 2026-07-22  <!-- WP7j replay-invite Phase 1 verify-auto; 472 PASS / 0 FAIL. Phase 1 edited both tutorial-*-arm Step-8 closes + onboarding-flow-spec.md §3/§7 — check-structure.sh pins skill structure/frontmatter + bare-.claude Phase 12, not the tour close copy; count flat at 472, no regression. Runtime flat. -->
   - 25s — 2026-07-22  <!-- WP7i richer-greenfield-sample Phase 3 verify-codify; 472 PASS / 0 FAIL. No new pins (tour scenarios + tutorial-prefix pins are WP7e's charter, not pulled forward); arm↔scaffold wiring codified by the scaffold smoke group [8]. No regression. Runtime flat. -->
   - 25s — 2026-07-22  <!-- WP7i richer-greenfield-sample Phase 3 verify-auto; 472 PASS / 0 FAIL. Phase 3 re-cited skills/tutorial-greenfield-workflow-tour/SKILL.md to the todo CLI (+ upfront framing); check-structure.sh pins skill structure but not the sample content — count flat at 472, no regression. Runtime flat. -->
   - 25s — 2026-07-22  <!-- WP7i richer-greenfield-sample Phase 2 verify-codify; 472 PASS / 0 FAIL. Phase 2 edited only tools/onboarding-scaffold/ (new-sample.sh + smoke + tool README) which check-structure.sh does not pin — count flat at 472, no regression. Runtime flat. -->

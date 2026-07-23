@@ -1,7 +1,7 @@
 ---
 name: tutorial-brownfield-workflow-tour
-description: "Brownfield arm of the getting-started tour: run the workflow on the user's OWN existing codebase — reconstruct the strategic picture from real code, then do one small real unit of work through a verify gate. A narrated real run (~10-15 min) on real code, no demo. Invoked by tutorial-getting-started."
-argument-hint: "(no arguments — invoked inline by tutorial-getting-started)"
+description: "Brownfield arm of the getting-started tour: run the workflow on the user's OWN existing codebase — reconstruct the strategic picture from real code, then do one small real unit of work through a verify gate. A narrated real run (~10-15 min) on real code, no demo. Run directly in a fresh session (tutorial-getting-started points you here)."
+argument-hint: "(no arguments — run directly in a fresh session; tutorial-getting-started points you here)"
 ---
 
 # Brownfield tour — it read MY real code and reconstructed what I never wrote down
@@ -15,36 +15,86 @@ The headline this path sells: *"I'm deep in a real codebase and Claude keeps dri
 context / half-finishing things across sessions — this keeps the plot and reconstructs what I never
 wrote down."*
 
+> **Flow authority — read before editing.** This arm is **always run directly, in its own session**
+> (`tutorial-getting-started` points the user here and hands off across a `/exit`; it does NOT invoke
+> this arm inline). The full flow — a chain of session boundaries, and how first-run vs. replay is
+> distinguished — is `docs/lessons/tutorial-tour-session-chain-flow.md`. That doc is the source of
+> truth; conform to it.
+
 ## Category
 
 **`tutorial-*` — a standalone onboarding skill (brownfield arm).** Like the rest of the family, it
 **owns no workflow state** and **emits no transition** — no `F`/`I`/`T`/`P`/`S` token, no `DEBUG-*`
-token, no `RETURN-TO:`. It is invoked **inline** by `tutorial-getting-started` after the user picks
-the "existing code" path; it **runs the tour to its close** — the dispatcher is not resumed for
-further steps (the two paths diverge and stay diverged). Minimal frontmatter (`name` / `description`
-/ `argument-hint`); no `skills:` list, no `tools:` key. See
-`workflow-system/product/onboarding-flow-spec.md` for the design contract.
+token, no `RETURN-TO:`. It is **run directly by the user in a fresh session** (after
+`tutorial-getting-started` points them here and they `/exit` into a new session — it is NOT invoked
+inline by the dispatcher; see the Flow authority note above); it **runs the tour to its close**.
+Minimal frontmatter (`name` / `description` / `argument-hint`); no `skills:` list, no `tools:` key.
+See `workflow-system/product/onboarding-flow-spec.md` for the design contract.
 
 ## Framing (inherited — keep it honest)
 
 `tutorial-getting-started` already set the honest expectation (a real, guided **~10–15 minute** run,
-not a scripted demo reel, and the user should already be in **`auto`** permission mode if it's
-available to them — see the dispatcher's Step 1). Keep every beat honest — and **never** compress the
-promise into a "quick 5-minute" claim.
+not a scripted demo reel). The user should already be in **`auto`** permission mode if it's available
+to them — the dispatcher recommended they relaunch this session in `auto` (that's why the tour runs
+without a prompt on every step); if `auto` wasn't available they're in whatever mode they have and
+will just approve a few more prompts, which is fine. Keep every beat honest — and **never** compress
+the promise into a "quick 5-minute" claim.
 
 **No demo, no sample here.** This path runs on the user's *actual* repository. Its headline aha is
 *strongest on real code and weakest on a seed* — a brownfield demo would reduce it to a parlor
 trick. At the vision/arch stage the work is read-heavy and additive (low blast radius), and `auto`
 mode's classifier blocks anything destructive — so running on the real repo is safe.
 
+## On entry — first run, or replay? (ask this FIRST, before anything else)
+
+You are **always run directly** (the user typed `/tutorial-brownfield-workflow-tour` in a fresh
+session — the dispatcher never invokes you inline). So you cannot assume any prior setup ran, and you
+must establish **which of two runs this is** before you drive a single beat. Ask one line:
+
+> *"Quick check before we start — is this your **first time** through this tour, or are you
+> **replaying** it to try a faster gear (autopilot / FSD)?"*
+
+**If FIRST RUN** → run the whole tour in **stepping** drive mode, and **do NOT mention that drive
+modes exist** — not "autopilot," not "FSD." The first run's payoff is that the user *sees* the
+workflow pause and ask them on their own code (beat B, Step 5); the tunable-pauses reveal is saved for
+the Step-8 graduation, and naming faster gears now would spoil it. Just proceed to the walkthrough.
+(You silently drive in stepping — you don't announce the mode.)
+
+**If REPLAY** → the user already took the stepping run and graduated; now they want to *feel* a faster
+gear. First confirm their repo is back at the clean baseline (they should have `git stash`ed / restored
+before crossing the session boundary — see Step 8's replay invite; if they didn't, point them to do it
+now so the replay starts clean). Then **present the drive-mode menu yourself** — drive mode is a
+**numbered menu the workflow shows, not a slash command you type**, and because this replay path enters
+you directly (bypassing `/session-start` and `/session-restore`, the two places that normally show it),
+*you* present it:
+
+> *"Great — replay it is. Drive mode is how much the workflow chains on its own between steps. Pick
+> your gear:*
+> *  **1  Stepping** — pause after every step (what you did the first time)*
+> *  **2  Orchestrated** — standard: chains the routine steps, pauses at the judgment ones*
+> *  **3  Autopilot** — only stops at the human checkpoint (verify-human)*
+> *  **4  FSD** — no stops, even skips verify-human*
+> *Type 1–4 (or Enter for **3 Autopilot** — the most instructive contrast with the stepping run you
+> already saw)."*
+
+Record the chosen mode in the tour's WIP frontmatter (`drive_mode: …`) and **run the tour in that
+mode** so the user feels which stops each gear keeps and which it drops, on code they already
+understand. Then proceed to the walkthrough.
+
 ## The walkthrough (spec §3-brownfield spine)
 
-Drive these beats in order. Disposition per spec §7 is annotated on each. **Run the whole tour in
-`stepping` drive mode** — the dispatcher set it deliberately and you must not change it: stepping
-pauses after every skill so the human-pause beat (Step 5) stays *visible*, which the Step-8
-graduation reveal depends on. (This is the workflow drive mode; it is independent of the `auto`
-permission mode the dispatcher also recommended — both apply.) Do **not** switch to
-orchestrated/autopilot/FSD mid-tour.
+Drive these beats in order. Disposition per spec §7 is annotated on each.
+
+**Drive mode depends on the run type you established at entry:**
+- **First run → `stepping`.** Run the whole tour in stepping and do not change it mid-tour: stepping
+  pauses after every skill so the human-pause beat (Step 5) stays *visible*, which the Step-8
+  graduation reveal depends on. Don't name the mode to the user on a first run.
+- **Replay → the gear the user picked** at the entry menu (orchestrated / autopilot / FSD). Let it
+  chain per that mode's pause policy — the point of the replay is to *feel* the faster gear on code
+  they already understand, so don't force stepping. Same beats; what changes is how many pause.
+
+(This is the workflow drive mode; it is independent of the `auto` permission mode the user relaunched
+into — both apply.)
 
 ### Step 1 — Frame it (beat G — FRAME)
 One line as you begin: *"You steer, the workflow keeps the plot — you'll see it pause and ask you at
@@ -85,7 +135,10 @@ believable.
 Pick one small real unit of work on the repo, plan it into a **Work Tree**, and work until it hits a
 verify gate. **Let it pause and ask** (beat **B**, the trust beat). Reinforce **G**: *"See — it
 paused to ask you before moving on, on your own codebase. You can redirect it here. It's not running
-away with your repo."* Kept visible because the tour stays in **stepping** mode.
+away with your repo."* On a **first run** this beat is unmistakably visible because the tour is in
+**stepping**; on a **replay** in a faster gear, the pause behavior is exactly the contrast the replay
+exists to show (autopilot still stops here at verify-human; FSD skips it) — narrate whichever the
+current gear does, so the user *feels* the difference.
 
 ### Step 6 — Grounding + SURFACE: NAMED / opportunistic here (NOT staged)
 On the real repo, **do not stage** the grounding-via-verify-self or the SURFACE beats — there's no
@@ -118,8 +171,11 @@ disk and gets re-read fresh** — at full fidelity. Cross-session continuity ("c
 a real *secondary* benefit; the headline is "reset the window without losing the plot, better than
 `/compact`."
 
-Drive it as three scenes, same shape as the sample would use — narrate each move just before you
-make it. Keep the run in **stepping** cadence.
+Drive it as three scenes, same shape as the sample would use — narrate each move just before you make
+it. (On a **first run** this lands in the tour's stepping cadence; on a **replay** in a faster gear,
+the handoff→restore bookend still runs and still matters — the workflow persists state to disk
+regardless of drive mode — so narrate it the same way; it's a good moment to note "even in autopilot,
+it still writes the handoff to disk before you leave.")
 
 **Scene 1 — check the window, pre-frame, then hand off.** First, have the user *look at their current
 context usage* (the context-left indicator) so the before/after is concrete:
@@ -164,10 +220,15 @@ user who's lost real work to a compacted or crashed session, don't rush this —
 that converts.
 
 ### Step 8 — Bookend 2: the graduation, LAST + un-pushed (STAGED reveal) → close
-**Deliberately last, deliberately not pushed.** The whole tour ran in **stepping** mode
-so the user *saw* the pause in Step 5. Only now — after they've watched it reconstruct their
-strategy, pause and ask on their own code, and survive a walk-away — reveal that the pauses are
-tunable:
+
+**This step is MODE-AWARE — branch on the drive mode the tour actually ran in** (the one established
+at the "On entry" question). The two branches are mutually exclusive; deliver exactly one.
+
+#### Branch A — FIRST RUN (stepping): reveal the faster gears
+Use this when the tour ran in **stepping** (the first run). **Deliberately last, deliberately not
+pushed.** The whole tour ran in stepping so the user *saw* the pause in Step 5. Only now — after
+they've watched it reconstruct their strategy, pause and ask on their own code, and survive a
+walk-away — reveal that the pauses are tunable:
 
 > *"One last thing, now that you've watched it work on your own codebase. You saw it stop and ask you
 > back in Step 5 — that pause is a setting, not a law. There are faster gears: **autopilot** chains
@@ -181,10 +242,64 @@ Then immediately **un-push it** — the honest counterweight is why this goes la
 > you. Earn the trust first, then shift gears. **Not recommended yet.**"*
 
 (Do **not** demonstrate autopilot/FSD live in the tour — showing it in action would hide the very
-beat B the tour is built around. This is a *named* reveal, not a staged run.)
+beat B the tour is built around. This is a *named* reveal, not a staged run.) Then extend the replay
+invitation below (Branch A's close), which sends the user to *feel* a faster gear on a fresh run from
+a clean baseline.
 
-**Then close by naming what you did NOT demo** — framed as "here's what's here when you're ready,"
-never staged:
+#### Branch B — REPLAY (already in a faster gear): acknowledge, don't re-reveal
+Use this when the tour ran in **autopilot / FSD** (a replay — the user already saw the stepping run
+and this graduation once). Do **NOT** re-deliver the "pauses are tunable" reveal (they know) and do
+**NOT** re-invite a replay (they're already doing it). Instead, name what they just *felt* on their
+real repo:
+
+> *"So — that's the same tour you did in stepping, but this time in <the gear they picked>, on your
+> real repo. Notice the difference: it chained the routine steps on its own instead of stopping at
+> each one, and <if autopilot:> it still stopped at the human checkpoint — the verify step — because
+> that's the one pause worth keeping, even on your own code. <if FSD:> it didn't even stop there —
+> that's FSD: full speed, no checkpoints, which is a lot to trust on a real repo. Now you've felt both
+> ends. Most people settle somewhere in between: stepping while a workflow is new, a faster gear once
+> they trust it on their codebase. You've got the whole range."*
+
+Then **close** — no un-push, no replay invite (both are first-run moves). A short "you've now seen it
+both ways; use whichever gear fits the work" is the right note. Skip straight to the "what we did NOT
+demo" close below (it applies to both branches).
+
+**Then (Branch A only) extend a highlighted replay invitation** — the honest way to let the user
+*feel* the faster
+gears without demoing them live here (which would hide beat B). The tour stays stepping to its end;
+the faster gears are something they go try **on a fresh run from the same starting point**, now that
+they know what the pauses are protecting. Because this ran on their **real repo**, getting back to
+the starting point means undoing the tour's edits first:
+
+> **▶ Want to feel the difference? Run this again from the same starting point, in a faster gear.**
+> *"You just did the whole thing in stepping mode — pausing at every step so you could watch. To try
+> it faster, get back to a clean start and cross a fresh session boundary, just like you'd start any
+> new piece of work: first `git stash` (or `git restore .` / `git checkout .`) to set aside the
+> changes we made during the tour, so your repo is back at the clean baseline you began with. Then
+> `/exit` this session and open a brand-new one in the same repo (the clean reset you just watched
+> restore recover from). In that new session, run **`/tutorial-brownfield-workflow-tour`** directly —
+> the tour skill itself, not the getting-started intro. It'll ask whether you're replaying, and when
+> you say yes it'll show you a little menu of gears — pick **autopilot** (chains the safe steps, still
+> stops at the human checkpoint) or **FSD** (skips even that). Same tour, same repo, clean start —
+> you'll feel exactly which stops autopilot keeps and which FSD drops, on code you already
+> understand."*
+
+(This is still a *named* invitation, not a live demo — the user drives the faster run themselves from
+a clean baseline in a new session, so this run's beat B stays intact. Frame it as "go try it," never
+"watch me autopilot." Three mechanics that must stay correct: **(1)** the replay re-enters at the arm
+skill `/tutorial-brownfield-workflow-tour` **directly, NOT `/tutorial-getting-started`** — the
+dispatcher would re-force stepping and re-ask the path fork, both of which a faster-gear replay is
+moving past; **(2)** it's a **session-boundary crossing** (`git stash`/restore to clean baseline →
+`/exit` → new session) — the `git stash`-then-new-session step is why the Step-0 git-safety pre-flight
+mattered (a clean, committed starting point is what makes "get back to start and replay" safe); do NOT
+frame it as "skip the intro and keep going in this session," there IS no dispatcher in the replay
+session; **(3)** the **gear is chosen from the arm's own on-entry menu** (the arm asks "replaying?"
+then presents the 1–4 drive-mode menu — see this skill's "On entry" section), not pre-set by the
+user.)
+
+**Then close by naming what you did NOT demo** *(BOTH branches land here — Branch A after its replay
+invite, Branch B directly after acknowledging the gear)* — framed as "here's what's here when you're
+ready," never staged:
 
 > *"Two things we didn't get into, so you know they're there:*
 > - *the full **hierarchy** — product → feature → task all live in this same kind of on-disk record.
@@ -216,7 +331,9 @@ aha earns.
 ## Transitions
 
 **None.** This skill emits **no** workflow transition (no `F`/`I`/`T`/`P`/`S` ID), no `DEBUG-*`
-token, no `RETURN-TO:`. It is the brownfield arm of the `tutorial-*` family: invoked inline by
-`tutorial-getting-started`, it drives the walkthrough to its close and ends. The state-machine
+token, no `RETURN-TO:`. It is the brownfield arm of the `tutorial-*` family: **run directly by the
+user in a fresh session** (`tutorial-getting-started` points them here across a `/exit` — it does
+NOT invoke this arm inline; see the Flow authority note at the top), it drives the walkthrough to its
+close and ends. The state-machine
 "three places in sync" rule does not apply (no transition to sync). Behavioral scenarios and the
 `tutorial-`-prefix structural pin are added by WP7e.

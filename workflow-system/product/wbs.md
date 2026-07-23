@@ -123,7 +123,7 @@ The standard rule details WPs for the **next milestone only**, because later mil
 - [x] 7a.4 Settle the bypass-permissions reassurance copy (the one-line "why it's safe") → recommend **`acceptEdits`** (corrected from bypass)
 
 #### WP7b: The entry skill (single entry → two separate paths) ✅ SHIPPED 2026-07-22 (commit 40ec14f)
-**AS-BUILT (2026-07-22):** Built as a **three-skill `tutorial-` family** (co-design revision at build start — three files enforce the spec §2 "diverge and stay diverged" invariant *structurally* vs. prose discipline in one file): **`tutorial-getting-started`** (entry/dispatcher — recommends `acceptEdits` via Shift+Tab NOT bypassPermissions, presents the new-vs-existing fork with greenfield-recommended-default / brownfield-first-class-peer framing (a default, not a funnel), dispatches inline; no drive-mode menu so beat B stays visible) + **`tutorial-greenfield-workflow-tour`** (narrated real run, 8-step spine, verify-self grounding + SURFACE STAGED w/ per-beat pre-framing, WP7c scaffold + WP7d bookend/graduation forward-declared) + **`tutorial-brownfield-workflow-tour`** (BYO real code no demo, **optional `/init`** (skip when CLAUDE.md exists), product-workflow reverse-engineers the strategic layer = headline grounding, `product-context` revise; SURFACE + grounding NAMED-only). All three util-family shape (no skills:/tools:), `## Category` (not the debug-* `## Category Context`), emit **no transition** (documented). **Co-design revised the WP7a spec** (recorded in `onboarding-flow-spec.md` Revision 2026-07-22): three-skill family (was single `workflow-tour`), `tutorial-` prefix now pinned by WP7e (was no-prefix/no-pin), Claudesk command `/tutorial-getting-started` (was `/workflow-tour`), brownfield `/init` optional. Honest-framing invariant honored (real ~10–15min, no 5-min promise). Review-quality 0C/0MAJ/3 MINOR (2 prose-tightenings backlogged → fold into WP7d; 1 WIP-housekeeping fixed in-place). Behavioral scenarios + `check-structure.sh` `tutorial-`-prefix pin deferred to WP7e by design (forward pin-spec captured in the archived WIP `## Discoveries`). `install.sh` re-run; 3 symlinks verified + picked up live this session.
+**AS-BUILT (2026-07-22):** Built as a **three-skill `tutorial-` family** (co-design revision at build start — three files enforce the spec §2 "diverge and stay diverged" invariant *structurally* vs. prose discipline in one file): **`tutorial-getting-started`** (entry/dispatcher — recommends `acceptEdits` via Shift+Tab NOT bypassPermissions, presents the new-vs-existing fork with greenfield-recommended-default / brownfield-first-class-peer framing (a default, not a funnel), dispatches inline [SUPERSEDED 2026-07-23 by WP7j → getting-started points+`cd`s+`/exit`-hands-off across a session boundary; the arm is always entered directly. Authority: `docs/lessons/tutorial-tour-session-chain-flow.md`]; no drive-mode menu so beat B stays visible) + **`tutorial-greenfield-workflow-tour`** (narrated real run, 8-step spine, verify-self grounding + SURFACE STAGED w/ per-beat pre-framing, WP7c scaffold + WP7d bookend/graduation forward-declared) + **`tutorial-brownfield-workflow-tour`** (BYO real code no demo, **optional `/init`** (skip when CLAUDE.md exists), product-workflow reverse-engineers the strategic layer = headline grounding, `product-context` revise; SURFACE + grounding NAMED-only). All three util-family shape (no skills:/tools:), `## Category` (not the debug-* `## Category Context`), emit **no transition** (documented). **Co-design revised the WP7a spec** (recorded in `onboarding-flow-spec.md` Revision 2026-07-22): three-skill family (was single `workflow-tour`), `tutorial-` prefix now pinned by WP7e (was no-prefix/no-pin), Claudesk command `/tutorial-getting-started` (was `/workflow-tour`), brownfield `/init` optional. Honest-framing invariant honored (real ~10–15min, no 5-min promise). Review-quality 0C/0MAJ/3 MINOR (2 prose-tightenings backlogged → fold into WP7d; 1 WIP-housekeeping fixed in-place). Behavioral scenarios + `check-structure.sh` `tutorial-`-prefix pin deferred to WP7e by design (forward pin-spec captured in the archived WIP `## Discoveries`). `install.sh` re-run; 3 symlinks verified + picked up live this session.
 **Description:** Build the dedicated onboarding entry skill (`skills/<name>/SKILL.md`): a single entry point that asks new-vs-existing, then runs the **greenfield** arm or the **brownfield** arm, each staging its own beats per the spec. Brownfield arm scripts the `/init` → product-workflow-reverse-engineer → `product-context`-revises-`CLAUDE.md` sequence against the user's real code. Greenfield arm drives top-of-hierarchy entry + the hierarchy taste. Opens with the universal bypass-permissions recommendation. Keeps the run in stepping/orchestrated so the human-pause beat is visible; ends with the drive-modes graduation reveal.
 **Milestone:** 11 · **Dependencies:** WP7a (name + flow settled) · **Size:** M
 **Tasks:**
@@ -258,18 +258,45 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > - [x] 7i.3 Upfront "what this project is / what we're building" framing before G1 (greenfield arm) — new "### Say what the project is, upfront" block before Step 1
 > - [x] 7i.4 Re-cite the real observable + real tangent in Step 5 (grounding) + Step 6 (SURFACE) for the new skeleton — Step 5 cites `todo add … && todo list`→`1. [ ] buy milk`; Step 6 cites `todo done 99` no-op
 >
-> ### WP7j: Replay invitation + brownfield git-safety (items 3, 4, 5) — RATIFIED (own small WP)
-> **Description:** Operator ruling: track the replay invitation as its **own small WP** (not folded into
-> WP7g, not a bare task). Two pieces: **(a)** both arms CLOSE (Step 8) with a highlighted invitation to
-> re-run from the same starting point in **autopilot/FSD** — greenfield "start over with a fresh copy";
-> brownfield "stash/revert your changes, then retry from the same point." **(b)** brownfield B1 pre-flight
-> **git-safety check** (item 4): if git is present, check for unstaged/uncommitted changes; recommend the
-> user commit first (or make a safe copy / use a different repo), and warn them of unexpected changes if
-> uncommitted. If no git, recommend initializing it. (This complements the WP7g FB-5 brownfield exit+cd.)
-> **Milestone:** 11 · **Dependencies:** WP7b–WP7d (arms), WP7g (stepping-mode explicit — the graduation reveal the replay invite extends) · **Size:** S
-> - [ ] 7j.1 Greenfield Step-8 replay invitation → re-run in autopilot/FSD (fresh copy)
-> - [ ] 7j.2 Brownfield Step-8 replay invitation → stash/revert + retry in autopilot/FSD
-> - [ ] 7j.3 Brownfield B1 git-safety pre-flight (uncommitted-changes check + commit/safe-copy recommendation + warning)
+> ### WP7j: Replay invitation + brownfield git-safety + mode-aware close + scaffold re-home (items 3, 4, 5 + live-walkthrough-2 findings) — RATIFIED (own WP; grown S→M mid-flight)
+> **Description:** Operator ruling: track the replay invitation as its **own WP** (not folded into
+> WP7g, not a bare task). **Grown mid-build (2026-07-22, live walkthrough round 2)** from a copy-only S
+> to a structural M when three coupled findings surfaced. Pieces:
+> **(a)** both arms CLOSE (Step 8) with a highlighted invitation to re-run the tour in **autopilot/FSD**.
+> **The replay is a full session-boundary crossing** (`/exit` → new session, echoing the handoff→restore
+> beat the tour just taught) that **re-enters at the ARM skill directly** (`/tutorial-greenfield-workflow-tour`
+> / `/tutorial-brownfield-workflow-tour`), NOT the dispatcher — the dispatcher re-forces stepping + re-asks
+> the path fork, which the faster-gear replay moves past. Greenfield: the **arm auto-stamps a fresh copy**
+> (agent runs the scaffolder, NEVER the human). Brownfield: user `git stash`/restores to clean baseline first.
+> **(b)** brownfield **git-safety pre-flight** (item 4, in dispatcher Step-0 brownfield branch): if git present,
+> check unstaged/uncommitted changes → recommend commit first (or safe copy / different repo) + warn of
+> unexpected changes; if no git, recommend `git init`. (Complements WP7g FB-5 brownfield exit+cd.)
+> **(c) CORRECTED 2026-07-23 — arm skill has ONE entry path (always direct) with TWO run modes.**
+> *[The earlier "two entry paths: dispatched-in-stepping via `/tutorial-getting-started` AND
+> entered-directly" framing was WRONG — it assumed getting-started dispatches the arm inline. Per the
+> operator's session-chain flow (`docs/lessons/tutorial-tour-session-chain-flow.md`, the authority),
+> the arm is **always entered directly** in its own fresh session; getting-started only points+exits.]*
+> The arm has one entry path (direct) with two **run modes**: **first-run** (defaults to stepping,
+> drive modes stay hidden until Step-8 graduation) and **replay** (the arm presents the 1–4 drive-mode
+> menu and runs in the chosen faster gear). The arm distinguishes them by **asking one line on entry**.
+> Two beats are mode-conditional: **(c1)** the **Step-8 graduation copy** must branch on the *current* drive
+> mode — the hardcoded "the whole tour ran in stepping so you saw the pause" is factually wrong on a direct
+> autopilot/FSD replay (it didn't pause the same way); when already in autopilot/FSD, acknowledge that + shift
+> the framing (and don't invite them to "try" a gear they're already in). **(c2)** entered directly, the arm
+> must NOT assume the dispatcher already ran (permission-mode, path fork) and must still self-stamp (greenfield).
+> **(d) NEW — scaffold re-home (portability fix).** `tools/onboarding-scaffold/` (sample + `new-sample.sh` +
+> test) lives at repo root, which `install.sh` does NOT symlink → an installed user (the Claudesk-invited
+> target, WP8) gets the skill but NOT the sample it needs. Re-home the scaffold **into the greenfield arm skill
+> dir** (`skills/tutorial-greenfield-workflow-tour/scripts/` or `examples/`) so it travels with the skill's
+> directory symlink + resolves from `~/.claude/skills/…` on any install. Touches WP7c's shipped structure,
+> the arm env-section path refs, `new-sample.sh`'s copy-source path, its test harness, and the WP8 return contract.
+> **Milestone:** 11 · **Dependencies:** WP7b–WP7d (arms), WP7c (scaffold — (d) re-homes it), WP7g (stepping-mode explicit — the graduation reveal the replay extends) · **Size:** M (grown from S)
+> - [x] 7j.1 Greenfield Step-8 replay invitation → new-session + direct arm-skill re-entry in autopilot/FSD (agent auto-stamps fresh copy)
+> - [x] 7j.2 Brownfield Step-8 replay invitation → stash/restore-clean + new-session + direct arm-skill re-entry in autopilot/FSD
+> - [ ] 7j.3 Brownfield git-safety pre-flight (dispatcher Step-0: uncommitted-changes check + commit/safe-copy recommendation + warning; no-git → git init) + fold in WP7g Step-0 auto-caveat-ordering MINOR
+> - [ ] 7j.4 NEW — mode-aware Step-8 graduation: branch the close copy on the current drive mode (stepping-entry vs direct-faster-gear-entry); arm must not assume dispatcher ran when entered directly (both arms)
+> - [ ] 7j.5 NEW — scaffold re-home: move `tools/onboarding-scaffold/` → into the greenfield arm skill dir; fix path refs (arm env-section + `new-sample.sh` copy-source + test harness) + `install.sh`/WP8-contract note; verify self-contained-on-install
+> - [ ] 7j.6 Spec reflection updated for (a)/(c)/(d) — replay = session-boundary/arm-direct, mode-aware close, scaffold-in-skill (onboarding-flow-spec.md §3/§7 + §4 return contract + §5-adjacent)
 >
 > **Ratified rulings log (2026-07-22):** (i) permission mode = **auto** (not acceptEdits/bypass), with
 > availability caveat + launch command; (ii) replay invite = **own small WP** (WP7j); (iii) sample =

@@ -24,6 +24,37 @@ updated: 2026-07-22
 
 ---
 
+## Revision 2026-07-23 (WP7j — session-chain flow correction; SUPERSEDES the dispatch-inline model)
+
+State: `complete` → `in-progress` for this revision, then `complete`. The operator's specified tour
+flow (origin session `fd4a9b17`, 2026-07-22) is a **chain of real session boundaries**, NOT a single
+dispatched session. This **corrects a wrong architectural premise** that ran through this spec (§2,
+§4, §5, §7) and the shipped skills: that `tutorial-getting-started` **dispatches the arm skill
+inline**. It does not.
+
+> **AUTHORITATIVE FLOW: [`../../docs/lessons/tutorial-tour-session-chain-flow.md`](../../docs/lessons/tutorial-tour-session-chain-flow.md).**
+> That doc is the single source of truth for the tour flow — read it before editing any `tutorial-*`
+> skill or this spec. Everywhere below that still describes "dispatches inline to the arm" is
+> **SUPERSEDED** by it (inline pointers are left at those spots for provenance).
+
+The corrected flow in one paragraph: **`tutorial-getting-started` (session A)** recommends `auto`
+permission mode, asks the new-vs-existing fork, **`cd`s the user to the target working directory,
+points them to the matching arm skill, and hands them off across a `/exit` → new session** — it does
+**not** invoke the arm inline. The **arm skill is always entered directly** in its own fresh session.
+The discriminator is **first-run vs. replay**, resolved by the arm **asking one line on entry**:
+first run → **stepping**, and drive modes are **never mentioned** until the Step-8 graduation; replay
+→ the arm **presents the 1–4 drive-mode menu itself** (drive mode is a numbered menu the workflow
+shows, not a slash command — and since the replay bypasses `/session-start` and `/session-restore`,
+the arm must present it). Greenfield: the **agent auto-stamps** the throwaway sample (the human never
+runs the scaffolder). The full chain: getting-started → exit → new session (arm, stepping) →
+walkthrough → handoff → exit → new session (restore → graduate → clean up) → exit → new session (arm,
+autopilot/FSD) → whole thing again.
+
+Sections corrected by this revision: **§2** (structure — point+exit, not dispatch-inline), **§4**
+(Claudesk points at `/tutorial-getting-started`, which hands off across a session boundary), **§5**
+(settled decisions), **§7** (dispositions — arm entry-question, mode-menu-on-replay, agent-stamp).
+The superseded prose is left in place with inline `[SUPERSEDED 2026-07-23 → see flow doc]` pointers.
+
 ## Revision 2026-07-22 (WP7b co-design — structure + naming)
 
 State: `complete` → back to `in-progress` for this revision, then `complete`. At the start of the
@@ -36,7 +67,10 @@ prose is left in place for provenance with an inline pointer to this revision.
    - **`tutorial-getting-started`** — the entry/dispatcher. Recommends `auto` mode (revised from
      `acceptEdits` in WP7g — see §5b), presents the
      new-vs-existing fork (greenfield recommended-default / brownfield first-class peer), then
-     **invokes the chosen arm skill inline**. This is the single command Claudesk points at.
+     **invokes the chosen arm skill inline** *[SUPERSEDED 2026-07-23 (WP7j) → getting-started
+     `cd`s the user + points them to the arm skill + hands off across a `/exit`→new session; it does
+     NOT invoke inline — see the flow doc named in the Revision 2026-07-23 note]*. This is the single
+     command Claudesk points at.
    - **`tutorial-greenfield-workflow-tour`** — the greenfield narrated-real-run arm.
    - **`tutorial-brownfield-workflow-tour`** — the brownfield BYO-real-code arm.
    **Why:** three separate skill files enforce §2's "diverge and stay diverged (NOT
@@ -98,7 +132,10 @@ through a toy tutorial** — that is the skeptic-bounce this spec is engineered 
 
 - **Single entry point:** the **`tutorial-getting-started`** skill (name updated by the 2026-07-22
   revision above — superseding the `workflow-tour` name; see §5a). It dispatches inline to one of
-  two arm skills. Claudesk renders the invite surface and points at this one command.
+  two arm skills *[SUPERSEDED 2026-07-23 (WP7j) → it points the user to one of two arm skills, which
+  they run **directly in a fresh session** after `/exit`; getting-started does NOT invoke the arm
+  inline. See the Revision 2026-07-23 note + the authoritative flow doc]*. Claudesk renders the
+  invite surface and points at this one command.
 - **Two fully separate paths right after entry** — they **diverge and stay diverged** (NOT
   branch-then-reconverge):
   - **Greenfield** — starting something new / an empty dir.
@@ -150,7 +187,7 @@ outcome to check).
 | 5 | **Grounding (STAGED):** agent runs the runnable scaffold, **observes** it via `verify-self`, reports **PASS/FAIL** vs an observable outcome — the user watches it **CHECK reality** instead of guessing. Pre-framed ("watch — it's about to actually run it and check the output; this is the grounding moment"). | **Grounding** (STAGED — verify-self) | **STAGED** |
 | 6 | **SURFACE (STAGED):** agent hits the planted authentic tangent → runs SURFACE → logs to backlog → continues without losing the plot. **C** = the rabbit-hole caught; backlog is C's flip side (folded in, not a separate aha). | **C** (STAGED greenfield), backlog folded into C | **STAGED** |
 | 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → full context survives. The **emotional peak**; placed near the end so there's real state to lose-and-recover. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
-| 8 | **Bookend 2 — the graduation (STAGED, LAST):** reveal drive modes (autopilot/FSD) — deliberately last, deliberately **un-pushed** ("autopilot chains safe steps; FSD skips even verify-human — here's when appropriate. Not recommended yet"). Then **Close:** point at what we did NOT demo — full **Hierarchy** + **Reflect/Capture-learns-you** — "here's what's here when you're ready." | **Drive-modes** (STAGED reveal, LAST), **Hierarchy**/**Reflect** (NAMED at close) | **STAGED** reveal + NAMED close |
+| 8 | **Bookend 2 — the graduation (STAGED, LAST):** reveal drive modes (autopilot/FSD) — deliberately last, deliberately **un-pushed** ("autopilot chains safe steps; FSD skips even verify-human — here's when appropriate. Not recommended yet"). Then a **replay invitation** (WP7j): invite the user to re-run this same tour in autopilot/FSD by **crossing a fresh session boundary** (`/exit` → new session) and **re-entering at the arm skill directly** — `/tutorial-greenfield-workflow-tour`, NOT the dispatcher (the dispatcher would re-force stepping + re-ask the path fork, both of which the faster-gear replay moves past). **Greenfield: the arm stamps a fresh `new-sample.sh` copy automatically** (the agent runs it, not the human; nothing carries over). A *named* invite, not a live demo (a live autopilot run would hide beat B). Then **Close:** point at what we did NOT demo — full **Hierarchy** + **Reflect/Capture-learns-you** — "here's what's here when you're ready." | **Drive-modes** (STAGED reveal, LAST), **Replay-invite** (NAMED), **Hierarchy**/**Reflect** (NAMED at close) | **STAGED** reveal + NAMED close |
 
 ### Brownfield flow — "it read MY real code and reconstructed what I never wrote down"
 
@@ -164,6 +201,7 @@ read-heavy + additive (low blast radius), so BYO + `auto` mode (classifier-gated
 
 | # | Step | Beats fired | Staged? |
 |---|------|-------------|---------|
+| 0 | **Where-to-run pre-flight** (dispatcher Step 0, brownfield branch): `cd` into the real repo root, THEN a **git-safety pre-flight** (WP7j) before crossing the session boundary — the tour makes real edits. *If git repo:* `git status --short`; uncommitted changes → recommend commit-first (or `git stash`, or a safe copy / a different less-precious project) + warn; clean → note `git diff`/`git stash` are the undo path. *If not a git repo:* recommend `git init` + one commit so there's an undo path. (Greenfield needs none — it works in a disposable throwaway copy.) This is what makes the Step-8 replay's "`git stash` back to clean baseline" safe. | (pre-flight) | — |
 | 1 | **Entry** → recommend `auto` mode, if available (universal; see §5b) → pick path → framing line (G). | **G** (FRAME) | framing |
 | 2 | **`/init` first** → generates a first-cut `CLAUDE.md` from the existing code. | (setup) | — |
 | 3 | **Product workflow reverse-engineers** vision / roadmap / arch from the existing code. **The headline aha:** *"it read my actual code and reconstructed the strategic layer I never wrote down."* This IS the brownfield grounding beat (reconstructs strategy from real code). | **Grounding** (brownfield headline — `/init`→reverse-engineer) | natural (the headline) |
@@ -171,7 +209,7 @@ read-heavy + additive (low blast radius), so BYO + `auto` mode (classifier-gated
 | 5 | **Do one small real unit of work** on the real repo → plan → Work Tree → **hit a verify gate → B** (it pauses and asks). Trust beat, kept visible (stepping). Reinforce G. | **B** (BEAT), **G** reinforce | natural (kept visible) |
 | 6 | **Grounding + SURFACE = NAMED/opportunistic here** (not staged): probe-first and verify-self **fire naturally** if the real work touches an integration or a runnable surface; SURFACE is pointed-at when a tangent occurs ("when you hit a tangent, here's what SURFACE does"). | **Grounding** (NAMED), **C** (NAMED) | NAMED / opportunistic |
 | 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → context survives on the real repo. Emotional peak. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
-| 8 | **Bookend 2 — the graduation (STAGED, LAST):** reveal drive modes, un-pushed. **Close:** point at what we did NOT demo — **Hierarchy** (CUT on brownfield — too big to feel in run one) + **Reflect/Capture-learns-you** — "here's what's here when you're ready." | **Drive-modes** (STAGED reveal, LAST), **Hierarchy** (CUT/named), **Reflect** (NAMED at close) | **STAGED** reveal + NAMED close |
+| 8 | **Bookend 2 — the graduation (STAGED, LAST):** reveal drive modes, un-pushed. Then a **replay invitation** (WP7j): invite the user to re-run this same tour in autopilot/FSD — **brownfield: `git stash`/restore back to the clean baseline first, then cross a fresh session boundary** (`/exit` → new session in the same repo) and **re-enter at the arm skill directly** — `/tutorial-brownfield-workflow-tour`, NOT the dispatcher (same reason as greenfield: the dispatcher re-forces stepping + re-asks the fork). Undoing the tour's real-repo edits first is why the Step-0 git-safety pre-flight matters. A *named* invite, not a live demo. **Close:** point at what we did NOT demo — **Hierarchy** (CUT on brownfield — too big to feel in run one) + **Reflect/Capture-learns-you** — "here's what's here when you're ready." | **Drive-modes** (STAGED reveal, LAST), **Replay-invite** (NAMED), **Hierarchy** (CUT/named), **Reflect** (NAMED at close) | **STAGED** reveal + NAMED close |
 
 **Why the paths never reconverge:** the two headline ahas are different (greenfield = structure on
 a blank page; brownfield = discipline + reconstruction on real code), the environments are
@@ -193,7 +231,10 @@ them would dilute both headlines.
 - **A pointer to the single entry command: `/tutorial-getting-started`.** (Command name updated by
   the 2026-07-22 revision — was `/workflow-tour`.) That's the whole coupling — Claudesk points the
   user at one slash command; everything after that is owned by this repo's skill family (the entry
-  skill dispatches inline to the greenfield or brownfield arm).
+  skill points the user to the greenfield or brownfield arm, which they run directly in a fresh session
+  *[SUPERSEDED 2026-07-23 (WP7j) — was "dispatches inline to the greenfield or brownfield arm";
+  corrected to the session-chain flow. Claudesk's coupling is unchanged: it still points at the one
+  `/tutorial-getting-started` command. See the Revision 2026-07-23 note + flow doc]*).
 
 ### 4b. When Claudesk points at the entry command
 - **Once, as a one-time invite** — not a persistent nag. After the user has run (or explicitly
@@ -223,6 +264,15 @@ WP8 delivers §4a–§4c to Claudesk either as a reciprocal handoff doc or a bac
 Claudesk repo, bundled with the other two M12 deliverables (install/uninstall command copy from
 WP4.5; the settled `workflow-system/product/*` + `workflow-system/state/*` doc layout + the required
 `docs_list` glob change from M7 WP3-M7).
+
+**Self-contained-on-install (WP7j Phase 6).** The greenfield tour's runnable sample + scaffolder ship
+**inside the greenfield arm skill's own directory** (`skills/tutorial-greenfield-workflow-tour/scripts/`),
+NOT under repo-root `tools/`. This is load-bearing for the Claudesk-invited install: `install.sh`
+symlinks each skill's *whole directory* into `~/.claude/skills/` but does **not** symlink repo-root
+`tools/` — so a user who installs the skills gets the greenfield sample automatically (it rides the
+skill's whole-dir symlink), with no separate step and no `install.sh` change. WP8 must state this to
+Claudesk: the onboarding tour is self-contained in the skill install; there is no extra sample-fetch
+step to document.
 
 ---
 
@@ -366,7 +416,9 @@ mention/point-at, never staged · **CUT** = out of first run.
 | **G — Advisory / you keep the wheel** | FRAME (both) | Anxiety-reducer for the skeptical invitee. One line in entry + reinforced at the pause. |
 | **Grounding — the workflow checks reality instead of guessing** | STAGED greenfield (verify-self); NAMED brownfield | **Epistemic-honesty aha.** Three surfaces: probe-first roadmap/WBS (plan around *documented* real API shapes); **verify-self** (agent *observes the running system* before claiming done); brownfield `/init`→reverse-engineer (reconstructs strategy from *real code*). For a skeptic burned by agents declaring broken code "done," *"it actually went and looked"* may be the strongest trust beat. **Greenfield:** stage a verify-self beat ⇒ **the scaffold MUST be runnable** (WP7c constraint). **Brownfield:** probe-first + verify-self named/opportunistic; `/init`→reverse-engineer carries the grounding headline. |
 | **Session handoff → restore** (context survival) | STAGED bookend (both) | The **emotional peak.** Near the end so there's real state to lose-and-recover. `/session-handoff` → "leave" → `/session-restore`. |
-| **Drive modes / autopilot / FSD** | STAGED graduation reveal, **LAST** | **NOT the first-run recommendation.** First walkthrough runs stepping so pauses are visible → THEN reveal modes, deliberately un-pushed ("not recommended yet"). Showing autopilot first would hide beat B. |
+| **Arm entry-question — first-run vs. replay** (WP7j) | MECHANIC (both arms, on entry) | Because the arm is **always entered directly** (never dispatched inline), it must establish which run this is BEFORE driving a beat, by **asking one line on entry** ("first time through, or replaying to try a faster gear?"). **First run →** silently drive **stepping**, and do NOT mention drive modes exist until the Step-8 graduation (naming faster gears early spoils beat B). **Replay →** the arm **presents the 1–4 drive-mode menu itself** (Stepping/Orchestrated/Autopilot/FSD; default Autopilot) — drive mode is a *numbered menu the workflow shows, not a slash command*, and since the replay bypasses `/session-start` + `/session-restore` (the two canonical menu points), the arm is the one that must show it — then runs the tour in the chosen gear. Greenfield: the **agent auto-stamps** the fresh sample on both runs (human never runs `new-sample.sh`). |
+| **Drive modes / autopilot / FSD** | STAGED graduation reveal, **LAST** | **NOT the first-run recommendation.** First walkthrough runs stepping so pauses are visible → THEN reveal modes, deliberately un-pushed ("not recommended yet"). Showing autopilot first would hide beat B. **Mode-switch mechanic (WP7j):** the graduation reveals modes *exist*; the user *acts* on that by replaying and picking a gear from the arm's on-entry menu (see the Arm entry-question row) — so "how do I switch modes" is answered concretely, not left abstract. **The Step-8 graduation is MODE-AWARE (WP7j Phase 5) — two mutually-exclusive branches:** **Branch A (first run / stepping)** = reveal the faster gears + un-push + replay invite (as above); **Branch B (replay / already in a faster gear)** = do NOT re-reveal or re-invite (the user knows and is already replaying) — instead *acknowledge the gear they just felt* ("same tour, this time in autopilot — notice it chained the routine steps and kept only the verify stop; FSD skips even that"), then close. Both branches converge on the "what we did NOT demo" close. This replaced an interim first-run-only guard so the graduation is never factually wrong on a replay. |
+| **Replay invitation — re-run the tour in a faster gear** (WP7j) | NAMED at close (both) | The honest companion to the drive-modes reveal: don't demo autopilot *live* (that hides beat B) — instead invite the user to *feel* it by re-running the same tour in autopilot/FSD. **The replay is itself a session-boundary crossing** (`/exit` → new session, echoing the handoff→restore beat the tour just taught) that **re-enters at the arm skill directly** (`/tutorial-greenfield-workflow-tour` / `/tutorial-brownfield-workflow-tour`), NOT the dispatcher — the dispatcher re-forces stepping + re-asks the path fork, which a faster-gear replay is moving past. **The gear is chosen from the arm's OWN on-entry menu** (WP7j Phase 2): the replay invite does NOT tell the user to pre-set a mode or to "skip the intro and keep going" — there is no dispatcher in the replay session; the invite says "run the arm skill directly; it'll ask if you're replaying and then show you the 1–4 gear menu." **Greenfield:** the arm stamps a fresh `new-sample.sh` copy automatically (the *agent* runs it, never the human; nothing carries over). **Brownfield:** the user `git stash`/restores to the clean baseline first (undo the tour's real-repo edits), which is why the Step-0 git-safety pre-flight is load-bearing. A *named* invite the user drives themselves — never a staged autopilot run. |
 | **Hierarchy (product→feature→task) as one record** | Greenfield: light taste; Brownfield: CUT | Too big to *feel* in run one; greenfield users are already at the top so a light taste lands there. Named otherwise. |
 | **Reflect / capture — system learns you** | NAMED at close (both) | Delayed-gratification (value shows next session). Great closing note; wrong as a staged beat. |
 | **Backlog as durable idea-catcher** | FOLD into C | Flip side of SURFACE, not a separate aha. |
@@ -402,6 +454,13 @@ feel fake — which for this skeptical audience costs *more* trust than the aha 
   real to check. It must also contain a **planted, authentic-feeling tangent** so the staged
   SURFACE beat (§3 greenfield step 6) fires reliably without feeling fake. Keep it minimal so it
   doesn't rot (it rides path/skill/layout changes — cf. M7 moved every folder).
+- **Scaffold-in-skill, not repo-root (WP7j Phase 6)** — the greenfield scaffold ships **inside the
+  greenfield arm skill dir** (`skills/tutorial-greenfield-workflow-tour/scripts/`), NOT under repo-root
+  `tools/`. `install.sh` symlinks whole skill dirs but not `tools/`, so scaffold-in-skill is what makes
+  the tour self-contained on a Claudesk-invited install (see §4d). The scaffolder + its smoke test
+  resolve their own sibling `sample/` from `$0`'s dir, so they work from the repo checkout or a
+  `~/.claude/` symlink. **No `install.sh` change was needed** (whole-dir symlink already carries
+  `scripts/`). The agent (not the human) runs the scaffolder on both first-run and replay.
 - ~~**WP7e must NOT pin a `util-`-prefix check** against `workflow-tour` (§5a divergence).~~
   **RETIRED by the 2026-07-22 revision:** WP7e SHALL pin a **`tutorial-`-prefix check** on the
   three `tutorial-` family skills (the prefix is now the self-documenting signal).

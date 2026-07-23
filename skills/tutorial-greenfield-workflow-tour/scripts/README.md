@@ -1,16 +1,23 @@
-# onboarding-scaffold
+# onboarding-scaffold (in-skill)
 
 The small **greenfield sample project** the new-user tour builds one small thing on,
 plus a scaffolder that stamps a fresh throwaway copy for each tour run.
 
 Consumed by `skills/tutorial-greenfield-workflow-tour/SKILL.md` (M11 / WP7c; sample
-redesigned to a todo CLI in WP7i). It is **tour content, not a test fixture** — that's
-why it lives under `tools/` rather than `tests/fixtures/`.
+redesigned to a todo CLI in WP7i). It is **tour content, not a test fixture**.
+
+**Why it lives INSIDE the skill dir (`scripts/`), not under repo-root `tools/` (WP7j Phase 6).**
+`install.sh` symlinks each skill's whole directory into `~/.claude/skills/` but does **not**
+symlink repo-root `tools/`. Shipping the scaffold under `tools/` meant an installed user (the
+Claudesk-invited target, WP8) got the greenfield arm skill but **not** the sample it needs —
+the tour would break. Living beside the skill, the scaffold travels with the skill's whole-dir
+symlink and resolves on any install. The scripts resolve their own sibling `sample/` from
+`$0`'s directory, so they work from the repo checkout or a `~/.claude/` symlink alike.
 
 ## Layout
 
 ```
-tools/onboarding-scaffold/
+skills/tutorial-greenfield-workflow-tour/scripts/
 ├── new-sample.sh     # stamp a fresh copy of sample/ into a throwaway dir
 ├── sample/           # the canonical, minimal sample project (git-tracked)
 │   ├── todo          # dispatcher — routes add / list / done
@@ -27,13 +34,13 @@ tools/onboarding-scaffold/
 
 ```bash
 # Stamp a fresh copy into a throwaway dir, print its path + a run hint:
-tools/onboarding-scaffold/new-sample.sh
+~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh
 
 # Stamp into a specific (empty/new) dir:
-tools/onboarding-scaffold/new-sample.sh --dest /path/to/todo
+~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh --dest /path/to/todo
 
 # Overwrite a non-empty dir on purpose:
-tools/onboarding-scaffold/new-sample.sh --dest /path/to/todo --force
+~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh --dest /path/to/todo --force
 ```
 
 The tour always uses a **fresh copy** so the user's real edits, the SURFACE, and the
@@ -71,7 +78,7 @@ grows further, it becomes a maintenance liability that silently breaks the tour.
 ## Running the smoke test
 
 ```bash
-tools/onboarding-scaffold/test/run-tests.sh
+skills/tutorial-greenfield-workflow-tour/scripts/test/run-tests.sh
 ```
 
 Asserts the sample's observable outcome, the `done`-persistence, the planted tangent, the

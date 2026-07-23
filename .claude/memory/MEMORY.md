@@ -8,6 +8,7 @@
 - [project_settings_fixture_claudesk_drift.md](project_settings_fixture_claudesk_drift.md) — check-structure.sh Phase 7 drift — live settings.json carries host-specific claudesk hooks the test fixture must exclude via INTENTIONAL_DIFFS
 - [project_ship_process.md](project_ship_process.md) — Standard shipping process for the my-claude-code-customization repo
 - [project_wp5_pause_terminology.md](project_wp5_pause_terminology.md) — WP5/M9 settled vocab: rename session-pause→session-handoff, session-resume→session-restore; bare pause/stop/hold = turn-level; /project-handoff for cross-repo; agent-side guard on writing .session.md
+- [project_tutorial_tour_session_chain_flow.md](project_tutorial_tour_session_chain_flow.md) — Tutorial tour is a CHAIN of real session boundaries; getting-started NEVER dispatches the arm inline; read docs/lessons/tutorial-tour-session-chain-flow.md before touching any tutorial-* skill
 - [triage-pause-decisive-users.md](triage-pause-decisive-users.md) — Workflow note — verify-codify triage pause is fast (1 message) when user has strong design opinions; friction only when user is also ambiguous
 - [viz-render-marker-collision.md](viz-render-marker-collision.md) — (no description)
 - [reference_session-log-mining-gotchas.md](reference_session-log-mining-gotchas.md) — Mining ~/.claude/projects/*/*.jsonl: use absolute-path/`--` guards (leading-`-` slugs break unguarded grep/ls); count real skill invocations from assistant tool_use, not raw greps (skill-listing = ~435/session noise)

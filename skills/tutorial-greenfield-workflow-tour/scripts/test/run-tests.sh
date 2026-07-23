@@ -166,11 +166,14 @@ fi
 # consuming-surface wiring only; the tour's behavioral scenarios + structural pins are
 # WP7e's job — deliberately NOT duplicated here.
 echo "[8] greenfield arm ↔ scaffold wiring"
-ARM="$TOOL_DIR/../../skills/tutorial-greenfield-workflow-tour/SKILL.md"
+# The scaffold now lives INSIDE the greenfield arm skill dir (WP7j Phase 6):
+# skills/tutorial-greenfield-workflow-tour/scripts/. So TOOL_DIR is .../scripts and
+# the arm SKILL.md is its parent dir's SKILL.md.
+ARM="$TOOL_DIR/../SKILL.md"
 if [ -f "$ARM" ]; then
-  grep -q 'tools/onboarding-scaffold' "$ARM" \
-    && ok "arm SKILL.md references the scaffold path (tools/onboarding-scaffold)" \
-    || bad "arm SKILL.md no longer references tools/onboarding-scaffold (wiring drifted)"
+  grep -q 'scripts/new-sample.sh\|scripts/sample' "$ARM" \
+    && ok "arm SKILL.md references the in-skill scaffold path (scripts/)" \
+    || bad "arm SKILL.md no longer references the in-skill scripts/ scaffold (wiring drifted)"
   grep -q '1. \[ \] buy milk' "$ARM" \
     && ok "arm SKILL.md cites the runnable observable (1. [ ] buy milk)" \
     || bad "arm SKILL.md no longer cites the '1. [ ] buy milk' observable"

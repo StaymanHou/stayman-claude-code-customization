@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # new-sample.sh — stamp a fresh, throwaway copy of the onboarding sample project.
 #
-# The tour drops a brand-new user into a COPY of tools/onboarding-scaffold/sample/
-# so their real edits, SURFACE, and handoff/restore happen against something
-# disposable — never the shipped source. Each tour run gets its own copy.
+# The tour drops a brand-new user into a COPY of this script's sibling sample/
+# (skills/tutorial-greenfield-workflow-tour/scripts/sample/) so their real edits,
+# SURFACE, and handoff/restore happen against something disposable — never the
+# shipped source. Each tour run gets its own copy.
 #
 # Usage:
 #   new-sample.sh                     # copy into a fresh mktemp dir, print its path
