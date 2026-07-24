@@ -2,7 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-23
-progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ WP7i ✅ (2026-07-22) WP7j ✅ (2026-07-23, grew S→L: session-chain flow correction + replay + git-safety + mode-aware close + scaffold re-home); M11 tail remaining → WP7h (full product-cycle tour) + WP7e (codify, last); WP8 pending
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ WP7i ✅ (2026-07-22) WP7j ✅ (2026-07-23) WP7h DESIGN ✅ (2026-07-24, build split → WP7k); M11 tail remaining → WP7k (build full product-cycle tour) → batch hands-on acceptance run (all 4 tour surfaces) → WP7e (codify, last); WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -225,18 +225,56 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > - [x] 7g.5 Fold the two open WP7d MINORs (**RATIFIED**): `SURFACE-2026-07-22-QUALITY-ARM-CATEGORY-CONTROL-RETURN-SCOPE-SYMMETRY` + `...-CLOSE-TERMINAL-ACTION-IMPLICIT` into this copy sweep
 > - [ ] 7g.6 Operator fresh hands-on `/tutorial-getting-started` acceptance run — **SKIPPED by operator 2026-07-22** (copy accepted from the feedback loop, not a live run). The deferred acceptance SURFACE stays OPEN as accepted-without-live-run; a genuine hands-on run can still happen at any later WP or the operator's discretion.
 >
-> ### WP7h: Full product-cycle "full experience" tour + pointer (FB-2) — RATIFIED IN-SCOPE
-> **Description:** The greenfield tour keeps the product entry a deliberate *light taste*; that implies a
-> heavier counterpart. **Operator ruling: the full product-flow tour IS in M11 scope** (not a deferred
-> follow-on). Two parts: **(a)** add a **pointer note** in the greenfield arm (Step 2 and/or Step-8
-> named-at-close) to the full product-cycle tour; **(b)** design + build a new `tutorial-product-cycle-*`
-> (name TBD) tour that walks the full product lifecycle (vision → roadmap → research → arch → wbs →
-> features), honest-framing §6 preserved (this is the heavier, longer counterpart). Part (a) rides WP7g;
-> part (b) is its own sizeable build within M11.
-> **Milestone:** 11 · **Dependencies:** WP7b (light-taste arm exists) · **Size:** XS (pointer) + M–L (full tour)
-> - [ ] 7h.1 Pointer note in greenfield arm → the full-cycle tour (rides WP7g)
-> - [ ] 7h.2 Design the full product-cycle tour (name + flow + spec update) — its own `/feature-spec` or `/feature-plan`
-> - [ ] 7h.3 Build the full product-cycle tour skill + wire it; codify (scenarios + pins) with WP7e or its own codify
+> ### WP7h: Full product-cycle "full experience" tour + pointer (FB-2) — ✅ DESIGN COMPLETE 2026-07-24 (build split out → WP7k)
+> **AS-DESIGNED (2026-07-24, operator co-design — design-only this session per operator ruling):** The
+> greenfield tour keeps the product entry a deliberate *light taste*; FB-2 asked for the heavier
+> counterpart. Design settled via 3 rounds of `AskUserQuestion` co-design and written to
+> **`workflow-system/product/full-product-cycle-tour-design.md`**. Settled decisions: **headline aha =
+> DECOMPOSITION** (fuzzy idea → milestone-ordered, dependency-mapped, feature-ready plan — "the workflow
+> can carry a whole *initiative*"); **environment = a richer controlled subject, NOT BYO** (delivery
+> shape — written product brief vs. richer sample dir — sketched with tradeoffs, settled at build-plan
+> time; lean = written brief); **positioning = standalone 4th `tutorial-product-cycle-tour`, run
+> directly, pointed-at from the greenfield arm's Step-8 close — NOT a 3rd first-timer fork option**
+> (a full cycle is a poor cold-open first impression); **length honesty = honest ~30–45 min label +
+> graduation-not-first-run** (audience self-selects; same never-fake-it §6; NO "5-min" claim, NO
+> narrate-and-skip compression). **Spine (reshaped by operator):** entry (no mode menu, no replay
+> question, run stepping) → vision → roadmap → research(light) → arch(grounding NAMED) → wbs
+> (decomposition PAYOFF) → open strategic docs (**beat A at the strategic layer**, STAGED) →
+> **handoff→restore bookend** (STAGED, lands harder — a whole plan to recover) → close. **The product
+> cycle pauses at EACH step, and that recurring pause IS the trust beat** (not one engineered beat B).
+> **No replay / no drive-mode menu / no mode-aware graduation** (those teach "pauses are tunable" — a
+> lesson that doesn't apply to a cycle whose pauses are the point); close NAMES the FSD-for-rare-cases
+> caveat (simple/clear/low-stakes/throwaway only) as an honest counterweight, not an invite. **Ends at
+> a feature-ready WBS — does NOT drive an actual feature** (greenfield already showed feature execution).
+> Grounding NAMED / SURFACE CUT (no runnable subject to stage them authentically). Name fuzzy-matcher-
+> collision-checked. **Build DEFERRED to WP7k** (operator: "build should be a WP added to the WBS") so
+> all four tour surfaces land + get accepted together before WP7e freezes pins. The WP7h.1 pointer note
+> (wording settled in the design doc §7) also **rides WP7k**, so a live pointer never dangles at a
+> not-yet-built skill.
+> **Milestone:** 11 · **Dependencies:** WP7b (light-taste arm exists) · **Size:** design = S (done); build = WP7k
+> - [x] 7h.1 Pointer-note wording settled (design doc §7); insertion **deferred to WP7k** (rides the build so it never dangles)
+> - [x] 7h.2 Design the full product-cycle tour (name + flow + environment + dispositions) — DONE → `full-product-cycle-tour-design.md`
+> - [→] 7h.3 Build the tour skill + wire it + codify — **SPLIT OUT to WP7k** (its own build-WP; sequenced BEFORE the batch acceptance run per operator 2026-07-24, so one walkthrough accepts all four surfaces)
+>
+> ### WP7k: Build the full product-cycle tour skill (deferred build of WP7h) — NOT STARTED
+> **Description:** Build `skills/tutorial-product-cycle-tour/SKILL.md` against
+> `workflow-system/product/full-product-cycle-tour-design.md` (the settled WP7h design). Its own
+> `/feature-plan` (the design work — the "spec" — is already done, so plan-not-spec). At plan time,
+> settle the environment delivery shape (design §2 Option A written product brief vs. Option B richer
+> sample dir; lean = A). Add the WP7h.1 pointer note (design §7 wording) to the greenfield arm's Step-8
+> close. Reuse (do NOT re-derive) the greenfield arm's Step-7 handoff→restore choreography. No transition
+> (util-family / `tutorial-*`); prose/markdown-only (no-runtime); path-qualification mandate; re-run
+> `install.sh` (additive-only) after the new skill dir; scaffold-in-skill if a subject file ships.
+> **Milestone:** 11 · **Dependencies:** WP7h (design — done) · **Size:** M–L
+> **Sequencing (operator, 2026-07-24): WP7k builds BEFORE the batch hands-on acceptance run** — so the
+> operator's single acceptance walkthrough covers all FOUR tour surfaces (both arms + WP7g corrections +
+> this new full-cycle tour) in one pass, rather than accept-then-build-then-re-accept. The batch
+> acceptance SURFACE (`SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED`) is extended to
+> cover WP7k's copy too; WP7e still codifies last, against the accepted copy.
+> - [ ] 7k.1 `/feature-plan` the build; settle environment delivery shape (design §2 A vs. B)
+> - [ ] 7k.2 Build `tutorial-product-cycle-tour/SKILL.md` against the design (spine, beats, honest ~30–45 min label, FSD-caveat close)
+> - [ ] 7k.3 Add the WP7h.1 pointer note to the greenfield arm Step-8 close (design §7 wording); re-run `install.sh`
+> - [ ] 7k.4 Codify with WP7e — extend the `tutorial-`-prefix pin to the 4th skill + honest-framing (no "5-min", ~30–45 min present) + no-replay/no-mode-menu invariants
 >
 > ### WP7i: Richer greenfield sample skeleton + upfront project framing (items 1, 3, 5) — ✅ SHIPPED 2026-07-22 (commit 5ca1723)
 > **AS-BUILT (2026-07-22):** Redesigned the greenfield sample from the one-file hello-world greeter into a small **command-line `todo` list** (operator-chosen via AskUserQuestion): a `todo` dispatcher + `lib/{add,list,done}.sh` modules over a plain-text `todos.txt` store — richer surface so planning/verify-self/SURFACE land meaningfully, still no-runtime/no-deps (POSIX shell + markdown). **Observable:** `todo add "buy milk" && todo list` → exactly `1. [ ] buy milk`. **Planted authentic tangent** (re-instantiated from the retired greet.sh's no-arg bug): `todo done <index>` guards numeric but NOT in-range, so `todo done 99` on a short list reports success + no-ops silently — TODO-flagged in `sample/README.md` + `lib/done.sh` (WHY not WHAT, per the prior GREET-TODO ruling). Kept WP7c's copy-per-run stamper `new-sample.sh` (operator's "fixed skeleton the tutorial copies" model IS the current design). Three phases: P1 authored the sample + retired greet.sh; P2 updated the stamper + rewrote the 8-group smoke to the todo CLI (folded in + fixed the 2 in-blast-radius quality findings: `--help` code-leak via delimiter-anchored awk + mktemp multi-trailing-slash strip, both regression-pinned); P3 re-cited the greenfield arm (env section + Step 5 grounding + Step 6 SURFACE) + added the upfront "what this project is" framing before Step 1 (honest-framing §6 preserved, no "5-min" claim). verify-auto/self green each phase; **verify-human copy-judgment DEFERRED to the operator's 2nd hands-on walkthrough** (mechanical facts verify-self-confirmed; SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED now spans WP7c/WP7g/WP7i). Smoke 15/0, check-structure.sh 472/0. Review-quality 0C/0MAJ/**3 MINOR** (all low, 2 "no change recommended" — auto-backlogged). Tour behavioral scenarios + `tutorial-`-prefix pins remain WP7e's charter. Prose/scaffold-only; no transition/state-machine change.
@@ -304,7 +342,11 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > **redesign now**, richer skeleton, keep copy-per-run stamper; (iv) full product-cycle tour = **in M11
 > scope** (WP7h part-b promoted); (v) README/snippet pointer = **yes** (WP7f.2); (vi) WP7d MINORs = **fold
 > into WP7g** (7g.5). M11 no longer completes at WP7e alone — it completes when {WP7g, WP7h, WP7i, WP7j}
-> land + are accepted + WP7e codifies.
+> land + are accepted + WP7e codifies. **UPDATE 2026-07-24:** WP7h split into **design (done) + build
+> (WP7k)** per operator ("build should be a WP added to the WBS"); the WP7k build is sequenced **BEFORE**
+> the batch hands-on acceptance run (operator, 2026-07-24) so the single acceptance walkthrough covers
+> all four tour surfaces in one pass. M11 now completes when {…, WP7h-design ✅, WP7k-build} land →
+> batch acceptance run → WP7e codifies against all four tour surfaces.
 
 ---
 
@@ -330,7 +372,7 @@ M7: WP1 (decide layout+migration) → WP2 (sweep + migrate tool + run) → WP3-M
 ```
 
 - **Critical path:** WP1 → WP2 → WP3-M7 → WP4 → **WP7a → WP7b → WP7c/WP7d → WP7e** → WP8. (WP7a's onboarding-spec gates WP8; WP4 gates WP8 on the install-copy deliverable; M7 gates WP8 on the settled-layout deliverable.)
-- **M11 internal critical path:** WP7a → WP7b → WP7e (WP7c and WP7d parallelize between WP7b and WP7e). **Walkthrough expansion (2026-07-22):** after WP7d, the corrections/redesign track {WP7g ∥ WP7h ∥ WP7i ∥ WP7j} runs, then a fresh operator hands-on acceptance run, then WP7e codifies against the *accepted* copy. M11 completes when that whole set lands — not at WP7e alone.
+- **M11 internal critical path:** WP7a → WP7b → WP7e (WP7c and WP7d parallelize between WP7b and WP7e). **Walkthrough expansion (2026-07-22):** after WP7d, the corrections/redesign track {WP7g ∥ WP7h ∥ WP7i ∥ WP7j} runs, then a fresh operator hands-on acceptance run, then WP7e codifies against the *accepted* copy. **WP7h split (2026-07-24):** WP7h is now design-only-done; its build is **WP7k**, sequenced **BEFORE** the batch acceptance run (operator, 2026-07-24) so one walkthrough accepts all four surfaces. Revised M11 tail: {WP7g ✅ ∥ WP7h-design ✅ ∥ WP7i ✅ ∥ WP7j ✅} → **WP7k** (build full-cycle tour) → **batch hands-on acceptance run** (all four surfaces) → **WP7e** (codify all four). M11 completes when that whole set lands — not at WP7e alone.
 - **Parallel track:** WP5 (pause) and WP6 (research collision) — DONE (both shipped 2026-07-21).
 - **Operator pause points:** WP7.1 onboarding brainstorm — **DONE 2026-07-21** (co-design settled; `onboarding-brainstorm.md`). Remaining M11 pause points are the normal per-feature plan-review + verify-human gates as each sub-WP runs through the feature workflow. AD-1 Option A operator-ratified.
 
