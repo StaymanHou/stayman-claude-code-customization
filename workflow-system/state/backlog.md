@@ -76,6 +76,12 @@
 - **Priority:** low
 - **Status:** open
 
+## Code-quality findings — wp7k-full-product-cycle-tour (2026-07-24)
+- **Pointer:** 1 MINOR finding (feature-review-quality, ship 8bbf5c1, drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. The frontmatter `description` stage-chain `(vision → roadmap → arch → wbs)` drops `research` vs. the 5-stage body/spine form — a minor user-facing inconsistency, **verified inherited verbatim from the design §6 draft description** (not introduced by the build). Full body in [`backlog-quality-findings.md`](backlog-quality-findings.md).
+- **Priority:** low
+- **Status:** pending
+- **Pickup shape:** trivial 1-word frontmatter insert; **best folded into WP7e** (the copy-freeze pass against operator-accepted batch-walkthrough copy — the description may be re-touched there anyway), or a `/util-backlog-paydown` sweep. **Verify against the real code first (review-finding-actions-are-hypotheses).**
+
 ## Code-quality findings — wp7j-replay-invite-brownfield-git-safety (2026-07-23)
 - **Pointer:** 3 MINOR findings (feature-review-quality, ship f90446d, drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. (1) flow-doc says "cross real session boundaries, NOT by narrating," but both arms' Step 7 permit an in-place-narration fallback — a reconciliation seam a future editor should settle (WP7e territory); (2) wbs 7j.3–7j.6 checkboxes stale `[ ]` at ship though shipped in the commit — likely auto-resolved at product-finalize wbs resync; (3) Step-0 brownfield git-safety convergence line says "relaunch in **this directory**" but the safe-copy/different-project escape branch means it may not be this directory. Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md).
 - **Priority:** low (all)

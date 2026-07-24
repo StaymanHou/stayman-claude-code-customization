@@ -6,6 +6,19 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
+# wp7k-full-product-cycle-tour — 2026-07-24
+
+<!-- 1 MINOR finding from feature-review-quality, ship 8bbf5c1 (drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. The finding is INHERITED verbatim from the design §6 draft description (not introduced by the build) — verified: design doc line 221-222 uses the same 4-stage chain. Verify against the real code before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-24-QUALITY-WP7K-DESCRIPTION-STAGE-CHAIN-DROPS-RESEARCH
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 8bbf5c1)
+- **Finding:** `skills/tutorial-product-cycle-tour/SKILL.md:3` — the frontmatter `description` lists the stage chain as `(vision → roadmap → arch → wbs)` (4 stages, drops `research`), while the body (line 13) and the design spine use the full 5-stage `vision → roadmap → research → arch → wbs` (research is a real Step 3, `/product-research`). Minor user-facing internal inconsistency. Verified INHERITED verbatim from the design contract's §6 draft description (`full-product-cycle-tour-design.md:221-222`), not introduced by the build.
+- **Suggested action (HYPOTHESIS — verify against the code):** align the description's stage chain to the 5-stage body form (insert `research`), OR consciously keep the description terse (4-stage) if the shorter chain reads better in the skill picker. **Best folded into WP7e**, which freezes tutorial copy against the operator-accepted batch-walkthrough copy — the description may be re-touched there anyway. Cosmetic; no behavior.
+- **Pickup shape:** trivial 1-word insert in one frontmatter line; fold into WP7e copy-freeze or a `/util-backlog-paydown` sweep.
+
+---
+
 # wp7i-richer-greenfield-sample — 2026-07-22
 
 <!-- 3 MINOR findings from feature-review-quality, ship 5ca1723 (drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. Two of the three are explicitly "no change recommended" by the reviewer (todos.txt tracked-by-design; independence-test robustness nit). Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
