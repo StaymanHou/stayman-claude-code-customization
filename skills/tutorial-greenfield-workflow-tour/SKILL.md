@@ -370,10 +370,28 @@ here when you're ready," never staged (these are delayed-gratification and would
 > *That's the tour. You steered, it kept the plot, and it's all sitting in files you own. Go build
 > something real — point it at your own repo next time with the existing-code path."*
 
+**Then, right after that close, point at the deep-dive tour (the WP7h.1 pointer note — design §7).**
+This run gave the user a deliberate *light taste* of the top of the hierarchy (Step 2). The full
+product-cycle tour is the heavier counterpart, and this is where it's earned — after they've seen the
+system work and trust it. Deliver the pointer as a one-paragraph invitation (a *named* pointer, not a
+live run — do NOT drive a product cycle here):
+
+> *"One more thing, now that you've seen it work. You just got a **light taste** of the top of the
+> hierarchy — enough to feel it exists. When you're ready to feel the *whole* product lifecycle — a
+> fuzzy idea decomposed all the way into a feature-ready plan — there's a deep-dive tour for exactly
+> that: run **`/tutorial-product-cycle-tour`** in a fresh session. It's longer (~30–45 min) and it's
+> real, so save it for when you want to go deep."*
+
+(Mechanics that must stay correct: the deep-dive tour is **run directly** in a fresh session — like
+this arm, `/tutorial-product-cycle-tour` is NOT reached through `/tutorial-getting-started`'s
+first-timer fork; a full product cycle is a poor cold-open first impression. And it is a *named*
+pointer, never a live demo — do not start driving `/product-vision` here. On a **replay** run of this
+arm, the pointer still holds — say it the same way.)
+
 That closing line reinforces beat **G** one final time (you kept the wheel) and hands the user back
 to their real work — which is the whole value prop. **The tour ends here** — once you've delivered
-the close, there is nothing further to invoke and no transition to emit; the run is complete (see
-`## Transitions`).
+the close (and the deep-dive pointer), there is nothing further to invoke and no transition to emit;
+the run is complete (see `## Transitions`).
 
 ## "Don't force it" (spec §7 — binding)
 
