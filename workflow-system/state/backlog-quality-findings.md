@@ -190,3 +190,47 @@ _Resolved findings are **deleted** from this file on close (delete-on-resolve co
 - **Finding:** `skills/tutorial-getting-started/SKILL.md:96-108` — the brownfield git-safety branch offers a "safe copy (`cp -r`/fresh clone)" or "different, less precious project" escape hatch, but the convergence line at ~L107 asserts "Both paths converge on the same next move: you'll `/exit` and relaunch in **this directory**." If the user took the safe-copy/different-project branch, "this directory" is no longer the tour target (they'd need to `cd` to their chosen alternative first).
 - **Suggested action (HYPOTHESIS — verify against the code):** soften the convergence line (e.g. "relaunch in the directory you chose to work in") so it doesn't silently assume the user stayed in the original repo. Rare branch; trivial 1-line fix.
 - **Pickup shape:** trivial 1-line copy tweak; fold into WP7e or the operator's hands-on run.
+
+# greenfield-tour-cwd-sample-and-close-restructure — 2026-07-25
+
+<!-- 5 MINOR findings from feature-review-quality, ship 783bdf2 (drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 2 MAJOR. **The 2 MAJORs were FIXED IN-FEATURE, not backlogged** (spec beat-table resync + a test assertion that bypassed the real store path) — both would have corrupted the artifact WP7e is chartered to pin against, so deferring them was not viable; see the WIP's `## Code-Quality Review` for the fix record. The 5 below are compression residue: pointers that inverted direction, a rule that doesn't account for the element it now contains, garden-path phrasing, a stale duplicate WIP line. Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
+
+## SURFACE-2026-07-25-QUALITY-WP7N-BLOCK-MEMBERSHIP-AMBIGUOUS
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
+- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` — the `Next Step:` block's own rules say "**It is the last thing you emit.** No further prose, no sign-off paragraph" and "details go above it, options go in it", but the `Housekeeping:` cleanup offer sits *inside* the block after the last option and is neither an option nor a detail. A later line adds "The one exception is the cleanup offer: if they say yes, delete the sample, then stop," reintroducing a post-block action the rules just forbade. Individually correct, collectively ambiguous about block membership.
+- **Why it matters:** this is the *same* structural ambiguity that made a sentence-counter falsely report 5/4 sentences where truth was 3/2 (recorded in the WIP verify-auto note). It will break a naive WP7e pin the same way.
+- **Suggested action (HYPOTHESIS — verify against the code):** add one reconciling clause naming the cleanup offer as a distinct trailing element of the block (not an option), and state explicitly that acting on it is the only permitted post-block action. Prose-only.
+- **Pickup shape:** trivial clause; **best folded into WP7e's copy-freeze** — settle it before pins freeze, don't just caveat it.
+
+## SURFACE-2026-07-25-QUALITY-WP7N-MECHANICS-POINTER-INVERTED
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
+- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` — the block's mechanics note says the compressed mechanics "are the same mechanics spelled out above," but after the WP7n restructure they are no longer spelled out above: the narrative now only *names* them and points *forward* to the block as where they live. The pointer inverted direction during compression.
+- **Why it matters:** an agent following "spelled out above" hunts for a fuller statement that no longer exists, and may re-expand the narrative the restructure deliberately compressed — undoing WP7n.
+- **Suggested action (HYPOTHESIS — verify against the code):** reword to "these are the mechanics, compressed — the narrative above only names them" (or similar). One-line prose fix.
+- **Pickup shape:** trivial; fold into WP7e's copy-freeze.
+
+## SURFACE-2026-07-25-QUALITY-WP7L-GREENFIELD-EXIT-ORDER
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
+- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` — Branch A option 1 reads "`/exit`, `mkdir` a new empty folder and `cd` into it", but `/exit` terminates the session, so the two following commands can't run in the session where the instruction is being read. The brownfield equivalent sequences it correctly (`git stash` → `/exit` → run the arm).
+- **Why it matters:** cosmetic ordering, but it is a first-run user's LAST on-screen instruction, and it currently reads as "exit, then do two things in the session you just exited."
+- **Suggested action (HYPOTHESIS — verify against the code):** reorder to "`mkdir` a new empty folder, `cd` into it, then `/exit` and run the arm in a fresh session there" — matching brownfield's sequencing.
+- **Pickup shape:** trivial reorder; fold into WP7e's copy-freeze (it is user-facing copy, so it should be operator-accepted before pins).
+
+## SURFACE-2026-07-25-QUALITY-WP7L-GITSAFETY-RATIONALE-GARDEN-PATH
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
+- **Finding:** `skills/tutorial-getting-started/SKILL.md` — the strengthened greenfield-needs-no-git-safety rationale contains a self-contradictory clause as phrased: "in an **empty** directory it refuses to write into if anything is already there" — it cannot be both empty and already contain something. Intent (it refuses non-empty dirs, so it only ever writes into empty ones) is recoverable but needs a re-read.
+- **Why it matters:** this is the exact sentence the DEFERRED verify-human checklist item 1 asks the operator to judge for firmness-without-bureaucracy. Worth fixing before that read rather than during it.
+- **Suggested action (HYPOTHESIS — verify against the code):** split into two clauses — "it only ever writes into an empty directory; if anything is already there it refuses." One-line fix.
+- **Pickup shape:** trivial; **fix before the deferred acceptance read** if convenient, else fold into WP7e.
+
+## SURFACE-2026-07-25-QUALITY-WIP-DUPLICATE-OPEN-DISCOVERIES
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
+- **Finding:** `workflow-system/state/wip/greenfield-tour-cwd-sample-and-close-restructure.md` `## Current Node` carried two `- **Open discoveries:**` lines with divergent contents (one "3 entries", one "one `[SHORTCUT-...]` audit entry"). The Work Tree schema defines exactly one.
+- **Why it matters:** Current Node is declared authoritative and read-first on every skill entry; a duplicated field with divergent counts leaves "which wins" undefined for the next reader. Same leaf-substitution-vs-insertion failure mode as the orphaned verify leaves already logged in this WIP's `## Discoveries`.
+- **Suggested action (HYPOTHESIS — verify against the code):** delete the stale line, keep the accurate one. **Note: fixed in-feature at review time** — retained here only as the record that the WIP-editing failure mode recurred twice in one feature (a signal about long autopilot runs with many sequential WIP edits, worth watching rather than acting on).
+- **Pickup shape:** already fixed; keep as a data point for whether a WIP-edit lint is worth building.

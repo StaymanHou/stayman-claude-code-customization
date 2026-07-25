@@ -19,6 +19,13 @@
 - **Priority:** medium
 - **Status:** partially-resolved — greenfield arm only (WP7l/WP7m/WP7n → re-accept → WP7e)
 
+## Code-quality findings — greenfield-tour-cwd-sample-and-close-restructure (2026-07-25)
+- **Pointer:** 5 MINOR findings (0 CRITICAL / 2 MAJOR) from `feature-review-quality` on ship `783bdf2` — compression residue from the WP7n close restructure: an ambiguous `Next Step:` block-membership rule (the same ambiguity that broke a sentence-counter), a mechanics pointer that inverted direction during compression, a greenfield `/exit`-before-`mkdir` ordering slip in the user's LAST on-screen instruction, a garden-path clause in the git-safety rationale, and a duplicate `Open discoveries:` WIP line. Full bodies: [`workflow-system/state/backlog-quality-findings.md`](backlog-quality-findings.md) → `# greenfield-tour-cwd-sample-and-close-restructure — 2026-07-25`.
+- **The 2 MAJORs were FIXED IN-FEATURE, not backlogged** — (1) the spec revision header claimed it resynced `§3` both-arm step-8 rows + `§7` rows but had not, leaving the beat tables describing the *superseded* close; (2) the new group-9 runnable assertion overrode `TODO_STORE` to an external temp file, so it never exercised the flat-stamped `./todos.txt` the tour's Step-5 grounding beat actually uses. Both would have corrupted the artifact **WP7e is chartered to pin against**, so deferring them was not viable. Fixes verified: spec rows resynced; assertion rewritten to use the real default store + a new store-resolution assertion, **mutation-verified** (breaking `SCRIPT_DIR` resolution now fails it). Suite 19 → 20.
+- **Priority:** low (all 5 remaining)
+- **Status:** pending
+- **Pickup shape:** all five are trivial prose/one-line fixes. **Four are user-facing tour copy → best folded into WP7e's copy-freeze so they are settled BEFORE pins lock accepted copy** (two of them — the block-membership ambiguity and the garden-path git-safety clause — directly affect the DEFERRED verify-human read the operator still owes). The fifth is already fixed and retained only as a data point on the recurring WIP-edit failure mode.
+
 ## SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED
 - **Source:** feature:verify-codify (greenfield-tour-cwd-sample-and-close-restructure, Phase 2 / WP7n)
 - **Target level:** feature (WP7e charter — already-planned work, recorded so it cannot be dropped)

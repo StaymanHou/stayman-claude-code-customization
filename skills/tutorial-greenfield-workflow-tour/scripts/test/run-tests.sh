@@ -209,12 +209,22 @@ if ( cd "$C" && "$SCAFFOLD" --dest . >/dev/null 2>&1 ); then
   else
     bad "--dest . did not stamp flat into the cwd (contents: $(ls -A "$C" | tr '\n' ' '))"
   fi
-  # and the flat copy is runnable — the grounding observable still holds from the cwd
-  cs9="$(fresh_store)"
-  out9="$(cd "$C" && TODO_STORE="$cs9" ./todo add "buy milk" >/dev/null 2>&1; cd "$C" && TODO_STORE="$cs9" ./todo list 2>/dev/null)"
+  # and the flat copy is runnable — the grounding observable still holds from the cwd.
+  # NOTE: deliberately NO TODO_STORE override here. The tour's Step-5 grounding beat runs
+  # the bare `./todo add "buy milk" && ./todo list`, so the store it exercises is the
+  # flat-stamped `./todos.txt` resolved from the dispatcher's own SCRIPT_DIR. Overriding
+  # TODO_STORE to an external temp file (as groups 1-3 must, to protect the shipped
+  # sample/) would test a path the tour never uses and would hide a SCRIPT_DIR-resolution
+  # or stamped-file-permission regression. Isolation is unnecessary here: $C is already a
+  # throwaway mktemp -d, so the default store IS disposable.
+  out9="$(cd "$C" && ./todo add "buy milk" >/dev/null 2>&1; cd "$C" && ./todo list 2>/dev/null)"
   [ "$out9" = "1. [ ] buy milk" ] \
-    && ok "flat-stamped cwd copy runs: ./todo add/list -> '1. [ ] buy milk'" \
-    || bad "flat-stamped cwd copy not runnable: stdout=[$out9]"
+    && ok "flat-stamped cwd copy runs on its OWN ./todos.txt: ./todo add/list -> '1. [ ] buy milk'" \
+    || bad "flat-stamped cwd copy not runnable on its own store: stdout=[$out9]"
+  # the stamped store is the one that actually got written (guards SCRIPT_DIR resolution)
+  grep -q "buy milk" "$C/todos.txt" 2>/dev/null \
+    && ok "the flat-stamped ./todos.txt is the store that was written" \
+    || bad "./todo wrote somewhere other than the flat-stamped ./todos.txt"
 else
   bad "--dest . failed to stamp into an empty cwd"
 fi

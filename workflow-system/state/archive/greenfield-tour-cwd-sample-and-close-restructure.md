@@ -1,7 +1,8 @@
 ---
 workflow: feature
-state: plan (complete)
+state: ship (complete)
 drive_mode: autopilot
+ship_commit: 783bdf2
 created: 2026-07-25
 wbs_ref: "workflow-system/product/wbs.md → M11 ratified block → WP7l + WP7n"
 ---
@@ -88,13 +89,12 @@ WP text were checked against the code before planning, and one is now known to b
   - [x] verify-codify  <!-- status: done — **NO new tests written, deliberately, with the gap MEASURED and recorded (not assumed).** Coverage assessment: Phase 2's deliverable is *tour structure* (close ordering / beat survival), and `grep -c tutorial tests/check-structure.sh` = 0 → the family has no structural pins at all. I empirically proved the gap rather than reasoning about it: **deleting BOTH `Next Step:` blocks outright still passed the scaffold suite (19/19) AND check-structure.sh (472/1, unchanged)**; file restored clean (2 blocks back, git-verified). Three reasons not to pin it here: (1) the scaffold suite's group-8 comment states its own boundary verbatim ("pins the consuming-surface wiring only; the tour's behavioral scenarios + structural pins are WP7e's job — deliberately NOT duplicated here") and close-ordering is tour structure, not scaffold wiring; (2) **verify-human is DEFERRED**, so pinning now would freeze un-accepted copy — the exact inversion of the pins-lock-accepted-copy rule this whole M11 tail is sequenced around; (3) WP7e would rewrite them. Contrast with Phase 1, where coverage WAS added in-feature (group 9 + a group-8 `--dest` assertion, both mutation-verified) because that change genuinely WAS scaffold wiring — the boundary was applied, not used as a dodge. Gap logged twice so it cannot die with this WIP: `[SURFACED-2026-07-25]` in `## Discoveries` + durable `SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED` in `workflow-system/state/backlog.md`, both carrying the concrete pin list AND the flaky-sentence-counter caveat. Full suites green: scaffold 19/19, check-structure 472 PASS / 1 pre-existing settings-fixture FAIL (not new). No test failed → no §3b triage artifact required. -->
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** ship (both phases' impl + verify-auto + verify-self + verify-codify complete)
+- **Path:** Feature > finalize
+- **Active scope:** finalize (ship `783bdf2` complete; review-quality complete — 0C/2MAJ-fixed-in-feature/5MIN-backlogged)
 - **Blocked:** none
 - **Unvisited:** ship → review-quality → finalize; then — outside this feature — **WP7m**, after which the DEFERRED verify-human acceptance is re-presented across all three greenfield fixes at once, then **WP7e** codifies pins against the accepted copy
 - **Phase parents deliberately NOT `[x]`:** both Phase 1 and Phase 2 retain `[ ]` because their `verify-human` leaves are `[~]` DEFERRED, not `[x]`. This is correct under the all-children-`[x]` rule and is the tree honestly representing an owed gate — do NOT "tidy" them to `[x]` at ship/finalize. They close when the operator's re-acceptance lands.
 - **Open discoveries:** 3 entries — one `[SHORTCUT-2026-07-25]` (Phase 1 in-place fixes, fresh-subagent re-verified), one leaf-substitution defect (found + fixed at exit-time parent scan), one **measured coverage gap** on the WP7n close structure (WP7e's charter; also logged durably as `SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED`). Plus one **OPEN DESIGN QUESTION** owed an answer before WP7e freezes — see `## Deferred human gate`.
-- **Open discoveries:** one `[SHORTCUT-2026-07-25]` audit entry (in-place fix of two non-BLOCKING coherence items; fresh-subagent re-verified) — informational, not open work. **One OPEN DESIGN QUESTION** (replay always trips the empty-cwd guard; ask-with-subdir-fallback alternative) — must be answered at the deferred acceptance, before WP7e freezes pins. See `## Deferred human gate`.
 
 ## Deferred human gate (owed, not waived) — operator ruling 2026-07-25
 
@@ -198,6 +198,126 @@ the close, and P2.2's no-beat-lost checklist should include it. Presentation of 
 - **Verify greps have blind spots on prose observables** — the coherence read is the gate
   (`docs/lessons/verify-grep-blind-spots.md`). Order of trust: coherence read > wrap/bold-tolerant
   grep > literal grep. When a grep "fails" on prose, suspect the grep before the copy.
+
+## Retrospect
+
+- **What changed in our understanding:** Two of the three "fixes" turned out to be *different kinds of
+  thing* than the WP text implied, and both only surfaced because they were checked against the code
+  first. (a) WP7l read like a scaffolder change; it was **purely an arm-invocation change** —
+  `new-sample.sh` already implemented `--dest` + the no-clobber guard, so the shipped dispatcher copy
+  had been *promising* the correct behavior all along while the arm quietly did something else. The bug
+  was a **copy/behavior divergence**, not a missing capability. (b) WP7m (planned separately) looked like
+  copy but is a **real state-machine gap** — `S22` is modeled AUTO in all four drive modes and neither
+  `session-reflect` nor `session-handoff` has any tour-awareness, so mid-tour the in-tour feature's close
+  *correctly* presents as a clean boundary. The agent's hedge-and-ask in the operator's live run was a
+  reasonable read of a genuine ambiguity, not a misbehavior.
+- **Assumptions that held:** Building WP7l and WP7n as one feature was right — they both edit the arm's
+  close, and 7n.3's merge-ownership prevented two conflicting edits. The verify-before-edit discipline
+  paid for itself twice. The pins-lock-accepted-copy sequencing held: refusing to write close-structure
+  pins while verify-human was deferred avoided cementing copy the operator hasn't read.
+- **Assumptions that were wrong:**
+  1. **"Mutation-verified" ≠ "verifies the right thing."** I mutation-tested group 9's runnable assertion
+     and it failed-on-mutation, which felt like proof. The reviewer showed it was proof the assertion
+     *could* fail — not that it tested the path the tour uses. It overrode `TODO_STORE` to an external
+     temp file while the tour's Step-5 beat runs bare `./todo add … && ./todo list` against the stamped
+     `./todos.txt`. **The lesson: mutation-testing validates sensitivity, not relevance.**
+  2. **A revision header can lie without anyone noticing.** I wrote "§3 both arms, §7 rows" in the spec
+     revision and never edited those rows — the beat tables kept describing the superseded close. Worst
+     possible location, since WP7e is chartered to pin against exactly those tables. Caught only by the
+     reviewer.
+  3. **Grep-on-prose was wrong four separate times** (en-dash/bold/wrap/blockquote, plus a sentence
+     counter folding a trailing italic line into the preceding option). Every single time the copy was
+     correct and the check was wrong. `verify-grep-blind-spots.md` predicted this; the frequency across
+     one feature is the new datum.
+  4. **A documented lesson does not prevent its own recurrence.** The Work-Tree leaf-substitution defect
+     (inserting a new status line above the old one instead of substituting) hit twice in this feature
+     despite `docs/lessons/work-tree-leaf-substitution.md` existing — orphaned verify leaves that would
+     have made Phase 1 un-closeable, and a duplicate `Open discoveries:` field. Long autopilot runs with
+     many sequential WIP edits reproduce it easily.
+- **Approach delta:** Plan said 2 phases / 10 tasks; delivered exactly that. Three deltas, all
+  discipline-driven rather than scope drift: (1) task 7l.4's "adjust the script" half became a verified
+  **no-op** instead of an edit; (2) **no close-structure tests were written** — a documented charter
+  boundary plus the deferred gate made pinning wrong here, so the gap was *measured* (deleting both
+  `Next Step:` blocks still passes everything) and logged with a concrete pin list rather than papered
+  over; (3) both review MAJORs were **fixed in-feature instead of auto-backlogged** — Mode 3's default is
+  backlog, but both corrupted the artifact WP7e pins against, so deferring them would have guaranteed
+  WP7e pins the wrong shape. The full-cycle tour was also verified-then-left-alone rather than edited for
+  symmetry.
+
+## Code-Quality Review — greenfield-tour-cwd-sample-and-close-restructure (WP7l + WP7n)
+
+Reviewer: `code-quality-reviewer` subagent, ship commit `783bdf2` (single-commit feature; window
+`783bdf2^..783bdf2`). Counts: **0 CRITICAL / 2 MAJOR / 5 MINOR** → Case B, `drive_mode: autopilot`
+(Mode 3) → auto-backlog + prominent chat surface → `TRANSITION: F39`.
+
+### Strengths (reviewer's words, condensed)
+- Verify-before-edit was **honored, not claimed** — `new-sample.sh` git-confirmed unchanged because the
+  `--dest`/no-clobber surface already existed.
+- The coverage gap was **measured, not assumed** (deleting both `Next Step:` blocks and re-running both
+  suites to *prove* zero coverage) — "a materially better artifact than 'codify deferred to WP7e'."
+- Both new test pins mutation-verified, and the group-9 refusal assertion is **non-vacuous by
+  construction** (if the first stamp fails, `$C` stays empty and the second invocation legitimately
+  succeeds → the `bad` branch fires; it degrades loudly, not silently).
+- Group 9 pins a **genuinely distinct code path** rather than duplicating groups 5/6.
+- The brownfield asymmetries are **prohibitions, not omissions** — a future editor "restoring symmetry"
+  has to override an explicit rule.
+
+### Issues
+
+**CRITICAL** — none.
+
+**MAJOR — both VERIFIED against the code and FIXED IN-FEATURE (not backlogged).** Mode 3's default is
+auto-backlog, but both findings corrupt the artifact **WP7e is chartered to pin against**, so deferring
+them would have guaranteed WP7e pins the wrong shape. Fixing was cheap and immediate:
+
+1. **[`onboarding-flow-spec.md`] The WP7n revision header claimed `§3 both arms, §7 rows` — but those
+   rows were never edited**, so the spec's step-8 beat tables still described the *superseded* close
+   (mid-close replay invitation, no `Next Step:` block, no artifacts-as-proof, no cleanup offer). My
+   error, and the worst possible place for it: WP7e pins against those tables. **FIXED** — greenfield
+   row 8, brownfield row 8, and the `§7` replay-invitation row all resynced with explicit
+   `REVISED 2026-07-25 (WP7n)` clauses recording the narrative-first/decision-last order, the
+   compressed-not-dropped mechanics, the cleanup-offer placement, and the brownfield prohibitions.
+2. **[`scripts/test/run-tests.sh` group 9] The runnable assertion overrode `TODO_STORE` to an external
+   temp file**, so it never exercised the flat-stamped `./todos.txt` — which is exactly the store the
+   tour's Step-5 grounding beat uses (it runs bare `./todo add … && ./todo list`, no override). The
+   assertion claimed "the grounding observable still holds from the cwd" while testing a path the tour
+   never uses; a `SCRIPT_DIR`-resolution or stamped-file-permission regression would have sailed
+   through. Isolation bought nothing here since `$C` is already a `mktemp -d`. **FIXED** — override
+   dropped (with a comment explaining why groups 1–3 need it and group 9 must not), plus a new
+   assertion that the flat-stamped `./todos.txt` **is** the store written. **Mutation-verified:**
+   pointing the dispatcher's default store away from `SCRIPT_DIR` now fails it. Suite **19 → 20**.
+
+**MINOR — 5, all auto-backlogged** (Mode 3) to
+`workflow-system/state/backlog-quality-findings.md` → `# greenfield-tour-cwd-sample-and-close-restructure — 2026-07-25`,
+with a single pointer entry in `workflow-system/state/backlog.md`:
+1. `Next Step:` block-membership rule is ambiguous about the `Housekeeping:` cleanup offer (the *same*
+   ambiguity that made a sentence-counter falsely report 5/4 where truth was 3/2 — it will break a naive
+   WP7e pin the same way).
+2. The mechanics note says mechanics are "spelled out above," but compression inverted that pointer.
+3. Greenfield Branch A option 1 says "`/exit`, `mkdir` … `cd`" — commands after `/exit` can't run in the
+   session being read; brownfield sequences it correctly.
+4. The git-safety rationale's new clause is self-contradictory as phrased ("in an **empty** directory it
+   refuses to write into if anything is already there").
+5. Duplicate `- **Open discoveries:**` line in this WIP's `## Current Node` — **fixed at review time**
+   (retained in the backlog only as a data point that the WIP-edit failure mode recurred twice here).
+
+Four of the five are **user-facing tour copy**, so they should be settled inside WP7e's copy-freeze
+*before* pins lock — and two of them (#1, #4) directly affect the DEFERRED verify-human read still owed.
+
+### Assessment (reviewer, verbatim conclusion)
+> "This is careful, well-disciplined work on the axes this repo cares most about. The verification story
+> is the standout: mutation-verified pins, a measured-not-assumed coverage gap, the correct refusal to
+> pin un-accepted copy, and an honest `[~] DEFERRED` leaf with parent checkboxes deliberately left open
+> rather than tidied — the WIP is more trustworthy than most shipped ones here. … The debt this accrues
+> is concentrated in one place: the spec's beat tables were not resynced despite the revision header
+> claiming they were, which matters more than usual because WP7e is chartered to pin against exactly
+> those tables."
+
+The reviewer was right on both MAJORs; both are now fixed, so the concentrated debt it named is closed.
+
+### If you disagree
+Dismiss any finding by editing this section and marking the line `[DISMISSED]` before
+`feature-finalize` archives this WIP.
 
 ## Discoveries
 <!-- Format: [SURFACED-<date>] <target node> — <summary>
