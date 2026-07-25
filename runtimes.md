@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-07-24
+updated: 2026-07-25
 ---
 
 
@@ -17,9 +17,10 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
   - 4s — 2026-07-21  <!-- uninstall-sh (WP4) Phase 3 verify-codify; 40/40 PASS. Runs the real install.sh+uninstall.sh against ~9 throwaway fake-$HOME sandboxes; each install is fast (~0.4s), so the whole suite lands at ~4s. `env HOME=<sandbox>` per-call isolation (SURFACE-2026-07-21-UNINSTALL-TEST-HOME-EXPORT-HAZARD). -->
 
 ## ./tests/check-structure.sh
-- **Last:** 24s (2026-07-24)
+- **Last:** 23s (2026-07-25)
 - **Use timeout:** 96000
 - **History:**
+  - 23s — 2026-07-25  <!-- M11 tail WBS amendment (P11 SURFACE-IN: WP7l/WP7m/WP7n ratified from the batch acceptance run); 472 PASS / **1 FAIL**. Total assertions still 473 — no check lost; the settings-fixture assertion flipped PASS→FAIL since 2026-07-24: `effortLevel: live=<missing> fixture="xhigh"` (live ~/.claude/settings.json no longer carries effortLevel). **Pre-existing and unrelated to this change** — this session touched only workflow-system/product/wbs.md + workflow-system/state/backlog.md (product-docs/state, which check-structure.sh does not pin). Same drift class as the tracked project_settings_fixture_claudesk_drift memory; fix is to update tests/fixtures/settings.json or add effortLevel to INTENTIONAL_DIFFS. Runtime flat (~23s). -->
   - 24s — 2026-07-24  <!-- WP7k full-product-cycle-tour BUILD Phase 1 verify-codify; 473 PASS / 0 FAIL. Added skills/tutorial-product-cycle-tour/ (SKILL.md + scripts/brief.md). Count rose 472→473: the new skill dir is auto-covered by the dynamic per-skill structural phases (frontmatter parse + section/bare-.claude checks), which adds one pass; no tour-specific content pins yet (those are WP7e's charter). No regression. Runtime flat (~24s). -->
   - 22s — 2026-07-24  <!-- WP7h full-product-cycle-tour DESIGN-only; 472 PASS / 0 FAIL. Design session added workflow-system/product/full-product-cycle-tour-design.md + WBS edits + a design WIP — all product-docs/state, which check-structure.sh does not pin (Phase 12 scans skills/ agents/ CLAUDE.snippet.md only). Count flat at 472, no regression. Runtime flat. -->
   - 22s — 2026-07-23

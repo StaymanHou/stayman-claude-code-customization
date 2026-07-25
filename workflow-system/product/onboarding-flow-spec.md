@@ -3,7 +3,7 @@ shape: onboarding-flow-spec
 stage: spec
 milestone: 11
 state: complete
-updated: 2026-07-22
+updated: 2026-07-25
 ---
 
 # Onboarding Flow Spec — the `workflow-tour` first-run experience (M11 / WP7a)
@@ -21,6 +21,54 @@ updated: 2026-07-22
 >
 > **Origin:** `SURFACE-2026-07-20-CLAUDESK-ONBOARDING-DESIGN`, roadmap Milestone 11,
 > `HANDOFF-from-claudesk-2026-07-20.md` item #5.
+
+---
+
+## Revision 2026-07-25 (WP7l + WP7n — post-acceptance greenfield corrections)
+
+From the operator's **batch hands-on acceptance walkthrough** (2026-07-25). Three of the four tour
+surfaces passed as-shipped (brownfield · WP7g corrections · WP7k full-cycle); the **greenfield arm** drew
+three fixes, ratified as WP7l / WP7m / WP7n. Two land here (WP7m is a separate follow-on WP).
+
+**WP7l — the greenfield sample lands in the user's own cwd (§3-greenfield env, §8).** The arm previously
+ran `new-sample.sh` bare, stamping into a `$TMPDIR` copy it then `cd`'d into; on the live run the operator
+had to interrupt and ask *"Can you copy it over to the current directory?"*, and the accepted answer was
+**flat into the cwd**. The arm now invokes `new-sample.sh --dest .`, so the files land where the user is
+standing (`ls`-visible, no path to memorize) — this is what beat **A** ("your state is a real file you
+own") actually depends on. **The cwd must be empty**; the scaffolder refuses a non-empty destination and
+writes nothing, and the arm must **ask the user for an empty directory rather than passing `--force`** or
+silently falling back to a temp dir. The dispatcher's Step-0 greenfield pre-flight is correspondingly
+hardened from "an empty folder is ideal" to a stated **requirement** with its consequence, so the refusal
+stays a rare backstop. **Replay note:** the guard fires on essentially every replay (the user stands in
+their previous run's directory) — that is the normal case, handled by the arm's entry section and by the
+`Next Step:` replay option telling the user to start from a new empty folder. *`new-sample.sh` itself was
+NOT changed — it already implemented `--dest` + the no-clobber guard.*
+
+**WP7n — the close ends with a terse `Next Step:` block (§3 both arms, §7 rows).** The operator's verdict
+on the live close: the actionable choice *"got buried with this large body of corpus… at the very bottom
+it should have a very clear and brief section saying `Next Step:` … each option no more than 3 sentences.
+The details can be provided above it, not at the bottom."* Both arms' Step-8 closes are restructured:
+narrative first (graduation/acknowledge → replay *motivation* in one line → "what we didn't demo" →
+**artifacts-as-proof**), then a compact **per-branch `Next Step:` block as the last thing on screen**,
+≤3 sentences per option, options **named never auto-run**. The full replay invitation is compressed into
+option 1 — its load-bearing mechanics (direct arm re-entry NOT the dispatcher · session-boundary crossing ·
+gear from the arm's own on-entry menu · greenfield's new-empty-folder / brownfield's clean-baseline-first)
+are **compressed, not dropped**, and are restated in a mechanics note beneath each block. Branch B (replay)
+carries no replay option. **WP7l's disposal ruling also lands here:** an **offer** to delete the throwaway
+sample (never auto-remove, never silence), placed **after** the artifacts-as-proof list so the tour never
+asks to remove the evidence before showing it — greenfield only, since brownfield runs on the user's real
+repo and has nothing disposable.
+
+**Deliberately NOT changed — the full product-cycle tour's close.** Verified per-file rather than assumed
+symmetric: its close is already three explicitly-numbered beats in a stated order (~30 lines) with the
+actionable "point at real work" beat in plain sight — no burial to fix. Adding a `Next Step:` block there
+would be uniformity for its own sake and would rub against its ratified **no-replay / no-mode-menu**
+invariant.
+
+**Still owed:** the operator's **verify-human copy acceptance is DEFERRED** until WP7m also lands, so the
+greenfield arm is judged once as a finished whole. **WP7e must freeze pins against that accepted copy, not
+against this copy.** One open design question is recorded there too — whether "refuse if non-empty" should
+soften to ask-with-subdir-fallback, given the guard fires on every replay.
 
 ---
 

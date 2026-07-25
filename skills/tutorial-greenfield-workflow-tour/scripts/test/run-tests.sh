@@ -12,7 +12,10 @@
 #   5. scaffolder produces a fresh runnable copy, independent of the source
 #   6. scaffolder refuses to clobber a non-empty dest (writes nothing) unless --force
 #   7. scaffolder --help shows only usage prose (no leaked code) + prints a //-free path
-#   8. greenfield arm references this scaffold (arm ↔ scaffold wiring contract)
+#   8. greenfield arm references this scaffold (arm ↔ scaffold wiring contract),
+#      including its --dest invocation form (WP7l)
+#   9. `--dest .` from inside the cwd: flat stamp + runnable + non-empty refusal (WP7l —
+#      the tour's actual invocation form; distinct path from groups 5/6's nested --dest)
 #
 # End-to-end CLI test — no framework, no deps (matches the no-runtime repo convention
 # and the shell-tool test shape used by tools/migrate-doc-layout/test/ and tools/uninstall/test/).
@@ -180,8 +183,52 @@ if [ -f "$ARM" ]; then
   grep -q 'done 99' "$ARM" \
     && ok "arm SKILL.md cites the planted tangent (done 99)" \
     || bad "arm SKILL.md no longer cites the 'done 99' tangent"
+  # WP7l: the arm must invoke the scaffolder with a --dest argument (stamping into the
+  # user's own cwd), NOT bare (which would stamp into a $TMPDIR dir the agent cd's into
+  # — the behavior the operator's live walkthrough rejected). Wiring-contract scope:
+  # this pins the INVOCATION FORM the arm depends on, not the tour's prose/copy.
+  grep -q 'new-sample.sh --dest' "$ARM" \
+    && ok "arm SKILL.md invokes the scaffolder with --dest (stamps into the user's cwd)" \
+    || bad "arm SKILL.md lost its --dest invocation (would stamp into a temp dir again — WP7l regression)"
 else
   echo "  SKIP: arm SKILL.md not found at expected path ($ARM) — wiring check skipped"
+fi
+
+# ── 9. `--dest .` from inside the cwd: flat stamp + refusal (WP7l) ────────────
+# The tour's actual invocation form. Groups 5/6 cover `--dest <nonexistent-nested-dir>`;
+# neither exercises `--dest .` executed from *inside* the target, which is what the arm
+# now runs. Distinct code path worth pinning: `.` always exists (so the "nonexistent"
+# branch never fires) and emptiness is judged on the cwd itself.
+echo "[9] --dest . flat stamp into cwd + non-empty refusal"
+C="$(mktemp -d)"; TMPDIRS+=("$C")
+if ( cd "$C" && "$SCAFFOLD" --dest . >/dev/null 2>&1 ); then
+  # flat: the sample's contents land at the top level, with NO nested wrapper dir
+  if [ -f "$C/todo" ] && [ -d "$C/lib" ] && [ -f "$C/todos.txt" ] && [ -f "$C/README.md" ] \
+     && [ ! -d "$C/todo" ]; then
+    ok "--dest . stamps FLAT into the cwd (todo, lib/, todos.txt, README.md at top level)"
+  else
+    bad "--dest . did not stamp flat into the cwd (contents: $(ls -A "$C" | tr '\n' ' '))"
+  fi
+  # and the flat copy is runnable — the grounding observable still holds from the cwd
+  cs9="$(fresh_store)"
+  out9="$(cd "$C" && TODO_STORE="$cs9" ./todo add "buy milk" >/dev/null 2>&1; cd "$C" && TODO_STORE="$cs9" ./todo list 2>/dev/null)"
+  [ "$out9" = "1. [ ] buy milk" ] \
+    && ok "flat-stamped cwd copy runs: ./todo add/list -> '1. [ ] buy milk'" \
+    || bad "flat-stamped cwd copy not runnable: stdout=[$out9]"
+else
+  bad "--dest . failed to stamp into an empty cwd"
+fi
+# Re-running in the now-non-empty cwd must refuse and write nothing new. This is the
+# case a REPLAY hits every time (user stands in their previous run's dir), so the arm
+# depends on the refusal being reliable rather than a partial overwrite.
+before9="$(cd "$C" && find . | sort)"
+if ( cd "$C" && "$SCAFFOLD" --dest . >/dev/null 2>&1 ); then
+  bad "--dest . overwrote a non-empty cwd without --force (should have refused)"
+else
+  after9="$(cd "$C" && find . | sort)"
+  [ "$before9" = "$after9" ] \
+    && ok "--dest . refused the non-empty cwd and wrote nothing (tree identical)" \
+    || bad "--dest . refused but mutated the cwd tree"
 fi
 
 echo

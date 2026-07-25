@@ -69,16 +69,23 @@ job of this pre-flight is to get the user into the **right working directory** s
 the user is about to take, so ask the new-vs-existing question (Step 1's fork) informally here first,
 or cover both:
 
-- **New project (greenfield):** pick a **working directory** for the tour to happen in — a new,
-  empty folder is ideal (nothing of yours is nearby). The tour's arm skill will stamp its **own
-  throwaway sample project** into a fresh disposable copy and work inside that, so nothing real is at
-  risk — but the user should still be *somewhere deliberate* when the next session starts, not in
-  their home dir or an unrelated repo. Have them `cd` there before they `/exit`:
-  > *"Let's pick a spot for this. Make (or choose) an empty folder to work in and `cd` into it —
-  > something like `mkdir ~/workflow-tour && cd ~/workflow-tour`. Don't worry about putting anything
-  > in it: when you start the tour, it'll create its own small throwaway sample project there for us
-  > to work on, so there's genuinely nothing of yours to lose. We just want you standing in a clean,
-  > deliberate directory before we begin."*
+- **New project (greenfield):** the user must be standing in an **empty directory** — this is a
+  **requirement, not a preference**. The tour's arm skill stamps its own small sample project
+  **directly into whatever directory the next session starts in**, so the files land where the user can
+  see them with a plain `ls` (no temp path to memorize). The scaffolder **refuses to write into a
+  non-empty directory** — deliberately, so the tour can never clobber someone's files — which means a
+  non-empty starting directory stops the tour before it begins. Getting this right here is what keeps
+  that refusal a rare backstop instead of a wall the user hits on their first run. Have them `cd`
+  into an empty folder before they `/exit`:
+  > *"Let's pick a spot for this. Make a **new empty folder** and `cd` into it —
+  > `mkdir ~/workflow-tour && cd ~/workflow-tour`. It does need to be empty: the tour creates its own
+  > small sample project right there in that folder, and it won't write on top of existing files (so
+  > if you pick a folder with stuff in it, it'll stop and ask you to move). Nothing of yours is
+  > involved either way — the sample is a throwaway copy you can delete when we're done."*
+
+  If the user names a directory they already have, it's worth a quick `ls` to confirm it's empty
+  before sending them off — catching it here costs one command; catching it in the next session costs
+  them a restart.
 
 - **Existing code (brownfield):** the tour must run **inside your real project's root directory** so
   the workflow operates on the right code. Have the user `cd` there before they `/exit`:
@@ -105,8 +112,9 @@ or cover both:
     > makes the rest comfortable."*
 
   (Both paths converge on the same next move: you'll `/exit` and **relaunch in this directory in
-  `auto` mode** — see Step 2's handoff for the exact command. Greenfield needs no git-safety check —
-  it works in a disposable throwaway copy, so there's nothing of the user's to protect.)
+  `auto` mode** — see Step 2's handoff for the exact command. Greenfield needs no git-safety check:
+  everything it creates is a throwaway sample it stamps itself, in an **empty** directory it refuses to
+  write into if anything is already there — so there is nothing of the user's in reach to protect.)
 
 **About `auto` mode (why the relaunch below uses it).** Recommend the user relaunch the tour session
 in **`auto`** permission mode: the tour really *runs* things (executes the sample, writes files, hands

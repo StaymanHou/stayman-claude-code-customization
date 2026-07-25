@@ -242,9 +242,9 @@ Then immediately **un-push it** — the honest counterweight is why this goes la
 > you. Earn the trust first, then shift gears. **Not recommended yet.**"*
 
 (Do **not** demonstrate autopilot/FSD live in the tour — showing it in action would hide the very
-beat B the tour is built around. This is a *named* reveal, not a staged run.) Then extend the replay
-invitation below (Branch A's close), which sends the user to *feel* a faster gear on a fresh run from
-a clean baseline.
+beat B the tour is built around. This is a *named* reveal, not a staged run.) Then plant the replay in
+one line (below), and let the `Next Step:` block at the very end carry the actual how — starting with
+getting the repo back to a clean baseline.
 
 #### Branch B — REPLAY (already in a faster gear): acknowledge, don't re-reveal
 Use this when the tour ran in **autopilot / FSD** (a replay — the user already saw the stepping run
@@ -261,41 +261,28 @@ real repo:
 > they trust it on their codebase. You've got the whole range."*
 
 Then **close** — no un-push, no replay invite (both are first-run moves). A short "you've now seen it
-both ways; use whichever gear fits the work" is the right note. Skip straight to the "what we did NOT
-demo" close below (it applies to both branches).
+both ways; use whichever gear fits the work" is the right note. Skip the Branch-A replay-motivation line
+below and go straight to the "what we did NOT demo" close (it applies to both branches), then Branch B's
+own `Next Step:` block — which has **no replay option**, since they are already in one.
 
-**Then (Branch A only) extend a highlighted replay invitation** — the honest way to let the user
-*feel* the faster
-gears without demoing them live here (which would hide beat B). The tour stays stepping to its end;
-the faster gears are something they go try **on a fresh run from the same starting point**, now that
-they know what the pauses are protecting. Because this ran on their **real repo**, getting back to
-the starting point means undoing the tour's edits first:
+**Then (Branch A only) plant the replay in one line** — the honest way to let the user *feel* the faster
+gears without demoing them live here (which would hide beat B). The tour stays stepping to its end; the
+faster gears are something they go try **on a fresh run from the same starting point**, now that they
+know what the pauses are protecting. Keep this to a sentence or two of *motivation* — the actionable
+form (clean baseline first, and the rest of the mechanics) is **option 1 of the `Next Step:` block
+below**, so do not spell the whole procedure out twice:
 
-> **▶ Want to feel the difference? Run this again from the same starting point, in a faster gear.**
-> *"You just did the whole thing in stepping mode — pausing at every step so you could watch. To try
-> it faster, get back to a clean start and cross a fresh session boundary, just like you'd start any
-> new piece of work: first `git stash` (or `git restore .` / `git checkout .`) to set aside the
-> changes we made during the tour, so your repo is back at the clean baseline you began with. Then
-> `/exit` this session and open a brand-new one in the same repo (the clean reset you just watched
-> restore recover from). In that new session, run **`/tutorial-brownfield-workflow-tour`** directly —
-> the tour skill itself, not the getting-started intro. It'll ask whether you're replaying, and when
-> you say yes it'll show you a little menu of gears — pick **autopilot** (chains the safe steps, still
-> stops at the human checkpoint) or **FSD** (skips even that). Same tour, same repo, clean start —
-> you'll feel exactly which stops autopilot keeps and which FSD drops, on code you already
-> understand."*
+> *"If you want to feel the difference, the fastest way is to run this again in a faster gear — same
+> repo, same starting point, but you'll watch it move. On code you already understand, that contrast is
+> the quickest way to find where you're comfortable handing over the wheel. I'll put the how at the
+> end — it starts with getting your repo back to the clean baseline."*
 
-(This is still a *named* invitation, not a live demo — the user drives the faster run themselves from
-a clean baseline in a new session, so this run's beat B stays intact. Frame it as "go try it," never
-"watch me autopilot." Three mechanics that must stay correct: **(1)** the replay re-enters at the arm
-skill `/tutorial-brownfield-workflow-tour` **directly, NOT `/tutorial-getting-started`** — the
-dispatcher would re-force stepping and re-ask the path fork, both of which a faster-gear replay is
-moving past; **(2)** it's a **session-boundary crossing** (`git stash`/restore to clean baseline →
-`/exit` → new session) — the `git stash`-then-new-session step is why the Step-0 git-safety pre-flight
-mattered (a clean, committed starting point is what makes "get back to start and replay" safe); do NOT
-frame it as "skip the intro and keep going in this session," there IS no dispatcher in the replay
-session; **(3)** the **gear is chosen from the arm's own on-entry menu** (the arm asks "replaying?"
-then presents the 1–4 drive-mode menu — see this skill's "On entry" section), not pre-set by the
-user.)
+(This is a *named* invitation, not a live demo — the user drives the faster run themselves from a clean
+baseline in a new session, so this run's beat B stays intact. Frame it as "go try it," never "watch me
+autopilot." The four load-bearing replay mechanics — **clean baseline first** (why the Step-0 git-safety
+pre-flight mattered: a clean, committed starting point is what makes "get back to start and replay"
+safe), direct arm re-entry, session-boundary crossing, and gear-from-the-arm's-own-menu — live in the
+`Next Step:` block's option 1 and its mechanics note; they are compressed there, not dropped.)
 
 **Then close by naming what you did NOT demo** *(BOTH branches land here — Branch A after its replay
 invite, Branch B directly after acknowledging the gear)* — framed as "here's what's here when you're
@@ -310,13 +297,58 @@ ready," never staged:
 >   did today.*
 >
 > *That's the tour — on your own code, which is the real test. You steered, it kept the plot and
-> reconstructed what you'd never written down, and it's all in files you own. Go keep building."*
+> reconstructed what you'd never written down, and it's all in files you own."*
 
-That closing line reinforces beat **G** one final time (you kept the wheel) and hands the user back
-to their real work — which is the whole value prop. **The tour ends here** — once you've delivered
-the close, there is nothing further to invoke and no transition to emit; the run is complete (see
-`## Transitions`). (Note: the full hierarchy is **CUT** as a felt beat on brownfield — too big to
-land in run one — so it is *named* at close, never staged.)
+Then show **the artifacts as proof** — the real files this run touched or produced on their repo (the
+revised `CLAUDE.md`, the WIP/archive record, the backlog entry, any commit). This is the evidence behind
+"files you own," so it stays *before* the decision block.
+
+### The close's last block — `Next Step:` (structure this deliberately)
+
+**Everything above is narrative; the last thing on screen is a short, scannable decision block.** Same
+rule as the greenfield arm (operator feedback, 2026-07-25): the actionable choice must not be buried
+mid-prose. **Details above it, options in it, nothing after it.** Keep each option to **≤3 sentences**,
+make it **per-branch**, and **name** options — never auto-run them.
+
+**Branch A (first run) — two options:**
+
+> **Next Step:**
+>
+> **1 — Run it again in a faster gear.** Set your repo back to the clean baseline (`git stash`, or
+> `git restore .`), `/exit`, then run `/tutorial-brownfield-workflow-tour` directly in a fresh session
+> and say yes when it asks if you're replaying. You'll feel exactly which stops autopilot keeps and
+> which FSD drops — on your own code.
+>
+> **2 — Just start working.** You've seen the whole loop on this repo, so pick a real piece of work and
+> run `/session-start`. That's the tour's actual payoff: this isn't a mode you enter, it's how you work
+> from here.
+
+**Branch B (replay) — one option** (no replay option — they're already in one):
+
+> **Next Step:**
+>
+> **1 — Just start working.** You've now seen it both ways on your own code. Pick a real piece of work
+> and run `/session-start` — you already know where it'll stop and why.
+
+**Mechanics that must stay correct in the block** (compressed, not dropped):
+- **Option 1/Branch A is the replay** with all four constraints: **clean baseline first**
+  (`git stash` / `git restore .` — this is why the Step-0 git-safety pre-flight exists), `/exit` to a
+  **fresh session** (a real session-boundary crossing), re-entry at **the arm skill directly — NOT
+  `/tutorial-getting-started`** (the dispatcher would re-force stepping and re-ask the path fork), and
+  the **gear chosen from the arm's own on-entry menu** (it asks "replaying?" then presents 1–4).
+- **No cleanup offer on this arm** — unlike greenfield, nothing here is a throwaway sample; it's the
+  user's real repo. Never offer to delete anything. (`git stash`/`git restore` is the user's own undo
+  path, already covered by Step 0 and option 1.)
+- **No deep-dive pointer on this arm** — `/tutorial-product-cycle-tour` is pointed at from the
+  *greenfield* close (it pairs with greenfield's light hierarchy taste). Do not add it here.
+
+The close reinforces beat **G** one final time (you kept the wheel) and hands the user back
+to their real work — which is the whole value prop. **The tour ends here** — once you've delivered the
+narrative close, the artifacts, and the `Next Step:` block, there is nothing further to invoke and no
+transition to emit; the run is complete (see `## Transitions`). **The `Next Step:` block is the last
+thing on screen** — if the user picks an option, they act on it themselves. (Note: the full hierarchy is
+**CUT** as a felt beat on brownfield — too big to land in run one — so it is *named* at close, never
+staged.)
 
 ## "Don't force it" (spec §7 — binding)
 

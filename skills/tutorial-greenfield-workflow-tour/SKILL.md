@@ -75,8 +75,12 @@ must present it:
 Record the chosen mode in the tour's WIP frontmatter (`drive_mode: stepping | orchestrated |
 autopilot | fsd`) and **run the tour in that mode** — let it chain per the mode's pause policy so the
 user feels exactly which stops each gear keeps and which it drops. Then proceed to the environment
-setup below (the sample is stamped the same way on a replay — a fresh throwaway copy, nothing carries
-over).
+setup below (the sample is stamped the same way on a replay — a fresh copy, nothing carries over).
+**On a replay, expect the empty-cwd guard to fire:** the user is most likely standing in the directory
+from their previous run, which now holds that run's sample and workflow files. That's the normal case,
+not an error — ask them for a fresh empty directory exactly as the environment section describes, and
+mention *why* ("so this run starts clean and nothing from last time bleeds in"). Never `--force` over
+their previous run's work.
 
 ## The environment — a tiny runnable sample (from WP7c; redesigned in WP7i)
 
@@ -86,20 +90,42 @@ portability note below) — a small **command-line `todo` list** (a dispatcher p
 subcommand: `add` / `list` / `done`, over a plain-text store). It's deliberately more than a one-liner:
 a couple of real modules and a visible data file give planning, verify-self, and SURFACE something real
 to bite on. **You (the agent) stamp a fresh copy before Step 1 — the human never runs the scaffolder
-themselves.** Run it yourself; it stamps a throwaway copy so the user's real edits, the SURFACE, and
-the handoff/restore all happen against something disposable, never the shipped source. The scaffolder
-lives beside this skill — invoke it by its installed path:
+themselves.** Run it yourself; it stamps a fresh copy so the user's real edits, the SURFACE, and
+the handoff/restore all happen against something disposable, never the shipped source.
+
+**Stamp it into the user's current working directory — do NOT stamp into a temp dir and `cd` away.**
+The user was told in the pre-flight to `cd` into an empty folder precisely so the tour's files land
+*where they're standing*. Files they can see with a plain `ls`, in a directory they chose, are part of
+the value prop (beat A — "your state is a real file you own"); a path under `/var/folders/…` that you
+`cd`'d into on their behalf undercuts it and leaves them unsure where their work lives. The scaffolder
+lives beside this skill — invoke it by its installed path, targeting the cwd:
 
 ```bash
-~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh   # you run this; prints the fresh copy's path + a run hint
+~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh --dest .   # you run this, in the user's cwd
 ```
 
 (It resolves its own sibling `scripts/sample/` from the script's own location, so it works from
-wherever the skill is installed — the repo checkout or a `~/.claude/` symlink.)
+wherever the skill is installed — the repo checkout or a `~/.claude/` symlink. `--dest .` stamps the
+sample's contents **flat** into the current directory — `todo`, `lib/`, `todos.txt`, `README.md` at the
+top level — so there's no nested folder to `cd` into and no path for the user to memorize.)
 
-Then `cd` into the printed path yourself and drive the tour from there (nothing real to lose) — the
-user doesn't type this; you do it and tell them where you've set things up. Two properties of the
-sample are load-bearing, and the two staged beats below depend on them directly:
+**The cwd must be empty — and the scaffolder enforces it.** `new-sample.sh` refuses a non-empty
+destination and **writes nothing** when it refuses (exit 1, message naming the destination). That guard
+is deliberate: it's what makes "the tour never clobbers your files" true rather than merely promised.
+If it fires, **do not** reach for `--force` and do not silently fall back to a temp directory. Stop and
+tell the user plainly, then wait for them:
+
+> *"Before I set up the sample — this directory already has files in it, and I won't write on top of
+> them. Pop into an empty folder and we'll start there: `mkdir ~/workflow-tour && cd ~/workflow-tour`
+> (any empty directory works), then tell me when you're in and I'll stamp the sample."*
+
+Once they confirm, re-run the stamp. This should be rare — the Step-0 pre-flight in
+`tutorial-getting-started` already asks them to be standing in an empty directory — so treat it as a
+backstop, not a routine branch. Note you do **not** need to `cd` anywhere after a successful stamp: the
+files are already in the working directory you're both in. Tell the user that plainly ("everything's
+right here in this folder") and let them `ls`.
+
+Two properties of the sample are load-bearing, and the two staged beats below depend on them directly:
 
 - **Runnable with one observable outcome** — `./todo add "buy milk" && ./todo list` prints exactly
   `1. [ ] buy milk` and exits 0. This is what the staged **grounding** beat (Step 5) has the agent
@@ -114,15 +140,17 @@ invocations.
 
 ### Say what the project is, upfront (before Step 1 — WP7i)
 
-Right after you stamp the fresh copy and `cd` in — **before** the Step 1 framing line — tell the
+Right after you stamp the fresh copy — **before** the Step 1 framing line — tell the
 user in a sentence or two *what this sample project is and what you're about to build on it*, so the
-run doesn't open on an unexplained pile of files. Keep it concrete and short:
+run doesn't open on an unexplained pile of files. Say plainly that it's **right here in this folder**
+(that's the point of stamping into their cwd — they can see it without going anywhere). Keep it
+concrete and short:
 
-> *"Here's your sandbox: a tiny command-line to-do list — a `todo` script that routes three
-> subcommands (`add`, `list`, `done`) over a plain-text file, `todos.txt`. It already runs. We're
-> going to add one small thing to it end-to-end — nothing you can break matters here, it's a
-> throwaway copy — and you'll watch the workflow give that little bit of work real structure. Take a
-> quick look: `ls` and `cat todos.txt` if you like, then we'll start."*
+> *"Here's your sandbox, and it's right here in the folder you're standing in — a tiny command-line
+> to-do list: a `todo` script that routes three subcommands (`add`, `list`, `done`) over a plain-text
+> file, `todos.txt`. It already runs. We're going to add one small thing to it end-to-end — nothing you
+> can break matters here, it's a throwaway copy — and you'll watch the workflow give that little bit of
+> work real structure. Take a quick look: `ls` and `cat todos.txt` if you like, then we'll start."*
 
 This grounds the user in the *what* before the walkthrough shows them the *how*. It is framing copy
 (beat **G**'s neighbor), not a staged beat — one short orientation, then move into Step 1.
@@ -306,8 +334,8 @@ Then immediately **un-push it** — the honest counterweight is the point of put
 > the trust first, then shift gears. **Not recommended yet.**"*
 
 (Do **not** demonstrate autopilot/FSD live in the tour — showing it in action would hide the very
-beat B the tour is built around. This is a *named* reveal, not a staged run.) Then extend the replay
-invitation below (Branch A's close), which sends the user to *feel* a faster gear on a fresh run.
+beat B the tour is built around. This is a *named* reveal, not a staged run.) Then plant the replay in
+one line (below), and let the `Next Step:` block at the very end carry the actual how.
 
 #### Branch B — REPLAY (already in a faster gear): acknowledge, don't re-reveal
 Use this when the tour ran in **autopilot / FSD** (a replay — the user already saw the stepping run
@@ -323,39 +351,27 @@ point of the replay:
 > a faster gear once they trust it. You've got the whole range."*
 
 Then **close** — no un-push, no replay invite (both are first-run moves). A short "you've now seen it
-both ways; use whichever gear fits the work" is the right note. Skip straight to the "what we did NOT
-demo" close below (it applies to both branches).
+both ways; use whichever gear fits the work" is the right note. Skip the Branch-A replay-motivation line
+below and go straight to the "what we did NOT demo" close (it applies to both branches), then Branch B's
+own `Next Step:` block — which has **no replay option**, since they are already in one.
 
-**Then (Branch A only) extend a highlighted replay invitation** — the honest way to let the user
-*feel* those faster
-gears without demoing them live here (which would hide beat B). The tour stays stepping to its end;
-the faster gears are something they go try **on a fresh run**, now that they know what the pauses are
-protecting:
+**Then (Branch A only) plant the replay in one line** — the honest way to let the user *feel* those
+faster gears without demoing them live here (which would hide beat B). The tour stays stepping to its
+end; the faster gears are something they go try **on a fresh run**, now that they know what the pauses
+are protecting. Keep this to a sentence or two of *motivation* — the actionable form (with its
+mechanics) is **option 1 of the `Next Step:` block below**, so do not spell the whole procedure out
+twice:
 
-> **▶ Want to feel the difference? Take this exact tour again in a faster gear.**
-> *"You just did the whole thing in stepping mode — pausing at every step so you could watch. Now
-> that you've seen where it stops and why, run it once more and let it move — and do it the way you'd
-> start any fresh piece of work: cross a real session boundary. `/exit` this session and open a
-> brand-new one (the same clean reset you just watched restore recover from). In that new session,
-> run **`/tutorial-greenfield-workflow-tour`** directly — the tour skill itself, not the
-> getting-started intro. It'll ask whether you're replaying, and when you say yes it'll show you a
-> little menu of gears — pick **autopilot** (chains the safe steps, still stops at the human
-> checkpoint) or **FSD** (skips even that). I'll spin up a fresh throwaway sample for you again
-> automatically — nothing you did carries over. Same tour, same kind of sample — you'll feel exactly
-> which stops autopilot keeps and which FSD drops. That contrast, on work you already understand, is
-> the fastest way to learn where you're comfortable handing over the wheel."*
+> *"If you want to feel the difference, the fastest way is to take this exact tour again in a faster
+> gear — same work, but you'll watch it move. On work you already understand end-to-end, that contrast
+> is the quickest way to find where you're comfortable handing over the wheel. I'll put the how at the
+> end."*
 
-(This is still a *named* invitation, not a live demo — the user drives the faster run themselves in a
-new session, so this run's beat B stays intact. Frame it as "go try it," never "watch me autopilot."
-Three mechanics that must stay correct: **(1)** the replay re-enters at the arm skill
-`/tutorial-greenfield-workflow-tour` **directly, NOT `/tutorial-getting-started`** — the dispatcher
-would re-force stepping and re-ask the path fork, both of which a faster-gear replay is moving past;
-**(2)** it's a **session-boundary crossing** (`/exit` → new session), echoing the handoff→restore
-beat the tour just taught — do NOT frame it as "skip the intro and keep going in this session," there
-IS no dispatcher in the replay session; **(3)** the **gear is chosen from the arm's own on-entry
-menu** (the arm asks "replaying?" then presents the 1–4 drive-mode menu — see this skill's "On entry"
-section), not pre-set by the user, and **the human never runs `new-sample.sh` themselves** — the arm
-stamps the fresh copy on entry, exactly as it did for this run.)
+(This is a *named* invitation, not a live demo — the user drives the faster run themselves in a new
+session, so this run's beat B stays intact. Frame it as "go try it," never "watch me autopilot." The
+three load-bearing replay mechanics — direct arm re-entry, session-boundary crossing, gear from the
+arm's own menu — plus the empty-folder requirement live in the `Next Step:` block's option 1 and its
+mechanics note; they are compressed there, not dropped.)
 
 **Then close by naming what you did NOT demo** *(BOTH branches land here — Branch A after its replay
 invite, Branch B directly after acknowledging the gear)* — one or two lines, framed as "here's what's
@@ -367,31 +383,79 @@ here when you're ready," never staged (these are delayed-gratification and would
 > - *and it **learns you** — a reflect/capture step at the end of sessions quietly records your
 >   preferences and corrections, so it fits you better next time than it did today.*
 >
-> *That's the tour. You steered, it kept the plot, and it's all sitting in files you own. Go build
-> something real — point it at your own repo next time with the existing-code path."*
+> *That's the tour. You steered, it kept the plot, and it's all sitting in files you own."*
 
-**Then, right after that close, point at the deep-dive tour (the WP7h.1 pointer note — design §7).**
-This run gave the user a deliberate *light taste* of the top of the hierarchy (Step 2). The full
-product-cycle tour is the heavier counterpart, and this is where it's earned — after they've seen the
-system work and trust it. Deliver the pointer as a one-paragraph invitation (a *named* pointer, not a
-live run — do NOT drive a product cycle here):
+Then show **the artifacts as proof** — the real files this run produced, drawn from the actual run (the
+archived feature record, the backlog, `CHANGELOG.md`, the tests, the un-pushed commits). This is the
+evidence behind "files you own," so it stays *before* anything transactional.
 
-> *"One more thing, now that you've seen it work. You just got a **light taste** of the top of the
-> hierarchy — enough to feel it exists. When you're ready to feel the *whole* product lifecycle — a
-> fuzzy idea decomposed all the way into a feature-ready plan — there's a deep-dive tour for exactly
-> that: run **`/tutorial-product-cycle-tour`** in a fresh session. It's longer (~30–45 min) and it's
-> real, so save it for when you want to go deep."*
+### The close's last block — `Next Step:` (structure this deliberately)
 
-(Mechanics that must stay correct: the deep-dive tour is **run directly** in a fresh session — like
-this arm, `/tutorial-product-cycle-tour` is NOT reached through `/tutorial-getting-started`'s
-first-timer fork; a full product cycle is a poor cold-open first impression. And it is a *named*
-pointer, never a live demo — do not start driving `/product-vision` here. On a **replay** run of this
-arm, the pointer still holds — say it the same way.)
+**Everything above is narrative; the last thing on screen is a short, scannable decision block.** The
+operator's live-run feedback was explicit: the actionable choice must not be buried in the middle of a
+wall of prose. So the close ends with a compact `Next Step:` block — **details go above it, options go
+in it, and nothing follows it.**
 
-That closing line reinforces beat **G** one final time (you kept the wheel) and hands the user back
-to their real work — which is the whole value prop. **The tour ends here** — once you've delivered
-the close (and the deep-dive pointer), there is nothing further to invoke and no transition to emit;
-the run is complete (see `## Transitions`).
+Rules for the block:
+- **Keep each option to ≤3 sentences.** The reasoning already happened above; here you are only naming
+  the choice and its one-line why. Resist re-explaining.
+- **It is the last thing you emit.** No further prose, no sign-off paragraph, no extra pointer after it.
+- **It is per-branch** — Branch A and Branch B offer different options (below). Never show Branch A's
+  replay option on a replay run.
+- **Options are named, never auto-run.** You are ending the tour; do not start any of these yourself.
+
+**Branch A (first run) — three options plus the cleanup offer:**
+
+> **Next Step:**
+>
+> **1 — Take it again in a faster gear.** `/exit`, `mkdir` a new empty folder and `cd` into it, then run
+> `/tutorial-greenfield-workflow-tour` directly in a fresh session and say yes when it asks if you're
+> replaying. You'll feel exactly which stops autopilot keeps and which FSD drops.
+>
+> **2 — Point it at your own code.** Run `/tutorial-getting-started` in your real repo and take the
+> existing-code path. Same workflow, your codebase, nothing staged.
+>
+> **3 — Go deep on the planning layer.** Run `/tutorial-product-cycle-tour` in a fresh session to watch
+> a fuzzy idea become a feature-ready plan. It's longer (~30–45 min) and it's real, so save it for when
+> you've got the time.
+>
+> *Housekeeping: this sample was a throwaway copy — want me to delete it, or would you rather keep it
+> to poke at? (Your commits and the workflow files live in here too, so it's yours either way.)*
+
+**Branch B (replay) — two options plus the cleanup offer** (no replay option — they're already in one):
+
+> **Next Step:**
+>
+> **1 — Point it at your own code.** Run `/tutorial-getting-started` in your real repo and take the
+> existing-code path. Same workflow, your codebase, nothing staged.
+>
+> **2 — Go deep on the planning layer.** Run `/tutorial-product-cycle-tour` in a fresh session to watch
+> a fuzzy idea become a feature-ready plan. It's longer (~30–45 min) and it's real.
+>
+> *Housekeeping: this sample was a throwaway copy — want me to delete it, or keep it to poke at?*
+
+**Mechanics that must stay correct in the block** (they are compressed here, but they are the same
+mechanics spelled out above — do not let compression break them):
+- **Option 1/Branch A is the replay** and it carries all four of its constraints: a **new empty folder**
+  (the scaffolder refuses a non-empty one), `/exit` to a **fresh session** (a real session-boundary
+  crossing), re-entry at **the arm skill directly — NOT `/tutorial-getting-started`** (the dispatcher
+  would re-force stepping and re-ask the path fork), and the **gear chosen from the arm's own on-entry
+  menu** (it asks "replaying?" then presents 1–4). The human never runs the scaffolder themselves.
+- **The deep-dive option** is `/tutorial-product-cycle-tour`, **run directly in a fresh session** — it
+  is NOT reached through `/tutorial-getting-started`'s first-timer fork (a full product cycle is a poor
+  cold-open), it keeps its honest **~30–45 min** label, and it is a *named* pointer — never start
+  driving `/product-vision` here. This option holds on **both** branches.
+- **The cleanup offer is an offer, not an action.** Ask; do not delete anything unless the user says
+  yes. If they decline (or don't answer), leave everything in place — the files are the proof you just
+  showed them, and they chose the directory. It comes **last, after the artifacts list**, so the tour
+  never asks to remove the evidence before showing it.
+
+The close reinforces beat **G** one final time (you kept the wheel) and hands the user back
+to their real work — which is the whole value prop. **The tour ends here** — once you've delivered the
+narrative close, the artifacts, and the `Next Step:` block, there is nothing further to invoke and no
+transition to emit; the run is complete (see `## Transitions`). **The `Next Step:` block is the last
+thing on screen** — if the user picks an option, they act on it themselves (or in a new session); you do
+not chain into it. The one exception is the cleanup offer: if they say yes, delete the sample, then stop.
 
 ## "Don't force it" (spec §7 — binding)
 

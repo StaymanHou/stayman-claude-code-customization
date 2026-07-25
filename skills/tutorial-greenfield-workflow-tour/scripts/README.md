@@ -18,7 +18,7 @@ symlink and resolves on any install. The scripts resolve their own sibling `samp
 
 ```
 skills/tutorial-greenfield-workflow-tour/scripts/
-├── new-sample.sh     # stamp a fresh copy of sample/ into a throwaway dir
+├── new-sample.sh     # stamp a fresh copy of sample/ (tour: --dest . into the user's cwd)
 ├── sample/           # the canonical, minimal sample project (git-tracked)
 │   ├── todo          # dispatcher — routes add / list / done
 │   ├── lib/
@@ -33,18 +33,29 @@ skills/tutorial-greenfield-workflow-tour/scripts/
 ## Canonical invocations
 
 ```bash
-# Stamp a fresh copy into a throwaway dir, print its path + a run hint:
-~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh
+# THE TOUR'S FORM — stamp flat into the user's current working directory.
+# This is what the greenfield arm skill runs; the cwd must be empty (see below).
+~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh --dest .
 
-# Stamp into a specific (empty/new) dir:
+# Stamp into some other specific (empty/new) dir:
 ~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh --dest /path/to/todo
 
-# Overwrite a non-empty dir on purpose:
+# Stamp into a throwaway temp dir and print its path (ad-hoc/manual use — NOT the tour's form):
+~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh
+
+# Overwrite a non-empty dir on purpose (the tour must NEVER do this):
 ~/.claude/skills/tutorial-greenfield-workflow-tour/scripts/new-sample.sh --dest /path/to/todo --force
 ```
 
 The tour always uses a **fresh copy** so the user's real edits, the SURFACE, and the
 handoff/restore all happen against something disposable — never the shipped `sample/`.
+
+**The tour stamps into the user's own cwd, not a temp dir** (WP7l, 2026-07-25): the operator's live
+walkthrough showed that a `$TMPDIR` path the agent `cd`s into leaves a brand-new user unsure where
+their work lives, which undercuts the "your state is a real file you own" beat. The arm therefore
+requires an **empty** cwd and relies on this script's no-clobber guard — a non-empty destination is
+refused with nothing written, and the arm asks the user for an empty directory rather than passing
+`--force`. See the arm's "## The environment" section for the user-facing copy.
 
 ## Why the sample is shaped the way it is
 
