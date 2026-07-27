@@ -1746,3 +1746,6 @@ Greenfield script suite **31/31**. Phase 18b **21/21**.
   bootstrap-skip — and they downgrade the deferred verify-human from *sole* evidence to *confirmation*. The
   *remaining* tour behavior (close structure, beat survival, `tutorial-`-prefix pins, the 4-surface copy freeze)
   stays **WP7e's charter in a future session**, unchanged.
+
+## Session Handoff — 2026-07-27 17:05
+Handed off. See `workflow-system/state/.session.md` to restore. (WP7o is **COMPLETE** — shipped `ccfedac`, refactored `438d88e`, finalized `5c92294`, archived, nothing pushed. No active WIP. The M11 tail is the **operator's one hands-on greenfield tour run**, which accepts WP7l+WP7n+WP7m+WP7o together and flips all four 🔨 BUILT → ✅ SHIPPED; **then WP7e codifies last**. §D is answered. `S33`/`S34` are known-failing by design — do not soften them.)
