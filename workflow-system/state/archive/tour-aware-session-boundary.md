@@ -1,7 +1,7 @@
 # Feature: Tour-aware session boundary — no mid-tour handoff offer (WP7m)
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** Completed 2026-07-27 (BUILT — verify-human acceptance DEFERRED+OWED, NOT accepted)
 **Created:** 2026-07-27
 **Drive mode:** autopilot
 **WBS:** `workflow-system/product/wbs.md` → M11 / WP7m
@@ -207,6 +207,52 @@ and the check says don't:
 - `skills/tutorial-greenfield-workflow-tour/scripts/test/run-tests.sh` → **20 passed / 0 failed**,
   confirming WP7m did not disturb WP7l's scaffold coverage (incl. the `--dest .` flat-stamp and
   refuse-non-empty-cwd assertions)
+
+## Retrospect
+
+- **What changed in our understanding:** The word "boundary" turned out to be overloaded in exactly
+  the same shape as "pause" (WP5) and "research" (WP6) — **one word, two costs, and the agent picking
+  by the word rather than by position.** A tour run contains *two* legitimate boundaries: the tour's
+  own staged Step-7 teaching beat, and the state machine's real terminal close. The M11 tail has now
+  produced a third instance of the same family of defect, which suggests the pattern is structural to
+  this system rather than incidental to any one vocabulary.
+- **Assumptions that held:**
+  - The WBS's plan-first ruling was right — the escalation clause was checked and **never fired** (no
+    new edge, no table rows, zero edits to `transitions.md` or the 4 `agents/*/AGENTS.md`).
+  - The preference for keeping tour knowledge *out of* the general session skills turned out to cost
+    **nothing**, and paid a bonus: it made "general `S22`/`S23` unchanged for real work" true *by
+    construction* rather than by testing.
+  - Reading the origin session's raw log before planning again paid off — the misfire was recovered
+    **verbatim** (including that the operator had to type "continue the tour"), which is what made it
+    obvious the agent's reasoning had been *sound* and the ambiguity was the real defect.
+- **Assumptions that were wrong:**
+  - **My own pins were the weakest part of the feature, not the guard.** I wrote them, mutation-verified
+    them, reported 13/13 green — and the reviewer then found they **failed OPEN** on a renamed file and
+    matched a vocabulary narrower than the invariant they advertised. Both verified real.
+  - **"Mutation-verified" gave me false confidence — again.** This is the *second* time in the same
+    WP-family (WP7l was the first) that a mutation test passed while testing the wrong thing. The
+    mechanism is subtle: my mutation wrote the word `tutorial`, so the narrow pattern caught it; the
+    mutation confirmed *sensitivity* and told me nothing about *coverage*. The repo's convention bullet
+    already warns about exactly this and I still walked into it.
+  - I assumed a case-sensitive grep would match my own heading. It didn't (`NOT` is emphasis-cased) —
+    the 5th grep-on-prose false negative in this family, and the copy was right every time.
+- **Approach delta:** Implementation matched the plan; the delta was all in *verification rigor*. Four
+  review findings were fixed in-feature rather than backlogged, because each one corrupted the artifact
+  **WP7e is chartered to pin against** — the same judgment WP7l made for the same reason. The one
+  copy-shaped finding was deliberately **not** fixed, since it edits the region the operator's deferred
+  acceptance read covers.
+
+## Closure message
+
+> **Feature complete (BUILT, acceptance owed):** WP7m — tour-aware session boundary — has landed. A
+> terminal close reached *inside* an onboarding tour run no longer takes or offers the `S22`/`S23`
+> session-handoff exit chain in any drive mode; the tour just continues, while the tour's own staged
+> Step-7 handoff beat still runs untouched. To see it: run `/tutorial-greenfield-workflow-tour` and
+> watch the in-tour feature's close — it should proceed straight into Step 7 with no "continue the tour
+> vs. hand off?" fork. **Not yet accepted** — the copy read is deferred to your full hands-on tour run,
+> which now covers WP7l + WP7n + WP7m together.
+
+Requester = operator — closure notice for self-record.
 
 ## Code-Quality Review — tour-aware-session-boundary (WP7m)
 
