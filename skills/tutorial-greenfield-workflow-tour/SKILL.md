@@ -103,6 +103,14 @@ tunable-pauses reveal is saved for the Step-8 graduation, and naming faster gear
 Just proceed to the environment setup below. (You silently drive in stepping — you don't announce the
 mode.)
 
+**Record `drive_mode: stepping` in the tour's WIP frontmatter anyway** — same as the replay branch does
+below, and for a concrete reason: the mode has to survive the Step-7 session boundary. Written down, the
+handoff pointer carries it and `/session-restore` brings the run back in stepping; left unwritten, restore
+finds nothing, falls back to its own default, and Session C silently continues in a *different* mode while
+announcing it — which both breaks the tour's cadence and spoils the Step-8 reveal early. **Recording is not
+revealing:** this is a line in a file, not a sentence to the user. The prohibition above is unchanged — you
+still never say the word.
+
 **If REPLAY** → the user already took the stepping run and graduated; now they want to *feel* a faster
 gear. **Present the drive-mode menu yourself** — drive mode is a **numbered menu the workflow shows,
 not a slash command you type**, and because this replay path enters you directly (bypassing
@@ -158,16 +166,70 @@ top level — so there's no nested folder to `cd` into and no path for the user 
 **The cwd must be empty — and the scaffolder enforces it.** `new-sample.sh` refuses a non-empty
 destination and **writes nothing** when it refuses (exit 1, message naming the destination). That guard
 is deliberate: it's what makes "the tour never clobbers your files" true rather than merely promised.
-If it fires, **do not** reach for `--force` and do not silently fall back to a temp directory. Stop and
-tell the user plainly, then wait for them:
+If it fires, **do not** reach for `--force` and do not silently fall back to a temp directory. Stop, **show the
+user exactly what is in the way**, and offer them two equally-good ways forward.
 
-> *"Before I set up the sample — this directory already has files in it, and I won't write on top of
-> them. Pop into an empty folder and we'll start there: `mkdir ~/workflow-tour && cd ~/workflow-tour`
-> (any empty directory works), then tell me when you're in and I'll stamp the sample."*
+**Two things happen before you ask anything.** First, **run `ls -A` and put the real list on screen** — the user
+cannot make this decision from a description; they need to see the actual filenames. Second, **run
+`git rev-parse --is-inside-work-tree` — if it prints `true`, do NOT offer to clear the directory at all.** That
+is a pre-check, not a veto you apply afterwards: a repository must never see the delete offer in the first place
+(full rule under "Two absolute limits" below). In that case skip the two-option script entirely and say this
+instead — don't improvise a one-option variant of it:
 
-Once they confirm, re-run the stamp. This should be rare — the Step-0 pre-flight in
-`tutorial-getting-started` already asks them to be standing in an empty directory — so treat it as a
-backstop, not a routine branch. Note you do **not** need to `cd` anywhere after a successful stamp: the
+> *"Before I set up the sample — this directory isn't empty, and it's also a git repository, so I'm not going to
+> clear it. Let's use a fresh folder instead: `mkdir ~/workflow-tour && cd ~/workflow-tour` (any empty directory
+> works), then tell me when you're in and I'll stamp the sample."*
+
+With both checks done, offer both options:
+
+> *"Before I set up the sample — this directory isn't empty, and I won't write on top of what's here. This is
+> what's in it:"*
+>
+> ```
+> <the real `ls -A` output>
+> ```
+>
+> *"Two ways forward, both fine:*
+> *  **1** — I clear this directory out (everything listed above is deleted) and stamp the sample here.*
+> *  **2** — You point me at a different empty folder, e.g. `mkdir ~/workflow-tour && cd ~/workflow-tour`, and
+>   tell me when you're in.*
+>
+> *Which would you like? If you want option 1, say so explicitly — I won't delete anything on a maybe."*
+
+**The clearing option is destructive, so it is governed by four hard rules. Do not soften any of them.**
+
+1. **Show before asking.** The `ls -A` listing goes on screen *before* the question. Never ask "shall I clear
+   it?" without the user seeing what "it" contains.
+2. **Explicit confirmation only.** A bare "go", "proceed", "ok", "continue", "yes do it", or silence is **not**
+   consent to delete — those are answers to the tour's general forward motion, not to this. You need the user to
+   choose option 1 (or say "clear it" / "delete them") **in response to this question**. If their reply is
+   ambiguous, ask once more; do not resolve ambiguity toward deletion.
+3. **Option 2 is an equal, not a fallback.** Present it as a genuine peer choice. Many people will prefer a new
+   folder, and nothing about the tour is worse for it.
+4. **Never `--force`, never auto-delete, never a temp dir.** Do not pass `--force` to `new-sample.sh` under any
+   circumstances — the refusal is the safety property, not an obstacle. Do not delete anything before the user
+   picks option 1. Do not silently relocate to `$TMPDIR` (that breaks the "your state is a real file you own"
+   beat this whole path depends on).
+
+**Two absolute limits on what "clear the directory" may touch:**
+
+- **If the cwd is a git working tree, refuse to clear it — take option 2 instead.** Check with
+  `git rev-parse --is-inside-work-tree` before offering option 1 at all; if it says `true`, don't offer it. Say
+  *"this folder is a git repository, so I'm not going to clear it — let's use a fresh folder instead"* and go to
+  option 2. Someone's repository is never disposable, and this tour has no business deleting one.
+- **Delete only the *contents* of the cwd, and nothing above it.** No `..`, no `~` expansion, no absolute paths
+  outside the directory you are standing in. If you cannot express the deletion as "remove the entries `ls -A`
+  just listed, in this directory," stop and take option 2.
+
+**On decline — or on any ambiguity — nothing is touched.** If the user picks option 2, changes their mind, gives
+an unclear answer, or just starts talking about something else, every file stays exactly where it was. Then
+re-run the stamp once they're in an empty folder.
+
+This whole branch should be uncommon on a **first** run — the Step-0 pre-flight in `tutorial-getting-started`
+already asks them to be standing in an empty directory. It is a routine branch on a **replay**, though: the user
+is usually standing in their previous run's folder, which is full of the last sample. That is exactly the case
+option 1 exists for, and it is why the option is worth offering rather than just refusing. Note you do **not**
+need to `cd` anywhere after a successful stamp: the
 files are already in the working directory you're both in. Tell the user that plainly ("everything's
 right here in this folder") and let them `ls`.
 
@@ -308,6 +370,16 @@ beat honest for a skeptic.)
 > what a real project would do there — then continue (see "A clean boundary inside the tour is real"
 > under `## Category`). The rule of thumb: the tour writes `.session.md` **once**, here; anywhere else,
 > you talk about the boundary rather than acting on it.
+>
+> **This pointer brings the session back to THIS SKILL, not to the inner workflow's next state.** The
+> handoff you write here carries `tour: greenfield` + `tour_step: 8` and sets
+> `resume_skill: /tutorial-greenfield-workflow-tour`, so `/session-restore` hands Session C back to *you*
+> and you finish the run — see Scene 1 for the exact fields. That is what makes the guard above actually
+> reachable: the two rules in this blockquote live in *this* file, so they only bind if this file is what
+> gets reloaded. Point `resume_skill` at the inner workflow instead and Session C comes back holding two
+> competing continuations — finish the feature, or play Step 8? — with nothing in context that knows the
+> answer. (That exact mis-write is what produced the "continue the tour, or hand off now?" fork on the
+> 2026-07-24 run.)
 
 **The emotional peak** — placed near the end so there's real state to lose and recover. By now the
 user has a WIP state file (from Step 3), a real check that ran (Step 5), and a backlog entry (Step
@@ -344,6 +416,27 @@ and the next action — and it drops a one-line marker into your WIP state file 
 one tiny pointer. It doesn't copy your whole plan into itself; it points at the files on disk that
 already hold it. Everything needed to bring you back is in your project, not in the model's head."*
 
+**Supply these four fields to the handoff** (it treats the tour ones as optional and writes them only when
+a `tutorial-*` skill asks — see `session-handoff` SKILL.md §2, "Tour-driven handoffs"):
+
+| Field | Value | Why |
+|---|---|---|
+| `tour:` | `greenfield` | Marks the pointer as belonging to a tour run, so the general session skills narrate a later boundary instead of offering it as a choice. |
+| `tour_step:` | `8` | The step to resume **at** — Step 7 is finishing, Step 8 is next. |
+| `resume_skill:` | `/tutorial-greenfield-workflow-tour` | Session C comes back to **this skill**, so you finish the run. **Not** the inner workflow's next state. |
+| `drive_mode:` | the mode this run is in (`stepping` on a first run) | Required on a tour pointer — without it restore falls back to its own default and silently changes gear mid-run. |
+
+**Also write `tour: greenfield` into the in-tour WIP's own frontmatter, next to `drive_mode`.** This is
+belt-and-braces and the reason is specific: `/session-restore` **deletes** `.session.md` once it has consumed it,
+so by the time a later in-tour boundary comes round in Session C the pointer is gone. The general session skills'
+guards look for `tour:` in the pointer **or the active WIP** — the WIP copy is the one still on disk at that
+moment, so without it those guards silently never fire and the only thing holding the line is this file's own
+prose. Cheap to write, and it makes the backstop real rather than decorative.
+
+`state_file:` still points at the inner WIP, so the work content stays reachable. Don't narrate this table
+to the user — the *pointer* is the teaching beat, not its field list. If the user opens the file and asks
+about `tour:`, a one-liner is plenty: it's how the next session knows the tour is still running.
+
 **Scene 2 — reset the window (the real point).** This is the beat, so make it real if you can:
 > *"Now the part that matters: we throw the context window away. `/exit` this session and start a
 > brand-new one — a genuinely empty window, none of our conversation in memory. This is what you'd
@@ -371,6 +464,24 @@ This is the payoff for beat A (state-is-a-file, Step 3): because the state was a
 resetting the window — or walking away and coming back — is just re-reading it. Don't rush the
 reveal — for the target user who's watched a compacted session lose the thread, this is often the
 beat that converts.
+
+**You are the one restore hands back to — so carry the run to its end from here, as one thread.** Because
+the pointer set `resume_skill` to this skill, `/session-restore` returns control *here*, in whatever mode this run
+has been in, with no drive-mode menu shown (restore suppresses it on a tour pointer precisely so Step 8 keeps the
+reveal — on a replay you already have your gear, so there is nothing to ask). If the
+inner feature or task still has states left to run — a ship, a close, a reflect — **drive them yourself as
+part of the narration**, then go on to Step 8. There is exactly one thread: finish the work, then graduate.
+
+**When one of those inner states reaches a clean terminal boundary, narrate it — don't act on it and don't
+put it to the user.** The tour already wrote its one handoff back in Scene 1, so a second one is noise. Name
+what a real project would do and keep moving:
+
+> *"Notice where we just landed — that's a real clean boundary. In your own project this is the moment the
+> workflow writes the handoff by itself, so tomorrow's session opens with the whole plot intact. You watched
+> that happen a step ago, so we won't do it twice — let's finish up."*
+
+Asking "continue the tour, or hand off now?" here is the specific defect this wording exists to prevent: it
+hands the user a decision about the mechanism they just watched, and there is only one sensible answer mid-run.
 
 ### Step 8 — Bookend 2: the graduation, LAST + un-pushed (STAGED reveal) → close
 

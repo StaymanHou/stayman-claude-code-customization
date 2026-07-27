@@ -24,6 +24,61 @@ updated: 2026-07-27
 
 ---
 
+## Revision 2026-07-27 (WP7o — tour state survives the session boundary; SUPERSEDES WP7m's 7m.1 placement)
+
+Same day as the WP7m revision below, and it **supersedes that revision's placement decision** on the strength
+of evidence WP7m did not have: the raw log of the operator's own greenfield run.
+
+**Two defects, one root cause.** The operator's 2026-07-27 re-acceptance run reported (1) a first-run tour
+coming back as **Orchestrated** instead of stepping, with the 1–4 drive-mode menu shown — leaking the Step-8
+graduation reveal early; and (2) the second-boundary handoff **fork still appearing** (*"better than previous
+walkthrough"* but still a fork). Both trace to one gap: **the tour's state existed only in the conversation and
+died at `/exit`.** Nothing was written to disk, so nothing survived the boundary the tour is built around.
+
+**Why WP7m's placement could not have worked (7m.1 superseded).** WP7m decided the boundary guard belongs *in
+the arms, not the general session skills*. The Session-C log settles it: the only skills loaded there were
+`/session-restore` → `feature-ship` → `feature-review-quality` → `feature-finalize` → `session-reflect`. **The
+arm is never re-invoked.** So at the moment the boundary fired, the guard prose was not in context at all — an
+arms-only guard is structurally unreachable across a session boundary. That is why WP7m's copy-only fix could
+soften the fork but not remove it.
+
+**The mechanism (operator-chosen, option 1 of 3): the pointer carries tour state.**
+
+- `workflow-system/state/.session.md` gains two **optional, tour-only** fields — `tour: greenfield|brownfield`
+  and `tour_step: <n>` — written **only** when a `tutorial-*` skill drives the handoff as one of its own beats.
+  Absent from every ordinary handoff; when absent, every downstream reader takes its existing path unchanged.
+- **`drive_mode` becomes required on a tour pointer.** The first-run branch now records `drive_mode: stepping`
+  to the tour WIP (it previously wrote nothing, which is what let restore default to orchestrated).
+  **Recording ≠ revealing** — the write is to disk; the modes-stay-hidden prohibition is untouched.
+- **`resume_skill` points at the ARM**, not the inner workflow's next state. This is the load-bearing half:
+  Session C reloads the arm, so the arm's own guard prose *is* in context at the later boundary, and the fork
+  cannot recur by construction. Pointing it at the inner workflow instead is what left Session C holding two
+  competing continuations (finish the feature, or play Step 8?) with nothing in context that knew the answer.
+  `state_file` still points at the inner WIP so the work content stays reachable.
+- The arms also stamp `tour:` into the **in-tour WIP frontmatter**, because `/session-restore` *deletes* the
+  pointer once consumed — the WIP copy is what survives to a later boundary.
+
+**The invariant is restated, not abandoned.** 7m.1's *spirit* holds: **the arms own all tour narration copy;
+the general session skills carry only a mechanical `tour:` field read.** `tests/check-structure.sh` [Phase 18]
+block (i) was rewritten to pin exactly that distinction (positive: the field read is present; negative: no tour
+*content* — no sample data, numbered beats, or tour dialogue), keeping its fail-closed `[ -f ]` precondition.
+`session-capture` keeps the original zero-vocabulary rule — it sits on the `S23` arm but never evaluates a
+boundary.
+
+**No state-machine change.** No new transition ID, no new edge, no pause-policy row; `S22`/`S23` are unchanged
+for real non-tour work. Verified as an empty diff on `transitions.md` and all four `agents/*/AGENTS.md` at every
+phase. The escalation clause was checked at plan time and each phase, and never fired.
+
+**§D resolved (the open design question WP7l left).** The operator's answer: **keep refuse-if-non-empty, and add
+an offer to clear the directory** — *not* the passed-over `./onboarding-sample-todo/` subdir fallback. Because
+that offer is destructive and governed only by prose, it carries four hard rules (**show** the real `ls -A`
+listing *before* asking · **explicit** consent only — a bare "go"/"proceed"/"ok" is *not* consent · the
+different-folder option is an **equal peer**, not a fallback · never `--force`, never auto-delete, never a temp
+dir) plus two absolute limits (**a git working tree is never cleared** — checked *before* the offer is made, so a
+repo never sees it; and deletion is bounded to the cwd's own contents, expressible only as *"remove the entries
+`ls -A` just listed, in this directory"*). Declining — or any ambiguity — leaves every file untouched.
+**Greenfield-only**: a real repo has nothing disposable, so the brownfield arm gets no such offer.
+
 ## Revision 2026-07-27 (WP7m — tour-aware session boundary; completes the 2026-07-25 fix set)
 
 The third and last of the three greenfield fixes ratified from the operator's 2026-07-25 batch

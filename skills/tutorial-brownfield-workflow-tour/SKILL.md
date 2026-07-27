@@ -108,6 +108,14 @@ workflow pause and ask them on their own code (beat B, Step 5); the tunable-paus
 the Step-8 graduation, and naming faster gears now would spoil it. Just proceed to the walkthrough.
 (You silently drive in stepping — you don't announce the mode.)
 
+**Record `drive_mode: stepping` in the tour's WIP frontmatter anyway** — same as the replay branch does
+below, and for a concrete reason: the mode has to survive the Step-7 session boundary. Written down, the
+handoff pointer carries it and `/session-restore` brings the run back in stepping; left unwritten, restore
+finds nothing, falls back to its own default, and Session C silently continues in a *different* mode while
+announcing it — which both breaks the tour's cadence and spoils the Step-8 reveal early. **Recording is not
+revealing:** this is a line in a file, not a sentence to the user. The prohibition above is unchanged — you
+still never say the word.
+
 **If REPLAY** → the user already took the stepping run and graduated; now they want to *feel* a faster
 gear. First confirm their repo is back at the clean baseline (they should have `git stash`ed / restored
 before crossing the session boundary — see Step 8's replay invite; if they didn't, point them to do it
@@ -216,6 +224,16 @@ greenfield sample, NAMED-only on the real brownfield repo.
 > naming what a real project would do there — then continue (see "A clean boundary inside the tour is
 > real" under `## Category`). The rule of thumb: the tour writes `.session.md` **once**, here; anywhere
 > else, you talk about the boundary rather than acting on it.
+>
+> **This pointer brings the session back to THIS SKILL, not to the inner workflow's next state.** The
+> handoff you write here carries `tour: brownfield` + `tour_step: 8` and sets
+> `resume_skill: /tutorial-brownfield-workflow-tour`, so `/session-restore` hands Session C back to *you*
+> and you finish the run — see Scene 1 for the exact fields. That is what makes the guard above actually
+> reachable: the two rules in this blockquote live in *this* file, so they only bind if this file is what
+> gets reloaded. Point `resume_skill` at the inner workflow instead and Session C comes back holding two
+> competing continuations — finish the work, or play Step 8? — with nothing in context that knows the
+> answer. (That exact mis-write is what produced the "continue the tour, or hand off now?" fork on the
+> 2026-07-24 greenfield run.)
 
 **The emotional peak**, and it hits *harder* here than on a sample — this is the user's real
 codebase, with real work in flight (the reverse-engineered strategy from Step 3, the revised
@@ -255,6 +273,27 @@ action — and drops a one-line marker into the WIP state file. *"One tiny point
 doc that's already on disk. It doesn't copy your plan into itself — it points at the files that hold
 it. Everything needed to bring you back is in your repo, not in the model's memory of this chat."*
 
+**Supply these four fields to the handoff** (it treats the tour ones as optional and writes them only when
+a `tutorial-*` skill asks — see `session-handoff` SKILL.md §2, "Tour-driven handoffs"):
+
+| Field | Value | Why |
+|---|---|---|
+| `tour:` | `brownfield` | Marks the pointer as belonging to a tour run, so the general session skills narrate a later boundary instead of offering it as a choice. |
+| `tour_step:` | `8` | The step to resume **at** — Step 7 is finishing, Step 8 is next. |
+| `resume_skill:` | `/tutorial-brownfield-workflow-tour` | Session C comes back to **this skill**, so you finish the run. **Not** the inner workflow's next state. |
+| `drive_mode:` | the mode this run is in (`stepping` on a first run) | Required on a tour pointer — without it restore falls back to its own default and silently changes gear mid-run. |
+
+**Also write `tour: brownfield` into the in-tour WIP's own frontmatter, next to `drive_mode`.** This is
+belt-and-braces and the reason is specific: `/session-restore` **deletes** `.session.md` once it has consumed it,
+so by the time a later in-tour boundary comes round in Session C the pointer is gone. The general session skills'
+guards look for `tour:` in the pointer **or the active WIP** — the WIP copy is the one still on disk at that
+moment, so without it those guards silently never fire and the only thing holding the line is this file's own
+prose. Cheap to write, and it makes the backstop real rather than decorative.
+
+`state_file:` still points at the inner WIP, so the work content stays reachable. Don't narrate this table
+to the user — the *pointer* is the teaching beat, not its field list. If the user opens the file and asks
+about `tour:`, a one-liner is plenty: it's how the next session knows the tour is still running.
+
 **Scene 2 — reset the window (the real point).** Make it real if you can:
 > *"Now the part that matters: we throw the context window away. `/exit` and start a brand-new
 > session on this repo — a genuinely empty window, none of today's conversation in memory. This is
@@ -281,6 +320,24 @@ This is the payoff for beat A (state-is-a-file, Step 4): because the durable con
 files, resetting the window — or coming back cold tomorrow — is just re-reading them. For the target
 user who's lost real work to a compacted or crashed session, don't rush this — it's usually the beat
 that converts.
+
+**You are the one restore hands back to — so carry the run to its end from here, as one thread.** Because
+the pointer set `resume_skill` to this skill, `/session-restore` returns control *here*, in whatever mode this run
+has been in, with no drive-mode menu shown (restore suppresses it on a tour pointer precisely so Step 8 keeps the
+reveal — on a replay you already have your gear, so there is nothing to ask). If the
+inner feature or task still has states left to run — a ship, a close, a reflect — **drive them yourself as
+part of the narration**, then go on to Step 8. There is exactly one thread: finish the work, then graduate.
+
+**When one of those inner states reaches a clean terminal boundary, narrate it — don't act on it and don't
+put it to the user.** The tour already wrote its one handoff back in Scene 1, so a second one is noise. Name
+what a real project would do and keep moving:
+
+> *"Notice where we just landed — that's a real clean boundary. On this repo, from here on, that's the moment
+> the workflow writes the handoff by itself, so tomorrow's session opens with the whole plot intact. You watched
+> that happen a step ago, so we won't do it twice — let's finish up."*
+
+Asking "continue the tour, or hand off now?" here is the specific defect this wording exists to prevent: it
+hands the user a decision about the mechanism they just watched, and there is only one sensible answer mid-run.
 
 ### Step 8 — Bookend 2: the graduation, LAST + un-pushed (STAGED reveal) → close
 

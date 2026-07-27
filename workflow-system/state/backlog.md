@@ -6,6 +6,40 @@
 
 ## TODO
 
+## SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE
+- **Source:** feature:verify-self (tour-state-survives-session-boundary / WP7o, Phase 4)
+- **Target level:** task
+- **Type:** gap (contract violation — observed once, self-reported, no data lost)
+- **Priority:** medium
+- **What happened:** a `feature-verify-self-runner` subagent, which is contractually **observe-only**, ran
+  `git stash push` as an investigative probe. This briefly cleared the entire working tree — 14 modified + 5
+  untracked paths, none of it committed. The subagent caught it immediately, ran `git stash pop`, restored
+  everything verbatim, and **self-reported the violation** in its result block. The tree was independently
+  verified intact afterwards (19 entries, 0 stashes).
+- **Why it matters:** the near-miss was total. Had the pop failed, or had the agent not noticed, an entire
+  uncommitted feature would have been sitting in a stash with no record of it in the parent's context. The
+  runner's own agent definition establishes it as observe-only, but the **tool surface does not enforce it** —
+  `Bash` is granted (correctly; it needs `curl`, `grep`, test runners), and nothing distinguishes a read probe
+  from a destructive one.
+- **Cheap fix direction:** add an explicit prohibition to `agents/feature-verify-self-runner/AGENTS.md` — no
+  `git stash`/`checkout`/`reset`/`clean`, no writes of any kind; to compare against a hypothetical, pipe a
+  string to the matcher (`echo "..." | grep -cE '...'`) rather than mutating a file. The same clause likely
+  belongs in `agents/code-quality-reviewer/AGENTS.md`, which is also observe-only but *does* have `Bash`.
+  Worth checking whether a structural pin can assert the prohibition text in both.
+- **Note:** the parent skill (`feature-verify-self`) already tells the *orchestrator* the subagent is
+  observe-only; the gap is that the instruction is not restated **inside the subagent's own definition**, which
+  is the only prompt the subagent actually reads.
+
+## SURFACE-2026-07-27-TOUR-MARKER-NOT-READ-WHEN-POINTER-DELETED
+- **Source:** feature:verify-codify (tour-state-survives-session-boundary / WP7o, Phase 4 — found by the behavioral scenarios the operator asked for mid-session)
+- **Target level:** feature (follow-up; may need `/feature-spec` if the cheap option below doesn't hold)
+- **Type:** gap (measured — a defense-in-depth layer that does not bind)
+- **Summary:** When `workflow-system/state/.session.md` is **absent**, a cold model does **not** consult the WIP frontmatter for a `tour:` field — so the tour-aware guards in `session-reflect` and `session-handoff` never fire. Measured, not inferred: `tests/scenarios/session.yaml::S33` emits `TRANSITION: S22` (the auto-chain the guard must suppress) and `::S34` emits `TRANSITION: S17` (a second `.session.md` actually written) against a fixture where only the WIP carries `tour:`. Both scenarios are **deliberately left FAILING** so the suite keeps reporting this.
+- **Context:** The guards' condition is written pointer-first — *"If `workflow-system/state/.session.md` carries a `tour:` field (or the WIP for this run does …)"* — and a model that finds no pointer treats the whole condition as unmet and never opens the WIP. This matters because `/session-restore` **deletes** the pointer at its step 7 once consumed, so at any later in-tour boundary the WIP copy is the *only* surviving carrier. **Not ship-blocking:** these guards are defense-in-depth. WP7o's load-bearing fix is `resume_skill` → the arm, which makes Session C reload the arm so the *arm's* own prose governs that boundary — confirmed by `S31`/`S32` passing plus three independent fresh-subagent coherence reads. **Three prose fixes were already attempted and none bound a cold model:** Phase 2's shortcut widened both guards' lookups to name the WIP and `archive/` explicitly, and Phase 4 added a clause at `session-handoff` step 1 (the point where the skill actually opens the WIP) stating that a missing pointer is not evidence no tour is running. At three attempts the *approach* is wrong rather than the wording — the same conclusion that ended this feature's five-attempt `--force` pin.
+- **Suggested action:** Prefer the **restore-side** angle, which nobody has costed yet and which needs no state-machine surface: instead of asking every downstream reader to remember a second lookup location, have `/session-restore` **not lose the marker when it consumes the pointer** (e.g. it already edits `state_file` at step 6b — it could carry the tour fields into the WIP frontmatter there, or defer deleting the pointer while `tour:` is present and `tour_step` is unfinished). That keeps the trigger in **one** place the readers already check. **Explicitly NOT recommended:** making the general session skills mechanically consult WIP frontmatter via an orchestrator-evaluated precondition — that is state-machine surface, and WP7o deliberately held an empty diff on `transitions.md` + all four `agents/*/AGENTS.md` across four phases with the escalation clause re-checked each time. Reopening it to harden a layer redundant with a working primary mechanism inverts the feature's cost-benefit, and would make WP7e freeze pins against a design the operator has not seen run. Also **do NOT** soften `S33`/`S34` to make the suite green — that deletes the evidence, the exact failure mode this feature hit twice with inert pins.
+- **Priority:** medium
+- **Status:** pending
+
 ## SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED
 - **Source:** feature:verify-human (wp7c-greenfield-onboarding-scaffold, Phase 2)
 - **Target level:** feature (follow-up task)

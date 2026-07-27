@@ -23,7 +23,7 @@ the user do it for real, not by narrating it.
 |---|---------|--------------------|------------|-----------|
 | A | Session A | `/tutorial-getting-started` — recommends `auto` permission mode; asks new-project vs. existing-code; **`cd`s the user to the target dir** (a new dir for greenfield, or their existing repo for brownfield); **points the user to the right `***-tour` skill**; tells them to `/exit` | (sets up only — does NOT drive the tour) | user `cd`s + `/exit` |
 | B | **new session** | user runs the `***-tour` skill **DIRECTLY** (`/tutorial-greenfield-workflow-tour` or `/tutorial-brownfield-workflow-tour`) → walkthrough → `/session-handoff` | **stepping** (modes NEVER mentioned) | `/session-handoff` → `/exit` |
-| C | **new session** | user runs `/session-restore` → graduation (Step-8 reveal) → clean up | stepping (restored) | `/exit` |
+| C | **new session** | user runs `/session-restore`, which **hands control back to the ARM** (the Step-7 pointer set `resume_skill` to the arm, not to the inner workflow's next state); the arm drives any remaining inner-workflow states itself, then plays graduation (Step-8 reveal) → clean up | stepping (restored **from the pointer**, and the 1–4 menu is suppressed) | `/exit` |
 | D | **new session** | user runs the `***-tour` skill **DIRECTLY** again → this time in **autopilot/FSD** → goes through the whole thing again | **autopilot/FSD** | (replay complete) |
 
 ## The load-bearing invariants (do NOT regress)
@@ -63,6 +63,25 @@ the user do it for real, not by narrating it.
 6. **The replay is a session-boundary crossing** (`/exit` → new session), re-entering at the
    **arm skill directly**, NOT the dispatcher (the dispatcher would re-force stepping +
    re-ask the fork, both of which a faster-gear replay is moving past).
+
+7. **The tour's state is written to DISK, not held in the conversation** (WP7o, 2026-07-27).
+   The Step-7 handoff writes `tour: greenfield|brownfield` + `tour_step: <n>` into
+   `workflow-system/state/.session.md` (optional fields, tour-only), and sets
+   **`resume_skill` to the arm skill** so Session C comes back to the arm rather than to the
+   inner workflow's next state. That is what makes Session C **one thread** — the arm finishes
+   the in-tour work and then graduates. Pointing `resume_skill` at the inner workflow instead
+   leaves the next session holding two competing continuations, which is exactly the defect
+   the 2026-07-27 run hit. The arms also stamp `tour:` into the in-tour **WIP** frontmatter,
+   because `/session-restore` deletes the pointer once consumed.
+
+8. **A first run RECORDS its drive mode silently — recording is not revealing** (WP7o).
+   The first-run branch writes `drive_mode: stepping` to the tour WIP even though it must
+   never *say* the word. The mode has to survive the Step-7 boundary: unwritten, restore falls
+   through to its own default and Session C silently continues in a different mode *while
+   announcing it* — which both breaks the tour's cadence and spoils invariant 4's
+   modes-hidden-until-graduation rule one step early. On a `tour:` pointer, `/session-restore`
+   takes the mode from the pointer and **suppresses the 1–4 menu entirely** (it names no mode
+   at all), leaving the reveal to Step 8 where it belongs.
 
 ## Mode-switching, explained for the user
 

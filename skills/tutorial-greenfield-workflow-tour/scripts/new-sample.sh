@@ -59,7 +59,8 @@ fi
 
 # No-clobber guard: refuse a non-empty existing dest unless --force.
 if [ -e "$dest" ] && [ "$(ls -A "$dest" 2>/dev/null)" ] && [ "$force" -ne 1 ]; then
-  echo "new-sample.sh: destination '$dest' exists and is not empty (use --force to overwrite)" >&2
+  echo "new-sample.sh: destination '$dest' exists and is not empty — nothing was written" >&2
+  echo "  Clear the directory or pick an empty one. (--force overwrites, but the tour must never pass it.)" >&2
   exit 1
 fi
 

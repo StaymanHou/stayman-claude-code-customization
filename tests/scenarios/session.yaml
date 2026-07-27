@@ -1105,3 +1105,160 @@ scenarios:
       not_contains:
         - "Should I save this?"
     max_retries: 2
+
+  # ── WP7o: tour state survives the session boundary ──────────────────────────
+  # These four exercise the `tour:` pointer mechanism behaviourally, which is the ONLY way to
+  # cover it: a structural grep can prove a string exists in a file, but not that a value is
+  # still on disk at the moment another skill looks for it — and that runtime-satisfiability
+  # gap is exactly the real defect S34 below reproduces. Authored per
+  # docs/lessons/test-scenario-prompt-leakage.md: every `args` states the pointer's CONTENTS and
+  # asks an open question; none states the expected rule, so a pass cannot come from
+  # prompt-obedience and would fail if the WP7o prose were deleted.
+
+  - id: S31-tour-pointer-restore-keeps-stepping-and-hides-modes
+    name: "session:restore on a tour pointer keeps the recorded mode and shows no drive-mode menu (WP7o defect 1)"
+    skill: session-restore
+    args: >
+      Restore the session and get me back into it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/tour-greenfield-stepping.md
+      wip: fixtures/wip/tour-inner-work-finalized.md
+    expect:
+      # The pointer records `drive_mode: stepping` and carries `tour: greenfield`, and its
+      # resume_skill is the tutorial arm. Restoring should report stepping (NOT fall through to
+      # the orchestrated default) and should NOT present the numbered 1-4 gear menu, because a
+      # tutorial run reveals the modes at its own later beat. The real 2026-07-27 failure said
+      # "Restoring in **Orchestrated** mode" and printed the menu.
+      # Non-echoing: the prompt says only "restore the session" — never "stepping", never "menu".
+      # S6 is restore's normal exit (context restored, pointer consumed). On a tour pointer the
+      # S15 "surfaced the mode menu" exit must NOT be taken — that is the leak this pins.
+      transition_id: S6
+      contains_required_any:
+        - "Stepping"
+        - "stepping"
+      not_contains:
+        - "Orchestrated  standard policy"
+        - "4  FSD"
+        - "press Enter to keep current"
+        - "TRANSITION: S15"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S32-non-tour-pointer-still-defaults-and-offers-menu
+    name: "session:restore on a NON-tour pointer still reaches the orchestrated default and still offers the mode menu (WP7o non-regression)"
+    skill: session-restore
+    args: >
+      Restore the session and get me back into it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/no-drive-mode-plain.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    expect:
+      # The highest-stakes check in this set, and the one no structural pin can exercise: the
+      # tour-only path must be INERT when `tour:` is absent. This pointer has no drive_mode and
+      # no tour field, so the ordinary ladder applies -> orchestrated default, and the numbered
+      # menu IS offered. If the WP7o conditional were written too broadly, every non-tour
+      # project would regress here.
+      # Non-echoing: the prompt never says "orchestrated", "default", or "menu".
+      # Either restore exit is legitimate here — S6 (plain restore) or S15 (surfaced the mode
+      # menu); both are the ORDINARY non-tour path. What matters is that the orchestrated
+      # default was reached and named, which the content assertion pins.
+      transition_id_any: [S6, S15]
+      contains_required_any:
+        - "Orchestrated"
+        - "orchestrated"
+    max_retries: 2
+
+  # ⚠️ S33 + S34 are KNOWN-FAILING BY DESIGN (WP7o, 2026-07-27) — do NOT "fix" them by softening
+  # the assertions. They are correct; they report a real, open defect:
+  #
+  #   when `.session.md` is ABSENT, a cold model does not consult the WIP frontmatter for `tour:`.
+  #
+  # The guards' condition reads pointer-first ("If .session.md carries a `tour:` field (or the WIP
+  # for this run does...)"), so a model that finds no pointer treats the condition as unmet and
+  # never opens the WIP. S33 sees it as an emitted `S22` auto-chain; S34 sees it as an emitted
+  # `S17` (a second .session.md actually written). Same defect, two skills.
+  #
+  # Why this is logged rather than fixed: the guards are DEFENSE-IN-DEPTH. The load-bearing fix is
+  # `resume_skill` -> the arm, which makes Session C reload the arm so the ARM's own prose governs
+  # that boundary — verified by S31/S32 passing plus three independent coherence reads. Three
+  # prose-level fixes were attempted (Phase 2's widened lookup naming the WIP + archive/, and a
+  # clause at session-handoff step 1 where the skill actually opens the WIP); none bound a cold
+  # model. At that point the approach is wrong, not the wording — the same conclusion that ended
+  # the five-attempt `--force` pin in this feature's Phase 3.
+  #
+  # These scenarios are DELIBERATELY LEFT FAILING so the suite keeps saying the backstop is inert.
+  # Rewriting them to pass would make the suite green by deleting the evidence — the exact failure
+  # mode this feature already hit twice (two pins that shipped inert because they were shaped to
+  # pass). Tracked as SURFACE-2026-07-27-TOUR-MARKER-NOT-READ-WHEN-POINTER-DELETED, which carries
+  # the suggested direction (restore-side: don't lose the marker when the pointer is consumed).
+  - id: S33-tour-boundary-reflect-narrates-does-not-fork
+    name: "session:reflect at a clean boundary inside a tour run narrates the boundary instead of offering the handoff (WP7o defect 2) [KNOWN-FAILING — see SURFACE-2026-07-27-TOUR-MARKER-NOT-READ-WHEN-POINTER-DELETED]"
+    skill: session-reflect
+    args: >
+      Reflect on the session. The feature we were working on just finished its
+      close and nothing surprising came up — no wrong assumptions, no reusable
+      insight worth keeping. What happens now?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/tour-greenfield-stepping.md
+      wip: fixtures/wip/tour-inner-work-finalized.md
+    expect:
+      # A genuine clean boundary (post-close reflect, nothing to persist) that would normally
+      # auto-chain S22 -> session-handoff. But the pointer and WIP both carry `tour:`, so a
+      # scripted run is driving and has already placed its own handoff beat. Expected: name what
+      # the boundary means and hand back to the driving skill; do NOT chain, and do NOT present
+      # "continue, or hand off now?" as a choice. The real failure offered exactly that fork.
+      # Contrast with S28, which is the same reflect state WITHOUT a tour pointer and SHOULD chain.
+      # Non-echoing: the prompt never says "narrate", "boundary", "fork", or "handoff".
+      # `S22`/`S23` are the two auto-chain exits this guard must NOT take inside a tour run, and
+      # reflect emits no token of its own — so their ABSENCE is the assertion, made STRICT
+      # because an emitted "TRANSITION: S22" is a pure failure-proxy here (it cannot appear in
+      # benign reasoning about a tour-hosted boundary; it IS the defect). The first live run of
+      # this scenario emitted exactly that, which is why it is hard-asserted rather than soft.
+      # reflect emits NO transition of its own, so `contains_any` (which the harness accepts
+      # without a structured token) is the right positive form here — the same shape S28/R1-R3
+      # use for this skill. `contains_required_any` would demand a token line that never comes.
+      contains_any:
+        - "boundary"
+        - "driving skill"
+        - "tour"
+      not_contains:
+        - "Your call"
+        - "or hand off now"
+        - "TRANSITION: S22"
+        - "TRANSITION: S23"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S34-tour-marker-survives-pointer-deletion
+    name: "session:handoff mid-tour declines a second .session.md when only the WIP carries the tour marker (WP7o runtime-satisfiability) [KNOWN-FAILING — see SURFACE-2026-07-27-TOUR-MARKER-NOT-READ-WHEN-POINTER-DELETED]"
+    skill: session-handoff
+    args: >
+      We're at a clean stopping point — write me the handoff so we can pick this
+      up later.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/tour-inner-work-finalized.md
+    expect:
+      # THE case a structural grep cannot express, and the real defect a coherence read caught:
+      # `/session-restore` DELETES .session.md once consumed, so at a later in-tour boundary the
+      # pointer is GONE and the WIP frontmatter is the only surviving carrier of `tour:`. This
+      # fixture supplies NO session pointer for exactly that reason. The tour has already placed
+      # its one handoff, so a second write is not this skill's to make: expected is to say what a
+      # real project would do and hand back, not to write the file.
+      # Non-echoing: the prompt asks FOR a handoff, so a pass means the model declined on the
+      # tour marker rather than complying with the request.
+      # S17 is "the pointer was written" — the exact thing that must NOT happen here, so its
+      # absence is strict (an emitted S17 is a pure failure-proxy: it means a second .session.md
+      # was written mid-run). The positive set is deliberately narrow — an earlier draft included
+      # bare "not", which would have matched almost any English sentence and proved nothing.
+      contains_required_any:
+        - "tour"
+        - "driving skill"
+      not_contains:
+        - "Handed off"
+        - "TRANSITION: S17"
+      not_contains_strict: true
+    max_retries: 2

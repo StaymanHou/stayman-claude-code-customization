@@ -25,6 +25,7 @@ When you finish, label your output with one of these IDs:
    - `resume_skill` — the exact slash command to invoke next
    - `state_file` — the canonical WIP/doc file holding the work content
    - `drive_mode` — the active drive mode when handed off (may be absent for sessions handed off before this feature)
+   - `tour:` / `tour_step:` — **usually absent.** Present only when a `tutorial-*` skill wrote this pointer as one of its own beats. When present, `resume_skill` is that tour skill (step 5 hands control back to it, and it resumes any inner workflow itself), the mode comes from the pointer (step 4), and the mode menu is skipped (step 4b). When absent, every step below takes its ordinary path.
 
 3. **Open `state_file`** and read the latest content, including any "Session Handoff" (or legacy "Session Pause") marker.
 
@@ -37,11 +38,19 @@ When you finish, label your output with one of these IDs:
    **Determine the active drive mode** using this priority order:
    1. `drive_mode` from `.session.md` frontmatter (most authoritative — set at handoff time)
    2. `drive_mode` from `state_file` frontmatter (fallback for older sessions)
-   3. Default to `orchestrated` (Mode 2) if neither source has it
+   3. **If the pointer carries a `tour:` field, stop here — take the mode from the pointer and do not fall through.** A `tutorial-*` skill set that mode deliberately for its run, so defaulting over it silently changes the mode mid-run. If a `tour:` pointer somehow has no `drive_mode`, treat that as a defect in the writing skill and say so rather than substituting a default of your own.
+   4. Default to `orchestrated` (Mode 2) if neither source has it **and** no `tour:` field is present.
 
-   Include the active mode in the context summary, e.g.: "Restoring in **Autopilot** mode."
+   Include the active mode in the context summary, e.g.: "Restoring in **Autopilot** mode." **Exception — omit the mode entirely when the pointer carries a `tour:` field:** restore in that mode silently and name no mode at all, not even the one you are restoring in. The same reason step 4b skips the menu applies here — a `tutorial-*` run reveals the modes at its own scripted moment, and naming even one pre-empts it.
 
-4b. **Offer a mode change.** Present the numbered menu so the user can keep or switch modes before diving back in:
+4b. **Offer a mode change** — *unless the pointer carries a `tour:` field.*
+
+   **Skip this whole step when `tour:` is present.** Present no menu, and do not name the modes or list the gears
+   at all: a `tutorial-*` run reveals them at a specific scripted moment, and showing them here pre-empts it.
+   Restore silently in the pointer's mode and let the driving skill handle mode changes on its own schedule.
+   Go straight to step 5.
+
+   Otherwise, present the numbered menu so the user can keep or switch modes before diving back in:
 
    ```
    Drive mode — press Enter to keep current, or pick a new one:

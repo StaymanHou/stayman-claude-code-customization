@@ -242,5 +242,170 @@ else
 fi
 
 echo
+
+# ── 10. §D destructive-offer protocol in the arm's prose (WP7o) ────────────────
+# Group 9 above already pins the SCAFFOLDER half of §D (refuses, writes nothing) on the
+# real `--dest .` path, so this group deliberately does NOT re-assert that. What is new in
+# WP7o is the ARM-side offer: on refusal the arm may offer to CLEAR the directory, which is
+# destructive and therefore governed by hard rules. Those rules live in prose (the arm
+# instructs an agent), so prose is the only place they can be pinned.
+#
+# Every assertion below is a NEGATIVE or presence check on one file, so each is wrapped in
+# an explicit `[ -f ]` precondition that fails CLOSED. Per the repo convention
+# (CLAUDE.md:259): a negative shell assertion run against a missing/renamed file passes
+# VACUOUSLY -- `2>/dev/null` swallows the error, `|| true` eats the status, and `${n:-0}`
+# turns the empty capture into the expected 0. Mutation testing structurally CANNOT catch
+# that branch, because proving the assertion "can fail" requires the file to exist. The
+# rename case is real here: this arm's scaffold was re-homed once already (WP7j moved it
+# from tools/onboarding-scaffold/ into skills/.../scripts/).
+echo "[10] §D destructive-offer protocol (arm prose)"
+# ARM is already defined by group 8 as "$TOOL_DIR/../SKILL.md"; re-derive it here so this
+# group stays valid if group 8 is ever moved or removed.
+ARM="$TOOL_DIR/../SKILL.md"
+if [ ! -f "$ARM" ]; then
+  bad "arm SKILL.md not found at $ARM — cannot verify the §D protocol; if the skill was renamed or the scaffold re-homed again, update ARM in this test"
+else
+  # (a) show-before-asking: the arm must instruct an `ls -A` listing.
+  #     SCOPE NOTE: a grep can only prove the instruction is PRESENT — it cannot prove the
+  #     listing is ORDERED before the question (that is prose semantics, and it belongs to
+  #     the verify-self coherence read). The ok() message says "instructs", not "shows
+  #     before asking", so the pin does not overstate what it actually proves.
+  grep -q 'ls -A' "$ARM" \
+    && ok "arm instructs an ls -A listing (ordering itself is the coherence read's gate)" \
+    || bad "arm does not tell the agent to run ls -A before offering to clear"
+
+  # (b) explicit consent: a bare forward-motion "go"/"proceed" must not count as consent.
+  #     NOTE: the clause is LINE-WRAPPED in the prose ("is **not**" ends one line, "consent
+  #     to delete" begins the next), so a single-line grep misses it. Match on a
+  #     wrap-immune anchor instead. This is the documented prose-grep blind spot
+  #     (docs/lessons/verify-grep-blind-spots.md): suspect the grep before the copy.
+  grep -qi 'not.*consent to delete\|Explicit confirmation only' "$ARM" \
+    && ok "arm requires EXPLICIT consent (bare 'go'/'proceed' is not consent to delete)" \
+    || bad "arm does not state that bare forward-motion replies are not consent to delete"
+
+  # (c) the alternative is a peer option, not a grudging fallback
+  grep -q 'equal, not a fallback' "$ARM" \
+    && ok "arm presents 'different empty folder' as an EQUAL option" \
+    || bad "arm does not present the different-folder option as an equal peer"
+
+  # (d) git working tree is never cleared
+  grep -q 'is-inside-work-tree' "$ARM" \
+    && ok "arm checks git rev-parse --is-inside-work-tree and refuses to clear a repo" \
+    || bad "arm does not gate the clear-offer on a git-working-tree check"
+
+  # (e) deletion is bounded to the cwd's contents
+  grep -q 'nothing above it' "$ARM" \
+    && ok "arm bounds deletion to the cwd's contents (no .., no ~, no paths above)" \
+    || bad "arm does not bound the deletion to the cwd's own contents"
+
+  # (f) NEGATIVE: the arm must never INSTRUCT passing --force to the scaffolder.
+  #     Every --force mention in the arm is legitimately PROHIBITIVE ("do not reach for
+  #     `--force`", "Never `--force`", "Do not pass `--force` ... under any circumstances").
+  #     So a naive '(pass|use|run).*--force' pattern false-positives on the prohibition
+  #     itself — it fired on "Do not pass `--force`" on the first run of this pin. The
+  #     assertion must therefore count only mentions NOT preceded by a negator, i.e. strip
+  #     the prohibitive lines first and require nothing to remain.
+  #     Anchor note: markdown emphasis sits *between* the negator and the flag
+  #     ("**do not** reach for `--force`"), so a `[^.]{0,60}` bridge is unreliable — strip
+  #     `*` and backticks first, then match on plain words.
+  #
+  #     DESIGN NOTE — this pin was INERT through FOUR successive designs before the shipped
+  #     one; all four are recorded because the failure modes are instructive and mutation
+  #     testing is the only thing that exposed them:
+  #       1. COUNT-EQUALITY: compare total `--force` lines against prohibitive ones and
+  #          assert equality. Unfalsifiable by the very mutation it must catch — rewriting
+  #          "Do not pass --force" to "Pass --force" decrements BOTH counters, so equality
+  #          held and the pin stayed green while the arm instructed what it forbids. Two
+  #          numbers that move together cannot express "none of these is an instruction."
+  #       2. PER-LINE NEGATOR FILTER: drop lines carrying a negator, require zero remaining.
+  #          Also inert, because the granularity is wrong: the prose line reads
+  #          "4. **Never `--force`, never auto-delete...** Do not pass `--force` to ..." —
+  #          negator and instruction SHARE a line, so mutating the second clause leaves the
+  #          line's first "Never" intact and `grep -v` still discards it.
+  #       3. CLAUSE-GRANULARITY NEGATOR FILTER: caught the primary mutation but stayed inert
+  #          on same-clause rewrites — an adjacent negator in the SAME clause ("...and do not
+  #          silently fall back...", "...never auto-delete...") keeps satisfying the filter.
+  #       4. PRESENCE-OF-EACH-PROHIBITION + IMPERATIVE-PROBE: also partly inert, because the
+  #          presence anchors are themselves fuzzy against markdown (backticks sit between
+  #          "Never" and "--force", so a bridging `.{0,3}` re-matches mutated text).
+  #
+  #     CONCLUSION after five mutation-verified iterations: **"no non-prohibitive mention of X
+  #     anywhere in prose" is not reliably expressible as a grep.** The repo convention is
+  #     explicit that when an anchor needs this many attempts the ANCHOR is wrong, not the
+  #     regex — so rather than ship a pin that LOOKS like it guards the --force prohibition
+  #     while being inert to the rewrites that matter (precisely the fail-open trap
+  #     CLAUDE.md:259 is about), this pin asserts only what genuinely fails closed:
+  #     the single most load-bearing prohibition is PRESENT, by an exact-literal anchor.
+  #
+  #     WHAT IS DELIBERATELY *NOT* PINNED HERE, and where it is covered instead: whether the
+  #     surrounding prose still *reads* as prohibitive rather than permissive. That is prose
+  #     semantics, and the documented gate for it is the verify-self coherence read (a fresh
+  #     subagent judging "would a cold agent pass --force after reading this?"), not a grep.
+  #     Recorded so nobody mistakes this pin's scope for more than it is.
+  if grep -qF 'Do not pass `--force`' "$ARM"; then
+    ok "arm carries the exact --force prohibition (exact-literal anchor, fails closed)"
+  else
+    bad "arm no longer says 'Do not pass \`--force\`' — the refusal is the safety property, not an obstacle; if the wording changed deliberately, update this anchor"
+  fi
+
+  # (g) the temp-dir prohibition is PRESENT, by an exact-literal anchor.
+  #     Same lesson as (f): the first version of this assertion was an OR of two fuzzy
+  #     counts ("mentions a temp fallback" OR "prohibits one"), which is inert by
+  #     construction — an OR passes whenever either arm holds, so removing the prohibition
+  #     while leaving the mention still satisfied it. Mutation testing caught that. Asserting
+  #     PRESENCE of the exact prohibition is what fails closed; judging whether the prose
+  #     still *reads* as prohibitive belongs to the verify-self coherence read.
+  if grep -qF 'never a temp dir' "$ARM"; then
+    ok "arm carries the exact temp-dir prohibition (exact-literal anchor, fails closed)"
+  else
+    bad "arm no longer prohibits a silent temp-dir fallback ('never a temp dir') — that fallback breaks the state-is-a-real-file-you-own beat; if the wording changed deliberately, update this anchor"
+  fi
+
+  # (h) decline is non-destructive, including on ambiguity
+  grep -q 'nothing is touched' "$ARM" \
+    && ok "arm guarantees nothing is touched on decline or ambiguity" \
+    || bad "arm does not guarantee the directory is untouched when the user declines"
+
+  # (i) ORDERING: the git pre-check must appear BEFORE the two-option offer script.
+  #     Presence alone (assertion d) is NOT enough, and this is not hypothetical — the
+  #     first cut of this phase stated the rule correctly but placed it ~20 lines AFTER the
+  #     copy-paste offer, so an agent pattern-matching the script could offer to delete a
+  #     git repository and retract it afterwards. Every grep passed; only a coherence read
+  #     caught it. This pin makes the ordering itself mechanical: compare line numbers.
+  git_ln=$(grep -n 'is-inside-work-tree' "$ARM" | head -1 | cut -d: -f1)
+  offer_ln=$(grep -n 'Two ways forward' "$ARM" | head -1 | cut -d: -f1)
+  if [ -n "$git_ln" ] && [ -n "$offer_ln" ] && [ "$git_ln" -lt "$offer_ln" ]; then
+    ok "git pre-check (line $git_ln) precedes the clear-offer script (line $offer_ln)"
+  else
+    bad "git pre-check must PRECEDE the offer script (git=${git_ln:-missing}, offer=${offer_ln:-missing}) — otherwise an agent can offer to delete a repo and retract it"
+  fi
+fi
+
+# ── 11. Scaffolder refusal MESSAGE text (WP7o) ─────────────────────────────────
+# Groups 6 and 9 pin refusal BEHAVIOUR (exit 1, tree identical); neither pins the
+# message TEXT, and that gap was demonstrated empirically at this phase's codify gate:
+# reverting the stderr back to its pre-WP7o wording — "(use --force to overwrite)", which
+# actively advertised the flag the arm forbids — left the suite at 28/28 green. The wording
+# is a real consuming-surface contract (the arm's offer tells the user "nothing was
+# written"), so a silent revert would make the arm's copy a lie. Driven through a REAL
+# refusal invocation on the actual `--dest .` path, not a grep of the script source.
+echo "[11] scaffolder refusal message text"
+M="$(mktemp -d)"; TMPDIRS+=("$M")
+echo sentinel > "$M/keep.txt"
+err11="$( (cd "$M" && "$SCAFFOLD" --dest . ) 2>&1 >/dev/null || true )"
+case "$err11" in
+  *"nothing was written"*)
+    ok "refusal states 'nothing was written' (the safety property the arm's copy promises)" ;;
+  *)
+    bad "refusal message no longer states 'nothing was written' — the arm's offer copy depends on it; got: [$err11]" ;;
+esac
+case "$err11" in
+  *"must never pass it"*)
+    ok "refusal message binds --force ('the tour must never pass it'), not advertises it" ;;
+  *)
+    bad "refusal message no longer binds --force — the pre-WP7o text said '(use --force to overwrite)', which recommends the exact flag the arm forbids; got: [$err11]" ;;
+esac
+
+echo
 echo "== results: $pass passed, $fail failed =="
 [ "$fail" -eq 0 ]

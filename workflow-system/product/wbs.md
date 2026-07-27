@@ -2,7 +2,7 @@
 stage: wbs
 state: complete
 updated: 2026-07-27
-progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ WP7i ✅ (2026-07-22) WP7j ✅ (2026-07-23) WP7h DESIGN ✅ (2026-07-24, build split → WP7k) WP7k ✅ (2026-07-24, commit 8bbf5c1 — built the full product-cycle tour + greenfield pointer); batch hands-on acceptance run ✅ DONE 2026-07-25 (3 of 4 surfaces PASS as-shipped; greenfield drew 3 fixes → ratified as WP7l/WP7m/WP7n); WP7l 🔨 BUILT + WP7n 🔨 BUILT (2026-07-25, commit 783bdf2 — one joint feature) + **WP7m 🔨 BUILT (2026-07-27 — tour-aware boundary guard; escalation clause never fired)**; all three greenfield fixes now BUILT with verify-human acceptance DEFERRED+OWED (so BUILT not SHIPPED). M11 tail remaining → **ONE full hands-on greenfield tour run** (accepts WP7l+WP7n+WP7m together and answers the open refuse-if-non-empty design question) → WP7e (codify, last); WP8 pending
+progress: 6/8 top-level WPs done (WP1, WP2, WP3-M7, WP4, WP5, WP6); M11 sub-WPs — WP7a ✅ WP7b ✅ WP7c ✅ WP7d ✅ WP7f ✅ WP7g ✅ WP7i ✅ (2026-07-22) WP7j ✅ (2026-07-23) WP7h DESIGN ✅ (2026-07-24, build split → WP7k) WP7k ✅ (2026-07-24, commit 8bbf5c1 — built the full product-cycle tour + greenfield pointer); batch hands-on acceptance run ✅ DONE 2026-07-25 (3 of 4 surfaces PASS as-shipped; greenfield drew 3 fixes → ratified as WP7l/WP7m/WP7n); WP7l 🔨 BUILT + WP7n 🔨 BUILT (2026-07-25, commit 783bdf2 — one joint feature) + **WP7m 🔨 BUILT (2026-07-27 — tour-aware boundary guard; escalation clause never fired)**; **the greenfield re-acceptance run RAN 2026-07-27 and reported 2 defects** (first run came back Orchestrated + the 2nd-boundary fork still appearing) → ratified + built as **WP7o 🔨 BUILT (2026-07-27 — tour state survives the session boundary; pointer carries `tour:`/`tour_step:` + `resume_skill`→the arm; SUPERSEDES 7m.1's arms-only placement, which the raw Session-C log proved unreachable; also ANSWERS §D: refuse-if-non-empty + offer-to-clear; escalation clause never fired)**; all four greenfield fixes now BUILT with verify-human acceptance DEFERRED+OWED (so BUILT not SHIPPED). M11 tail remaining → **ONE full hands-on greenfield tour run** (accepts WP7l+WP7n+WP7m+WP7o together; §D is now answered, not open) → WP7e (codify, last); WP8 pending
 ---
 
 # WBS — Claudesk Handoff Cycle (Milestones 7–12)
@@ -494,6 +494,60 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > - [x] 7m.4 Disambiguate the tour's staged Step-7 `/exit` boundary from the state machine's boundary in the arm copy
 > - [x] 7m.5 Reflect into `onboarding-flow-spec.md` + (only if an edge/table changes) `transitions.md` + the 4 `agents/*/AGENTS.md`
 >
+> ### WP7o: Tour state survives the session boundary — 🔨 BUILT 2026-07-27 · ACCEPTANCE OWED · **SUPERSEDES 7m.1**
+> **Provenance:** the operator's 2026-07-27 greenfield **re-acceptance** run — the very run WP7l/WP7m/WP7n were
+> waiting on. It reported two defects: (1) *"The mode defaulted to orchestrated for the first run!"* and
+> (2) *"The 2nd boundary handoff offer still showing up. But at least better than previous walkthrough."*
+> **Root cause (one gap, both defects):** the tour's state — that a tour is running, which step is next, which
+> drive mode — lived **only in the conversation** and died at `/exit`. Nothing was written to disk, so nothing
+> survived the boundary the tour is built around. Defect 1: the first-run branch wrote `drive_mode` **nowhere**
+> (only the replay branch recorded it), so the handoff correctly omitted it and `/session-restore` fell through
+> to its `orchestrated` default *and* showed the 1–4 menu. Defect 2: **`resume_skill` pointed at the inner
+> workflow's next state** (`/feature-ship`), so Session C legitimately held two competing continuations.
+> **Why this supersedes 7m.1.** WP7m settled the guard's home as *"in the ARMS, not the general session skills."*
+> The raw Session-C log disproves that placement: the only skills loaded there were `/session-restore` →
+> `feature-ship` → `feature-review-quality` → `feature-finalize` → `session-reflect`. **The arm is never
+> re-invoked** — so an arms-only guard is *structurally unreachable* across a session boundary, which is why
+> WP7m's copy fix softened the fork but could not remove it. WP7o adopts what 7m.1's own candidate list called
+> option **(b)** (a precondition in `session-reflect`/`session-handoff`), which 7m.1 had *preferred to avoid* —
+> correctly, on the information it had. **7m.1's spirit is preserved:** the arms own all tour *narration copy*;
+> the general skills carry only a **mechanical `tour:` field read**. `check-structure.sh` [Phase 18] block (i)
+> was rewritten to pin exactly that narrowed invariant (fail-closed `[ -f ]` precondition retained).
+> **AS-BUILT (2026-07-27, 4 phases):** **P1** — `.session.md` gains optional tour-only `tour:`/`tour_step:`;
+> `session-restore` takes the mode from a tour pointer (cannot reach the `orchestrated` default) and
+> **suppresses the 1–4 menu, naming no mode at all**; `session-reflect`/`session-handoff` narrate a tour-hosted
+> boundary instead of chaining `S22`/`S23`. **P2** — both arms write the fields, record `drive_mode: stepping`
+> silently on the first run (**recording ≠ revealing**), and set **`resume_skill` to the arm**, so Session C is
+> one thread: the arm finishes the inner work, then plays Step 8. **P3** — §D resolved (below). **P4** — pins
+> narrowed + docs resynced + behavioral scenarios.
+> **No state-machine surface.** No new transition ID, no new edge, no pause-policy row; `S22`/`S23` unchanged for
+> real work. Verified as an **empty diff** on `transitions.md` and all four `agents/*/AGENTS.md` at every phase.
+> The 7m-style escalation clause was re-checked each phase and **never fired**.
+> **§D ANSWERED (the open design question WP7l left owed).** Operator: *"refuse if non empty, offer to delete the
+> content of the dir"* — the `./onboarding-sample-todo/` subdir fallback is **rejected**. Implemented with four
+> hard rules (show the real `ls -A` listing **before** asking · **explicit** consent only, a bare
+> "go"/"proceed"/"ok" is *not* consent · the different-folder option is an **equal peer** · never `--force`,
+> never auto-delete, never a temp dir) and two absolute limits (**a git working tree is never cleared**, checked
+> *before* the offer so a repo never sees it; deletion bounded to the cwd's own contents). Decline **or any
+> ambiguity** → nothing touched. **Greenfield-only** (a real repo has nothing disposable).
+> **⚠️ NOT ✅ SHIPPED — verify-human DEFERRED+OWED on all four phases** (integration boundary applies on each →
+> F11-skip forbidden, Mode-3 auto-skip correctly never fired). **WP7l + WP7n + WP7m + WP7o now ride ONE
+> acceptance run** — the operator's next hands-on greenfield walkthrough. 15 owed leaves recorded in the WIP.
+> **Notable finds the coherence reads caught that no grep could:** the reader guards were **inert** at the moment
+> they needed to fire (restore *deletes* the pointer, and no arm was writing `tour:` to the WIP — names matched
+> while the value was absent at read time); and the §D git pre-check was *correctly worded but placed after* the
+> copy-paste offer script, so an agent could have offered to delete a repo and retracted it. Both fixed in-phase.
+> **Milestone:** 11 · **Dependencies:** WP7l/WP7m/WP7n (it corrects their acceptance run's findings) · **Size:** M
+> **Gates:** WP7e (accepted behavior before pins) — **WP7e still codifies LAST**, against copy accepted across all
+> four tour surfaces.
+> - [x] 7o.1 Carry tour state in the session pointer (`tour:`/`tour_step:`, optional + inert when absent)
+> - [x] 7o.2 First-run branch records `drive_mode: stepping` silently; restore honors it and suppresses the menu
+> - [x] 7o.3 `resume_skill` → the ARM, so Session C reloads the arm and reads as one thread
+> - [x] 7o.4 Narrow block (i) to "mechanical field read yes, narration copy no"; keep the fail-closed guard
+> - [x] 7o.5 §D: refuse-if-non-empty **+ offer to clear**, with the destructive protocol (greenfield-only)
+> - [x] 7o.6 Resync `onboarding-flow-spec.md` + `tutorial-tour-session-chain-flow.md` (invariants 7 + 8)
+> - [x] 7o.7 Behavioral scenarios for the fix (the operator's mid-session scope correction)
+>
 > ### WP7n: Step-8 close restructure — terse decision block at the bottom — 🔨 BUILT 2026-07-25 (commit 783bdf2) · ACCEPTANCE OWED
 > **AS-BUILT (2026-07-25):** Built jointly with WP7l. **Both arms'** closes restructured to narrative-first / decision-last: graduation-reveal (Branch A) or acknowledge-the-gear (Branch B) → replay **motivation** compressed to one line → "what we didn't demo" → **artifacts-as-proof** → **`Next Step:` block LAST**. Per-branch, ≤3 sentences/option (verified 8/8 options), options **named never auto-run**; Branch B carries **no replay option** (they're already in one). The full replay invitation is compressed into option 1 with its load-bearing mechanics **preserved, not dropped** — direct arm re-entry NOT the dispatcher · session-boundary crossing · gear from the arm's own on-entry menu · plus greenfield's new-empty-folder (WP7l) / brownfield's clean-baseline-first — each restated in a "Mechanics that must stay correct in the block" guard so future compression can't silently break them. WP7l's disposal ruling landed here: a cleanup **offer** (never auto-remove) as the block's last line, **after** the artifacts-as-proof so the tour never asks to remove the evidence before showing it — **greenfield only** (brownfield's no-cleanup-offer and no-deep-dive-pointer are stated as *prohibitions*, not omissions). **The full product-cycle tour's close was verified per-file and deliberately LEFT UNCHANGED** — already three numbered beats in a stated order (~30 lines) with the actionable beat in plain sight; a `Next Step:` block there would be ceremony and would rub against its ratified no-replay/no-mode-menu invariant. (Reviewer independently agreed, with the honest caveat that its actionable beat is #2-of-3 rather than last — recorded for operator override if strict cross-family symmetry is wanted.) verify-self 10/10 incl. machine-verified strict ordering in both arms and all 13 beats confirmed surviving the re-order.
 > **⚠️ NOT ✅ SHIPPED — same DEFERRED-and-OWED verify-human acceptance as WP7l** (one read over the finished greenfield arm after WP7m). **Known gap, measured not assumed:** deleting BOTH `Next Step:` blocks still passes every existing check — the `tutorial-*` family has zero structural pins (`grep -c tutorial tests/check-structure.sh` = 0). Left to **WP7e** by its documented charter, logged as `SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED` with the concrete pin list **and** the caveat that a naive sentence-count pin is flaky (it folds the trailing `Housekeeping:` line). 4 of the 5 backlogged MINORs are user-facing copy → settle them inside WP7e's copy-freeze, before pins lock.
@@ -597,6 +651,3 @@ M7: WP1 (decide layout+migration) → WP2 (sweep + migrate tool + run) → WP3-M
   - **M11 tail after the 2026-07-25 batch acceptance run:** the walkthrough-driven expansion (WP7f–WP7n) is ordered by the **pins-lock-accepted-copy** rule, which is a *learning* dependency, not a build one — every copy/behavior correction must be operator-accepted before WP7e freezes pins, else the pins cement copy the operator would have changed. Current order: **{WP7l ∥ WP7n} → WP7m → greenfield re-acceptance → WP7e**. **STATUS 2026-07-27: WP7l + WP7n + WP7m are ALL BUILT (783bdf2 + WP7m 2026-07-27) but NOT accepted** — the operator deferred the verify-human copy read until all three fixes are in, WP7m has now landed, so the next step is **ONE full hands-on greenfield tour run** (operator 2026-07-27: *"defer. I'll just do a full tour again after changes are done"*) which accepts all three (flipping them to ✅ SHIPPED) and answers the open refuse-if-non-empty design question, then WP7e. WP7l/WP7n are parallel-safe apart from the arm's close, which both edit (7n.3 owns the merge); WP7m follows so its guard placement is settled against an already-restructured close rather than racing a third concurrent edit to the same region. WP7m is the only one of the three that can reach state-machine surface — if plan-time analysis shows it needs a new edge or the 4 `agents/*/AGENTS.md` pause tables, it escalates to `/feature-spec` instead of widening in place.
 - **WP8 terminal** — aggregates deliverables back to Claudesk (**including the required M11 `docs_list` path change** + the onboarding flow spec from WP7a).
 - No environment/Docker WP (this repo is host-based shell + prompt files, no services). No 3rd-party probe WPs (no external integrations). No orchestration/async WPs (none in scope). **No M11 probe WP** — the only unknown was the *design*, resolved by the brainstorm; the sub-WPs are all build. Deviations from the standard ordering sequence are all "N/A — no such surface in this cycle."
-
-## Session Handoff — 2026-07-27 12:05
-Handed off. See `workflow-system/state/.session.md` to restore. (M11 tail: **all three greenfield fixes now BUILT** — WP7l + WP7n `783bdf2`, **WP7m `e7e682b`** + close `f65510e`. The operator is walking through the greenfield re-acceptance tour by hand using `tmp/wp7m-greenfield-reacceptance-walkthrough.md`. **Next: read their feedback FIRST**, apply accepted changes, flip all three 🔨 BUILT → ✅ SHIPPED, then WP7e (codify, last). One decision still owed: the refuse-if-non-empty vs. subdir-fallback design question — cheap now, expensive after WP7e pins.)

@@ -25,7 +25,17 @@ Hand off the current workflow state — write a resumable handoff pointer so a f
 - **Mid-workflow or on an ambiguous word — DO fire the guard.** The confirm exists for the *mid-flight* case: the operator says bare **"pause"**, **"defer"**, **"wrap up"**, **"hold"** in the *middle* of a phase, where it's genuinely unclear whether they mean a turn-level interrupt or a session boundary. There, do **not** write `.session.md` on the ambiguous word alone — **ask one line** ("Turn-level hold, or write a session handoff for next time?") before writing. The failure mode is bidirectional and mid-workflow: an adjacent instruction like "defer that check" can pull you toward a handoff no one asked for (a real misfire: an agent read "defer" mid-verify as a session handoff, wrote `.session.md`, and had to `rm` it after correction).
   - **Anti-trigger — "I'll `/resume` later / I need to go / shutting down" is NOT a handoff cue.** These read *superficially* like session-boundary intent ("later" implies a future session) but are **turn-level HOLD**: the operator wants you to stop NOW so they can safely `/exit` / go offline, then `/resume` the *same turn*. Do **not** write `.session.md` on them — just stop. (This is the second confirmed misfire of this exact skill: an agent read "hold, I need to go, I'll /resume later" as a session boundary and wrote a handoff. If genuinely unsure whether the operator wants a cross-session handoff too, ask — but default to HOLD.)
 
-The discriminator is **workflow position**, not the trigger word: terminal boundary → handoff is natural (chain it, even in autopilot); mid-workflow ambiguity → confirm before writing.
+- **A pointer carrying `tour:` is already inside a scripted run — do not add a second handoff.** If
+  `workflow-system/state/.session.md` carries a `tour:` field (or the WIP for this run does — check
+  `workflow-system/state/archive/` too, since a terminal close moves it there before reflect runs, and
+  `/session-restore` deletes the pointer once consumed), a `tutorial-*` skill is
+  driving and has already placed its own handoff beat. A terminal boundary reached *inside* that run is real, but
+  it is **not yours to act on**: do **not** write a second `.session.md`, and do **not** offer the handoff as a
+  choice — there is one sensible answer mid-run, so a fork is friction. Say in a sentence what a real project
+  would do at that boundary, then hand control back to the driving skill. The one exception is the tour's **own**
+  scripted beat, where that skill invokes this one deliberately and supplies the fields per §2.
+
+The discriminator is **workflow position**, not the trigger word: terminal boundary → handoff is natural (chain it, even in autopilot); mid-workflow ambiguity → confirm before writing; a `tour:`-carrying pointer → narrate, don't write.
 
 ## Valid transitions
 
@@ -41,9 +51,19 @@ When you finish, label your output with this ID:
 
    If multiple active items exist, ask the user which one to pause.
 
+   **While you have that file open, read its frontmatter for a `tour:` field — and check
+   `workflow-system/state/archive/` as well as `wip/`, since a terminal close moves the WIP there before reflect
+   runs.** If `tour:` is present, a `tutorial-*` skill is driving this run and has already placed its own handoff
+   beat: **stop here and do not write `.session.md`** (see the third bullet of the Agent-side guard above). Check
+   the WIP even when `workflow-system/state/.session.md` is absent — `/session-restore` **deletes** the pointer
+   once it has consumed it, so mid-run the WIP frontmatter is usually the *only* surviving carrier of `tour:`.
+   A missing pointer is therefore not evidence that no tour is running.
+
 2. **Write `workflow-system/state/.session.md`** — this is a single-file session pointer (one active session per repo). Overwrite it each time:
 
    Before writing, read the active WIP file's YAML frontmatter. If it contains a `drive_mode:` field, include it in the session pointer. If no `drive_mode` is present, omit the field entirely (do not default it).
+
+   **Optional tour fields.** Two further fields — `tour:` and `tour_step:` — are written **only** when a `tutorial-*` tour skill is driving this handoff as one of its own scripted beats; that skill supplies their values. They are **absent from every ordinary handoff** and must not be invented, defaulted, or inferred from the conversation. When they are absent, this skill behaves exactly as it always has. See "Tour-driven handoffs" below.
 
 ```markdown
 ---
@@ -62,6 +82,26 @@ drive_mode: <stepping|orchestrated|autopilot|fsd>  # omit if WIP has no drive_mo
 - **Open questions/blockers:** <any unresolved issues, or "None">
 - **Notes:** <any temporary context worth preserving>
 ```
+
+   **Tour-driven handoffs (optional — omit all of this unless a `tutorial-*` skill asked for it).** When a tour
+   skill drives this handoff as one of its scripted beats, it supplies two extra frontmatter fields so the next
+   session can pick the tour back up. Add them **only** on that skill's instruction:
+
+```yaml
+tour: <greenfield|brownfield>   # which tour arm is running
+tour_step: <n>                  # the tour step to resume AT
+```
+
+   Two rules govern a pointer that carries `tour:`:
+
+   - **`resume_skill` is the tour skill, not the inner workflow's next state.** The tour skill is what knows how
+     to finish its own run, so it must be what `/session-restore` hands control back to. Pointing `resume_skill`
+     at the inner workflow's next state instead strands the tour and leaves the next session holding two
+     competing continuations. `state_file` still points at the inner WIP so the work content stays reachable.
+   - **`drive_mode` is required, not optional, on a tour pointer.** The tour skill sets its own mode; if it is
+     omitted here, `/session-restore` falls through to its default and silently changes the mode mid-run.
+
+   Both fields are inert everywhere else: absent `tour:` means every downstream reader takes its ordinary path.
 
 3. **Annotate the state file.** Append a short marker to the file referenced in `state_file:` so the context is visible when someone opens that file directly:
 

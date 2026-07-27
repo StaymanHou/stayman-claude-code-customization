@@ -132,4 +132,15 @@ Reflect is **not the terminus** — it forks onto the **session-boundary exit ch
 
 **Drive-mode / position note (the CONTEXTUAL guard):** the onward auto-chain to `session-handoff` is the **norm at a clean boundary** (post-terminal reflect) and is AUTO in all drive modes — see the authoritative pause-policy rows. It is NOT triggered mid-workflow: a bare "pause"/"defer"/"hold" in the *middle* of a phase is the narrow CONFIRM exception (ask "turn-level hold, or write a session handoff?" first), never an auto-handoff. Discriminator: terminal boundary → natural handoff; mid-workflow ambiguity → confirm first.
 
+**Third case — a pointer or WIP carrying `tour:` (a scripted run is driving).** Check
+`workflow-system/state/.session.md` (and the WIP frontmatter for this run — look in
+`workflow-system/state/archive/` as well as `wip/`, since a terminal close moves the WIP before reflect runs,
+and `/session-restore` deletes the pointer once it has consumed it) for a `tour:` field. When it is present, a
+`tutorial-*` skill owns this run and has already placed its own handoff beat, so **neither arm's auto-chain
+applies**: do **not** chain to `session-handoff` (no `S22`, no `S23`), and do **not** present the handoff as a
+choice. Run reflect normally — it is a real step — then **name the boundary in a sentence or two** (what a real
+project would do here) and hand control back to the driving skill so the run continues. Offering a fork here is
+friction, not service: the run has one sensible continuation, and the driving skill is what knows it. When
+`tour:` is absent — the ordinary case — the two arms above are unchanged.
+
 **Context:** {{args}}

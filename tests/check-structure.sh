@@ -2424,10 +2424,23 @@ for arm in greenfield brownfield; do
   grep_check "${arm} arm's Step 7 cites the designed session-chain as the authority" "$arm_file" "tutorial-tour-session-chain-flow" 1
 done
 
-# (i) WP7m regression guard — the guard lives in the ARMS, not in the general session skills. This is
-#     what keeps S22/S23 unchanged for real (non-tour) work: if a future edit migrates tour-awareness
-#     into the general skills, this pin fails and the reviewer is forced to re-justify the placement.
-#     NB two hazards this block is written to avoid, both found at review:
+# (i) WP7o — the NARROWED placement invariant (supersedes WP7m's zero-tour-vocabulary version).
+#     WP7m asserted the general session skills carried ZERO tour vocabulary, on the theory that the
+#     boundary guard belongs in the arms alone. That theory was disproved empirically: `/session-restore`
+#     hands Session C back through `resume_skill`, and the raw log of the 2026-07-27 tour run showed the
+#     arm is NEVER re-invoked there — so an arms-only guard is unreachable across a session boundary.
+#     WP7o therefore moved a MECHANICAL `tour:`-field read into the general skills. The invariant is
+#     restated, not abandoned:
+#
+#         the tour's NARRATION/COPY lives in the arms;
+#         the general session skills carry only a mechanical `tour:` field read.
+#
+#     So each of session-reflect/session-handoff must (a) reference the `tour:` field, and (b) carry NO
+#     tour narration copy. session-capture keeps the original zero-vocabulary rule — it sits on the S23
+#     arm but never evaluates a boundary, so it has no reason to know about tours at all.
+#
+#     NB four hazards this block is written to avoid — the first two were found at WP7m's review, the
+#     last two at WP7o's verify-self:
 #     (1) **fail-open on a missing/renamed file.** A bare `grep -c ... 2>/dev/null || true` yields an
 #         empty count on a nonexistent path, which `:-0` turns into 0 — i.e. the negative assertion
 #         would PASS vacuously. This repo has already renamed exactly these three skills once (WP5/M9:
@@ -2437,20 +2450,201 @@ done
 #         leak worded "onboarding tour" / "the greenfield arm" through. Bare `tour` is NOT usable — it
 #         false-positives on session-reflect's legitimate "unnecessary detours" — so the alternation is
 #         widened to the specific tour vocabularies instead of loosened.
-for sess_skill in session-reflect session-handoff session-capture; do
+#     (3) **"narration copy" must be defined by CONTENT, not by the word "tour".** The mechanical read
+#         legitimately says `tutorial-*` (a file-glob) and `tour:` (a field name); those are not copy.
+#         What must never appear is tour *content*, which comes in four shapes, one anchor group each:
+#         sample data (`todos.txt`, `buy milk`, `new-sample.sh`, `scaffolded sample`, `sample project`),
+#         graduation/mode-reveal copy (`graduat`, `drive-mode menu`), second-person learner dialogue
+#         (`the learner`, `you just saw/watched/built/ran`), and arm/tour self-reference
+#         (`the greenfield|brownfield tour|arm`, `in the tour`, `Notice where we just landed`).
+#     (4) **anchors must be tour-SPECIFIC yet still be CONTENT CLASSES — not generic procedure words,
+#         and not verbatim one-off sentences either.** Both failure directions were hit at WP7o:
+#         · Too generic: an early draft used `Step [0-9]` and `beat [A-G]`. Those are house idioms, not
+#           tour content — `Step [0-9]` is in 13 of 46 SKILL.md files, and session-capture itself carries
+#           "The write (Step 5) then follows the §4 conditional gate". They caught no real leak while
+#           arming a false FAIL for any maintainer who later routes a third skill onto this probe.
+#         · Too specific: the first correction over-swung and used verbatim sentences (`greet.sh`,
+#           `drive modes you`, `finished the greenfield tour`, `the tour, narrate`). FOUR of nine anchors
+#           then matched nothing anywhere in `skills/` — dead on arrival — and all 23 real `graduat*`
+#           lines in the arms sailed through. A reworded leak evades a verbatim anchor trivially.
+#         The rule: anchor on a phrase CLASS that already recurs in the arms' real copy. Every anchor
+#         here is verified live against `skills/tutorial-*/SKILL.md`, and the probe is checked in four
+#         directions (no false positive on the three general skills; 23/23 real graduation lines caught;
+#         independently-invented leaks caught; legitimate mechanical prose untouched). Note `drive modes`
+#         bare is deliberately NOT an anchor — session-reflect legitimately says "AUTO in all drive
+#         modes"; the tour-specific shape is the *menu*. The probe is case-SENSITIVE: `-i` would
+#         re-widen `Step`→`step` for no gain (see the case-stable-anchor corollary in CLAUDE.md).
+# Hoisted to a variable so [Phase 18b] below can property-test the anchor set itself. Defined ONCE and
+# consumed by both the pin and its self-test — an inline duplicate would let the two drift, and drift is
+# exactly how both anchor defects survived (an untestable literal is an unguarded one).
+TOUR_NARRATION_PROBE="todos?\.txt|buy milk|new-sample\.sh|Notice where we just landed|graduat|drive[ -]mode menu|[Yy]ou (just|already) (saw|watched|built|ran|took)|[Tt]he (greenfield|brownfield) (tour|arm)|in the tour|[Tt]he [a-z]{0,12} ?sample|sample project"
+
+for sess_skill in session-reflect session-handoff; do
   sess_file="skills/${sess_skill}/SKILL.md"
-  sess_desc="${sess_skill} carries NO tour-specific knowledge (WP7m guard lives in the arms)"
+  read_desc="${sess_skill} carries the mechanical \`tour:\` field read (WP7o: reachable across a boundary)"
+  copy_desc="${sess_skill} carries NO tour NARRATION copy (WP7o: narration stays in the arms)"
   if [ ! -f "$sess_file" ]; then
-    check "$sess_desc" "fail" "$sess_file does not exist — a negative assertion cannot be satisfied vacuously; if the skill was renamed, update this pin's skill list"
+    check "$read_desc" "fail" "$sess_file does not exist — cannot verify the field read; if the skill was renamed, update this pin's skill list"
+    check "$copy_desc" "fail" "$sess_file does not exist — a negative assertion cannot be satisfied vacuously; if the skill was renamed, update this pin's skill list"
   else
-    count=$( (grep -ciE "tutorial|workflow tour|onboarding tour|greenfield arm|brownfield arm" "$sess_file" || true) | head -1 )
-    if [ "${count:-0}" -eq 0 ]; then
-      check "$sess_desc" "pass"
+    # (a) POSITIVE: the mechanical field read is present (fails closed — count 0 < min 1).
+    grep_check "$read_desc" "$sess_file" 'tour:' 1
+    # (b) NEGATIVE: no tour narration copy. Anchored on tour CONTENT, per hazard (3).
+    copy_count=$( (grep -cE "$TOUR_NARRATION_PROBE" "$sess_file" || true) | head -1 )
+    if [ "${copy_count:-0}" -eq 0 ]; then
+      check "$copy_desc" "pass"
     else
-      check "$sess_desc" "fail" "tour-specific vocabulary leaked into $sess_file — WP7m deliberately keeps tour-awareness out of the general session skills"
+      check "$copy_desc" "fail" "tour NARRATION copy leaked into $sess_file — the general skills get a mechanical \`tour:\` read only; sample data, learner-facing tour dialogue and graduation copy belong in the arms"
     fi
   fi
 done
+
+# session-capture keeps WP7m's original rule verbatim: it never evaluates a boundary, so it should carry
+# no tour vocabulary of any kind. Same fail-closed precondition — but note this is DELIBERATELY a DIFFERENT
+# probe from $TOUR_NARRATION_PROBE above, not a copy of it, and the two are not meant to be kept in sync:
+# this one is the broader zero-VOCABULARY rule (`-ciE`, matches the bare word "tutorial"), whereas the
+# narration probe permits the mechanical vocabulary and bans only tour CONTENT. If you ever consolidate the
+# three skills onto one probe, it is this pin that must relax to the narration probe — not the reverse.
+# ([Phase 18b] pins that $TOUR_NARRATION_PROBE stays clean against session-capture, so that move is safe.)
+sess_file="skills/session-capture/SKILL.md"
+sess_desc="session-capture carries NO tour-specific knowledge (it never evaluates a boundary)"
+if [ ! -f "$sess_file" ]; then
+  check "$sess_desc" "fail" "$sess_file does not exist — a negative assertion cannot be satisfied vacuously; if the skill was renamed, update this pin's skill list"
+else
+  count=$( (grep -ciE "tutorial|workflow tour|onboarding tour|greenfield arm|brownfield arm" "$sess_file" || true) | head -1 )
+  if [ "${count:-0}" -eq 0 ]; then
+    check "$sess_desc" "pass"
+  else
+    check "$sess_desc" "fail" "tour-specific vocabulary leaked into $sess_file — session-capture has no boundary to evaluate, so it needs no tour awareness"
+  fi
+fi
+
+echo ""
+echo "[Phase 18b] tour-narration probe property-test (the probe's own anchors)"
+
+# WHY THIS PHASE EXISTS. Block (i)'s narration probe was mis-anchored TWICE inside a single feature (WP7o),
+# and neither mistake was detectable by any assertion — a pin can only tell you its *file* is clean, never
+# that its *anchors* are the right ones. Round 1 was too generic (`Step [0-9]`, `beat [A-G]` — house idioms
+# in 13 of 46 SKILL.md files); round 2 over-corrected into verbatim one-off sentences, leaving FOUR of nine
+# anchors matching nothing anywhere in skills/ while all 23 real `graduat*` lines sailed through. Both
+# rounds shipped GREEN. Per docs/lessons/test-harness-primitives.md, a harness primitive gets property-tested
+# across its input namespace; this phase is that test. The four directions below are the ones that actually
+# caught the defects — a fifth (anchor liveness) is what makes a dead anchor impossible to ship again.
+#
+# NOTE all cases pipe strings through the SAME $TOUR_NARRATION_PROBE the pin consumes. No file is written.
+
+probe_match() { printf '%s\n' "$2" | grep -cE "$1" || true; }
+
+# (1) LIVENESS — every anchor must match real copy in the arms. A dead anchor is the round-2 defect.
+if ls skills/tutorial-*/SKILL.md >/dev/null 2>&1; then
+  arm_corpus=$(cat skills/tutorial-*/SKILL.md 2>/dev/null)
+  dead_anchors=""
+  # Anchors are DERIVED from $TOUR_NARRATION_PROBE itself, never re-listed by hand. A hardcoded copy of the
+  # list silently stops covering anything later appended to the probe — during WP7o's own codify run, an
+  # accidental extra anchor in the probe went unnoticed while this very check reported 15/15 green. Deriving
+  # is what makes "every anchor is live" mean every anchor, not every anchor someone remembered to relist.
+  # Split on top-level `|` only: `(a|b)` groups inside one anchor must not be split, so protect them first.
+  # Walk the probe character by character, tracking paren depth, and break only on a depth-0 `|`. A regex
+  # approach is the wrong tool here (nested-group escaping defeated three sed/awk/perl attempts); an explicit
+  # scan is both shorter to reason about and exactly correct.
+  probe_anchors=$(printf '%s' "$TOUR_NARRATION_PROBE" | awk '{
+    depth = 0; out = "";
+    for (i = 1; i <= length($0); i++) {
+      c = substr($0, i, 1);
+      if (c == "(") depth++;
+      else if (c == ")") depth--;
+      if (c == "|" && depth == 0) { print out; out = ""; }
+      else out = out c;
+    }
+    if (out != "") print out;
+  }')
+  while IFS= read -r anchor; do
+    [ -z "$anchor" ] && continue
+    if [ "$(printf '%s\n' "$arm_corpus" | grep -cE "$anchor" || true)" -eq 0 ]; then
+      dead_anchors="${dead_anchors}${anchor} · "
+    fi
+  done <<EOF
+$probe_anchors
+EOF
+  if [ -z "$dead_anchors" ]; then
+    check "every narration anchor is LIVE against the arms' real copy (no dead one-off sentences)" "pass"
+  else
+    check "every narration anchor is LIVE against the arms' real copy (no dead one-off sentences)" "fail" \
+      "these anchors match nothing in skills/tutorial-*/SKILL.md, so no reworded leak can ever trip them: ${dead_anchors%· } — anchor on a phrase CLASS that recurs in the arms, not a verbatim sentence (hazard 4)"
+  fi
+else
+  check "every narration anchor is LIVE against the arms' real copy (no dead one-off sentences)" "fail" \
+    "no skills/tutorial-*/SKILL.md found — liveness cannot be established vacuously; if the arms were renamed, update this phase"
+fi
+
+# (2) SENSITIVITY — the shapes a real leak takes. These are independent of the anchors' literal wording:
+#     each was written as a leak first, then the anchor set was checked against it.
+while IFS='|' read -r leak_desc leak_text; do
+  [ -z "$leak_desc" ] && continue
+  if [ "$(probe_match "$TOUR_NARRATION_PROBE" "$leak_text")" -ge 1 ]; then
+    check "narration probe CATCHES $leak_desc" "pass"
+  else
+    check "narration probe CATCHES $leak_desc" "fail" "this leak shape slips through the anchor set: \"$leak_text\""
+  fi
+done <<'LEAKS'
+graduation copy|You have graduated from stepping — pick a faster gear
+drive-mode reveal|Present the 1-4 drive-mode menu at this point
+arm-name congratulation|Congratulations on completing the brownfield arm!
+second-person learner dialogue|You just watched the workflow write a real handoff pointer
+sample-data reference|The scaffolded sample lives in the user's cwd as a small task tracker
+tour self-reference|At this point in the tour, narrate the boundary
+sample task-data|Have them run the add command with buy milk as the first item
+sample-project reference|Point them at a sample project README before starting
+sample store filename|Confirm the entry was appended to todos.txt on disk
+scaffolder invocation|Run new-sample.sh to lay the project down first
+boundary-landing narration|Notice where we just landed — that was a real handoff
+LEAKS
+
+# (3) SPECIFICITY — legitimate prose that MUST NOT trip it. Each line is real or realistic mechanical copy;
+#     `Step 5` and `AUTO in all drive modes` are the two that actually fired during WP7o.
+while IFS='|' read -r ok_desc ok_text; do
+  [ -z "$ok_desc" ] && continue
+  if [ "$(probe_match "$TOUR_NARRATION_PROBE" "$ok_text")" -eq 0 ]; then
+    check "narration probe IGNORES $ok_desc" "pass"
+  else
+    check "narration probe IGNORES $ok_desc" "fail" "legitimate mechanical prose trips the probe — the anchor is too generic: \"$ok_text\""
+  fi
+done <<'OKS'
+the Step-N house idiom|The write (Step 5) then follows the §4 conditional gate.
+the beat-letter house idiom|Follow beat A then beat B of the sequence.
+drive-mode mechanics (not the menu)|the onward auto-chain is AUTO in all drive modes at a clean boundary
+the mechanical tour: field read|If the pointer carries a tour: field, take the mode from it.
+session-reflect's legitimate "detours"|Avoid unnecessary detours when reflecting.
+OKS
+
+# (4) CLEAN TREE — the three general session skills must all score zero. session-capture is included
+#     DELIBERATELY even though it routes to the other probe: its false FAIL here was the round-1 defect,
+#     and this case is what keeps a future consolidation onto one probe safe.
+for clean_skill in session-reflect session-handoff session-capture; do
+  clean_file="skills/${clean_skill}/SKILL.md"
+  clean_desc="narration probe is clean against ${clean_skill} (no false positive)"
+  if [ ! -f "$clean_file" ]; then
+    check "$clean_desc" "fail" "$clean_file does not exist — a negative assertion cannot be satisfied vacuously; if the skill was renamed, update this phase's skill list"
+  else
+    n=$( (grep -cE "$TOUR_NARRATION_PROBE" "$clean_file" || true) | head -1 )
+    if [ "${n:-0}" -eq 0 ]; then
+      check "$clean_desc" "pass"
+    else
+      check "$clean_desc" "fail" "the probe fires ${n}× on legitimate prose in $clean_file — either a real leak landed, or an anchor is too generic (WP7o round 1: \`Step [0-9]\` hit session-capture's \"The write (Step 5)\")"
+    fi
+  fi
+done
+
+# (5) CASE-STABILITY — the probe must be case-SENSITIVE, matching the pin's `grep -cE` (no `-i`). If a
+#     case-insensitive run finds MORE than the sensitive one, an anchor depends on casing it should not.
+cs=$(printf '%s\n' "$arm_corpus" | grep -cE "$TOUR_NARRATION_PROBE" || true)
+ci=$(printf '%s\n' "$arm_corpus" | grep -ciE "$TOUR_NARRATION_PROBE" || true)
+if [ "${cs:-0}" -eq "${ci:-0}" ]; then
+  check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "pass"
+else
+  check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "fail" \
+    "case-sensitive=${cs} vs case-insensitive=${ci} — an anchor's behavior depends on \`-i\`, which the pin does not pass; pick a case-stable anchor rather than adding \`-i\` (CLAUDE.md corollary)"
+fi
 
 echo ""
 
