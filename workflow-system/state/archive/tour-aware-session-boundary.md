@@ -6,6 +6,48 @@
 **Drive mode:** autopilot
 **WBS:** `workflow-system/product/wbs.md` → M11 / WP7m
 
+
+## ⚠️ FRAMING CORRECTED — 2026-07-27 (post-close)
+
+**This record's original diagnosis was wrong in three ways, corrected same-day after the operator
+re-read `tmp/wp7m-greenfield-reacceptance-walkthrough.md`.** Kept verbatim below for provenance; read
+this first.
+
+1. **The fabricated quote.** This file (and the spec, WBS, CHANGELOG, both arms, and the walkthrough
+   doc) attributed to the operator: *"It should just continue the tour without offering the hand off
+   option."* **No operator turn anywhere contains that sentence.** A full-log search across every
+   project found it originating in an **assistant** turn (`a1fd9223` line 47, 2026-07-25), which a
+   later handoff (`a1fd9223` line 1084) re-quoted back as the operator's ruling; I inherited it from
+   that handoff and propagated it. The operator's **only** statement is two words — **"continue the
+   tour"** (`mccc-tutorial-a/edf22b62` line 48, 2026-07-24) — typed as an *answer to a fork that
+   should not have been shown*.
+2. **"Mid-tour" was wrong.** Per the designed chain
+   (`docs/lessons/tutorial-tour-session-chain-flow.md`), **Session B ends with `/session-handoff`**;
+   the design has **no separate feature-close beat**. Verified in the logs: session `b2828bad`
+   (15:56) invoked `/session-handoff` at line 371, the user `/exit`ed, and `edf22b62` (16:04) opened
+   with `/session-restore`. The fork then fired at `edf22b62` line 45 — i.e. **in Session C, between
+   Step 7 and Step 8**, one step *after* the staged handoff beat was already spent. Not mid-tour.
+3. **The fix was the wrong mechanism.** The operator's correction: *"The issue is not a mid-tour
+   handoff offer. The issue is the end-of-tour handoff offer at the workflow boundary… It should
+   simply state that in a 'real' project, you the user would do / auto chain the handoff to give the
+   next session a quick start. **The issue is the framing.**"* The boundary **is** real and `S22` read
+   it correctly — so the guard must **narrate** it, not deny it and not suppress it. As originally
+   built, the guard's heading asserted the close was *"NOT the session's boundary"* and told the agent
+   not to take the exit — **suppressing the very mechanism the tour exists to demonstrate.**
+
+**As-corrected behavior** (both arms, `## Category` + Step 7; pinned + mutation-verified, suite 493):
+a clean boundary inside a tour run is **real** → run reflect, **say in one or two sentences what a real
+project would do here** (the chain auto-writes the handoff so the next session starts with the plot
+intact), then continue. Never invoke/offer the handoff; the tour writes `.session.md` **exactly once**,
+at the staged Step-7 beat.
+
+**Method lesson (worth a convention):** a quoted operator ruling inherited from a handoff must be
+re-grounded in the raw session log before being propagated into durable docs. Distinct from the
+existing read-the-origin-log rule — I *did* read the origin log and verified the misfire; I did not
+verify the **quote**, which arrived via the handoff rather than the log.
+
+---
+
 ## Problem Statement
 
 When the onboarding tour drives its in-tour feature to a terminal close (`feature-finalize` →
@@ -13,8 +55,12 @@ When the onboarding tour drives its in-tour feature to a terminal close (`featur
 boundary, and the modeled `S22` exit chain (`reflect → session-handoff`, AUTO in all four drive
 modes) pulls toward writing a session handoff — **mid-tour, with Step 7 Scene 3 and all of Step 8
 still unrun.** The operator's live walkthrough hit this: the agent recognized `S22`, noticed the tour
-had beats left, and *offered a fork* ("Continue the tour" vs. "Hand off now"). Operator ruling:
-**"It should just continue the tour without offering the hand off option."**
+had beats left, and *offered a fork* ("Continue the tour" vs. "Hand off now"). ~~Operator ruling:
+**"It should just continue the tour without offering the hand off option."**~~ **← ⚠️ FABRICATED — see
+the correction banner at the top of this file. No session log contains that sentence; it originated in
+an assistant turn and was re-quoted through a handoff. The operator's actual words were two: "continue
+the tour". The "mid-tour" claim in this paragraph is also wrong — the fork fired in Session C, between
+Step 7 and Step 8, after the staged handoff beat was already spent.**
 
 The root cause is a genuine ambiguity, not an agent error. Two different "boundary" notions coexist
 inside a tour run: the tour's **own staged** boundary (Step 7 deliberately runs `/session-handoff` →

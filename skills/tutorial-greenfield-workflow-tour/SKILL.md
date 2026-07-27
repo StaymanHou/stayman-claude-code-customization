@@ -30,37 +30,51 @@ inline by the dispatcher; see the Flow authority note above); it **runs the tour
 Minimal frontmatter (`name` / `description` / `argument-hint`); no `skills:` list, no `tools:` key.
 See `workflow-system/product/onboarding-flow-spec.md` for the design contract.
 
-### The tour hosts the workflow — a close inside the tour is NOT the session's boundary
+### A clean boundary inside the tour is real — narrate it, don't offer it
 
 This tour drives a **real** feature (or task) workflow to a **real** terminal close. When that close
-lands — `feature-finalize` / `feature-refactor` / `task-close` → `session-reflect` — the state machine correctly sees a
-**clean workflow boundary**, and the modeled session-boundary exit chain (**`S22`** on the
-no-learning arm, **`S23`** after a `session-capture` save) is **AUTO in all four drive modes**. Left
-alone, it will pull toward writing a session handoff.
+lands — `feature-finalize` / `feature-refactor` / `task-close` → `session-reflect` — the state machine
+correctly sees a **clean workflow boundary**, and the modeled session-boundary exit chain (**`S22`** on
+the no-learning arm, **`S23`** after a `session-capture` save) is **AUTO in all four drive modes**.
 
-**Inside a tour run, do not take that exit, and do not offer it.** The tour is the host; the
-in-tour feature's close is a *beat inside it*, not the end of the session. Concretely, when the
-in-tour close reaches `session-reflect`:
+**That reading is correct, and the boundary is genuine — so do not pretend otherwise.** But inside a
+tour run the handoff is **not yours to take and not yours to offer**: the tour already performs one
+handoff as a scripted teaching beat (Step 7), and the user came here for the tour, not for a decision.
+So at any clean boundary inside the run:
 
 - **Run reflect normally** — it is a real beat and part of what the tour is showing.
+- **Say what the boundary means, in one or two sentences** — that in the user's *own* project this is
+  exactly where the chain writes the handoff on its own, so the next session starts with the plot
+  intact. This is a **teaching moment, not a decision point**: the tour is demonstrating the mechanism,
+  so name it rather than skipping past it silently.
 - **Then continue to the next tour step.** Do **not** invoke `/session-handoff`, do **not** write
-  `workflow-system/state/.session.md` on the strength of `S22`/`S23`, and do **not** present a
-  "continue the tour, or hand off now?" choice. The user came here for the tour; asking them to
-  re-choose it mid-run is friction, and the answer is always "continue."
+  `workflow-system/state/.session.md`, and do **not** present a "continue the tour, or hand off now?"
+  choice. There is only one sensible answer mid-run, so presenting a fork is friction, not service.
 - **This holds in every drive mode**, including autopilot and FSD. It is a narrow, tour-scoped
   precondition on an existing edge — **not** a new transition, and **not** a change to `S22`/`S23`
   for real work outside a tour.
 
-The one handoff this tour *does* perform is its **own staged one in Step 7**, which the tour scripts
-deliberately as a teaching beat. That is the tour's boundary, not the state machine's — see Step 7,
-which draws the distinction explicitly.
+Illustrative shape (adapt the wording; keep the substance):
 
-> **Why this guard exists (a real misfire, 2026-07-25).** In the operator's live walkthrough, the
-> in-tour feature closed, reflect had nothing to persist, and the agent — reading `S22` correctly —
-> noticed tour beats remained and *offered a fork*: "Continue the tour" vs. "Hand off now." The
-> operator had to type "continue the tour" to proceed. The reasoning was sound; the ambiguity was
-> real (two different "boundary" notions coexist in a tour run). This section removes the ambiguity
-> rather than relying on the agent to re-derive the right answer mid-run.
+> *"Notice where we just landed — that's a real clean boundary. In your own project this is where the
+> workflow writes the session handoff by itself, so tomorrow's session starts with the whole plot
+> intact. You watched that work back in Step 7, so we won't do it twice — let's carry on."*
+
+The one handoff this tour *does* perform is its **own staged one in Step 7**, scripted deliberately as
+the teaching beat. See Step 7, which draws the distinction explicitly.
+
+> **Why this exists (a real misfire, 2026-07-24 walkthrough).** Per the designed chain
+> (`docs/lessons/tutorial-tour-session-chain-flow.md`), **Session B ends with `/session-handoff`** —
+> that staged bookend IS the tour's handoff, and the design has no separate "feature close" beat. In
+> the live run the arm performed that handoff, the user `/exit`ed, and `/session-restore` opened
+> Session C. *Then* the real in-tour feature's workflow reached `feature-finalize → session-reflect`
+> **inside Session C** — a second, genuine clean boundary the designed sequence never anticipated,
+> sitting between Step 7 and Step 8. The agent read `S22` correctly and surfaced it as a fork:
+> "Continue the tour" vs. "Hand off now." The operator answered *"continue the tour"*, and afterwards
+> identified the real defect: **the framing.** The boundary was real and the auto-chain reading was
+> right; what was wrong was handing the user a decision about a mechanism the tour had *just
+> demonstrated one step earlier*. The fix is to **narrate** such a boundary — name what a real project
+> would do here — not to suppress it, and not to re-offer a beat already spent.
 
 ## Framing (inherited — keep it honest)
 
@@ -281,16 +295,19 @@ beat honest for a skeptic.)
 
 ### Step 7 — Bookend 1: the boundary (STAGED — handoff → restore)
 
-> **Two different "boundaries" — keep them straight (they are easy to conflate).** This step's
-> `/session-handoff` → `/exit` → `/session-restore` is the tour's **own STAGED boundary**: you script
-> it, here, on purpose, as the teaching beat. It is the **only** handoff this tour performs. It is
-> *not* the same thing as the **state machine's real boundary** — the one the in-tour feature's
-> terminal close (`feature-finalize` → `session-reflect`) produces, which the exit chain (`S22`/`S23`)
-> would otherwise auto-take. That one is **suppressed for the whole tour run** (see "The tour hosts
-> the workflow" under `## Category`). So: the in-tour close does **not** hand off and does **not**
-> offer to; *this* step does, because the tour says so and because there is now real accumulated state
-> to lose and recover. If you find yourself about to write `.session.md` anywhere other than Step 7
-> Scene 1, you are following the wrong boundary.
+> **This is the tour's ONE handoff — and per the designed chain it is the terminus of this session.**
+> `docs/lessons/tutorial-tour-session-chain-flow.md` has Session B ending with `/session-handoff`; the
+> user then `/exit`s and `/session-restore` opens Session C for Step 8. So *this* step writes
+> `.session.md` on purpose, as the teaching beat, because there is now real accumulated state to lose
+> and recover.
+>
+> **A second clean boundary can still show up later in the chain** — most commonly the in-tour
+> feature's own `feature-finalize → session-reflect`, which may land in Session C between this step and
+> Step 8. That boundary is **real**, and the exit chain (`S22`/`S23`) reads it correctly. Do **not**
+> take it and do **not** offer it as a choice: **narrate** it instead — one or two sentences naming
+> what a real project would do there — then continue (see "A clean boundary inside the tour is real"
+> under `## Category`). The rule of thumb: the tour writes `.session.md` **once**, here; anywhere else,
+> you talk about the boundary rather than acting on it.
 
 **The emotional peak** — placed near the end so there's real state to lose and recover. By now the
 user has a WIP state file (from Step 3), a real check that ran (Step 5), and a backlog entry (Step

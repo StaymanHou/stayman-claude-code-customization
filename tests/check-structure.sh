@@ -2400,16 +2400,28 @@ for arm in greenfield brownfield; do
   # anchor on `the session's boundary` + the heading line, both of which are case-stable and verified
   # to match exactly once per arm. This keeps the assertions inside `grep_check`, which fails CLOSED
   # on a missing file (count 0 < min 1) — the hand-rolled form failed OPEN.
-  grep_check "${arm} arm carries the tour-aware boundary guard (a close inside the tour is not the session's boundary)" "$arm_file" "^### The tour hosts the workflow" 1
-  grep_check "${arm} arm's guard states the boundary rule in its heading" "$arm_file" "the session's boundary" 1
-  # the guard must name the edges it suppresses, so a future edit cannot silently decouple it
-  grep_check "${arm} arm's guard names the S22/S23 exit chain it suppresses" "$arm_file" "S22" 1
-  # imperative form — the operator's ruling is "just continue the tour", not "ask which they want"
-  grep_check "${arm} arm's guard forbids BOTH taking and offering the handoff" "$arm_file" "do not take that exit, and do not offer it" 1
+  grep_check "${arm} arm carries the tour-aware boundary guard (a clean in-tour boundary is narrated, not offered)" "$arm_file" "^### A clean boundary inside the tour is real" 1
+  # The guard must NOT deny that the boundary is genuine — that was the original defect's inverse
+  # (WP7m first shipped a guard headed "a close inside the tour is NOT the session's boundary", which
+  # was wrong: the boundary IS real and S22/S23 read it correctly). Pin the corrected semantics.
+  grep_check "${arm} arm's guard affirms the boundary is REAL (not 'not a boundary')" "$arm_file" "boundary is genuine" 1
+  # the guard must name the edges it governs, so a future edit cannot silently decouple it
+  grep_check "${arm} arm's guard names the S22/S23 exit chain it governs" "$arm_file" "S22" 1
+  # narrate-not-suppress: the load-bearing verb. The operator's correction was that the DEFECT WAS THE
+  # FRAMING — the fix says what a real project would do here, rather than silently skipping or re-asking.
+  # Anchor on a WRAP-STABLE fragment: the full phrase "teaching moment, not a decision point" wraps
+  # across lines in the brownfield arm (line-wrap blind spot, docs/lessons/verify-grep-blind-spots.md).
+  # The copy is correct in both arms; a line-spanning pattern is the grep's bug, not the prose's.
+  grep_check "${arm} arm's guard says NARRATE the boundary (teaching moment, not a decision point)" "$arm_file" "teaching moment, not a decision" 1
+  grep_check "${arm} arm's guard tells the agent to SAY what the boundary means" "$arm_file" "Say what the boundary means" 1
+  grep_check "${arm} arm's guard still forbids taking AND offering the handoff" "$arm_file" "not yours to take and not yours to offer" 1
   # drive-mode scoping: S22/S23 are AUTO in all four modes, so the guard must cover all four
   grep_check "${arm} arm's guard holds in every drive mode (S22/S23 are AUTO in all four)" "$arm_file" "holds in every drive mode" 1
-  # the tour's OWN staged Step-7 handoff must survive — this is the guard's over-fire risk
-  grep_check "${arm} arm distinguishes the tour's staged boundary from the state machine's real one" "$arm_file" "Two different" 1
+  # the tour's OWN staged Step-7 handoff must survive — this is the guard's over-fire risk. Anchored on
+  # the write-once rule, which is what actually distinguishes Step 7 from any later boundary.
+  grep_check "${arm} arm's Step 7 states the write-.session.md-ONCE rule" "$arm_file" "writes .\`?\.session\.md\`? \*\*once\*\*" 1
+  # the designed chain is the authority for WHERE the handoff belongs (Session B's terminus)
+  grep_check "${arm} arm's Step 7 cites the designed session-chain as the authority" "$arm_file" "tutorial-tour-session-chain-flow" 1
 done
 
 # (i) WP7m regression guard — the guard lives in the ARMS, not in the general session skills. This is

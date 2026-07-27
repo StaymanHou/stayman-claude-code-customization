@@ -417,7 +417,7 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > - [x] 7l.4 Verify/adjust `new-sample.sh` + its smoke for the `--dest .` path (verify-before-edit: the surface may already suffice); confirm family consistency incl. the full-cycle tour
 > - [x] 7l.5 Reflect into `onboarding-flow-spec.md` (§3 greenfield env, §8 constraints)
 >
-> ### WP7m: Tour-aware session boundary — no mid-tour handoff offer — 🔨 BUILT 2026-07-27 · ACCEPTANCE OWED
+> ### WP7m: Tour-aware session boundary — narrate an in-tour boundary, don't offer it — 🔨 BUILT 2026-07-27 (framing CORRECTED 2026-07-27) · ACCEPTANCE OWED
 > **AS-BUILT (2026-07-27):** Guard added to **both arms** (`### The tour hosts the workflow — a close
 > inside the tour is NOT the session's boundary` under `## Category`, read early every run) + a
 > staged-vs-real disambiguation blockquote at the head of **Step 7** in both arms (~40 lines *above*
@@ -458,14 +458,14 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > **Provenance:** Operator's batch acceptance walkthrough (2026-07-25), greenfield feedback item 2. The
 > operator pasted the exact misfire: after the tour's in-tour feature reached `feature-finalize` →
 > `session-reflect` with nothing to persist, the agent recognized the **`S22` clean-boundary auto-chain**
-> and then *offered a fork* — "Continue the tour" vs. "Hand off now (`/session-handoff`)" — mid-tour, with
+> and then *offered a fork* — "Continue the tour" vs. "Hand off now (`/session-handoff`)" — **in Session C of the designed chain, one step after the tour had already performed its staged Step-7 handoff**, with
 > Step 7 Scene 3 and all of Step 8 still unrun. **Operator ruling:** *"It should just continue the tour
 > without offering the hand off option."*
 > **Root cause (verified, NOT merely copy):** `S22` (`reflect → session-handoff`, no-learning arm) is
 > **modeled AUTO in all four drive modes** at a clean workflow boundary
 > (`workflow-system/product/transitions.md:137,481` + the "Session-boundary exit chain" pause-policy block
 > replicated in all 4 `agents/*/AGENTS.md`), and **neither `session-reflect` nor `session-handoff` has any
-> tour-awareness** (grep for `tour|tutorial` in both SKILL.mds → zero hits). So mid-tour the in-tour
+> tour-awareness** (grep for `tour|tutorial` in both SKILL.mds → zero hits). So the in-tour
 > feature's close *correctly* presents as a clean boundary and pulls toward a handoff. Compounding it: the
 > tour's **own** Step 7 Scene 2 legitimately instructs an `/exit` + fresh session, so two competing
 > "boundary" notions coexist — the tour's staged one and the state machine's real one. The agent's
@@ -547,7 +547,7 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > (brownfield arm · WP7g corrections · WP7k full-cycle tour) PASS as-shipped** ("everything else are
 > good") — only the **greenfield arm** drew fixes. Per operator instruction ("plan each fix as a WP"),
 > the three fixes are ratified as **WP7l** (sample in the user's own cwd + disposal offer), **WP7m**
-> (tour-aware boundary — no mid-tour handoff offer), **WP7n** (Step-8 close restructure, terse
+> (tour-aware boundary — narrate an in-tour boundary rather than offering it), **WP7n** (Step-8 close restructure, terse
 > `Next Step:` block last). All three **gate WP7e** — pins lock *accepted* copy, so WP7e still codifies
 > last, now against all four surfaces including the WP7l/WP7m/WP7n changes. Each fix was
 > **verified against the real code + the origin session log before being written up** (per the
@@ -597,3 +597,6 @@ M7: WP1 (decide layout+migration) → WP2 (sweep + migrate tool + run) → WP3-M
   - **M11 tail after the 2026-07-25 batch acceptance run:** the walkthrough-driven expansion (WP7f–WP7n) is ordered by the **pins-lock-accepted-copy** rule, which is a *learning* dependency, not a build one — every copy/behavior correction must be operator-accepted before WP7e freezes pins, else the pins cement copy the operator would have changed. Current order: **{WP7l ∥ WP7n} → WP7m → greenfield re-acceptance → WP7e**. **STATUS 2026-07-27: WP7l + WP7n + WP7m are ALL BUILT (783bdf2 + WP7m 2026-07-27) but NOT accepted** — the operator deferred the verify-human copy read until all three fixes are in, WP7m has now landed, so the next step is **ONE full hands-on greenfield tour run** (operator 2026-07-27: *"defer. I'll just do a full tour again after changes are done"*) which accepts all three (flipping them to ✅ SHIPPED) and answers the open refuse-if-non-empty design question, then WP7e. WP7l/WP7n are parallel-safe apart from the arm's close, which both edit (7n.3 owns the merge); WP7m follows so its guard placement is settled against an already-restructured close rather than racing a third concurrent edit to the same region. WP7m is the only one of the three that can reach state-machine surface — if plan-time analysis shows it needs a new edge or the 4 `agents/*/AGENTS.md` pause tables, it escalates to `/feature-spec` instead of widening in place.
 - **WP8 terminal** — aggregates deliverables back to Claudesk (**including the required M11 `docs_list` path change** + the onboarding flow spec from WP7a).
 - No environment/Docker WP (this repo is host-based shell + prompt files, no services). No 3rd-party probe WPs (no external integrations). No orchestration/async WPs (none in scope). **No M11 probe WP** — the only unknown was the *design*, resolved by the brainstorm; the sub-WPs are all build. Deviations from the standard ordering sequence are all "N/A — no such surface in this cycle."
+
+## Session Handoff — 2026-07-27 12:05
+Handed off. See `workflow-system/state/.session.md` to restore. (M11 tail: **all three greenfield fixes now BUILT** — WP7l + WP7n `783bdf2`, **WP7m `e7e682b`** + close `f65510e`. The operator is walking through the greenfield re-acceptance tour by hand using `tmp/wp7m-greenfield-reacceptance-walkthrough.md`. **Next: read their feedback FIRST**, apply accepted changes, flip all three 🔨 BUILT → ✅ SHIPPED, then WP7e (codify, last). One decision still owed: the refuse-if-non-empty vs. subdir-fallback design question — cheap now, expensive after WP7e pins.)

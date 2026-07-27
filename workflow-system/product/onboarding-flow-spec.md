@@ -30,36 +30,53 @@ The third and last of the three greenfield fixes ratified from the operator's 20
 acceptance walkthrough (WP7l + WP7n landed 2026-07-25; the prior revision noted "WP7m is a separate
 follow-on WP" — **this closes that loop**).
 
-**The defect.** The tour **hosts** a real feature/task workflow and drives it to a real terminal
-close. When that close lands (`feature-finalize` / `task-close` → `session-reflect`), the state machine
-correctly sees a **clean workflow boundary**, and the modeled session-boundary exit chain — **`S22`**
-(no-learning arm) / **`S23`** (after a `session-capture` save) — is **AUTO in all four drive modes**
-(`transitions.md:481-482` + the "Session-boundary exit chain" pause-policy block). Mid-tour, that
-pulls toward writing a session handoff with tour beats still unrun. In the operator's live run the
-agent recognized `S22`, noticed beats remained, and **offered a fork** ("Continue the tour" vs. "Hand
-off now"); the operator had to type "continue the tour." **Operator ruling: it should just continue
-the tour without offering the handoff option.**
+> **⚠️ FRAMING CORRECTED 2026-07-27 (same day, after the operator re-read the walkthrough doc).** The
+> first draft of this section — and the first build of the guard — got the diagnosis wrong in three
+> ways, all now fixed here and in both arms. It (a) claimed the misfire was **mid-tour**, (b) asserted
+> the in-tour close is **"NOT the session's boundary"**, and (c) quoted an **operator ruling that does
+> not exist in any session log** (*"It should just continue the tour without offering the hand off
+> option"* — traced to an assistant turn in session `a1fd9223`, then re-quoted as the operator's words
+> through a handoff). The operator's **only** statement on this is two words — **"continue the tour"**
+> (`mccc-tutorial-a/edf22b62`, line 48, 2026-07-24) — typed as an *answer to a fork that should not have
+> been shown.* The corrected reading is below. Lesson recorded: a quoted operator ruling inherited from
+> a handoff must be re-grounded in the raw log before it is propagated into a durable doc.
 
-**Root cause was real state-machine surface, not copy** (verified): neither `session-reflect` nor
-`session-handoff` had *any* tour-awareness (`grep -i 'tour|tutorial'` → 0 substantive hits), and the
-arms never stated which of the two coexisting "boundary" notions wins. The agent's hedge was a
-*reasonable* local read of a genuine ambiguity — so the fix **removes the ambiguity** rather than
-correcting a mistake.
+**The defect (corrected).** Per the designed chain
+([`docs/lessons/tutorial-tour-session-chain-flow.md`](../../docs/lessons/tutorial-tour-session-chain-flow.md)),
+**Session B ends with `/session-handoff`** — that staged Step-7 bookend *is* the tour's handoff, and the
+designed sequence contains **no separate "feature close" beat.** In the live run the arm performed that
+handoff, the user `/exit`ed, and `/session-restore` opened **Session C**. *Then* the real in-tour
+feature's workflow reached `feature-finalize → session-reflect` **inside Session C** — a second, genuine
+clean boundary the designed sequence never anticipated, sitting **between Step 7 and Step 8** (not
+mid-tour). The state machine read it correctly: the exit chain **`S22`** (no-learning arm) / **`S23`**
+(after a `session-capture` save) is **AUTO in all four drive modes** (`transitions.md:481-482` + the
+"Session-boundary exit chain" pause-policy block). The agent surfaced it as a fork — "Continue the tour"
+vs. "Hand off now" — and the operator answered *"continue the tour."*
+
+**The root cause is the FRAMING, not the mechanism.** The boundary was real and the `S22` reading was
+right. What was wrong was handing the user a **decision** about a mechanism the tour had *just
+demonstrated one step earlier* — the Step-7 beat was already spent. Neither `session-reflect` nor
+`session-handoff` has any tour-awareness (`grep -i 'tour|tutorial'` → 0 substantive hits), so nothing
+told the agent that this boundary was a **teaching moment rather than a choice**.
 
 **Settled family invariant (new — binds both arms):**
 
-> **A terminal close reached *inside* a tour run is NOT the session's boundary.** The tour is the host;
-> the in-tour close is a beat inside it. On reaching `session-reflect` from an in-tour close: run
-> reflect normally, then **continue to the next tour step** — do **not** invoke `/session-handoff`, do
-> **not** write `.session.md` on the strength of `S22`/`S23`, and do **not** present a "continue the
-> tour, or hand off now?" choice. **This holds in every drive mode, including autopilot and FSD.**
-> The **only** handoff a tour performs is its own **staged Step-7 bookend**, which the arm scripts
-> deliberately as a teaching beat — that one still runs, untouched.
+> **A clean boundary inside a tour run is REAL — narrate it, don't offer it.** Do not deny the boundary
+> (it is genuine, and `S22`/`S23` read it correctly), and do not take or offer the handoff either. On
+> reaching `session-reflect` from an in-tour close: run reflect normally; **say in one or two sentences
+> what the boundary means** — that in the user's *own* project this is exactly where the chain writes
+> the handoff by itself, so the next session starts with the plot intact; then **continue to the next
+> tour step.** Do **not** invoke `/session-handoff`, do **not** write `.session.md`, and do **not**
+> present a "continue the tour, or hand off now?" choice — there is one sensible answer mid-run, so a
+> fork is friction, not service. **This holds in every drive mode, including autopilot and FSD.** The
+> **only** handoff a tour performs is its own **staged Step-7 bookend** — the tour writes `.session.md`
+> **exactly once**, there; anywhere else it *talks about* the boundary rather than acting on it.
 
 **Where the guard lives (settled at plan time — 7m.1).** In the **tour arms**, not the general session
-skills. Both arms gain a `### The tour hosts the workflow…` subsection under `## Category` (read early
-on every run) plus a staged-vs-real disambiguation blockquote at the head of Step 7 (~40 lines
-*before* the scripted `/session-handoff`, so it is read before the action). Rationale: it satisfies the WBS preference for keeping
+skills. Both arms gain a `### A clean boundary inside the tour is real — narrate it, don't offer it`
+subsection under `## Category` (read early on every run) plus a write-once/authority blockquote at the
+head of Step 7 (~40 lines *before* the scripted `/session-handoff`, so it is read before the action).
+Rationale: it satisfies the WBS preference for keeping
 tour-specific knowledge **out of** the general session skills at *zero* cost, and it makes
 "general `S22`/`S23` unchanged for real work" true **by construction** — the general skills are not
 edited at all, so there is no regression surface. Rejected: a "hosted inside a tutorial run"
@@ -79,14 +96,18 @@ arch → wbs` and reaches **zero** terminal closes (`grep -Ei 'finalize|task-clo
 0 hits), so `session-reflect` never fires and `S22`/`S23` cannot trigger there. The asymmetry is
 **load-bearing, not an oversight** — recorded here so it is not later re-opened as a scope-symmetry gap.
 
-**Codified:** 13 pins in `tests/check-structure.sh` **[Phase 18]** (placed in the existing `S22`/`S23`
+**Codified:** pins in `tests/check-structure.sh` **[Phase 18]** (placed in the existing `S22`/`S23`
 exit-chain phase, since the guard is a precondition on that same chain), all **mutation-verified**;
-suite 472 → **485 PASS**. Scoped to **copy-independent behavioral invariants only** — guard presence,
-the named chain, the both-take-and-offer prohibition, all-four-drive-mode scoping, staged-vs-real
-distinction, and **3 regression pins** asserting `session-reflect`/`session-handoff`/`session-capture`
-carry **zero** tour knowledge. Wording/ordering/sentence-count pins are deliberately left to **WP7e**
-against operator-**accepted** copy (verify-human is DEFERRED here — pinning wording now would invert
-the pins-lock-accepted-copy rule).
+suite 472 → **493 PASS**. Scoped to **copy-independent behavioral invariants only** — guard presence,
+the named chain, the **narrate-not-suppress** verb, the both-take-and-offer prohibition,
+all-four-drive-mode scoping, the write-`.session.md`-**once** rule, the designed-chain citation, and
+**3 regression pins** asserting `session-reflect`/`session-handoff`/`session-capture` carry **zero**
+tour knowledge. **One pin exists specifically to prevent regressing to the wrong framing**: it asserts
+the guard affirms the boundary **is genuine**, so a future edit cannot restore the "NOT the session's
+boundary" claim (mutation-verified — reverting the old heading + framing trips three pins).
+Wording/ordering/sentence-count pins are deliberately left to **WP7e** against operator-**accepted**
+copy (verify-human is DEFERRED here — pinning wording now would invert the pins-lock-accepted-copy
+rule).
 
 **⚠️ Acceptance owed.** Integration boundary applies (prose inside shipped, consumed skill prompts) →
 F11-skip forbidden, Mode-3 auto-skip correctly did not fire. Operator deferred the read to a **full
@@ -307,7 +328,7 @@ outcome to check).
 | 4 | **Hit a verify gate** → **B — it pauses and asks** (verify-human / plan review). The trust beat. Onboarding stays in stepping so this is visible; reinforce G here ("it paused to ask — and even here you can redirect"). | **B** (BEAT), **G** reinforce | natural (kept visible) |
 | 5 | **Grounding (STAGED):** agent runs the runnable scaffold, **observes** it via `verify-self`, reports **PASS/FAIL** vs an observable outcome — the user watches it **CHECK reality** instead of guessing. Pre-framed ("watch — it's about to actually run it and check the output; this is the grounding moment"). | **Grounding** (STAGED — verify-self) | **STAGED** |
 | 6 | **SURFACE (STAGED):** agent hits the planted authentic tangent → runs SURFACE → logs to backlog → continues without losing the plot. **C** = the rabbit-hole caught; backlog is C's flip side (folded in, not a separate aha). | **C** (STAGED greenfield), backlog folded into C | **STAGED** |
-| 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → full context survives. **REVISED 2026-07-27 (WP7m):** this staged bookend is the **only** handoff the tour performs, and the arm now says so explicitly — a **mid-tour** terminal close (`feature-finalize` → `session-reflect`) must **not** take or offer the `S22`/`S23` exit chain in any drive mode; it runs reflect and continues to the next tour step. A blockquote at the head of Step 7 draws the staged-vs-real boundary distinction so the guard cannot over-fire onto this beat. The **emotional peak**; placed near the end so there's real state to lose-and-recover. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
+| 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → full context survives. **REVISED 2026-07-27 (WP7m):** this staged bookend is the **only** handoff the tour performs, and the arm now says so explicitly — a later clean boundary in the chain (`feature-finalize` → `session-reflect`, typically in Session C) must **not** take or offer the `S22`/`S23` exit chain in any drive mode; it runs reflect and continues to the next tour step. A blockquote at the head of Step 7 draws the staged-vs-real boundary distinction so the guard cannot over-fire onto this beat. The **emotional peak**; placed near the end so there's real state to lose-and-recover. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
 | 8 | **Bookend 2 — the graduation (STAGED, LAST):** reveal drive modes (autopilot/FSD) — deliberately last, deliberately **un-pushed** ("autopilot chains safe steps; FSD skips even verify-human — here's when appropriate. Not recommended yet"). Then a **replay invitation** (WP7j): invite the user to re-run this same tour in autopilot/FSD by **crossing a fresh session boundary** (`/exit` → new session) and **re-entering at the arm skill directly** — `/tutorial-greenfield-workflow-tour`, NOT the dispatcher (the dispatcher would re-force stepping + re-ask the path fork, both of which the faster-gear replay moves past). **Greenfield: the arm stamps a fresh `new-sample.sh` copy automatically** (the agent runs it, not the human; nothing carries over). A *named* invite, not a live demo (a live autopilot run would hide beat B). **REVISED 2026-07-25 (WP7n) — the close is now narrative-first, decision-last:** the replay invitation is compressed to a one-line *motivation* here, and its mechanics move into the terse `Next Step:` block; the close order is graduation-reveal → replay-motivation → **Close:** point at what we did NOT demo (full **Hierarchy** + **Reflect/Capture-learns-you**) → **artifacts-as-proof** (the real files this run produced) → **`Next Step:` block LAST** (per-branch, ≤3 sentences/option, options named-never-auto-run; Branch A = replay / own-code / deep-dive, Branch B = no replay option). **WP7l:** the greenfield block's cleanup **offer** (delete the throwaway sample — offer, never auto-remove) is the block's last line, deliberately *after* the artifacts-as-proof so the tour never asks to remove the evidence before showing it. | **Drive-modes** (STAGED reveal, LAST), **Replay-invite** (NAMED, compressed into `Next Step:` opt 1), **Hierarchy**/**Reflect** (NAMED at close), **`Next Step:` decision block** (LAST), **cleanup offer** (greenfield only) | **STAGED** reveal + NAMED close |
 
 ### Brownfield flow — "it read MY real code and reconstructed what I never wrote down"
@@ -329,7 +350,7 @@ read-heavy + additive (low blast radius), so BYO + `auto` mode (classifier-gated
 | 4 | **`product-context` revises** the `CLAUDE.md` that `/init` generated → durable project context now reflects the reconstructed strategy. Open the file: **A — state is a file you can open** lands here. | **A** (BEAT) | natural |
 | 5 | **Do one small real unit of work** on the real repo → plan → Work Tree → **hit a verify gate → B** (it pauses and asks). Trust beat, kept visible (stepping). Reinforce G. | **B** (BEAT), **G** reinforce | natural (kept visible) |
 | 6 | **Grounding + SURFACE = NAMED/opportunistic here** (not staged): probe-first and verify-self **fire naturally** if the real work touches an integration or a runnable surface; SURFACE is pointed-at when a tangent occurs ("when you hit a tangent, here's what SURFACE does"). | **Grounding** (NAMED), **C** (NAMED) | NAMED / opportunistic |
-| 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → context survives on the real repo. Emotional peak. **REVISED 2026-07-27 (WP7m):** same guard as greenfield, mirrored here — this staged bookend is the **only** handoff the tour performs; a **mid-tour** terminal close must **not** take or offer the `S22`/`S23` exit chain in any drive mode (run reflect, then continue the tour), and a staged-vs-real blockquote at the head of Step 7 keeps the guard from over-firing onto this beat. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
+| 7 | **Bookend 1 — the boundary (STAGED):** `/session-handoff` → "leave" → `/session-restore` → context survives on the real repo. Emotional peak. **REVISED 2026-07-27 (WP7m):** same guard as greenfield, mirrored here — this staged bookend is the **only** handoff the tour performs; a later clean boundary must **not** be taken or offered — it is **narrated** (say what a real project would do), then the tour continues, and a staged-vs-real blockquote at the head of Step 7 keeps the guard from over-firing onto this beat. | **Handoff/Restore** (STAGED bookend) | **STAGED** |
 | 8 | **Bookend 2 — the graduation (STAGED, LAST):** reveal drive modes, un-pushed. Then a **replay invitation** (WP7j): invite the user to re-run this same tour in autopilot/FSD — **brownfield: `git stash`/restore back to the clean baseline first, then cross a fresh session boundary** (`/exit` → new session in the same repo) and **re-enter at the arm skill directly** — `/tutorial-brownfield-workflow-tour`, NOT the dispatcher (same reason as greenfield: the dispatcher re-forces stepping + re-asks the fork). Undoing the tour's real-repo edits first is why the Step-0 git-safety pre-flight matters. A *named* invite, not a live demo. **REVISED 2026-07-25 (WP7n) — narrative-first, decision-last (same shape as greenfield):** the replay invitation is compressed to a one-line *motivation* here and its mechanics (clean-baseline-first included) move into the terse `Next Step:` block; order is graduation-reveal → replay-motivation → **Close:** point at what we did NOT demo (**Hierarchy** CUT on brownfield — too big to feel in run one — + **Reflect/Capture-learns-you**) → **artifacts-as-proof** (the real files this run touched on their repo) → **`Next Step:` block LAST** (Branch A = replay-from-clean-baseline / just-start-working via `/session-start`; Branch B = one option, no replay). **Deliberate brownfield asymmetries, stated as prohibitions:** NO cleanup offer (real repo, nothing disposable — `git stash`/`restore` is the user's own undo path) and NO deep-dive pointer (`/tutorial-product-cycle-tour` is pointed at from the *greenfield* close, pairing with its hierarchy taste). | **Drive-modes** (STAGED reveal, LAST), **Replay-invite** (NAMED, compressed into `Next Step:` opt 1), **Hierarchy** (CUT/named), **Reflect** (NAMED at close), **`Next Step:` decision block** (LAST) | **STAGED** reveal + NAMED close |
 
 **Why the paths never reconverge:** the two headline ahas are different (greenfield = structure on
