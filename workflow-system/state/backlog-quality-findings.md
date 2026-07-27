@@ -10,6 +10,20 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 # tour-state-survives-session-boundary — 2026-07-27
 
 ## SURFACE-2026-07-27-QUALITY-TOUR-STEP-FIELD-HAS-NO-READER
+- **✅ DECIDED 2026-07-27 — option (b): DROP the field.** Operator ruling: *"drop it"*. `tour:` alone becomes the
+  marker. Rationale matches the finding's own analysis — the arms already resume correctly by narrative
+  position, so the field promises a step-addressed precision nothing implements; dropping it is cheaper, matches
+  actual behavior, and removes a surface WP7e would otherwise have to freeze. Option (a) (wire step-addressed
+  resume) is explicitly rejected, not deferred — revisit only if a tour ever needs to resume mid-scene.
+- **Removal sites (10 live, verified 2026-07-27):** `skills/session-handoff/SKILL.md` (:66 prose, :92 schema
+  block) · `skills/session-restore/SKILL.md` (:28) · `skills/tutorial-greenfield-workflow-tour/SKILL.md` (:375,
+  :425 field table) · `skills/tutorial-brownfield-workflow-tour/SKILL.md` (:229, :282 field table) ·
+  `docs/lessons/tutorial-tour-session-chain-flow.md` (:68) · `tests/fixtures/wip/tour-inner-work-finalized.md`
+  (:4) · `tests/fixtures/session/tour-greenfield-stepping.md` (:9) · plus `wbs.md` (:516, :543) and
+  `onboarding-flow-spec.md` (:48) as as-built records — **those two are history, not contract: annotate, do not
+  rewrite.** Watch the S31/S34 fixtures: removing the field from a fixture changes what the scenario exercises.
+- **Sequencing:** do this **inside WP7e**, alongside the sibling schema-of-record finding — both edit the same
+  five prompt files WP7e freezes, and doing them together means one pass over that surface, not two.
 - **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MAJOR
 - **Priority:** medium
 - **Finding:** `tour_step:` is **written by four files and documented in five, but read by none.**
