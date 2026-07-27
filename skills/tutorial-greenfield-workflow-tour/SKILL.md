@@ -30,6 +30,38 @@ inline by the dispatcher; see the Flow authority note above); it **runs the tour
 Minimal frontmatter (`name` / `description` / `argument-hint`); no `skills:` list, no `tools:` key.
 See `workflow-system/product/onboarding-flow-spec.md` for the design contract.
 
+### The tour hosts the workflow — a close inside the tour is NOT the session's boundary
+
+This tour drives a **real** feature (or task) workflow to a **real** terminal close. When that close
+lands — `feature-finalize` / `feature-refactor` / `task-close` → `session-reflect` — the state machine correctly sees a
+**clean workflow boundary**, and the modeled session-boundary exit chain (**`S22`** on the
+no-learning arm, **`S23`** after a `session-capture` save) is **AUTO in all four drive modes**. Left
+alone, it will pull toward writing a session handoff.
+
+**Inside a tour run, do not take that exit, and do not offer it.** The tour is the host; the
+in-tour feature's close is a *beat inside it*, not the end of the session. Concretely, when the
+in-tour close reaches `session-reflect`:
+
+- **Run reflect normally** — it is a real beat and part of what the tour is showing.
+- **Then continue to the next tour step.** Do **not** invoke `/session-handoff`, do **not** write
+  `workflow-system/state/.session.md` on the strength of `S22`/`S23`, and do **not** present a
+  "continue the tour, or hand off now?" choice. The user came here for the tour; asking them to
+  re-choose it mid-run is friction, and the answer is always "continue."
+- **This holds in every drive mode**, including autopilot and FSD. It is a narrow, tour-scoped
+  precondition on an existing edge — **not** a new transition, and **not** a change to `S22`/`S23`
+  for real work outside a tour.
+
+The one handoff this tour *does* perform is its **own staged one in Step 7**, which the tour scripts
+deliberately as a teaching beat. That is the tour's boundary, not the state machine's — see Step 7,
+which draws the distinction explicitly.
+
+> **Why this guard exists (a real misfire, 2026-07-25).** In the operator's live walkthrough, the
+> in-tour feature closed, reflect had nothing to persist, and the agent — reading `S22` correctly —
+> noticed tour beats remained and *offered a fork*: "Continue the tour" vs. "Hand off now." The
+> operator had to type "continue the tour" to proceed. The reasoning was sound; the ambiguity was
+> real (two different "boundary" notions coexist in a tour run). This section removes the ambiguity
+> rather than relying on the agent to re-derive the right answer mid-run.
+
 ## Framing (inherited — keep it honest)
 
 `tutorial-getting-started` already set the honest expectation (a real, guided **~10–15 minute** run,
@@ -248,6 +280,18 @@ beat honest for a skeptic.)
 > actually doing. That backlog is where your good-but-not-now ideas go to survive."*
 
 ### Step 7 — Bookend 1: the boundary (STAGED — handoff → restore)
+
+> **Two different "boundaries" — keep them straight (they are easy to conflate).** This step's
+> `/session-handoff` → `/exit` → `/session-restore` is the tour's **own STAGED boundary**: you script
+> it, here, on purpose, as the teaching beat. It is the **only** handoff this tour performs. It is
+> *not* the same thing as the **state machine's real boundary** — the one the in-tour feature's
+> terminal close (`feature-finalize` → `session-reflect`) produces, which the exit chain (`S22`/`S23`)
+> would otherwise auto-take. That one is **suppressed for the whole tour run** (see "The tour hosts
+> the workflow" under `## Category`). So: the in-tour close does **not** hand off and does **not**
+> offer to; *this* step does, because the tour says so and because there is now real accumulated state
+> to lose and recover. If you find yourself about to write `.session.md` anywhere other than Step 7
+> Scene 1, you are following the wrong boundary.
+
 **The emotional peak** — placed near the end so there's real state to lose and recover. By now the
 user has a WIP state file (from Step 3), a real check that ran (Step 5), and a backlog entry (Step
 6). That accumulated state is what makes this beat land: there is genuinely something to reset the

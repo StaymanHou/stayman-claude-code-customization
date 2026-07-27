@@ -6,6 +6,55 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 ---
 
+
+# tour-aware-session-boundary — 2026-07-27
+
+## SURFACE-2026-07-27-QUALITY-GREPCHECK-NO-CASE-INSENSITIVE-OPTION
+- **Source:** feature:review-quality (tour-aware-session-boundary / WP7m), ship `18722aa`
+- **Severity:** MINOR
+- **Location:** `tests/check-structure.sh` — the `grep_check()` helper (~line 32)
+- **Finding:** `grep_check` is case-sensitive only. WP7m needed a case-insensitive match (the guard
+  heading reads `... is **NOT** the session's boundary`, with `NOT` upper-cased for emphasis) and
+  hand-rolled an 8-line `grep -ciE` block instead — the only place in a ~2400-line file that
+  reimplements the helper's body. **Resolved in-feature for WP7m** by anchoring on a case-*stable*
+  substring instead (`the session's boundary` + `^### The tour hosts the workflow`, each verified to
+  match exactly 1× per arm), so the assertions moved back inside `grep_check` — which also fixed a
+  fail-open-on-missing-file hazard the hand-rolled form had.
+- **Residual (why this entry exists):** the *next* caller who genuinely needs case-insensitivity has
+  no supported path and will hand-roll again, re-introducing the fail-open shape. Consider an optional
+  4th/5th parameter or a `grep_check_i` variant.
+- **Context:** related to the emphasis-word blind spot — `docs/lessons/verify-grep-blind-spots.md`
+  lists en-dash / bold-wrap / line-wrap cases but not **case-variance in emphasis words**
+  (`NOT`, `MUST`, `ONLY`), which cost a false-negative during WP7m's own verify-auto. Worth adding.
+- **Suggested action:** add case-insensitive support to `grep_check` (keeping the fail-closed
+  behavior), and add the case-variance case to the verify-grep-blind-spots lesson.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-27-QUALITY-STEP7-BRIGHTLINE-UNSCOPED
+- **Source:** feature:review-quality (tour-aware-session-boundary / WP7m), ship `18722aa`
+- **Severity:** MINOR
+- **Location:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` (Step-7 blockquote, ~:292) +
+  `skills/tutorial-brownfield-workflow-tour/SKILL.md` (~:198) — the closing sentence
+- **Finding:** the bright-line test — *"If you find yourself about to write `.session.md` anywhere
+  other than Step 7 Scene 1, you are following the wrong boundary"* — is **absolute and unscoped**,
+  unlike the `## Category` bullet, which correctly scopes its prohibition to writing "on the strength
+  of `S22`/`S23`". Read literally, the sentence would also suppress an **explicitly
+  operator-requested** mid-tour handoff ("I need to stop, write me a handoff"), which
+  `CLAUDE.snippet.md` → `## Session vocabulary` treats as the legitimate expensive branch when
+  explicitly named. Neither arm has any user-interrupt/abandon path to fall back on (grepped: none).
+- **Context:** a real but narrow hole. The auto-chain suppression the guard exists for works
+  correctly; this is only about an explicit user request during a tour. **Deliberately NOT fixed
+  in-feature:** the fix edits **tour copy inside the exact region the operator's DEFERRED acceptance
+  read covers**, and its wording is what WP7e must freeze against *accepted* text — fixing it blind
+  would invert the pins-lock-accepted-copy rule.
+- **Suggested action (hypothesis — verify against the code first):** add a scoping clause such as
+  "…unless the user explicitly asks for a handoff" to the bright-line sentence in **both** arms, and
+  settle it inside **WP7e's copy-freeze** alongside the other 4 user-facing copy MINORs already
+  routed there from WP7l/WP7n.
+- **Priority:** low
+- **Status:** pending
+
 # wp7k-full-product-cycle-tour — 2026-07-24
 
 <!-- 1 MINOR finding from feature-review-quality, ship 8bbf5c1 (drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 0 MAJOR. The finding is INHERITED verbatim from the design §6 draft description (not introduced by the build) — verified: design doc line 221-222 uses the same 4-stage chain. Verify against the real code before applying (review-finding-actions-are-hypotheses). -->

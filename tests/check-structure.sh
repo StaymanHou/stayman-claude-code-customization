@@ -2384,6 +2384,62 @@ grep_check "session-capture auto-write is surfaced as a read-time veto" "skills/
 # (g) the durable convention re-point lives in the injected snippet (mirrors Phase-17's snippet pin)
 grep_check "CLAUDE.snippet.md re-points the session-boundary handoff to the authoritative pause-policy table" "CLAUDE.snippet.md" "pause-policy table" 1
 
+# (h) WP7m — tour-aware boundary guard: a tour-hosted terminal close must not offer/take the S22/S23
+#     exit chain. Deliberately scoped to COPY-INDEPENDENT behavioral invariants: the guard's presence
+#     in both arms, and that the general session skills are NOT the carrier. Copy-shaped assertions
+#     (wording, ordering, sentence counts) are WP7e's charter against operator-ACCEPTED copy —
+#     verify-human is DEFERRED here, so pinning wording now would freeze unaccepted copy and invert
+#     the load-bearing pins-lock-accepted-copy rule.
+for arm in greenfield brownfield; do
+  arm_file="skills/tutorial-${arm}-workflow-tour/SKILL.md"
+  # Anchor on the case-STABLE substring, not on the emphasis-cased word. The heading reads
+  # "... is NOT the session's boundary" — matching `not the session's boundary` case-sensitively
+  # returns 0 on correct copy (a real false-negative during this feature's own verify-auto; see
+  # docs/lessons/verify-grep-blind-spots.md, which should perhaps name case-variance in emphasis
+  # words alongside its en-dash / bold-wrap / line-wrap cases). Rather than hand-roll a `-i` variant,
+  # anchor on `the session's boundary` + the heading line, both of which are case-stable and verified
+  # to match exactly once per arm. This keeps the assertions inside `grep_check`, which fails CLOSED
+  # on a missing file (count 0 < min 1) — the hand-rolled form failed OPEN.
+  grep_check "${arm} arm carries the tour-aware boundary guard (a close inside the tour is not the session's boundary)" "$arm_file" "^### The tour hosts the workflow" 1
+  grep_check "${arm} arm's guard states the boundary rule in its heading" "$arm_file" "the session's boundary" 1
+  # the guard must name the edges it suppresses, so a future edit cannot silently decouple it
+  grep_check "${arm} arm's guard names the S22/S23 exit chain it suppresses" "$arm_file" "S22" 1
+  # imperative form — the operator's ruling is "just continue the tour", not "ask which they want"
+  grep_check "${arm} arm's guard forbids BOTH taking and offering the handoff" "$arm_file" "do not take that exit, and do not offer it" 1
+  # drive-mode scoping: S22/S23 are AUTO in all four modes, so the guard must cover all four
+  grep_check "${arm} arm's guard holds in every drive mode (S22/S23 are AUTO in all four)" "$arm_file" "holds in every drive mode" 1
+  # the tour's OWN staged Step-7 handoff must survive — this is the guard's over-fire risk
+  grep_check "${arm} arm distinguishes the tour's staged boundary from the state machine's real one" "$arm_file" "Two different" 1
+done
+
+# (i) WP7m regression guard — the guard lives in the ARMS, not in the general session skills. This is
+#     what keeps S22/S23 unchanged for real (non-tour) work: if a future edit migrates tour-awareness
+#     into the general skills, this pin fails and the reviewer is forced to re-justify the placement.
+#     NB two hazards this block is written to avoid, both found at review:
+#     (1) **fail-open on a missing/renamed file.** A bare `grep -c ... 2>/dev/null || true` yields an
+#         empty count on a nonexistent path, which `:-0` turns into 0 — i.e. the negative assertion
+#         would PASS vacuously. This repo has already renamed exactly these three skills once (WP5/M9:
+#         session-pause→session-handoff, session-store-learning→session-capture), so the rename case is
+#         real, not hypothetical. Hence the explicit `[ -f ]` precondition: fail closed, loudly.
+#     (2) **vocabulary narrower than the invariant.** Matching only `tutorial|workflow tour` would let a
+#         leak worded "onboarding tour" / "the greenfield arm" through. Bare `tour` is NOT usable — it
+#         false-positives on session-reflect's legitimate "unnecessary detours" — so the alternation is
+#         widened to the specific tour vocabularies instead of loosened.
+for sess_skill in session-reflect session-handoff session-capture; do
+  sess_file="skills/${sess_skill}/SKILL.md"
+  sess_desc="${sess_skill} carries NO tour-specific knowledge (WP7m guard lives in the arms)"
+  if [ ! -f "$sess_file" ]; then
+    check "$sess_desc" "fail" "$sess_file does not exist — a negative assertion cannot be satisfied vacuously; if the skill was renamed, update this pin's skill list"
+  else
+    count=$( (grep -ciE "tutorial|workflow tour|onboarding tour|greenfield arm|brownfield arm" "$sess_file" || true) | head -1 )
+    if [ "${count:-0}" -eq 0 ]; then
+      check "$sess_desc" "pass"
+    else
+      check "$sess_desc" "fail" "tour-specific vocabulary leaked into $sess_file — WP7m deliberately keeps tour-awareness out of the general session skills"
+    fi
+  fi
+done
+
 echo ""
 
 # ── Summary ────────────────────────────────────────────────────────────────

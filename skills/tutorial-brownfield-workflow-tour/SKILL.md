@@ -31,6 +31,38 @@ inline by the dispatcher; see the Flow authority note above); it **runs the tour
 Minimal frontmatter (`name` / `description` / `argument-hint`); no `skills:` list, no `tools:` key.
 See `workflow-system/product/onboarding-flow-spec.md` for the design contract.
 
+### The tour hosts the workflow — a close inside the tour is NOT the session's boundary
+
+This tour drives a **real** unit of work on the user's **real** repo through to a **real** terminal
+close. When that close lands — `feature-finalize` / `feature-refactor` / `task-close` → `session-reflect` — the state
+machine correctly sees a **clean workflow boundary**, and the modeled session-boundary exit chain
+(**`S22`** on the no-learning arm, **`S23`** after a `session-capture` save) is **AUTO in all four
+drive modes**. Left alone, it will pull toward writing a session handoff.
+
+**Inside a tour run, do not take that exit, and do not offer it.** The tour is the host; the
+in-tour close is a *beat inside it*, not the end of the session. Concretely, when the in-tour close
+reaches `session-reflect`:
+
+- **Run reflect normally** — it is a real beat and part of what the tour is showing.
+- **Then continue to the next tour step.** Do **not** invoke `/session-handoff`, do **not** write
+  `workflow-system/state/.session.md` on the strength of `S22`/`S23`, and do **not** present a
+  "continue the tour, or hand off now?" choice. The user came here for the tour; asking them to
+  re-choose it mid-run is friction, and the answer is always "continue."
+- **This holds in every drive mode**, including autopilot and FSD. It is a narrow, tour-scoped
+  precondition on an existing edge — **not** a new transition, and **not** a change to `S22`/`S23`
+  for real work outside a tour.
+
+The one handoff this tour *does* perform is its **own staged one in Step 7**, which the tour scripts
+deliberately as a teaching beat. That is the tour's boundary, not the state machine's — see Step 7,
+which draws the distinction explicitly.
+
+> **Why this guard exists (a real misfire, 2026-07-25).** In the operator's live walkthrough of the
+> sibling greenfield arm, the in-tour feature closed, reflect had nothing to persist, and the agent —
+> reading `S22` correctly — noticed tour beats remained and *offered a fork*: "Continue the tour" vs.
+> "Hand off now." The operator had to type "continue the tour" to proceed. The reasoning was sound;
+> the ambiguity was real (two different "boundary" notions coexist in a tour run). This arm carries
+> the same guard because it hosts a real workflow the same way.
+
 ## Framing (inherited — keep it honest)
 
 `tutorial-getting-started` already set the honest expectation (a real, guided **~10–15 minute** run,
@@ -154,6 +186,18 @@ This is the deliberate greenfield/brownfield asymmetry (spec §7): C and groundi
 greenfield sample, NAMED-only on the real brownfield repo.
 
 ### Step 7 — Bookend 1: the boundary (STAGED — handoff → restore)
+
+> **Two different "boundaries" — keep them straight (they are easy to conflate).** This step's
+> `/session-handoff` → `/exit` → `/session-restore` is the tour's **own STAGED boundary**: you script
+> it, here, on purpose, as the teaching beat. It is the **only** handoff this tour performs. It is
+> *not* the same thing as the **state machine's real boundary** — the one the in-tour close
+> (`feature-finalize` → `session-reflect`) produces, which the exit chain (`S22`/`S23`) would
+> otherwise auto-take. That one is **suppressed for the whole tour run** (see "The tour hosts the
+> workflow" under `## Category`). So: the in-tour close does **not** hand off and does **not** offer
+> to; *this* step does, because the tour says so and because there is now real accumulated state to
+> lose and recover. If you find yourself about to write `.session.md` anywhere other than Step 7
+> Scene 1, you are following the wrong boundary.
+
 **The emotional peak**, and it hits *harder* here than on a sample — this is the user's real
 codebase, with real work in flight (the reverse-engineered strategy from Step 3, the revised
 `CLAUDE.md` from Step 4, a real unit of work mid-flight from Step 5). This beat answers their actual
