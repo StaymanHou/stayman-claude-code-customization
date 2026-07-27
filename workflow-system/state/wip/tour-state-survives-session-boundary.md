@@ -731,8 +731,23 @@ intact afterwards (19 entries, 0 stashes, no content lost). Worth a hardening li
 `agents/feature-verify-self-runner/AGENTS.md`; surfaced to the backlog rather than fixed here, as it is outside
 this feature's scope.
 
+## Ship (2026-07-27) — complete, commit `ccfedac`
+
+**Cleanup:** no debug/TODO/scratch residue in the diff. **Verification:** `check-structure.sh` 516/1 (the 1 being
+the pre-existing out-of-scope `effortLevel` settings drift), greenfield script suite 31/31, three shell scripts
+parse, `session.yaml` parses at 40 scenarios. **Empty-diff invariant re-confirmed at ship time:** zero changed
+lines in `transitions.md` and all four `agents/*/AGENTS.md`.
+
+**18 files, +2582/−33.** Staged **explicitly by path** — never `git add -A` — because the untracked
+self-referential symlink `my-claude-code-customization → <repo root>` sits at the repo root and is NOT
+gitignored, so a blanket add would have swept it into the feature commit. It is pre-existing (dated Jul 13),
+unrelated to this feature, and deliberately left unstaged for a separate decision.
+
+**Not pushed.** Close-commit discipline: the terminal-close skills commit locally and never auto-`git push` —
+publishing stays the operator's call, preserving the squash/amend/follow-up-learning window.
+
 ## Current Node
-- **Path:** Feature > ship
+- **Path:** Feature > finalize (refactor complete)
 - **Active scope:** **All four phases are build-complete with three of four gates closed each** — verify-auto,
   verify-self and verify-codify are `[x]` on Phases 1–4. The next live step is **`/feature-ship`**.
 - **Blocked:** none.
@@ -1474,6 +1489,113 @@ Three build-time constraint checks, all green:
   the two `session-restore` hits are that skill's own internal step self-references ("step 4", "step 5",
   "step 4b") plus the `tour_step` field name — caught only because the probe was case-insensitive. So Phase 4
   can pin "mechanical field read, no narration copy" against what actually shipped.
+
+## Code-Quality Review — tour-state-survives-session-boundary
+
+Reviewed against ship commit `ccfedac` (single-commit feature). `drive_mode: autopilot` → CRITICAL auto-invokes
+`feature-refactor` (F40); MAJOR/MINOR follow the Mode-3 auto-backlog path.
+
+### Strengths
+- Root-cause analysis converges from three directions (commit message, WBS AS-BUILT, spec Revision) on one gap —
+  state lived in the conversation and died at `/exit` — and shows *why* WP7m's arms-only placement was
+  structurally unreachable, citing the raw Session-C skill trace as evidence rather than assertion. Superseding
+  a prior decision with evidence while preserving its spirit is how this repo's decision layers should evolve.
+- The empty-diff discipline on `transitions.md` and all four `agents/*/AGENTS.md` is verified per-phase and
+  stated in three places — proven, not claimed.
+- The `[Phase 18b]` insight ("a pin can assert its file is clean but never that its anchors are right") is a
+  real, transferable discovery about structural pins, generalized into an anchor-liveness check rather than a
+  one-off fix.
+- The group-10/11 script-test comments record the **four inert designs that preceded the shipped pin** and then
+  conclude honestly that "no non-prohibitive mention of X" is not expressible as a grep. Refusing to ship a
+  fifth clever regex that merely *looks* like a guard is the better outcome.
+- S33/S34 left deliberately failing with the reasoning inlined in the YAML, the runtime registry, and a SURFACE
+  entry. Preserving a red signal over a green suite is the harder and correct choice.
+
+### Issues
+
+**CRITICAL**
+- [`tests/check-structure.sh:2640-2641`] **`arm_corpus` is read outside the branch that assigns it.** It is set
+  at line 2540 inside `if ls skills/tutorial-*/SKILL.md`, but case (5) CASE-STABILITY reads it unconditionally at
+  top level. If the arms are ever renamed or moved, `set -u` fires *inside* the `$( )` subshells, both `cs` and
+  `ci` capture empty, `${cs:-0} -eq ${ci:-0}` evaluates `0 -eq 0`, and the check reports **PASS while asserting
+  nothing** — exit 0. **Independently reproduced** before acting. Case (1) was deliberately given an `else`
+  branch that fails closed for exactly this scenario; case (5) has none. This is the vacuous-negative-assertion
+  class that `CLAUDE.md:259` codifies — occurring *inside* the phase written to enforce anchor integrity, one
+  commit after the convention landed.
+
+**MAJOR**
+- [`tests/check-structure.sh:2550-2560`] **The depth-aware awk splitter fails open on bracket expressions and
+  escaped parens.** It tracks `(`/`)` but not `[...]` or backslash escapes: `a[|]b|c` splits into three broken
+  fragments, and `x[(]y|z` unbalances depth so the whole probe collapses into one anchor. A malformed fragment
+  makes `grep -cE` exit 2 with empty stdout; `|| true` swallows it and `[ "" -eq 0 ]` errors without aborting —
+  so the anchor is **silently treated as live**. The probe already uses `[ -]`, `[Yy]`, `[Tt]`, `\.`, so these
+  shapes are not hypothetical. **A simpler correct design exists:** keep the anchors in a bash array and join
+  with `|` to build the probe — one source of truth, no parsing, no depth tracking, and the derivation hazard
+  the comment worries about disappears entirely.
+- [greenfield arm:425 · brownfield arm:282 · `session-handoff`:92 · `session-restore`:28] **`tour_step:` is
+  written by four files, documented in five, and read by none.** `session-restore` step 5 hands back to
+  `resume_skill` unconditionally; neither arm branches on it to pick an entry step. A schema-mandated field with
+  no consumer can drift to any value with no observable effect and no test can catch it. Either wire the arms'
+  re-entry to it or drop it and let `tour:` alone be the marker.
+- [`session-handoff`:28 · `session-reflect`:135 · `session-restore`:28 · both arms] **The `tour:`/`tour_step:`
+  contract is an implicit schema across five prompt files with no canonical definition.** Block (i)'s positive
+  pin is `grep_check ... 'tour:' 1` — a bare substring that would pass on any incidental mention, so it pins the
+  *word*, not the contract. The drift is already visible: `session-handoff` says `drive_mode` is *required* on a
+  tour pointer, while `session-restore` step 4.3 handles the "`tour:` pointer somehow has no `drive_mode`" case.
+  Two files, two postures, nothing that would flag a third reader adopting a third. Naming `session-handoff` §2
+  as the schema of record and having the other four cite it would cost a sentence each.
+- [`runtimes.md:3`] **The frontmatter `updated:` value now carries an HTML comment** (`2026-07-27  <!-- WP7o
+  Phase 4 verify-auto -->`). The canonical shape in `CLAUDE.snippet.md` is a bare ISO date; per-observation
+  commentary belongs on the `**History:**` bullets, which this diff also does correctly. Nothing parses the
+  field today, so not breaking — but it makes the one machine-shaped field in the file no longer a clean date.
+
+**MINOR**
+- [`tests/check-structure.sh:2523`] `[Phase 18b]` is the file's first sub-lettered phase; every other is
+  integer-numbered, and it is absent from `CLAUDE.md`'s phase inventory and `arch.md`.
+- [`tests/check-structure.sh:2494-2508`] The two-probe design (narration vs. session-capture's zero-vocabulary
+  regex) is enforced only by a comment; it will read as an oversight to a maintainer who skims.
+- [greenfield arm:466-483 · brownfield arm:324-341] The "carry the run to its end" and "narrate, don't act on
+  it" blocks are near-verbatim duplicates across the arms — now the third duplicated block in this file pair,
+  each a place the two can silently diverge.
+
+### Assessment
+Careful, well-evidenced work that advances the codebase rather than accruing debt. The core design decision —
+`resume_skill` points at the arm so the arm's own prose is in context at the boundary — is correct, correctly
+identified as the load-bearing half, with the reader guards honestly demoted to defense-in-depth and their
+non-binding **measured** rather than assumed. The weaknesses cluster in one ironic place: the `[Phase 18b]`
+self-test written to prevent inert pins itself contains a vacuous-pass path and a fail-open parser, both of the
+exact class the repo codified a convention against one commit earlier — the meta-level test needs the same
+fail-closed audit as the tests it audits. Nothing here warrants a back-loop on a shipped commit.
+
+### If you disagree
+Dismiss any finding by editing this section and marking the line `[DISMISSED]` before `feature-finalize`
+archives this WIP.
+
+### Refactor outcome (F40 → F21, 2026-07-27)
+
+**CRITICAL — FIXED.** `arm_corpus` was assigned inside case (1)'s own `if` while case (5) read it at top level.
+The fix restructures the phase so **one guard, opened once, encloses every case that reads the corpus** — there
+is no longer a top-level read that could get this wrong. Verified by pointing the glob at a renamed arm path:
+both cases now **FAIL loudly** naming the rename case, where case (5) previously reported a vacuous PASS.
+
+**MAJOR (awk splitter) — FIXED, by deletion rather than patching.** The reviewer's suggestion was right and
+went further than a repair: `TOUR_NARRATION_ANCHORS` is now a bash **array** and the probe is *joined* from it
+(`IFS='|'`). The parser is gone, so the `[...]`/escape fail-open hazard is structurally impossible — there is
+nothing left to parse. Confirmed the join is **byte-identical** to the previous literal (behavior preserved),
+and re-ran the exhaustive sweep: **all 11 anchors deleted individually, every deletion still yields ≥1 FAIL,
+0 unguarded.**
+
+**MAJOR (`runtimes.md` frontmatter) — FIXED.** One line; the `updated:` value is a bare ISO date again, with
+the per-observation commentary staying on the `**History:**` bullet where the convention puts it.
+
+**Deliberately NOT fixed here (scope guard).** The two remaining MAJORs — `tour_step:` has no reader, and the
+five-file `tour:` schema has no canonical definition — are **not cleanup**. The first carries a genuine product
+call (wire step-addressed resume, or drop the field); both edit the prompt files **WP7e is chartered to
+freeze**. Fixing them under a refactor mandate would be scope expansion on a shipped commit. They remain
+backlogged with fix directions recorded. The 3 MINORs likewise stay backlogged.
+
+**Verification:** `check-structure.sh` **516 PASS / 1 FAIL** — identical to pre-refactor, which is the contract.
+Greenfield script suite **31/31**. Phase 18b **21/21**.
 
 ## Discoveries
 

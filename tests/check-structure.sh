@@ -2474,10 +2474,30 @@ done
 #         bare is deliberately NOT an anchor — session-reflect legitimately says "AUTO in all drive
 #         modes"; the tour-specific shape is the *menu*. The probe is case-SENSITIVE: `-i` would
 #         re-widen `Step`→`step` for no gain (see the case-stable-anchor corollary in CLAUDE.md).
-# Hoisted to a variable so [Phase 18b] below can property-test the anchor set itself. Defined ONCE and
-# consumed by both the pin and its self-test — an inline duplicate would let the two drift, and drift is
-# exactly how both anchor defects survived (an untestable literal is an unguarded one).
-TOUR_NARRATION_PROBE="todos?\.txt|buy milk|new-sample\.sh|Notice where we just landed|graduat|drive[ -]mode menu|[Yy]ou (just|already) (saw|watched|built|ran|took)|[Tt]he (greenfield|brownfield) (tour|arm)|in the tour|[Tt]he [a-z]{0,12} ?sample|sample project"
+# THE ANCHOR ARRAY IS THE SINGLE SOURCE OF TRUTH; the probe is JOINED from it. Both the pin below and its
+# [Phase 18b] self-test consume these — the pin via $TOUR_NARRATION_PROBE, the self-test by iterating the
+# array. Two earlier shapes were rejected: an inline literal inside the pin (untestable, so unguarded — which
+# is how both anchor defects shipped green), and a hoisted string that [Phase 18b] PARSED back into anchors
+# (the splitter mishandled `[...]` and escapes, silently counting a broken fragment as live). Joining from an
+# array means there is nothing to parse and no second copy to drift.
+#
+# Each anchor is a CONTENT CLASS that recurs in the arms' real copy — never a generic procedure word, never a
+# verbatim one-off sentence. [Phase 18b] enforces exactly that: every anchor must be live against the arms,
+# every one must have a leak case that fails when it is deleted, and none may trip legitimate mechanical prose.
+TOUR_NARRATION_ANCHORS=(
+  'todos?\.txt'                                     # sample store filename
+  'buy milk'                                        # sample task data
+  'new-sample\.sh'                                  # scaffolder invocation
+  'Notice where we just landed'                     # boundary-landing narration
+  'graduat'                                         # graduation copy
+  'drive[ -]mode menu'                              # the mode reveal (NOT bare "drive modes" — see hazard 4)
+  '[Yy]ou (just|already) (saw|watched|built|ran|took)'   # second-person learner dialogue
+  '[Tt]he (greenfield|brownfield) (tour|arm)'       # arm self-reference
+  'in the tour'                                     # tour self-reference
+  '[Tt]he [a-z]{0,12} ?sample'                      # sample reference, modifier-tolerant
+  'sample project'                                  # sample-project reference
+)
+TOUR_NARRATION_PROBE=$(IFS='|'; printf '%s' "${TOUR_NARRATION_ANCHORS[*]}")
 
 for sess_skill in session-reflect session-handoff; do
   sess_file="skills/${sess_skill}/SKILL.md"
@@ -2535,47 +2555,40 @@ echo "[Phase 18b] tour-narration probe property-test (the probe's own anchors)"
 
 probe_match() { printf '%s\n' "$2" | grep -cE "$1" || true; }
 
-# (1) LIVENESS — every anchor must match real copy in the arms. A dead anchor is the round-2 defect.
-if ls skills/tutorial-*/SKILL.md >/dev/null 2>&1; then
+# THE ARM CORPUS GUARD COVERS EVERY CASE THAT NEEDS IT. Cases (1) and (5) both read $arm_corpus. An earlier
+# draft assigned it inside case (1)'s own `if` and let case (5) read it at top level — so a rename of the arms
+# made `set -u` fire *inside* case (5)'s `$( )` subshells, both counts captured empty, `0 -eq 0` evaluated
+# true, and the check reported PASS while asserting nothing (reproduced, not theorised). That is the exact
+# vacuous-negative-assertion class CLAUDE.md codifies, inside the phase written to prevent inert pins. One
+# guard, opened once, closed after case (5) — so there is no top-level read of $arm_corpus to get this wrong.
+if ! ls skills/tutorial-*/SKILL.md >/dev/null 2>&1; then
+  check "every narration anchor is LIVE against the arms' real copy (no dead one-off sentences)" "fail" \
+    "no skills/tutorial-*/SKILL.md found — liveness cannot be established vacuously; if the arms were renamed, update this phase"
+  check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "fail" \
+    "no skills/tutorial-*/SKILL.md found — case-stability cannot be established vacuously; if the arms were renamed, update this phase"
+else
   arm_corpus=$(cat skills/tutorial-*/SKILL.md 2>/dev/null)
+
+  # (1) LIVENESS — every anchor must match real copy in the arms. A dead anchor is the round-2 defect.
   dead_anchors=""
-  # Anchors are DERIVED from $TOUR_NARRATION_PROBE itself, never re-listed by hand. A hardcoded copy of the
-  # list silently stops covering anything later appended to the probe — during WP7o's own codify run, an
-  # accidental extra anchor in the probe went unnoticed while this very check reported 15/15 green. Deriving
-  # is what makes "every anchor is live" mean every anchor, not every anchor someone remembered to relist.
-  # Split on top-level `|` only: `(a|b)` groups inside one anchor must not be split, so protect them first.
-  # Walk the probe character by character, tracking paren depth, and break only on a depth-0 `|`. A regex
-  # approach is the wrong tool here (nested-group escaping defeated three sed/awk/perl attempts); an explicit
-  # scan is both shorter to reason about and exactly correct.
-  probe_anchors=$(printf '%s' "$TOUR_NARRATION_PROBE" | awk '{
-    depth = 0; out = "";
-    for (i = 1; i <= length($0); i++) {
-      c = substr($0, i, 1);
-      if (c == "(") depth++;
-      else if (c == ")") depth--;
-      if (c == "|" && depth == 0) { print out; out = ""; }
-      else out = out c;
-    }
-    if (out != "") print out;
-  }')
-  while IFS= read -r anchor; do
-    [ -z "$anchor" ] && continue
+  # $TOUR_NARRATION_ANCHORS (defined with block (i) above) is the SINGLE SOURCE OF TRUTH: the probe is joined
+  # from it, and this loop iterates it. An earlier draft did the reverse — kept the probe as a string literal
+  # and PARSED it back into anchors with a depth-tracking splitter. That parser tracked `(`/`)` but not `[...]`
+  # or backslash escapes, so an anchor like `a[|]b` split into broken fragments; `grep -cE` then exited 2 with
+  # empty stdout, `|| true` swallowed it, and the anchor was silently counted LIVE. Since the probe already
+  # uses `[ -]`, `[Yy]`, `[Tt]` and `\.`, that was a live hazard, not a hypothetical one. Joining from an array
+  # deletes the parser and the whole failure mode with it — there is nothing left to parse.
+  for anchor in "${TOUR_NARRATION_ANCHORS[@]}"; do
     if [ "$(printf '%s\n' "$arm_corpus" | grep -cE "$anchor" || true)" -eq 0 ]; then
       dead_anchors="${dead_anchors}${anchor} · "
     fi
-  done <<EOF
-$probe_anchors
-EOF
+  done
   if [ -z "$dead_anchors" ]; then
     check "every narration anchor is LIVE against the arms' real copy (no dead one-off sentences)" "pass"
   else
     check "every narration anchor is LIVE against the arms' real copy (no dead one-off sentences)" "fail" \
       "these anchors match nothing in skills/tutorial-*/SKILL.md, so no reworded leak can ever trip them: ${dead_anchors%· } — anchor on a phrase CLASS that recurs in the arms, not a verbatim sentence (hazard 4)"
   fi
-else
-  check "every narration anchor is LIVE against the arms' real copy (no dead one-off sentences)" "fail" \
-    "no skills/tutorial-*/SKILL.md found — liveness cannot be established vacuously; if the arms were renamed, update this phase"
-fi
 
 # (2) SENSITIVITY — the shapes a real leak takes. These are independent of the anchors' literal wording:
 #     each was written as a leak first, then the anchor set was checked against it.
@@ -2635,15 +2648,17 @@ for clean_skill in session-reflect session-handoff session-capture; do
   fi
 done
 
-# (5) CASE-STABILITY — the probe must be case-SENSITIVE, matching the pin's `grep -cE` (no `-i`). If a
-#     case-insensitive run finds MORE than the sensitive one, an anchor depends on casing it should not.
-cs=$(printf '%s\n' "$arm_corpus" | grep -cE "$TOUR_NARRATION_PROBE" || true)
-ci=$(printf '%s\n' "$arm_corpus" | grep -ciE "$TOUR_NARRATION_PROBE" || true)
-if [ "${cs:-0}" -eq "${ci:-0}" ]; then
-  check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "pass"
-else
-  check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "fail" \
-    "case-sensitive=${cs} vs case-insensitive=${ci} — an anchor's behavior depends on \`-i\`, which the pin does not pass; pick a case-stable anchor rather than adding \`-i\` (CLAUDE.md corollary)"
+  # (5) CASE-STABILITY — the probe must be case-SENSITIVE, matching the pin's `grep -cE` (no `-i`). If a
+  #     case-insensitive run finds MORE than the sensitive one, an anchor depends on casing it should not.
+  #     INSIDE the arm-corpus guard by construction — see the guard comment above for why that matters.
+  cs=$(printf '%s\n' "$arm_corpus" | grep -cE "$TOUR_NARRATION_PROBE" || true)
+  ci=$(printf '%s\n' "$arm_corpus" | grep -ciE "$TOUR_NARRATION_PROBE" || true)
+  if [ "${cs:-0}" -eq "${ci:-0}" ]; then
+    check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "pass"
+  else
+    check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "fail" \
+      "case-sensitive=${cs} vs case-insensitive=${ci} — an anchor's behavior depends on \`-i\`, which the pin does not pass; pick a case-stable anchor rather than adding \`-i\` (CLAUDE.md corollary)"
+  fi
 fi
 
 echo ""

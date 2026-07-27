@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-07-27  <!-- WP7o Phase 4 verify-auto -->
+updated: 2026-07-27
 ---
 
 

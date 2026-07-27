@@ -7,6 +7,74 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 ---
 
 
+# tour-state-survives-session-boundary — 2026-07-27
+
+## SURFACE-2026-07-27-QUALITY-TOUR-STEP-FIELD-HAS-NO-READER
+- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MAJOR
+- **Priority:** medium
+- **Finding:** `tour_step:` is **written by four files and documented in five, but read by none.**
+  `session-restore` step 5 hands back to `resume_skill` unconditionally; neither arm branches on it to choose an
+  entry step (they assume Step 8 by narrative position). The schema calls it "the step to resume **at**".
+- **Why it matters:** a schema-mandated field with no consumer can drift to any value with no observable effect,
+  and no test can catch the drift. It also implies a resume precision the implementation does not have.
+- **Fix direction (two viable, pick one):** (a) wire the arms' re-entry to it, making resume genuinely
+  step-addressed; or (b) drop it and let `tour:` alone be the marker. (b) is cheaper and matches current
+  behavior; (a) is the better product if a tour ever needs to resume mid-scene.
+- **Pickup shape:** settle inside **WP7e** — it touches the arm re-entry copy WP7e is chartered to freeze. Do
+  not fix blind: the choice between (a) and (b) is a product call about how precise tour resume should be.
+
+## SURFACE-2026-07-27-QUALITY-TOUR-SCHEMA-HAS-NO-CANONICAL-DEFINITION
+- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MAJOR
+- **Priority:** medium
+- **Finding:** the `tour:`/`tour_step:` contract is an **implicit schema spanning five prompt files with no
+  canonical definition.** Block (i)'s positive pin is `grep_check ... 'tour:' 1` — a bare substring that passes
+  on any incidental mention, so it pins the *word*, not the contract.
+- **Observed drift, already present:** `session-handoff` states `drive_mode` is *required* on a tour pointer,
+  while `session-restore` step 4.3 handles the "`tour:` pointer somehow has no `drive_mode`" case as a defect to
+  report. Two files, two postures on the same field — and nothing that would flag a third reader adopting a
+  third posture.
+- **Fix direction:** name `session-handoff` §2 ("Tour-driven handoffs") the **schema of record** and have the
+  other four files cite it — roughly one sentence each. Optionally add a structural pin that the citation exists.
+- **Pickup shape:** cheap and mechanical, but it edits the same five files WP7e freezes → **fold into WP7e**.
+
+## SURFACE-2026-07-27-QUALITY-RUNTIMES-FRONTMATTER-NOT-A-BARE-DATE
+- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MAJOR (lowest of the three)
+- **Priority:** low
+- **Finding:** `runtimes.md:3`'s frontmatter now reads `updated: 2026-07-27  <!-- WP7o Phase 4 verify-auto -->`.
+  The canonical registry shape in `CLAUDE.snippet.md` is a **bare ISO date**; per-observation commentary belongs
+  on the `**History:**` bullets (which this diff also does, correctly).
+- **Why it matters:** nothing parses the field today, so it is not breaking — but it makes the one
+  machine-shaped field in the file no longer a clean date, and invites a future parser to trip.
+- **Fix direction:** strip the comment from the frontmatter value; the same text already lives on the History
+  bullet. One-line change, no behavior depends on it.
+
+## SURFACE-2026-07-27-QUALITY-PHASE-18B-SUBLETTERED-AND-UNDOCUMENTED
+- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MINOR
+- **Priority:** low
+- **Finding:** `[Phase 18b]` is the first **sub-lettered** phase in `check-structure.sh` (every other is
+  integer-numbered) and is absent from `CLAUDE.md`'s phase inventory and `arch.md`.
+- **Fix direction:** either renumber to `[Phase 19]` or add a one-line note to the conventions list explaining
+  that a `Nb` phase is the self-test *of* phase `N`. The latter preserves the deliberate pairing.
+
+## SURFACE-2026-07-27-QUALITY-TWO-PROBE-DESIGN-ENFORCED-ONLY-BY-COMMENT
+- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MINOR
+- **Priority:** low
+- **Finding:** the deliberate divergence between `$TOUR_NARRATION_PROBE` and session-capture's inline
+  zero-vocabulary regex is explained at length in a comment but **enforced only by that comment**; it will read
+  as an oversight to a maintainer who skims.
+- **Fix direction:** the Phase-18b clean-tree case already proves consolidation would be safe; consider a pin
+  asserting the two probes are intentionally distinct, or accept the comment as sufficient.
+
+## SURFACE-2026-07-27-QUALITY-THIRD-DUPLICATED-BLOCK-ACROSS-ARMS
+- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MINOR
+- **Priority:** low
+- **Finding:** the "carry the run to its end from here" and "narrate, don't act on it" blocks are near-verbatim
+  duplicates across the two arms — now the **third** duplicated block in this file pair (with the Scene-1 field
+  table and the record-drive-mode paragraph). Consistent with the arms' existing style, so not a defect; but
+  each duplication is a place the two arms can silently diverge.
+- **Fix direction:** no action recommended standalone. If the count grows, consider whether the arms want a
+  shared included fragment — a structural change that should be decided deliberately, not incrementally.
+
 # tour-aware-session-boundary — 2026-07-27
 
 ## SURFACE-2026-07-27-QUALITY-GREPCHECK-NO-CASE-INSENSITIVE-OPTION
