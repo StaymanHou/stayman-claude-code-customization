@@ -5,8 +5,14 @@ drive_mode: autopilot
 # Feature: Tour state survives the session boundary (WP7o)
 
 **Workflow:** feature
-**State:** plan (complete)
+**State:** COMPLETED — finalized 2026-07-27 · ship `ccfedac` + hardening refactor `438d88e`
 **Created:** 2026-07-27
+**Completed:** 2026-07-27
+**Acceptance:** ⚠️ **OWED, not waived.** verify-human is DEFERRED on all four phases (integration boundary
+applied throughout → F11-skip forbidden, Mode-3 auto-skip correctly never fired). The four Phase parents are
+deliberately left `[ ]` to enforce this. Acceptance lands with the **one hands-on greenfield tour run** that
+also accepts WP7l + WP7n + WP7m — see `SURFACE-2026-07-22-WP7C-OPERATOR-HANDS-ON-ACCEPTANCE-DEFERRED`. On
+acceptance: flip all four 🔨 BUILT → ✅ SHIPPED in `wbs.md`, then **WP7e codifies last**.
 **Entry:** spec (complex feature — multi-surface, inverts a settled decision, changes a shared file schema)
 
 ## Problem Statement
@@ -1489,6 +1495,53 @@ Three build-time constraint checks, all green:
   the two `session-restore` hits are that skill's own internal step self-references ("step 4", "step 5",
   "step 4b") plus the `tour_step` field name — caught only because the probe was case-insensitive. So Phase 4
   can pin "mechanical field read, no narration copy" against what actually shipped.
+
+## Retrospect
+
+- **What changed in our understanding.** The load-bearing discovery was that **an arms-only guard is
+  structurally unreachable across a session boundary** — not weak, not under-worded, *unreachable*. Session C
+  never loads the arm, so no amount of arm-side prose can fire there. That is what forced `resume_skill` to
+  point at the ARM, and it is why WP7m's 7m.1 had to be superseded rather than merely reinforced. The evidence
+  was the raw Session-C skill trace, not reasoning about what *should* happen — which is the general lesson:
+  when a guard doesn't fire, check whether the file containing it was ever read.
+- **A second, sharper lesson emerged at the end:** *a pin can assert its file is clean, but never that its
+  anchors are the right ones.* The narration probe was mis-anchored **twice in one feature** — once too generic
+  (house idioms), once too specific (verbatim sentences matching nothing) — and **both rounds shipped green**.
+  Hand-verifying "in four directions" checked the cases I thought to check; only the property-test found the
+  ones I didn't. This generalizes well beyond this probe and is the strongest candidate for a `CLAUDE.md`
+  convention bullet at reflect.
+- **Assumptions that held.** The four-phase decomposition survived contact unchanged. The empty-diff
+  prediction held on every phase — no transition ID, no edge, no pause-policy row, re-checked each phase and
+  never fired. The plan's decision to **sequence pin-narrowing last** (anchors need prose to anchor *on*) was
+  right, and the two anchor defects would have been worse had it been done earlier.
+- **Assumptions that were wrong.** (a) I assumed prose-level fixes would make the reader guards bind; two
+  attempts failed and the behavioral scenarios proved a third would too — the stop-and-decide came one attempt
+  later than it should have. (b) I assumed "verified in four directions by hand" was equivalent to a
+  property-test. It was not, and the gap was two dead anchors plus a casing bug. (c) I assumed the self-test I
+  wrote to prevent inert pins would itself be sound; it shipped with a vacuous-pass path and a fail-open
+  parser — the same class it exists to catch.
+- **Approach delta.** Two operator-driven expansions, both good: the **mid-session scope correction** adding
+  behavioral scenarios (P4.6/P4.7) — which is what surfaced the S33/S34 finding at all, since scenarios are the
+  only in-session evidence immune to bootstrap-skip — and **§D**, answered directly rather than left open. One
+  self-driven expansion: `[Phase 18b]`, added at verify-codify and hardened at refactor. Against the plan, the
+  feature ran ~1 phase heavier than scoped, entirely in test infrastructure.
+- **Process notes worth carrying.** A verify-self subagent ran `git stash` despite being observe-only, briefly
+  clearing an uncommitted tree (self-reported, recovered, now backlogged). My own first mutation battery was
+  invalid — the backup path didn't exist, so mutations stacked silently and I reported meaningless results for
+  four runs before catching it. **Both share a root: a destructive operation whose precondition was never
+  verified.** Cheap fix in both cases — assert the backup exists before mutating; assert the tree is clean
+  after.
+
+## Closure notice
+
+> **Feature complete:** *Tour state survives the session boundary* (WP7o) has shipped. The onboarding tour's
+> state now lives in `.session.md` rather than the conversation, so a first run resumes in stepping mode with
+> the drive-mode menu still hidden, and the second-boundary handoff fork no longer appears. To see it: run the
+> greenfield tour through its Step-7 handoff, `/exit`, then `/session-restore` in a fresh session — the arm
+> should pick the thread back up without naming a mode or offering a fork.
+
+**Requester = operator — closure notice for self-record.** Acceptance is **owed, not waived**: verify-human is
+deferred on all four phases and lands with the one hands-on greenfield run that also accepts WP7l/WP7n/WP7m.
 
 ## Code-Quality Review — tour-state-survives-session-boundary
 
