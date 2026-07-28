@@ -1,5 +1,8 @@
 # Backlog
 
+## Session Handoff — 2026-07-28 19:26
+Handed off at a clean boundary (no active WIP). See `workflow-system/state/.session.md` to restore (`/session-restore`).
+
 > **Cycle-boundary sweep — `/product-finalize`, 2026-07-28 (Claudesk Handoff Cycle, M7–M12).**
 > Every open item was audited at the cycle close. **Nothing was resolved by this cycle that is not
 > already deleted** — the cycle's own origin SURFACEs (doc-layout unify, standalone uninstall,
@@ -9,11 +12,11 @@
 > One audit correction worth reading: `SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED` **names WP7e
 > as its resolver but was NOT resolved by it** — `[Phase 19]` cites the SURFACE in a comment without
 > ever pinning `Next Step:` present-and-LAST. It is annotated in place and carried forward.
-> **⚠️ The standing debt load is now sizable** — **21 open SURFACEs** (18 at the cycle close; the
-> mockup-artifact hand-over was added and then **resolved-and-deleted** the same day by the
-> `util-option-mockup` feature, which surfaced 3 new items of its own: shape-unpinned, WIP-template
-> drive_mode gap, stray self-symlink) + **14 code-quality clusters** here, and **31 finding bodies** in
-> `backlog-quality-findings.md`. This is a clean
+> **⚠️ The standing debt load is now sizable** — **20 open SURFACEs** (18 at the cycle close; the
+> `util-option-mockup` feature added the mockup-artifact hand-over and **resolved-and-deleted** it the
+> same day, surfaced 3 new items of its own, and then **resolved-and-deleted** one of those — the stray
+> self-symlink — leaving shape-unpinned and the WIP-template drive_mode gap open) + **14 code-quality
+> clusters** here, and **31 finding bodies** in `backlog-quality-findings.md`. This is a clean
 > cycle boundary, which is exactly the condition `/util-backlog-paydown` exists for. Running it is the
 > **operator's call** — `product-finalize` records dispositions; it does not pay the debt down.
 
@@ -44,17 +47,6 @@
 - **Why it is invisible:** the failure mode is *extra friction*, not an error. Nothing breaks; the workflow just quietly asks for confirmations the operator already opted out of. Easy to misread as "autopilot doesn't do much."
 - **Suggested action (hypothesis — verify against the skills before writing):** have `feature-plan` §4 (and `feature-spec` §3, which creates the WIP on the complex path) stamp a YAML frontmatter block containing `drive_mode:` at file creation, sourced from the active session mode. Check whether `task-plan` / `incident-report` have the same split before fixing only the feature path. Consider a structural pin that the WIP template and the auto-skip gate agree on the field's location.
 - **Priority:** medium (affects every feature in every project using this workflow system; degrades an operator-selected setting)
-- **Status:** pending
-
-## SURFACE-2026-07-28-STRAY-SELF-SYMLINK-AT-REPO-ROOT
-
-- **Source:** feature:spec (mockup-artifact-for-uiux-decisions, Step 0)
-- **Target level:** task
-- **Type:** tech-debt (repo hygiene)
-- **Summary:** `git status` shows an untracked `my-claude-code-customization` entry at the repo root. It is a **self-referential symlink** (`my-claude-code-customization -> /Users/stayman/Personal/projects/my-claude-code-customization`), i.e. the repo root pointing at itself, created 2026-07-28 10:10.
-- **Context:** Harmless today, but a self-referential symlink inside a tracked repo is a recursion hazard for any tool that walks the tree without following-symlink guards (`find`, `grep -r`, `rsync`, some test harnesses). It also perpetually dirties `git status`.
-- **Suggested action:** confirm nothing depends on it, then `rm my-claude-code-customization` — or add it to `.gitignore` if something does. Check whether an `install.sh` run or a tour fixture created it before deleting.
-- **Priority:** low
 - **Status:** pending
 
 ## SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE
