@@ -5,7 +5,7 @@ drive_mode: autopilot
 # Feature: `util-option-mockup` — lo-fi mockup artifact for UI/UX option decisions
 
 **Workflow:** feature
-**State:** ship (complete) — commit `6dcd525`, local only (not pushed, per close-commit discipline)
+**State:** COMPLETED 2026-07-28 — shipped as commit `f205e6e` (local only, not pushed per close-commit discipline)
 **Created:** 2026-07-28
 **Entry:** spec (complex feature)
 **Source:** `SURFACE-2026-07-28-MOCKUP-ARTIFACT-FOR-UIUX-DECISIONS` (cross-project hand-over from claudesk M10.9 WP1)
@@ -202,6 +202,22 @@ The backlog's suggested action was treated as a **hypothesis** and verified agai
 **Phase 3 carries the repo's sharpest known hazard.** [Phase 19b] documents an anchor that shipped GREEN through a 12-case deletion-mutation sweep while matching 24 of 46 SKILL.md files including three that *do* emit transitions. Deletion-sensitivity and specificity are independent properties. P3.1 (`/test-assertion-review`) is not optional, and P3.4's sweep must include a *specificity* direction, not just deletion.
 
 **No 3rd-party dependency** — §3 probe check does not apply.
+
+## Retrospect
+
+- **What changed in our understanding:** Three things, each of which redirected work already in flight.
+  1. **The trigger's discriminator is communication difficulty, not spatial competition.** The learning draft said the rule fires when a decision "competes for room with an already-shipped screen." The operator narrowed it at clarification: *several concrete options for one element/widget/component that are hard to convey in text or ASCII*. That is a better rule — it admits a greenfield widget with three layouts, which the draft's version would have excluded.
+  2. **The pointers, not the skill, are the load-bearing artifact.** Discovered by measurement at Phase 2 verify-codify: deleting both host pointers left the full suite green at 585/1. A skill nobody is told about is inert. This inverted the planned pin target — Phase 3 was going to pin the skill's *shape*, which would have guarded the thing that cannot silently break.
+  3. **The reference artifact carried mechanics the prose summary had dropped.** Reading the recovered HTML surfaced two construction requirements absent from the learning draft: a shared fold line across frames (the common baseline that makes comparison legible) and an annotation hue outside the product palette (so commentary is never mistaken for UI). Both are now requirements. Recovering the artifact was worth more than re-reading the summary of it.
+
+- **Assumptions that held:** The origin-log read paid off exactly as `docs/lessons/read-origin-session-log-before-planning.md` predicts — it recovered the operator's decide-now/build-later framing, the deliberate trap option, and the fact that the screenshot was *volunteered* rather than requested, none of which survived into the draft. Treating the backlog's suggested action as a hypothesis was also correct: four of its claims needed correcting against actual skill prose. And D5 (recommend-and-pause rather than agent-pull) survived contact with the real prompt at verify-human, which is where abstract interface decisions usually fail.
+
+- **Assumptions that were wrong:**
+  - **I assumed a passing mutation sweep meant the pins were sound.** It did not. Code-quality review found `check_pointer()` guarded the section *start* heading but not the *end* boundary, so renaming the end heading let the pin silently degrade to a file-wide grep — defeating the exact guarantee the phase's own comment block asserts. My sweep mutated the pointer and the start heading; never the end. **Sensitivity to the inputs you thought to mutate is not evidence about the ones you did not** — the `[Phase 19b]` lesson, recurring one phase later in the phase written to apply it.
+  - **I wrote a doc claim in the tense of a phase that had not run.** The `arch.md` scope-add asserted in bold that `[Phase 20]` pins the skill, enumerating four assertions it makes, when `[Phase 20]` did not yet exist — the "green doc that guards nothing" failure, produced while editing that very sentence to prevent a different contradiction.
+  - **Two self-checks were miswritten rather than the code being broken** (`RETURN-TO:` matched the prose forbidding it; a presence check asserted `=1` where the plan said `≥1`). Both are the same shape: the assertion was wrong, not the artifact.
+
+- **Approach delta:** Planned as three phases; shipped as two. **Phase 3 was absorbed into Phase 2's verify-codify** because the integration-boundary rule requires a consuming-surface test, and the sensitivity probe proved the consuming surfaces were unguarded — deferring the pins would have shipped Phase 2 with its boundary untested. Phase 3's shape pins were then *descoped* rather than written, on the evidence that they would guard the wrong thing (logged as `SURFACE-2026-07-28-UTIL-OPTION-MOCKUP-SHAPE-UNPINNED`). Net: the plan's phase count was wrong but its *content* was right; measurement moved the work earlier and narrowed it.
 
 ## Code-Quality Review — mockup-artifact-for-uiux-decisions
 

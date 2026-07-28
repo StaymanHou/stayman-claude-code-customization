@@ -9,9 +9,11 @@
 > One audit correction worth reading: `SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED` **names WP7e
 > as its resolver but was NOT resolved by it** — `[Phase 19]` cites the SURFACE in a comment without
 > ever pinning `Next Step:` present-and-LAST. It is annotated in place and carried forward.
-> **⚠️ The standing debt load is now sizable** — 19 open SURFACEs (18 at the cycle close, +1 added
-> 2026-07-28: the mockup-artifact hand-over from claudesk, TODO P1) + 13 code-quality clusters here, and
-> 28 finding bodies in `backlog-quality-findings.md`, 6 of them added by WP7e alone. This is a clean
+> **⚠️ The standing debt load is now sizable** — **21 open SURFACEs** (18 at the cycle close; the
+> mockup-artifact hand-over was added and then **resolved-and-deleted** the same day by the
+> `util-option-mockup` feature, which surfaced 3 new items of its own: shape-unpinned, WIP-template
+> drive_mode gap, stray self-symlink) + **14 code-quality clusters** here, and **31 finding bodies** in
+> `backlog-quality-findings.md`. This is a clean
 > cycle boundary, which is exactly the condition `/util-backlog-paydown` exists for. Running it is the
 > **operator's call** — `product-finalize` records dispositions; it does not pay the debt down.
 
@@ -20,22 +22,6 @@
 ---
 
 ## TODO
-
-## SURFACE-2026-07-28-MOCKUP-ARTIFACT-FOR-UIUX-DECISIONS
-
-- **Order:** P1 — **⚡ TACKLE IMMEDIATELY NEXT SESSION** (operator instruction, 2026-07-28). Pick this up before any other TODO item.
-- **Source:** cross-project hand-over from **claudesk** (M10.9 WP1 — settings-surface + invite probe). Operator asked at the end of that session to "hand over to mccc to convert that to something meaningful that will recreate this behavior for future works/projects."
-- **Target level:** feature:spec — this is a **new conditional procedure added to existing skills** (prose + gate conditions + structural pins), not a one-line edit. Small-but-real: multi-skill surface, needs a trigger-condition contract that does not over-fire.
-- **Type:** enhancement (workflow-system capability)
-- **Learning draft:** [`.claude/learnings/2026-07-28-mockup-artifact-for-uiux-decisions.md`](../../.claude/learnings/2026-07-28-mockup-artifact-for-uiux-decisions.md) — ported into this repo 2026-07-28. **Read it first; it is the spec input.**
-- **Raw origin session log:** `~/.claude/projects/-Users-stayman-Personal-projects-claudesk/6c014b4b-0427-48e2-9782-5d8885c579de.jsonl` (session `6c014b4b`, 2026-07-28 18:22:31Z → 20:10:10Z; the originating operator message is at **19:21:50Z**, greppable on `user mock-up artifacts` / `iii-b`). Per `docs/lessons/read-origin-session-log-before-planning.md`, **read this log before planning** — the learning draft is a compression that keeps the *what* and drops settled *how* decisions (the three candidate layouts, why the middle option was included, the screenshot that inverted the verdict).
-- **Summary:** At a UI-placement decision, code-reading produced the **wrong** verdict and a single operator screenshot inverted it — *files give structure, they don't give **cost**, and layout decisions are decided by cost.* The recovery that worked was a **lo-fi mockup artifact**: ≥3 candidate layouts side-by-side in the product's own design tokens at true proportion, each measured on one axis, including the deliberately unappealing middle option. Operator picked in one reply. The ask is to make this a **conditional** capability of the workflow system so it recurs without being re-taught.
-- **Suggested action (from the draft — treat as hypothesis, verify against the skills before writing):** add a CONDITIONAL rule firing only when **all three** hold: (a) ≥3 candidate surfaces, (b) a spatial/layout tradeoff, (c) competition for room with an already-shipped screen. Below that bar prose is enough — the operator explicitly scoped it: *"really simple UI/UX choices won't need mockup."* Four requirements make it work: **(1)** render in the product's real design tokens at true proportion (a designed-looking mockup actively misleads); **(2)** one measurable axis, and **label estimates as estimates**; **(3)** include the unappealing middle option so its trap is visible; **(4)** proactively **ask for a screenshot** of the running app when the decision's host is an existing screen.
-- **Candidate host skills:** `feature-spec`, `product-wbs` (decision presentation) + `feature-verify-human` (where a correction of this shape actually lands). Confirm hosts at spec time.
-- **Explicitly NOT a design prior:** this governs the **elicitation medium** for an unresolved decision, whereas design priors record a **resolved lean**. The operator **declined prior-capture twice** in the originating session — do not re-propose it as one.
-- **Open question for spec time:** the trigger is a three-way conjunction the agent must self-assess. Decide how it is stated so it does not over-fire on every two-option UI choice, and whether it needs a structural pin in `tests/check-structure.sh` or is prose-only.
-- **Priority:** high (operator-directed, next session)
-- **Status:** **in-progress** — spec written 2026-07-28 to `workflow-system/state/wip/mockup-artifact-for-uiux-decisions.md`. Origin log read pre-planning; the suggested action above was verified against actual skill prose and **corrected in four places** (see the spec's `## Findings from pre-spec verification`) — most notably: `product-wbs` §3 item-3 already covers mockup-as-a-*work-package*, which is a different thing from this mockup-as-a-*decision-tool*, and trigger clause (c) is really "host is an already-shipped surface whose occupancy the agent has not observed," not "competes for room."
 
 ## SURFACE-2026-07-28-UTIL-OPTION-MOCKUP-SHAPE-UNPINNED
 
