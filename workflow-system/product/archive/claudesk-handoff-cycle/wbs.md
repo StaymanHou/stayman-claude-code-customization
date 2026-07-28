@@ -104,7 +104,7 @@ The standard rule details WPs for the **next milestone only**, because later mil
 **Milestone:** 10 · **Dependencies:** none (independent) · **Size:** XS–S (implementation) — **terminology-alignment discussion required first (see REFRAME above)**
 **Likely shape:** terminology-alignment discussion → then a task (description-wording edit + orchestrator prose). The naming (and its legibility to a new user unaware of the workflow-vs-CC-deep-research nuance) must be agreed before planning.
 
-### WP7 → Milestone 11: New-user onboarding — DECOMPOSED (co-design complete 2026-07-21)
+### WP7 → Milestone 11: New-user onboarding — DECOMPOSED (co-design complete 2026-07-21) ✅ SHIPPED 2026-07-27 (all sub-WPs: WP7a–WP7d, WP7f–WP7l, WP7n, WP7m, WP7o, WP7e)
 
 > **WP7 grew from a design-spike stub into a full milestone.** The WP7.1 brainstorm (the mandatory operator co-design pause point) is **DONE** — settled shape in `workflow-system/product/onboarding-brainstorm.md` + roadmap M11 "Revision 2026-07-21". The operator chose **FULL BUILD** (not spec-only): the WBS below carves M11 into build-WPs WP7a–WP7e. AD-5 predicted exactly this ("onboarding shape is a WBS/brainstorm output, not an arch decision") and the co-designed shape (a dedicated skill + a greenfield scaffold, no new runtime, no architectural surface) lands **inside AD-5's envelope** — so this is a normal decomposition, **not a P8 arch back-loop**. AD-5 gets a light as-built resync at `/product-context` / finalize time (deferred→designed→built).
 >
@@ -156,9 +156,9 @@ The standard rule details WPs for the **next milestone only**, because later mil
 **Milestone:** 11 · **Dependencies:** WP7b–WP7d, **WP7f/WP7g/WP7i/WP7j/WP7k (shipped)**, **WP7l/WP7m/WP7n (the 2026-07-25 acceptance fixes — pins lock accepted copy)** · **Size:** S–M
 **Scope grew with the M11 expansion — WP7e now codifies FOUR tour surfaces** (both arms + the WP7g corrections + the WP7k full-cycle tour), against copy the operator has accepted. Carried-forward pin charter beyond 7e.1–7e.3 below: extend the `tutorial-`-prefix pin to the 4th skill (7k.4); honest-framing invariants (no "5-min" claim; ~30–45-min present on the full-cycle tour); the full-cycle tour's deliberate **no-replay / no-mode-menu** invariants; the WP7k `description` stage-chain MINOR (drops `research`); and the newly-accepted WP7l/WP7m/WP7n behaviors — greenfield sample-lands-in-cwd + refuse-if-non-empty, the offer-to-clean-up beat, the tour-aware boundary guard (no mid-tour handoff offer), and the terse `Next Step:` close block.
 **Tasks:**
-- [ ] 7e.1 Behavioral scenarios (path-fork; staged-beat presence; bypass-permissions-recommended; drive-modes-reveal-is-last)
-- [ ] 7e.2 `check-structure.sh` structural pins (new skill sections; staged-vs-named invariants; three-places if a transition was added)
-- [ ] 7e.3 Full-group behavioral run green (subject to the `--id` harness path — now fixed by the boundary-handoff Phase 3)
+- [x] 7e.1 Behavioral scenarios (path-fork; staged-beat presence; **`auto`**-permission-mode-recommended; drive-modes-reveal-is-last) — `tests/scenarios/tutorial.yaml`, a NEW group (T1–T4), the first scenarios in this repo ever to target a `tutorial-*` skill. ⚠️ **The task title said "bypass-permissions-recommended"; the ACCEPTED copy recommends `auto`** (WP7f/WP7g superseded `acceptEdits`/bypass, and `acceptEdits` occurs zero times in the corpus) — pinned to reality per "pins lock accepted copy."
+- [x] 7e.2 `check-structure.sh` structural pins — `[Phase 19]` (47 pins) + `[Phase 19b]` (21-case prose-anchor property test) = **68**; suite 516 → 584. No transition was added (`tutorial-*` still emits none), so the three-places rule never fired.
+- [x] 7e.3 Full-group behavioral run green — `--group tutorial` **0 FAIL** (re-confirmed 2026-07-28 after an API-exhaustion-blocked attempt the prior evening). Session group's real floor is **3**: `S33`/`S34` known-failing by design + pre-existing `S3`. ⚠️ Harness note: `--id` needs the FULL slug or it runs **zero** scenarios while printing a clean `TOTAL 0`.
 
 ---
 
@@ -630,7 +630,7 @@ The standard rule details WPs for the **next milestone only**, because later mil
 
 **M11 sub-WP ordering (WP7a → WP7b → {WP7c ∥ WP7d} → WP7e):** spec first (WP7a fixes the name + flow every other sub-WP builds against — resolves the cheapest-to-change unknown first); then the entry skill (WP7b, the spine); WP7c (scaffold) and WP7d (bookend/graduation wiring) can proceed in parallel once the arms exist; WP7e codifies last. No probe WP (no external integration, no unknown API shapes — the "unknown" was the *design*, resolved by the brainstorm). No environment/orchestration WPs (no such surface). **AD-5 as-built resync** (deferred→built) happens at `/product-context` or finalize, not as its own WP.
 
-### WP8: Cross-repo return contract to Claudesk (Milestone 12)
+### WP8: Cross-repo return contract to Claudesk (Milestone 12) ✅ SHIPPED 2026-07-28 (commit 04e59ad)
 **Description:** M12 — send back the three deliverables Claudesk's M10.9/M11 need: (1) canonical install-instruction copy + install/uninstall commands (from WP4.5), (2) the settled doc-folder layout (from M7 WP3-M7 — **now Option A: the new roots `workflow-system/product/*.md` + `workflow-system/state/...`; Claudesk M11's `docs_list` MUST be updated to glob these** — a required change, not an optional note), (3) the onboarding flow spec (from WP7.2). Delivered as a reciprocal handoff doc or a backlog SURFACE in `/Users/stayman/Personal/projects/claudesk`.
 **Milestone:** 12 · **Dependencies:** M7 + WP4 + WP7 (aggregates their deliverables) · **Size:** S
 **Likely shape:** a task (authoring + delivering the note). Detailed at its own `/task-plan`.

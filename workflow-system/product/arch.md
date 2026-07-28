@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-07-21
+updated: 2026-07-28
 ---
 
 # Architecture
@@ -90,7 +90,7 @@ This replaces the current flat-checklist WIP format. All feature and task WIP fi
 
 ## Discoveries
 <!-- Surfaced items that don't belong to the current phase.
-     Each entry is also logged to workflow/backlog.md.
+     Each entry is also logged to workflow-system/state/backlog.md.
      Format: [SURFACED-<date>] <target node> — <summary> -->
 ```
 
@@ -140,11 +140,11 @@ Tasks are simpler — no per-phase verification loop, no observable outcomes sec
 
 ---
 
-## File Schema: Design Priors Format (`docs/product/design-priors.md`)
+## File Schema: Design Priors Format (`workflow-system/product/design-priors.md`)
 
 A per-project, durable product doc recording the operator's **design priors** — terse, transferable statements of how the operator resolves recurring *product-design* tradeoffs for this project, each paired with its *why*. Planning skills **consult** it to fill product-design gaps the operator's way; capture-checkpoint skills **propose** new priors (operator reviews before write). Priors are **directional and overridable**, never decisive — see "Design priors (GLOBAL)" in `CLAUDE.snippet.md` for the consult-weighting rules and capture discriminant.
 
-**This doc lives in *consuming* projects, never in this repo's own `docs/product/`** — the skill repo ships the schema + skill contracts (behavior), not state (vision.md §6). Absent file = silent no-op at consult time. Created lazily on the first approved capture.
+**This doc lives in *consuming* projects, never in this repo's own `workflow-system/product/`** — the skill repo ships the schema + skill contracts (behavior), not state (vision.md §6). Absent file = silent no-op at consult time. Created lazily on the first approved capture.
 
 ```markdown
 ---
@@ -294,13 +294,29 @@ This addendum records the state-machine change as-built; the canonical conventio
 
 - Explicitly **not architected now.** It is a design activity co-owned with the operator, dependent on the settled AD-1 index layout and the AD-2 install/uninstall flow. Arch acknowledges it exists and is sequenced last; its shape (a dedicated onboarding SKILL.md and/or a throwaway tutorial project) is a WBS/brainstorm output, not an arch decision. WBS should carve it as a design-spike work package, not an implementation WP.
 
+##### AD-5 addendum (as-built 2026-07-28) — onboarding went deferred → designed → **BUILT**; the prediction held
+
+AD-5's deferral was **correct and is now discharged.** It predicted that onboarding's shape would be "a WBS/brainstorm output, not an arch decision," and that is exactly what happened: the 2026-07-21 co-design brainstorm settled the shape, the operator chose FULL BUILD (not spec-only), and M11 delivered it across sub-WPs WP7a–WP7o **entirely inside AD-5's envelope** — so this was a normal decomposition and **never a P8 arch back-loop**.
+
+**What was actually built** (the arch-visible surface, not the flow internals):
+
+- **A four-skill `tutorial-*` family** — `tutorial-getting-started` (entry/dispatcher) + `tutorial-greenfield-workflow-tour` and `tutorial-brownfield-workflow-tour` (the two arms) + `tutorial-product-cycle-tour` (the deep-dive graduation tour). Three files rather than one enforce the spec's "diverge and stay diverged" invariant **structurally** instead of by prose discipline.
+- **A new skill category.** `tutorial-*` joins `debug-*` and `util-*` as a non-state category: these skills own **no state-machine node**, appear in **no** orchestrator `skills:` frontmatter, and **emit no transition**. Note the deliberate divergence from the `util-`/`debug-` file-prefix convention — the prefix is `tutorial-`, and WP7e's pins deliberately do **not** assert a `util-` prefix.
+- **No new runtime and no new architectural element.** No new transition ID, no new edge, zero changed lines in `transitions.md` or the four `agents/*/AGENTS.md` pause tables across all of M11. The tour *hosts* a real feature/task workflow rather than adding one.
+- **Skill-local runnable content.** The greenfield sample + scaffolder live in `skills/tutorial-greenfield-workflow-tour/scripts/`, **not** repo-root `tools/`. This is load-bearing, not cosmetic: `install.sh` symlinks each skill's *whole directory* but does not symlink `tools/`, so an invited user gets the sample automatically with **no `install.sh` change and no separate fetch step**.
+- **The tour is a CHAIN of real session boundaries**, not one dispatched session — the entry skill points the user at an arm and hands off across `/exit`. Authoritative flow: `docs/lessons/tutorial-tour-session-chain-flow.md`.
+
+**One published external interface now exists** (the only genuinely arch-level consequence): `workflow-system/product/onboarding-flow-spec.md` **§4 "Claudesk Surface Contract"** is a **cross-repo contract** that Claudesk builds against, and the command name **`/tutorial-getting-started` is a published interface** — the sole stable coupling Claudesk may depend on. Renaming it is a return-contract change, not a local refactor. This is why the spec is treated as **durable, not cycle-scoped**, and why WP7e pins the name structurally. Delivered to Claudesk by WP8/M12 (2026-07-28).
+
+**Design-prior capture check:** still no new `design-priors.md` prior. M11's decisions were pedagogy/mechanics (staged-vs-named beats, what the tour hosts, where scripts live) — technical/operational, which the arch-boundary exclusion keeps in *this* file. The product-design lean in this space (audience/anti-persona gating) remains Claudesk's per the handoff. `design-priors.md` stays absent here (silent no-op).
+
 ### Design-prior capture check (this cycle)
 
 No new `design-priors.md` prior proposed. The candidate lean — "favor low-blast-radius/orientation fixes over large refactors for the new-user audience" (AD-1) — is a **technical/operational tradeoff** (blast-radius vs. clarity), which the arch-boundary exclusion keeps in *this* file, not `design-priors.md`. The genuinely *product*-design lean in this space (audience/anti-persona gating for the non-workflow user) is being captured on the **Claudesk** side per the handoff, not duplicated here. `design-priors.md` remains absent in this repo (silent no-op).
 
 ## Revision 2026-06-26
 
-### Design priors — learned product-design decision principles (`docs/product/design-priors.md`)
+### Design priors — learned product-design decision principles (`workflow-system/product/design-priors.md`)
 
 A new durable product-doc schema (see "File Schema: Design Priors Format" above) plus a capture/consult skill contract. Planning skills (`product-roadmap`, `product-wbs`, `feature-spec`) **consult** the doc at their `## Step 0` product-context load to fill product-design gaps the operator's way; capture-checkpoint skills (`product-vision`, `product-roadmap`, `product-arch`, `product-wbs`, `feature-spec`, `feature-verify-human`) and the `session-reflect` backstop **propose** new priors (operator reviews the why before write). Priors are directional/overridable, never decisive — the consult-weighting rules, capture discriminant, arch-boundary exclusion (technical/stack tradeoffs stay in *this* file, not design-priors), and the `[PRIOR: <slug>] leaning <x> — flag if wrong` disclosure form are documented in `CLAUDE.snippet.md` → "Design priors (GLOBAL)". **No new transition IDs** — this is behavior within existing states. Shipped by the `design-priors` feature, 2026-06-26.
 

@@ -1,7 +1,7 @@
 ---
 stage: roadmap
 state: complete
-updated: 2026-07-21
+updated: 2026-07-28
 ---
 
 # Roadmap — Claude Code Workflow System
@@ -167,7 +167,7 @@ updated: 2026-07-21
 - Ambiguous "pause" no longer silently invokes `session-pause`; intent is confirmed or the word is reserved as decided
 - Scenario coverage passes
 
-### Milestone 10: Resolve the "research" skill naming collision
+### Milestone 10: Resolve the "research" skill naming collision ✅ COMPLETE 2026-07-21 (WP6, commit 17fe152)
 **Origin:** SURFACE-2026-07-20-CLAUDESK-RESEARCH-SKILL-COLLISION
 **Goal:** Prevent this repo's `product-research` / `feature-research` skills from colliding with Claude Code's built-in **deep-research** capability so "research" doesn't fire the wrong skill.
 **Deliverables:**
@@ -177,7 +177,7 @@ updated: 2026-07-21
 - Saying "research" in a workflow context no longer risks firing CC's built-in deep-research (or vice versa)
 - All three state-machine locations stay in sync if IDs/names change
 
-### Milestone 11: New-user onboarding + "aha" design (co-designed 2026-07-21)
+### Milestone 11: New-user onboarding + "aha" design (co-designed 2026-07-21) ✅ COMPLETE 2026-07-27 (WP7a–WP7o; operator-accepted hands-on run)
 **Origin:** SURFACE-2026-07-20-CLAUDESK-ONBOARDING-DESIGN
 **Co-design output:** `workflow-system/product/onboarding-brainstorm.md` (the settled shape; source of truth for the WBS)
 **Scope note:** Co-design (2026-07-21) revealed this is **not a single WP** — it is a milestone with multiple deliverables (spec + entry skill + greenfield scaffold + staged-beats wiring + coverage), so it **needs its own WBS** (`/product-wbs`).
@@ -209,7 +209,7 @@ updated: 2026-07-21
 - The two-path first-run experience is decided and (per the WBS's build/spec-only call) either specced or runnable
 - ⚠️ **Co-design:** the *design* is settled with the operator (2026-07-21, brainstorm doc); the WBS decomposition + any build proceed from that settled shape. Depends on the settled Milestone 7 layout + Milestone 8 install flow.
 
-### Milestone 12: Cross-repo return contract to Claudesk
+### Milestone 12: Cross-repo return contract to Claudesk ✅ COMPLETE 2026-07-28 (WP8, commit 04e59ad)
 **Origin:** Handoff return contract (HANDOFF-from-claudesk-2026-07-20.md → "What Claudesk needs back from you")
 **Goal:** Close the loop so Claudesk's M10.9 + M11 can build against settled, non-moving deliverables.
 **Deliverables:**

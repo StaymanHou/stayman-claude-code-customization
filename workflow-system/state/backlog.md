@@ -1,5 +1,19 @@
 # Backlog
 
+> **Cycle-boundary sweep — `/product-finalize`, 2026-07-28 (Claudesk Handoff Cycle, M7–M12).**
+> Every open item was audited at the cycle close. **Nothing was resolved by this cycle that is not
+> already deleted** — the cycle's own origin SURFACEs (doc-layout unify, standalone uninstall,
+> pause ambiguity, research collision, onboarding design) were each resolved-and-deleted as their WP
+> shipped, per delete-on-resolve, so their record lives in `CHANGELOG.md` alone. Every remaining item
+> is therefore **deferred — carried to the next cycle**, not silently dropped.
+> One audit correction worth reading: `SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED` **names WP7e
+> as its resolver but was NOT resolved by it** — `[Phase 19]` cites the SURFACE in a comment without
+> ever pinning `Next Step:` present-and-LAST. It is annotated in place and carried forward.
+> **⚠️ The standing debt load is now sizable** — 18 open SURFACEs + 13 code-quality clusters here, and
+> 28 finding bodies in `backlog-quality-findings.md`, 6 of them added by WP7e alone. This is a clean
+> cycle boundary, which is exactly the condition `/util-backlog-paydown` exists for. Running it is the
+> **operator's call** — `product-finalize` records dispositions; it does not pay the debt down.
+
 > **Reading order:** Items in the **TODO** section below carry an `**Order:**` line (P1, P2, …) reflecting the priority sequence confirmed by Stayman on 2026-06-11. Address them in that order — `**Order:**` is the user-confirmed pickup sequence; the `**Priority:**` line beneath it preserves the original triage-time priority for context. Items in the **MAYBE** section are parked — revisit after the TODO list is drained. Buried items live in `workflow/backlog-deferred-2026-05.md` (full content) and `CHANGELOG.md` (resolved items, per project convention). **Code-quality findings** auto-backlogged by `feature-review-quality` are pointer-collapsed here — full content lives in `workflow/backlog-quality-findings.md`, grouped by source feature.
 
 ---
@@ -90,7 +104,7 @@
 - **Context:** Deliberately NOT fixed in-feature, for three reasons: (1) the scaffold suite's group-8 comment states its own boundary verbatim — *"This pins the consuming-surface wiring only; the tour's behavioral scenarios + structural pins are WP7e's job — deliberately NOT duplicated here"* — and close-ordering is tour structure, not scaffold wiring; (2) **verify-human is DEFERRED** for both phases, so a pin written now would freeze copy the operator has not accepted, inverting the load-bearing pins-lock-*accepted*-copy rule; (3) WP7e would rewrite them anyway. Phase 1's coverage WAS added in-feature (new group 9 + a group-8 `--dest` assertion, both mutation-verified) precisely because its change genuinely was scaffold wiring — the boundary was applied, not dodged.
 - **Suggested action:** WP7e pins, against operator-ACCEPTED copy: `Next Step:` present and LAST in both arms (line-order assertion — the shape Phase-2 verify-self used); per-branch blocks with Branch B carrying NO replay option; ≤3-sentences-per-option; beat survival (the 13-beat greenfield list + brownfield analogues incl. the replay invitation's 4 mechanics); greenfield-only cleanup offer placed AFTER artifacts-as-proof; brownfield having NO cleanup offer and NO deep-dive pointer. **Pin-authoring caveat (learned the hard way):** a naive sentence-count check on this block IS FLAKY — it folds the trailing italic `Housekeeping:` line into the preceding option (produced a false 5/4 where truth was 3/2). Delimit on the `Housekeeping:` line or assert per-option line spans.
 - **Priority:** medium
-- **Status:** pending
+- **Status:** pending — ⚠️ **NOT resolved by WP7e, despite naming it as the resolver.** Audited at `/product-finalize` 2026-07-28: `[Phase 19]` pins the tour surface broadly (47 pins) and its header *cites* this SURFACE, but **no pin asserts `Next Step:` present-and-LAST** — the only `Next Step` occurrence in `check-structure.sh` is that comment. The line-order assertion this entry asked for was never written. **Carried forward, not closed** — closing it on the strength of WP7e's name would have retired a real coverage gap on a citation rather than an implementation. The suggested action below stands unchanged and is now cheap: the copy is operator-accepted and frozen, and `[Phase 19]`/`[Phase 19b]` are the obvious host.
 
 ## SURFACE-2026-07-21-INSTALL-SH-NO-ORPHAN-PRUNE
 - **Source:** feature:build (wp5-disambiguate-pause, Phase 1)
