@@ -486,19 +486,48 @@ else
     check "WP5-P3: URL-hash read" fail "no 'window.location.hash' in $OUT_HTML"
 fi
 
-# CLAUDE.md convention codification: the new section must be present at
-# project root with the canonical heading + table of key reservations.
-REPO_CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
-if [ -f "$REPO_CLAUDE_MD" ] && grep -q '^## Claude-time visualize URL-hash state' "$REPO_CLAUDE_MD"; then
-    check "WP5-P3: CLAUDE.md contains 'Claude-time visualize URL-hash state' convention section" pass
+# URL-hash convention codification: the canonical heading + table of key
+# reservations must be present in the convention doc.
+#
+# 2026-07-28 (/util-prune-claude-md): the convention body MOVED out of the
+# project-root CLAUDE.md into this co-located doc, to keep the root CLAUDE.md
+# under the harness's 40k-char context threshold. The root CLAUDE.md retains a
+# one-line pointer bullet (asserted below) so the convention stays discoverable
+# from the file every session loads. Both halves are pinned: a rename/deletion
+# of either the doc or the pointer fails this check.
+URL_HASH_DOC="$REPO_ROOT/tools/claude-time/docs/url-hash-state.md"
+if [ ! -f "$URL_HASH_DOC" ]; then
+    check "WP5-P3: URL-hash convention doc exists" fail \
+        "$URL_HASH_DOC does not exist — an absence assertion below cannot be satisfied vacuously (was it renamed?)"
 else
-    check "WP5-P3: CLAUDE.md convention section" fail "missing heading in $REPO_CLAUDE_MD"
+    check "WP5-P3: URL-hash convention doc exists" pass
+
+    if grep -q '^# `claude-time visualize` — URL-hash view state' "$URL_HASH_DOC"; then
+        check "WP5-P3: url-hash-state.md carries the canonical convention heading" pass
+    else
+        check "WP5-P3: url-hash-state.md convention heading" fail "missing canonical h1 in $URL_HASH_DOC"
+    fi
+
+    if grep -q 'Per-consumer key reservations' "$URL_HASH_DOC"; then
+        check "WP5-P3: url-hash-state.md has per-consumer key reservations table" pass
+    else
+        check "WP5-P3: url-hash-state.md per-consumer key reservations" fail "missing key reservations subsection in $URL_HASH_DOC"
+    fi
 fi
 
-if [ -f "$REPO_CLAUDE_MD" ] && grep -q 'Per-consumer key reservations' "$REPO_CLAUDE_MD"; then
-    check "WP5-P3: CLAUDE.md convention has per-consumer key reservations table" pass
+# The root CLAUDE.md must still point at the convention doc — otherwise the
+# convention becomes undiscoverable from the context-loaded file.
+REPO_CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
+if [ ! -f "$REPO_CLAUDE_MD" ]; then
+    check "WP5-P3: root CLAUDE.md exists" fail \
+        "$REPO_CLAUDE_MD does not exist — the pointer assertion below cannot be satisfied vacuously"
 else
-    check "WP5-P3: CLAUDE.md per-consumer key reservations" fail "missing key reservations subsection in $REPO_CLAUDE_MD"
+    if grep -q 'tools/claude-time/docs/url-hash-state\.md' "$REPO_CLAUDE_MD"; then
+        check "WP5-P3: root CLAUDE.md points at the URL-hash convention doc" pass
+    else
+        check "WP5-P3: root CLAUDE.md URL-hash pointer" fail \
+            "no reference to tools/claude-time/docs/url-hash-state.md in $REPO_CLAUDE_MD"
+    fi
 fi
 
 # Gap 3: SegmentBar (or any consumer) actually *calls* viewportPct — the

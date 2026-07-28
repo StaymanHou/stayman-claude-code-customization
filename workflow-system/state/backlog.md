@@ -20,27 +20,6 @@
 
 ## TODO
 
-## SURFACE-2026-07-27-CLAUDE-MD-PRUNE-AFTER-WBS
-- **Source:** operator decision at the WP7o session close (2026-07-27)
-- **Target level:** task (`/util-prune-claude-md`)
-- **Type:** debt (context-budget)
-- **⏳ SCHEDULED — deliberately deferred, do NOT pick up early.** Operator ruling: *"We should do the prune
-  after we wrap up the entire wbs."* The trigger is **WBS completion** — i.e. after **WP7e** closes M11 and
-  **WP8** closes M12, at the `/product-finalize` boundary. Picking it up before then is contrary to the ruling.
-- **The problem:** the project root `CLAUDE.md` is **~76k chars**, nearly double the harness's 40k warning
-  threshold, and it is paid as a standing per-session context tax before any work begins. It grew ~2k this
-  session alone (the two WP7o learnings).
-- **Why after the WBS, not now (the reasoning behind the ruling):** WP7e is a *codification* WP — it will add
-  conventions to this same file, so pruning first means pruning twice. Pruning at the cycle boundary also lets
-  the sweep see the finished shape of M11/M12's conventions and judge what is genuinely load-bearing.
-- **Candidates when the time comes (assessment only — not a mandate):** the `## Claude-time visualize URL-hash
-  state` section is long, highly specific, and relevant only when touching that dashboard → strong extract
-  candidate. Several test-authoring bullets are detailed enough to live in `docs/lessons/` behind pointers —
-  **but keep the RULES inline and move only the worked examples**; the anchor-quality convention exists
-  precisely because detail got lost, so hollowing it out would re-create the failure it documents.
-- **Priority:** medium
-- **Status:** scheduled (blocked on WBS completion — WP7e, then WP8)
-
 ## SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE
 - **Source:** feature:verify-self (tour-state-survives-session-boundary / WP7o, Phase 4)
 - **Target level:** task
