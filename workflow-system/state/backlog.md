@@ -66,7 +66,7 @@
 - **The CRITICAL was fixed in-feature, not backlogged** — `check-structure.sh` case (5) CASE-STABILITY read `arm_corpus` **outside the branch that assigns it**, so a rename of the tour arms would make `set -u` fire inside both `$( )` subshells, capture empty, evaluate `0 -eq 0`, and report **PASS while asserting nothing**. Independently reproduced before acting. This is the vacuous-negative-assertion class `CLAUDE.md:259` codifies — inside the very phase written to enforce anchor integrity, one commit after the convention landed. Deferring a pin that reports green while guarding nothing was not viable.
 - **Priority:** medium (3 MAJOR) / low (3 MINOR)
 - **Status:** pending
-- **Pickup shape:** two of the three MAJORs (`TOUR-STEP-FIELD-HAS-NO-READER`, `TOUR-SCHEMA-HAS-NO-CANONICAL-DEFINITION`) edit the five prompt files **WP7e is chartered to freeze** → fold into WP7e, do not fix blind; the `tour_step` one carries a genuine product call (wire it, or drop it). The third MAJOR (`RUNTIMES-FRONTMATTER-NOT-A-BARE-DATE`) is a one-line independent fix. The MINORs are all low-stakes hygiene; `PHASE-18B-SUBLETTERED` is worth settling whenever the phase inventory is next touched.
+- **Pickup shape:** ⚠️ **PARTIALLY RESOLVED 2026-07-27 by WP7e** — the two MAJORs that edited the five prompt files WP7e was chartered to freeze (`TOUR-STEP-FIELD-HAS-NO-READER`, `TOUR-SCHEMA-HAS-NO-CANONICAL-DEFINITION`) are **RESOLVED and deleted** (see CHANGELOG 2026-07-27). **Remaining open:** the third MAJOR (`RUNTIMES-FRONTMATTER-NOT-A-BARE-DATE`, a one-line independent fix) and the MINORs, all low-stakes hygiene; `PHASE-18B-SUBLETTERED` is worth settling whenever the phase inventory is next touched.
 
 ## Code-quality findings — tour-aware-session-boundary (2026-07-27)
 - **Pointer:** 2 MINOR findings (0 CRITICAL / 2 MAJOR) from `feature-review-quality` on ship `18722aa` — the 2 MAJORs and 2 of the 4 MINORs were **FIXED IN-FEATURE** (see below); these 2 remain: (1) `grep_check` has no case-insensitive option, so the next caller needing one will hand-roll and re-introduce the fail-open shape WP7m just closed; (2) the Step-7 bright-line sentence is unscoped and would also suppress an *explicitly operator-requested* mid-tour handoff. Full bodies: [`workflow-system/state/backlog-quality-findings.md`](backlog-quality-findings.md) → `# tour-aware-session-boundary — 2026-07-27`.
@@ -270,3 +270,62 @@ Buried 2026-06-12:
 - **Priority:** low
 - **Status:** pending
 - **Pickup shape:** trivial — reorder the comment; bundle into next `/util-backlog-paydown` or a docs-only task. **Verify against the code first (review-finding-actions-are-hypotheses).**
+
+## SURFACE-2026-07-27-CHECK-STRUCTURE-HEREDOC-DELIMITER-INVERTS-EXIT-STATUS
+- **Source:** feature:verify-self (WP7e Phase 3, fresh gate-2 runner) + feature:review-quality
+- **Target level:** task:plan
+- **Type:** tech-debt
+- **Summary:** A heredoc **delimiter** typo in `tests/check-structure.sh` (e.g. closing `HITS` → `HITSX`) makes bash consume the rest of the file as heredoc data — **including the guard assertion that would catch it**. The run emits ~40 malformed `[FAIL]` lines, **loses the `=== Summary ===` block entirely**, and **exits 0 where the pristine script exits 1**. `bash -n` stays clean.
+- **Context:** The zero-iteration guards added in WP7e defend the empty-BODY case (delimiters intact); a delimiter typo swallows the guard before it runs, so only the *last* heredoc in the file has this exposure. Classified COSMETIC and deferred **because `check-structure.sh` currently has no automated consumer** — no `.github/`, `run-all.sh` never invokes it, no hook calls it — so exit status is read only by a human who cannot miss 40 red FAILs and a missing Summary.
+- **Suggested action:** Add an **end-of-file sentinel** — a `check "script reached the summary" "pass"` immediately before the summary block, or a `trap` on EXIT asserting a completion flag. It sits outside every heredoc and cannot be swallowed, removing the whole class. ⚠️ The earlier note claiming this is "structurally unguardable" was **wrong** and is corrected here.
+- **Priority:** low — **but re-classify to MAJOR the moment anything automated (CI, a hook, a pre-commit) starts reading this script's exit status.**
+- **Status:** pending
+
+## SURFACE-2026-07-27-VERIFY-SH-REQUIRED-FIELDS-UNREACHABLE-WITHOUT-TRANSITION-ID
+- **Source:** feature:build (WP7e Phase 4)
+- **Target level:** task:plan
+- **Type:** bug
+- **Summary:** `contains_required` and `contains_required_any` are evaluated **only inside `if [ "$id_match" = true ]`** (`tests/lib/verify.sh` §4), so for a skill that emits no transition they are **unreachable** — the assertion silently never runs. Symptom is misleading: `FAIL (No transition signal found. Expected  or contains: )` with **both fields empty**, which reads like a YAML parse error when the YAML is fine.
+- **Context:** **This affects a SHIPPED scenario:** `session.yaml::S34-tour-marker-survives-pointer-deletion` uses `contains_required_any` with no `transition_id`, so its positive assertion **has never once been evaluated**. S34 currently fails on its strict `TRANSITION: S17` negative only — the floor is intact, but for a narrower reason than recorded. If the S17 defect were fixed, S34 would have **no reachable positive assertion at all**. Repo-wide, S34 is the only such scenario (10 use `contains_required*`; 9 have a transition_id).
+- **Suggested action:** Either make the required-* fields evaluate on the `contains_any` path too, or have the harness **warn loudly** when a scenario declares `contains_required*` without a `transition_id`. Then fix S34 to use `contains_any`. Do NOT soften S34's assertions — it is a deliberate known-failing floor scenario.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-07-27-RUN-TESTS-LEADING-DASH-ASSERTION-BREAKS-GREP
+- **Source:** feature:build (WP7e Phase 4)
+- **Target level:** task:plan
+- **Type:** bug
+- **Summary:** Assertion strings are passed to `grep` as **arguments**, so a string beginning with `-` is parsed as a **flag**. Forbidding the literal `--dangerously-skip-permissions` produced `grep: unrecognized option` and FAILed the scenario for a reason unrelated to the skill.
+- **Context:** Worked around in `tutorial.yaml::T2` by asserting a dash-free stem, which covers the same safety regression. But the constraint is invisible until you hit it, and the failure looks like a scenario bug rather than a harness one.
+- **Suggested action:** Use `grep -e "$pat"` or `grep -- "$pat"` in `verify.sh`'s matcher loops. One-line fix; add a scenario asserting a leading-dash literal to pin it.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-27-RUN-TESTS-ID-PREFIX-SILENTLY-RUNS-ZERO
+- **Source:** feature:build (WP7e Phase 4)
+- **Target level:** task:plan
+- **Type:** tech-debt
+- **Summary:** `--id` requires the **FULL scenario slug**. A prefix (`--id S33,S34`) matches nothing, runs **zero** scenarios, and still prints a clean `TOTAL 0` summary — a silent no-op that reads exactly like "nothing to run" rather than "your selector matched nothing."
+- **Context:** Distinct from `SURFACE-2026-07-21-RUN-TESTS-ID-DRYRUN-STILL-WALKS-ALL-FILES`, which is about *slowness* after a fix that made targeted runs work. This is zero-execution from a mis-typed selector, and it can be mistaken for a passing run.
+- **Suggested action:** Warn (or exit non-zero) when `--id` matches no scenario. Also recorded in `runtimes.md` under the run-tests entry.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-27-PHASE19-COMMENT-OVERSELLS-ENFORCEMENT
+- **Source:** feature:review-quality (WP7e)
+- **Target level:** task:plan
+- **Type:** tech-debt
+- **Summary:** Two enforcement claims in `[Phase 19]`'s (d) block are not implemented: "exactly one canonical declaration" (the pin is `grep_check … 1`, i.e. **min-count ≥ 1** — two declarations pass) and "makes a FIFTH reader adding a local restatement FAIL" (the citer list is **hardcoded to four paths**, so a fifth file is never examined and cannot fail).
+- **Context:** The design is fine; the comment oversells it. In a phase whose entire subject is "a pin can assert its file is clean but never that its anchors are right," a comment claiming enforcement that does not exist is the same failure at the documentation layer.
+- **Suggested action:** Either make the canonical pin exact (capture the count, assert `-eq 1`), or reword to "at least one canonical declaration, and each of the four known citers cites rather than restates — a fifth reader is not mechanically detectable."
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-27-PHASE19-SCOPE-AND-ANCHOR-GAPS
+- **Source:** feature:review-quality (WP7e)
+- **Target level:** task:plan
+- **Type:** tech-debt
+- **Summary:** Three narrow-scope gaps, all low impact: (1) the `tour_step:` scope glob `tests/fixtures/**/*.md` **does not match zero directories**, so `tests/fixtures/CLAUDE.md` and `tests/fixtures/CLAUDE-with-tracking-override.md` are out of scope (verified: `tour_step: 8` appended to the former leaves the pin PASS); (2) the emission-detection regex is **line-anchored**, so a prose form like ``Emit `TRANSITION: F1` and stop.`` is not detected — ~37% of real occurrences repo-wide sit in non-anchored positions, though the dominant real emission style *is* line-anchored so the realistic regression is caught; (3) `tutorial.yaml`'s comments cite specific **line numbers** in tour SKILL.md files, which will rot as that user-facing prose is edited.
+- **Suggested action:** (1) `'tests/fixtures/*.md' 'tests/fixtures/**/*.md'` plus a note that archives are deliberately out of scope; (2) add a comment recording the deliberate narrowness, since the surrounding prose presents the paired check as complete; (3) prefer quoted phrases over line ranges.
+- **Priority:** low
+- **Status:** pending

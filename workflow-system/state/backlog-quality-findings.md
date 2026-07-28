@@ -9,48 +9,6 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 
 # tour-state-survives-session-boundary — 2026-07-27
 
-## SURFACE-2026-07-27-QUALITY-TOUR-STEP-FIELD-HAS-NO-READER
-- **✅ DECIDED 2026-07-27 — option (b): DROP the field.** Operator ruling: *"drop it"*. `tour:` alone becomes the
-  marker. Rationale matches the finding's own analysis — the arms already resume correctly by narrative
-  position, so the field promises a step-addressed precision nothing implements; dropping it is cheaper, matches
-  actual behavior, and removes a surface WP7e would otherwise have to freeze. Option (a) (wire step-addressed
-  resume) is explicitly rejected, not deferred — revisit only if a tour ever needs to resume mid-scene.
-- **Removal sites (10 live, verified 2026-07-27):** `skills/session-handoff/SKILL.md` (:66 prose, :92 schema
-  block) · `skills/session-restore/SKILL.md` (:28) · `skills/tutorial-greenfield-workflow-tour/SKILL.md` (:375,
-  :425 field table) · `skills/tutorial-brownfield-workflow-tour/SKILL.md` (:229, :282 field table) ·
-  `docs/lessons/tutorial-tour-session-chain-flow.md` (:68) · `tests/fixtures/wip/tour-inner-work-finalized.md`
-  (:4) · `tests/fixtures/session/tour-greenfield-stepping.md` (:9) · plus `wbs.md` (:516, :543) and
-  `onboarding-flow-spec.md` (:48) as as-built records — **those two are history, not contract: annotate, do not
-  rewrite.** Watch the S31/S34 fixtures: removing the field from a fixture changes what the scenario exercises.
-- **Sequencing:** do this **inside WP7e**, alongside the sibling schema-of-record finding — both edit the same
-  five prompt files WP7e freezes, and doing them together means one pass over that surface, not two.
-- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MAJOR
-- **Priority:** medium
-- **Finding:** `tour_step:` is **written by four files and documented in five, but read by none.**
-  `session-restore` step 5 hands back to `resume_skill` unconditionally; neither arm branches on it to choose an
-  entry step (they assume Step 8 by narrative position). The schema calls it "the step to resume **at**".
-- **Why it matters:** a schema-mandated field with no consumer can drift to any value with no observable effect,
-  and no test can catch the drift. It also implies a resume precision the implementation does not have.
-- **Fix direction (two viable, pick one):** (a) wire the arms' re-entry to it, making resume genuinely
-  step-addressed; or (b) drop it and let `tour:` alone be the marker. (b) is cheaper and matches current
-  behavior; (a) is the better product if a tour ever needs to resume mid-scene.
-- **Pickup shape:** settle inside **WP7e** — it touches the arm re-entry copy WP7e is chartered to freeze. Do
-  not fix blind: the choice between (a) and (b) is a product call about how precise tour resume should be.
-
-## SURFACE-2026-07-27-QUALITY-TOUR-SCHEMA-HAS-NO-CANONICAL-DEFINITION
-- **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MAJOR
-- **Priority:** medium
-- **Finding:** the `tour:`/`tour_step:` contract is an **implicit schema spanning five prompt files with no
-  canonical definition.** Block (i)'s positive pin is `grep_check ... 'tour:' 1` — a bare substring that passes
-  on any incidental mention, so it pins the *word*, not the contract.
-- **Observed drift, already present:** `session-handoff` states `drive_mode` is *required* on a tour pointer,
-  while `session-restore` step 4.3 handles the "`tour:` pointer somehow has no `drive_mode`" case as a defect to
-  report. Two files, two postures on the same field — and nothing that would flag a third reader adopting a
-  third posture.
-- **Fix direction:** name `session-handoff` §2 ("Tour-driven handoffs") the **schema of record** and have the
-  other four files cite it — roughly one sentence each. Optionally add a structural pin that the citation exists.
-- **Pickup shape:** cheap and mechanical, but it edits the same five files WP7e freezes → **fold into WP7e**.
-
 ## SURFACE-2026-07-27-QUALITY-RUNTIMES-FRONTMATTER-NOT-A-BARE-DATE
 - **Source:** `feature-review-quality` on ship `ccfedac` (WP7o), MAJOR (lowest of the three)
 - **Priority:** low
@@ -325,38 +283,6 @@ _Resolved findings are **deleted** from this file on close (delete-on-resolve co
 # greenfield-tour-cwd-sample-and-close-restructure — 2026-07-25
 
 <!-- 5 MINOR findings from feature-review-quality, ship 783bdf2 (drive_mode=autopilot → auto-backlogged). 0 CRITICAL / 2 MAJOR. **The 2 MAJORs were FIXED IN-FEATURE, not backlogged** (spec beat-table resync + a test assertion that bypassed the real store path) — both would have corrupted the artifact WP7e is chartered to pin against, so deferring them was not viable; see the WIP's `## Code-Quality Review` for the fix record. The 5 below are compression residue: pointers that inverted direction, a rule that doesn't account for the element it now contains, garden-path phrasing, a stale duplicate WIP line. Verify each against the real code before applying (review-finding-actions-are-hypotheses). -->
-
-## SURFACE-2026-07-25-QUALITY-WP7N-BLOCK-MEMBERSHIP-AMBIGUOUS
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
-- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` — the `Next Step:` block's own rules say "**It is the last thing you emit.** No further prose, no sign-off paragraph" and "details go above it, options go in it", but the `Housekeeping:` cleanup offer sits *inside* the block after the last option and is neither an option nor a detail. A later line adds "The one exception is the cleanup offer: if they say yes, delete the sample, then stop," reintroducing a post-block action the rules just forbade. Individually correct, collectively ambiguous about block membership.
-- **Why it matters:** this is the *same* structural ambiguity that made a sentence-counter falsely report 5/4 sentences where truth was 3/2 (recorded in the WIP verify-auto note). It will break a naive WP7e pin the same way.
-- **Suggested action (HYPOTHESIS — verify against the code):** add one reconciling clause naming the cleanup offer as a distinct trailing element of the block (not an option), and state explicitly that acting on it is the only permitted post-block action. Prose-only.
-- **Pickup shape:** trivial clause; **best folded into WP7e's copy-freeze** — settle it before pins freeze, don't just caveat it.
-
-## SURFACE-2026-07-25-QUALITY-WP7N-MECHANICS-POINTER-INVERTED
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
-- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` — the block's mechanics note says the compressed mechanics "are the same mechanics spelled out above," but after the WP7n restructure they are no longer spelled out above: the narrative now only *names* them and points *forward* to the block as where they live. The pointer inverted direction during compression.
-- **Why it matters:** an agent following "spelled out above" hunts for a fuller statement that no longer exists, and may re-expand the narrative the restructure deliberately compressed — undoing WP7n.
-- **Suggested action (HYPOTHESIS — verify against the code):** reword to "these are the mechanics, compressed — the narrative above only names them" (or similar). One-line prose fix.
-- **Pickup shape:** trivial; fold into WP7e's copy-freeze.
-
-## SURFACE-2026-07-25-QUALITY-WP7L-GREENFIELD-EXIT-ORDER
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
-- **Finding:** `skills/tutorial-greenfield-workflow-tour/SKILL.md` — Branch A option 1 reads "`/exit`, `mkdir` a new empty folder and `cd` into it", but `/exit` terminates the session, so the two following commands can't run in the session where the instruction is being read. The brownfield equivalent sequences it correctly (`git stash` → `/exit` → run the arm).
-- **Why it matters:** cosmetic ordering, but it is a first-run user's LAST on-screen instruction, and it currently reads as "exit, then do two things in the session you just exited."
-- **Suggested action (HYPOTHESIS — verify against the code):** reorder to "`mkdir` a new empty folder, `cd` into it, then `/exit` and run the arm in a fresh session there" — matching brownfield's sequencing.
-- **Pickup shape:** trivial reorder; fold into WP7e's copy-freeze (it is user-facing copy, so it should be operator-accepted before pins).
-
-## SURFACE-2026-07-25-QUALITY-WP7L-GITSAFETY-RATIONALE-GARDEN-PATH
-- **Priority:** low
-- **Severity:** MINOR (feature-review-quality, ship 783bdf2)
-- **Finding:** `skills/tutorial-getting-started/SKILL.md` — the strengthened greenfield-needs-no-git-safety rationale contains a self-contradictory clause as phrased: "in an **empty** directory it refuses to write into if anything is already there" — it cannot be both empty and already contain something. Intent (it refuses non-empty dirs, so it only ever writes into empty ones) is recoverable but needs a re-read.
-- **Why it matters:** this is the exact sentence the DEFERRED verify-human checklist item 1 asks the operator to judge for firmness-without-bureaucracy. Worth fixing before that read rather than during it.
-- **Suggested action (HYPOTHESIS — verify against the code):** split into two clauses — "it only ever writes into an empty directory; if anything is already there it refuses." One-line fix.
-- **Pickup shape:** trivial; **fix before the deferred acceptance read** if convenient, else fold into WP7e.
 
 ## SURFACE-2026-07-25-QUALITY-WIP-DUPLICATE-OPEN-DISCOVERIES
 - **Priority:** low
