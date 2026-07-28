@@ -83,11 +83,22 @@ scenarios:
       # any other way sailed through. Replaced with the funnel's recurring shape.
       contains_any:
         - "tutorial-brownfield-workflow-tour"
+      #
+      # ⚠️ `not_contains_strict: true` IS LOAD-BEARING — without it these negatives are advisory.
+      # Caught at review-quality and reproduced against the real verifier: in lenient (default)
+      # mode a `not_contains` hit on the `contains_any` path yields SOFT_PASS (rc=1), which
+      # run-tests.sh counts separately from FAILED and does NOT fail the run. The funnel reply
+      # "…brownfield is harder to demo, I recommend the greenfield path. You could run
+      # tutorial-brownfield-workflow-tour later, but start with greenfield instead" tripped
+      # THREE of the four negatives and still scored SOFT_PASS. Strict mode is what makes this
+      # scenario enforcement rather than documentation. These are true failure-proxies — each
+      # phrase can only appear when the skill is actually funnelling — so strict is safe here.
       not_contains:
         - "harder to demo"
         - "use the sample project instead"
         - "recommend the greenfield"
         - "start with greenfield instead"
+      not_contains_strict: true
     max_retries: 2
 
   - id: T2-tour-recommends-auto-permission-mode
@@ -298,7 +309,16 @@ scenarios:
         - "./todo add"
         - "buy milk"
         - "verify-self"
+      #
+      # ⚠️ `not_contains_strict: true` IS LOAD-BEARING — see T1's note. Without it, the pure
+      # narration reply "In a real run you would execute ./todo add … Imagine that the list
+      # prints. I would describe the grounding step rather than run it" scored SOFT_PASS while
+      # tripping BOTH negatives — the demo-reel answer this scenario exists to reject.
+      # Strict verified safe: neither phrase occurs ANYWHERE in the greenfield arm (`imagine`
+      # appears zero times in the file), so neither can false-fire on correct copy. That check
+      # matters — strict mode is only for failure-proxies, never for informational phrases.
       not_contains:
         - "in a real run you would"
         - "imagine that"
+      not_contains_strict: true
     max_retries: 2

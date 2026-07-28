@@ -2945,6 +2945,18 @@ if ! ls skills/tutorial-*/SKILL.md >/dev/null 2>&1; then
   check "5-minute-prohibition anchor is LIVE against all four tour skills" "fail" \
     "no skills/tutorial-*/SKILL.md found — liveness cannot be established vacuously; if the arms were renamed, update this phase"
 else
+  # ⚠️ EXPECTED COUNT IS ABSOLUTE, NOT A RATIO — and it is DERIVED from $TOUR_SKILLS so it
+  # tracks the list instead of hardcoding 4. Caught at review-quality: the first version
+  # asserted `nt_live -eq tour_n` where tour_n counted only SURVIVING files, so a PARTIAL
+  # rename (3 of 4 renamed away) left the `ls skills/tutorial-*` guard satisfied, reduced the
+  # comparison to a vacuous 1-of-1, and PASSED while the message still claimed "all four tour
+  # skills." Verified live: three checks reported PASS "against all four" while examining one.
+  # This is the ratio flavour of the vacuous-pass family the WP7o convention was written for —
+  # the FULL-rename case was guarded (13 fail-closed FAILs), the partial one was not.
+  # [Phase 19]'s own per-skill loop gets this right by emitting an explicit FAIL per missing
+  # file; this loop `continue`d silently, which is what made the ratio look sound.
+  # shellcheck disable=SC2086
+  set -- $TOUR_SKILLS; tour_expected=$#
   nt_live=0; fm_live=0; tour_n=0
   for ts in $TOUR_SKILLS; do
     ts_f="skills/${ts}/SKILL.md"
@@ -2954,17 +2966,17 @@ else
     [ "$( (printf '%s' "$flat" | grep -ciE "$TOUR_NOTRANSITION_ANCHOR" || true) | head -1 )" -ge 1 ] && nt_live=$(( nt_live + 1 ))
     [ "$( (printf '%s' "$flat" | grep -cE  "$TOUR_5MIN_PROHIBITION_ANCHOR" || true) | head -1 )" -ge 1 ] && fm_live=$(( fm_live + 1 ))
   done
-  if [ "$tour_n" -ge 1 ] && [ "$nt_live" -eq "$tour_n" ]; then
+  if [ "$tour_n" -eq "$tour_expected" ] && [ "$nt_live" -eq "$tour_expected" ]; then
     check "no-transition anchor is LIVE against all four tour skills" "pass"
   else
     check "no-transition anchor is LIVE against all four tour skills" "fail" \
-      "matched $nt_live of $tour_n tour skills — an anchor that misses real copy cannot catch a reworded leak (the round-2 dead-anchor defect)"
+      "matched $nt_live of $tour_n present (expected $tour_expected) — a MISSING file fails this closed (renamed arm? update \$TOUR_SKILLS); an anchor that misses real copy cannot catch a reworded leak (the round-2 dead-anchor defect)"
   fi
-  if [ "$tour_n" -ge 1 ] && [ "$fm_live" -eq "$tour_n" ]; then
+  if [ "$tour_n" -eq "$tour_expected" ] && [ "$fm_live" -eq "$tour_expected" ]; then
     check "5-minute-prohibition anchor is LIVE against all four tour skills" "pass"
   else
     check "5-minute-prohibition anchor is LIVE against all four tour skills" "fail" \
-      "matched $fm_live of $tour_n tour skills — every tour surface must carry the prohibition"
+      "matched $fm_live of $tour_n present (expected $tour_expected) — a MISSING file fails this closed (renamed arm? update \$TOUR_SKILLS); every tour surface must carry the prohibition"
   fi
 fi
 
@@ -3055,14 +3067,34 @@ if ! ls skills/tutorial-*/SKILL.md >/dev/null 2>&1; then
   check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "fail" \
     "no skills/tutorial-*/SKILL.md found — case-stability cannot be established vacuously"
 else
-  tour_corpus=$(cat skills/tutorial-*/SKILL.md 2>/dev/null)
+  # Build the corpus from $TOUR_SKILLS (not the bare glob) and require ALL of them present —
+  # same partial-rename ratio hazard fixed in block (1): a glob over 1 surviving arm would
+  # otherwise establish "case-stability on the tour corpus" against a quarter of the corpus.
+  # shellcheck disable=SC2086
+  set -- $TOUR_SKILLS; cs_expected=$#
+  cs_present=0; tour_corpus=""
+  for ts in $TOUR_SKILLS; do
+    [ -f "skills/${ts}/SKILL.md" ] || continue
+    cs_present=$(( cs_present + 1 ))
+    tour_corpus="${tour_corpus}$(cat "skills/${ts}/SKILL.md")"
+  done
+  if [ "$cs_present" -ne "$cs_expected" ]; then
+    check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "fail" \
+      "only $cs_present of $cs_expected tour skills present — case-stability cannot be established on a partial corpus (renamed arm? update \$TOUR_SKILLS)"
+    tour_corpus=""
+  fi
   cs5=$( (printf '%s' "$tour_corpus" | tr '\n' ' ' | grep -cE  "$TOUR_5MIN_PROHIBITION_ANCHOR" || true) | head -1 )
   ci5=$( (printf '%s' "$tour_corpus" | tr '\n' ' ' | grep -ciE "$TOUR_5MIN_PROHIBITION_ANCHOR" || true) | head -1 )
-  if [ "${cs5:-0}" -eq "${ci5:-0}" ]; then
-    check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "pass"
-  else
-    check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "fail" \
-      "case-sensitive=${cs5} vs case-insensitive=${ci5} — an anchor depends on casing; pick a case-stable anchor rather than adding -i"
+  # Only emit the case-stability verdict when the corpus was COMPLETE — otherwise the
+  # partial-rename FAIL above already spoke for this check and a second emit would
+  # double-count (and, on the pass branch, contradict it).
+  if [ "$cs_present" -eq "$cs_expected" ]; then
+    if [ "${cs5:-0}" -eq "${ci5:-0}" ]; then
+      check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "pass"
+    else
+      check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "fail" \
+        "case-sensitive=${cs5} vs case-insensitive=${ci5} — an anchor depends on casing; pick a case-stable anchor rather than adding -i"
+    fi
   fi
 fi
 

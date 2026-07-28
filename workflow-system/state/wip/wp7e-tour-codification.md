@@ -627,6 +627,74 @@ Phase 2 created three pinnable facts. Phase 3 should consume these rather than r
   routing miss. Out of scope; route to backlog at finalize so the session group's real floor is recorded
   as 3, not 2.
 
+## Code-Quality Review — 2026-07-27 (post-ship, commit 9a524e5)
+
+Mode 4 (fsd) normally SKIPS review-quality. It was run anyway because Phases 3 and 4 had each already
+shipped a green-but-inert assertion, and the reviewer's charter was exactly that class. **That call was
+right: it found 2 MAJORs, both reproduced against the real harness, and both were this feature's own
+headline lesson unapplied to its own output.** Both are FIXED (not backlogged) — each corrupted the
+artifact WP7e exists to produce.
+
+- **MAJOR — FIXED — T1 and T4 lacked `not_contains_strict: true`, making their negatives advisory.**
+  In lenient (default) mode a `not_contains` hit on the `contains_any` path returns SOFT_PASS (rc=1),
+  which `run-tests.sh` counts separately from FAILED and does NOT fail the run. Reproduced against the
+  real verifier: the funnel reply "…brownfield is harder to demo, I recommend the greenfield path …
+  but start with greenfield instead" tripped **THREE of T1's four negatives and still scored
+  SOFT_PASS**; T4 SOFT_PASSed on pure narration. T2/T3 had strict; T1/T4 did not. **The comments made
+  it worse** — both asserted an enforcement the YAML did not configure. Fixed and verified in BOTH
+  directions at the verifier level (bad output → rc=2 FAIL; correct output → rc=1 SOFT_PASS, no
+  false-fire). T4's negatives confirmed safe for strict first: neither phrase occurs anywhere in the arm.
+- **MAJOR — FIXED — `[Phase 19b]`'s liveness + case-stability checks passed vacuously on a PARTIAL
+  rename.** The guard was `ls skills/tutorial-*/SKILL.md` (satisfied while ANY arm survives) and the
+  assertion was a RATIO (`nt_live -eq tour_n`, where `tour_n` counted only survivors). Rename 3 of 4
+  and it collapses to a vacuous 1-of-1 PASS — **while the check description still says "against all
+  four tour skills."** Verified live: three checks reported PASS "against all four" while examining
+  one. This is the ratio flavour of the vacuous-pass family, and the FULL-rename case was guarded (13
+  fail-closed FAILs) while the partial one was not. Fixed by deriving an ABSOLUTE expected count from
+  `$TOUR_SKILLS` (`set -- $TOUR_SKILLS; n=$#`) so it tracks the list rather than hardcoding 4; the
+  case-stability block now builds its corpus from the same list instead of a bare glob, and its verdict
+  is emitted only when the corpus is complete (no double-count). **Mutation-verified in an isolated
+  `git archive` worktree: the partial rename now produces 3 fail-closed FAILs naming the cause; live
+  tree confirmed untouched afterward (all 4 arms present).**
+- **MINOR — accepted, rationale CORRECTED — the heredoc-delimiter COSMETIC.** Classification stands,
+  but for a reason the earlier note did not state: **`check-structure.sh` has no automated consumer**
+  (no `.github/`, `run-all.sh` never invokes it, no hook calls it), so exit status is read only by a
+  human who cannot miss 40 red FAILs and a missing Summary. The earlier rationale — "structurally
+  unguardable" — was WRONG: an end-of-file sentinel sits outside every heredoc and cannot be swallowed.
+  Re-classify to MAJOR the moment anything automated calls this script. Backlog entry to be corrected
+  at finalize with the sentinel fix named so the item is actionable.
+- **MINOR — backlogged — the (d)-block comment oversells enforcement.** It claims "exactly one canonical
+  declaration" (the pin is `grep_check … 1`, i.e. min-count ≥ 1) and that a FIFTH restater would FAIL
+  (the citer list is hardcoded to four paths, so a fifth file is never examined). Design is fine; the
+  comment is wrong, which in a file about inert pins is the same failure at the documentation layer.
+- **MINOR — backlogged — `tour_step:` scope glob misses two tracked fixtures.** `tests/fixtures/**/*.md`
+  does not match zero directories, so `tests/fixtures/CLAUDE.md` and
+  `tests/fixtures/CLAUDE-with-tracking-override.md` are out of scope (verified: `tour_step: 8` appended
+  to the former leaves the pin PASS). Low impact; fix is `'tests/fixtures/*.md' 'tests/fixtures/**/*.md'`.
+- **MINOR — backlogged — emission regex is line-anchored**, so `Emit \`TRANSITION: F1\` and stop.` in
+  prose is not detected (~37% of real occurrences repo-wide sit in non-anchored positions). The dominant
+  real emission style IS line-anchored so the realistic regression is caught; worth a comment recording
+  the deliberate narrowness.
+- **MINOR — backlogged — line-number citations will rot.** The `tutorial.yaml` comments cite specific
+  line ranges in tour SKILL.md files; all accurate today (5 sampled) but nothing pins them, and those
+  files are user-facing prose that keeps being edited. Prefer quoted phrases over line numbers.
+- **Reviewer's strengths, recorded because they were independently verified, not self-reported:** the
+  full-rename case produces 13 fail-closed FAILs with rename-naming messages; `[Phase 19]` survived an
+  independent 5-case deletion sweep; both absence-assertion hazards are correctly inverted; and every
+  count, line number, and corpus claim sampled verified exactly (47/21 pins, 584/1, `acceptEdits`=0,
+  `bypassPermissions`=0 with the corpus writing the hyphenated form at getting-started:126).
+
+**⚠️ ONE VERIFICATION IS OWED, AND IT IS NOT A DEFECT IN THE FIX.** The post-fix `--group tutorial`
+live re-run could not be completed: the API stopped returning output (`num_turns: 0`,
+`duration_api_ms: 0`, `total_cost_usd: 0`, no `result` field) after ~15 scenario runs this session —
+environmental exhaustion, not an assertion failure. Diagnostic evidence that this is environmental:
+the three FAILs were all "positive anchor absent" and **no strict-negative ever fired**, which is the
+signature of empty output. Both strict fixes ARE verified in both directions at the verifier level
+(above), which isolates the assertion from model variance and is the stronger check; and
+`check-structure.sh` (no model calls) is unaffected at **584 PASS / 1 FAIL**. **Next session: re-run
+`./tests/run-tests.sh --group tutorial` and confirm 0 FAIL.** Expect FLAKY membership to vary — that is
+documented and diagnosed, not a regression.
+
 ## Session Handoff — 2026-07-27 21:15 — RESOLVED 2026-07-27 21:26
 
 Handed off mid-Phase-3-verify. **The owed obligation has since been satisfied** — the fresh
