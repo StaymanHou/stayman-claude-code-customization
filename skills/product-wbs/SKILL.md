@@ -110,7 +110,7 @@ Each standard work package should:
 **Standard ordering sequence (deviate only with written rationale):**
 1. **Environment / Docker** — prove the dev environment works before writing any application code
 2. **3rd-party probes** — one probe WP per external API/service/SDK before any build WP that assumes known shapes
-3. **UI mockups / frontend prototypes** — validate UX assumptions before building the backend that serves them
+3. **UI mockups / frontend prototypes** — validate UX assumptions before building the backend that serves them. Prototypes at this level typically span **multiple pages or screens** (a flow, a navigational path). A comparison of **several concrete options for one surface** is a different artifact — a decision tool, not a work package — see `/util-option-mockup`. Discriminate on **what varies**: *the same surface rearranged* is a decision tool (even at whole-screen scale); *different sets of screens, or a different flow between them* is a prototype WP
 4. **Backend synchronous path** — implement the core feature without async complexity
 5. **Orchestration / async as refactor** — add queues, workers, event systems on top of a working synchronous path
 

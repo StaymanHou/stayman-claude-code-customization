@@ -1,0 +1,487 @@
+<title>Verdict (a) — Settings surface mockup</title>
+<style>
+  :root {
+    /* Claudesk's real tokens — reproduced so what's judged is layout, not styling */
+    --ck-bg: #1e1e1e;
+    --ck-panel: #262626;
+    --ck-panel-hi: #2e2e2e;
+    --ck-line: #333;
+    --ck-text: #f6f6f6;
+    --ck-muted: #9b9b9b;
+    --ck-accent: #6ea8ff;
+    /* annotation layer — deliberately OUTSIDE the app palette */
+    --note: #d9a441;
+    --note-dim: #8a6a2a;
+    --page: #141414;
+    --ink: #e8e6e3;
+    --ink-dim: #8f8b86;
+    --rule: #2a2a2a;
+    --good: #5fb87a;
+    --warn: #d97b41;
+  }
+  /* Single-theme by intent: this mocks a dark-only app (CLAUDE.md forbids light theme
+     in Claudesk), so a light variant would misrepresent the product. */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  header.masthead { border-bottom: 1px solid var(--rule); padding-bottom: 1.4rem; margin-bottom: 2rem; }
+  .eyebrow {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--note); margin: 0 0 0.5rem;
+  }
+  h1 { font-size: 1.75rem; line-height: 1.2; margin: 0 0 0.5rem; text-wrap: balance; font-weight: 600; }
+  .sub { color: var(--ink-dim); margin: 0; max-width: 68ch; }
+
+  h2 {
+    font-size: 1.05rem; font-weight: 600; margin: 2.6rem 0 0.9rem;
+    padding-bottom: 0.45rem; border-bottom: 1px solid var(--rule);
+  }
+  p { max-width: 72ch; }
+
+  /* ── the three frames ─────────────────────────────────────────── */
+  .frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 1.25rem; }
+  @media (max-width: 1040px) { .frames { grid-template-columns: 1fr; max-width: 460px; } }
+
+  .opt { display: flex; flex-direction: column; gap: 0.7rem; min-width: 0; }
+  .opt-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .opt-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; padding: 0.12rem 0.4rem; border-radius: 3px;
+    border: 1px solid var(--note-dim); color: var(--note); flex-shrink: 0;
+  }
+  .opt-name { font-weight: 600; font-size: 0.95rem; }
+
+  /* the app window — real proportions: 640px content column, 12vh top pad */
+  .win {
+    background: var(--ck-bg); border: 1px solid var(--ck-line); border-radius: 6px;
+    overflow: hidden; position: relative;
+    font-family: Inter, -apple-system, sans-serif; color: var(--ck-text);
+    height: 420px; display: flex; flex-direction: column;
+  }
+  .win-pad { padding: 1.1rem 1rem 0; display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+  .ck-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.9rem; }
+  .ck-title { font-size: 1.35rem; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .ck-iconbtn {
+    width: 26px; height: 26px; border-radius: 4px; border: 1px solid var(--ck-line);
+    background: var(--ck-panel); color: var(--ck-muted); display: grid; place-items: center; font-size: 11px;
+  }
+
+  /* the settings block, as it exists today */
+  .ck-settings { display: flex; flex-direction: column; gap: 0.42rem; }
+  .ck-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; }
+  .ck-row label { color: var(--ck-text); }
+  .ck-select {
+    flex: 1; background: var(--ck-panel); border: 1px solid var(--ck-line); border-radius: 4px;
+    padding: 0.28rem 0.45rem; font-size: 0.74rem; color: var(--ck-text);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ck-cb { width: 13px; height: 13px; border-radius: 3px; background: var(--ck-accent); flex-shrink: 0;
+           display: grid; place-items: center; color: #10233d; font-size: 9px; font-weight: 700; }
+  .ck-cb.off { background: transparent; border: 1px solid #4a4a4a; }
+  .ck-btn-sm {
+    font-size: 0.7rem; padding: 0.2rem 0.45rem; border-radius: 4px;
+    border: 1px solid var(--ck-line); background: var(--ck-panel); color: var(--ck-muted);
+  }
+
+  .ck-filter {
+    background: var(--ck-panel); border: 1px solid var(--ck-line); border-radius: 5px;
+    padding: 0.42rem 0.6rem; color: #6f6f6f; font-size: 0.78rem; margin: 0.85rem 0 0.6rem;
+  }
+  .ck-list { display: flex; flex-direction: column; gap: 0.4rem; overflow: hidden; min-height: 0; flex: 1; }
+  .ck-item {
+    background: var(--ck-panel); border-radius: 5px; padding: 0.4rem 0.55rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-shrink: 0;
+  }
+  .ck-item-name { font-size: 0.78rem; font-weight: 500; }
+  .ck-item-path { font-size: 0.64rem; color: var(--ck-muted); margin-top: 1px; }
+  .ck-x { color: var(--ck-muted); font-size: 0.7rem; flex-shrink: 0; }
+
+  /* the fold marker — the whole point of the comparison */
+  .fold {
+    position: absolute; left: 0; right: 0; border-top: 1px dashed var(--note);
+    opacity: 0.85; pointer-events: none;
+  }
+  .fold::after {
+    content: attr(data-label);
+    position: absolute; right: 4px; top: -14px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 9px;
+    color: var(--note); background: var(--page); padding: 0 3px;
+  }
+  .cost-strip {
+    position: absolute; left: 0; top: 0; width: 3px;
+    background: repeating-linear-gradient(180deg, var(--warn) 0 4px, transparent 4px 8px);
+  }
+
+  /* the panel overlay variant */
+  .ck-overlay {
+    position: absolute; inset: 0; background: rgba(8,8,8,0.62);
+    display: grid; place-items: center; padding: 1rem;
+  }
+  .ck-modal {
+    width: 100%; max-width: 300px; background: var(--ck-bg);
+    border: 1px solid #3a3a3a; border-radius: 8px; padding: 0.85rem 0.9rem;
+    box-shadow: 0 16px 44px rgba(0,0,0,0.55);
+  }
+  .ck-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; }
+  .ck-modal-title { font-size: 0.92rem; font-weight: 600; }
+  .ck-group { margin-bottom: 0.7rem; }
+  .ck-group-label {
+    font-size: 0.62rem; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ck-muted); margin-bottom: 0.32rem; font-weight: 600;
+  }
+  .ck-help { font-size: 0.64rem; color: var(--ck-muted); margin: 0.14rem 0 0 1.35rem; line-height: 1.4; }
+  .ck-menubar {
+    position: absolute; top: 0; left: 0; right: 0; height: 20px;
+    background: #2b2b2b; border-bottom: 1px solid #3a3a3a;
+    display: flex; align-items: center; gap: 0.7rem; padding: 0 0.5rem;
+    font-size: 0.6rem; color: #b9b9b9;
+  }
+  .ck-menu-open {
+    position: absolute; top: 20px; left: 44px; width: 152px;
+    background: #2f2f2f; border: 1px solid #444; border-radius: 4px;
+    padding: 0.2rem; font-size: 0.62rem; box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+  }
+  .ck-mi { padding: 0.18rem 0.35rem; border-radius: 3px; display: flex; align-items: center; gap: 0.3rem; color: #d8d8d8; }
+  .ck-mi.hl { background: var(--ck-accent); color: #10233d; }
+  .ck-mi .tick { width: 8px; display: inline-block; }
+
+  /* verdict + reasoning blocks */
+  .measure { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 0.9rem; }
+  @media (max-width: 1040px) { .measure { grid-template-columns: 1fr; max-width: 460px; } }
+  .m-card {
+    border: 1px solid var(--rule); border-radius: 5px; padding: 0.7rem 0.8rem;
+    background: #191919; font-size: 0.82rem;
+  }
+  .m-num {
+    font-family: ui-monospace, Menlo, monospace; font-size: 1.45rem; font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.1;
+  }
+  .m-num.bad { color: var(--warn); }
+  .m-num.ok { color: var(--good); }
+  .m-lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); margin-top: 0.2rem; }
+  .m-note { color: var(--ink-dim); font-size: 0.76rem; margin-top: 0.45rem; line-height: 1.45; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
+  .tscroll { overflow-x: auto; }
+  th, td { text-align: left; padding: 0.52rem 0.6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); font-weight: 600; }
+  td.opt-cell { font-family: ui-monospace, Menlo, monospace; font-size: 0.78rem; white-space: nowrap; color: var(--note); }
+  .yes { color: var(--good); } .no { color: var(--warn); }
+
+  .verdict {
+    margin-top: 1rem; border: 1px solid var(--note-dim); border-radius: 6px;
+    background: linear-gradient(180deg, rgba(217,164,65,0.07), rgba(217,164,65,0.02));
+    padding: 1rem 1.1rem;
+  }
+  .verdict h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+  .verdict p { margin: 0 0 0.6rem; }
+  .verdict p:last-child { margin-bottom: 0; }
+  ul { margin: 0.4rem 0 0.8rem; padding-left: 1.15rem; }
+  li { margin-bottom: 0.35rem; max-width: 70ch; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em;
+    background: #202020; padding: 0.08em 0.32em; border-radius: 3px; color: #cfd8e3;
+  }
+  .caption {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem;
+    color: var(--ink-dim); line-height: 1.5;
+  }
+  .caption b { color: var(--note); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Claudesk · M10.9 WP1 · Verdict (a)</p>
+    <h1>Where does the <code>workflow_features_enabled</code> toggle live?</h1>
+    <p class="sub">
+      Three candidate homes, drawn at true proportion in Claudesk's own chrome so the thing being
+      judged is the layout change and not the mockup's styling. Amber marks annotation — never product UI.
+    </p>
+  </header>
+
+  <h2>The frames</h2>
+  <p class="caption" style="margin:0 0 0.2rem">
+    Dashed line = <b>the fold in your screenshot</b> (≈ where the 3rd project sat). Striped left rail = vertical space spent before the project list starts.
+  </p>
+
+  <div class="frames">
+
+    <!-- ─────────── OPTION (ii) — as currently decided ─────────── -->
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-tag">(ii)</span>
+        <span class="opt-name">Strip + menu mirror</span>
+      </div>
+      <div class="win">
+        <div class="cost-strip" style="height:170px"></div>
+        <div class="win-pad">
+          <div class="ck-header">
+            <h3 class="ck-title">Claudesk</h3>
+            <div class="ck-iconbtn">▚</div>
+          </div>
+          <div class="ck-settings">
+            <div class="ck-row">
+              <label style="flex-shrink:0">Permission mode</label>
+              <div class="ck-select"><span>Bypass Permissions (yolo)</span><span style="color:#666">⌃</span></div>
+            </div>
+            <div class="ck-row"><span class="ck-cb">✓</span><label>Time tracking</label></div>
+            <div class="ck-row"><span class="ck-cb">✓</span><label>Update notifications</label></div>
+            <div class="ck-row"><span class="ck-cb off"></span><label>Workflow features</label></div>
+          </div>
+          <div class="ck-filter">Filter projects…</div>
+          <div class="ck-list">
+            <div class="ck-item"><div><div class="ck-item-name">turn-based-ai-test-proto-1</div><div class="ck-item-path">/Users/stayman/Personal/projects/turn…</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">claudesk</div><div class="ck-item-path">/Users/stayman/Personal/projects/claudesk</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">my-hermes-agent</div><div class="ck-item-path">/Users/stayman/Personal/projects/my-her…</div></div><span class="ck-x">✕</span></div>
+          </div>
+        </div>
+        <div class="fold" data-label="fold" style="top:262px"></div>
+      </div>
+      <p class="caption">
+        A <b>4th control</b> joins the row. Settings now cost <b>~170px</b> before the filter — worse than
+        today's screenshot, not better. Plus a View-menu mirror (not shown) for in-workspace reach.
+      </p>
+    </div>
+
+    <!-- ─────────── OPTION (iii-a) — panel, gate only ─────────── -->
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-tag">(iii-a)</span>
+        <span class="opt-name">Panel, gate only</span>
+      </div>
+      <div class="win">
+        <div class="cost-strip" style="height:148px"></div>
+        <div class="win-pad">
+          <div class="ck-header">
+            <h3 class="ck-title">Claudesk</h3>
+            <div class="ck-iconbtn">▚</div>
+          </div>
+          <div class="ck-settings">
+            <div class="ck-row">
+              <label style="flex-shrink:0">Permission mode</label>
+              <div class="ck-select"><span>Bypass Permissions (yolo)</span><span style="color:#666">⌃</span></div>
+            </div>
+            <div class="ck-row"><span class="ck-cb">✓</span><label>Time tracking</label></div>
+            <div class="ck-row"><span class="ck-cb">✓</span><label>Update notifications</label></div>
+          </div>
+          <div class="ck-filter">Filter projects…</div>
+          <div class="ck-list">
+            <div class="ck-item"><div><div class="ck-item-name">turn-based-ai-test-proto-1</div><div class="ck-item-path">/Users/stayman/Personal/projects/turn…</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">claudesk</div><div class="ck-item-path">/Users/stayman/Personal/projects/claudesk</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">my-hermes-agent</div><div class="ck-item-path">/Users/stayman/Personal/projects/my-her…</div></div><span class="ck-x">✕</span></div>
+          </div>
+        </div>
+        <div class="ck-overlay">
+          <div class="ck-modal">
+            <div class="ck-modal-head">
+              <span class="ck-modal-title">Settings</span>
+              <span style="color:var(--ck-muted);font-size:0.8rem">✕</span>
+            </div>
+            <div class="ck-group">
+              <div class="ck-group-label">Workflow features</div>
+              <div class="ck-row"><span class="ck-cb off"></span><label>Enable workflow features</label></div>
+              <p class="ck-help">Requires the workflow system installed in <code style="font-size:0.9em;background:#222">~/.claude/</code>.</p>
+            </div>
+          </div>
+        </div>
+        <div class="fold" data-label="fold" style="top:262px"></div>
+      </div>
+      <p class="caption">
+        Picker <b>unchanged</b> — still ~148px of settings above the list. The panel holds one lonely
+        toggle. Settings now live in <b>four</b> places. Cheapest build, solves nothing you raised.
+      </p>
+    </div>
+
+    <!-- ─────────── OPTION (iii-b) — panel + migrate ─────────── -->
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-tag">(iii-b)</span>
+        <span class="opt-name">Panel + migrate</span>
+      </div>
+      <div class="win">
+        <div class="cost-strip" style="height:52px; background:repeating-linear-gradient(180deg,var(--good) 0 4px,transparent 4px 8px)"></div>
+        <div class="win-pad" style="padding-top:1.1rem">
+          <div class="ck-header">
+            <h3 class="ck-title">Claudesk</h3>
+            <div style="display:flex;gap:0.35rem">
+              <div class="ck-iconbtn">▚</div>
+              <div class="ck-iconbtn" style="border-color:#4a5a70;color:var(--ck-accent)">⚙</div>
+            </div>
+          </div>
+          <div class="ck-filter" style="margin-top:0">Filter projects…</div>
+          <div class="ck-list">
+            <div class="ck-item"><div><div class="ck-item-name">turn-based-ai-test-proto-1</div><div class="ck-item-path">/Users/stayman/Personal/projects/turn…</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">claudesk</div><div class="ck-item-path">/Users/stayman/Personal/projects/claudesk</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">my-hermes-agent</div><div class="ck-item-path">/Users/stayman/Personal/projects/my-her…</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">my-claude-code-customization</div><div class="ck-item-path">/Users/stayman/Personal/projects/my-cla…</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">yitang-copy</div><div class="ck-item-path">/Users/stayman/Tmp/yitang-copy</div></div><span class="ck-x">✕</span></div>
+            <div class="ck-item"><div><div class="ck-item-name">mccc-tutorial-c</div><div class="ck-item-path">/Users/stayman/Tmp/mccc-tutorial-c</div></div><span class="ck-x">✕</span></div>
+          </div>
+        </div>
+        <div class="fold" data-label="fold" style="top:262px"></div>
+      </div>
+      <p class="caption">
+        Settings cost drops to <b>~52px</b> (a ⚙ button). <b>6 projects above the fold instead of 3.</b>
+        The picker does its one job. Settings move into a grouped ⌘, panel →
+      </p>
+    </div>
+  </div>
+
+  <h2>What the panel holds (option iii-b, expanded)</h2>
+  <div style="display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:1.5rem;align-items:start">
+    <div class="win" style="height:auto;min-height:330px">
+      <div class="ck-menubar">
+        <span style="font-weight:600">Claudesk</span><span>File</span><span>Edit</span>
+        <span style="color:#fff">View</span><span>Workspace</span>
+      </div>
+      <div class="ck-overlay" style="background:rgba(8,8,8,0.5)">
+        <div class="ck-modal" style="max-width:268px">
+          <div class="ck-modal-head">
+            <span class="ck-modal-title">Settings</span>
+            <span style="color:var(--ck-muted);font-size:0.8rem">✕</span>
+          </div>
+          <div class="ck-group">
+            <div class="ck-group-label">Claude Code</div>
+            <div class="ck-row">
+              <div class="ck-select"><span>Bypass Permissions (yolo)</span><span style="color:#666">⌃</span></div>
+            </div>
+          </div>
+          <div class="ck-group">
+            <div class="ck-group-label">Workflow features</div>
+            <div class="ck-row"><span class="ck-cb off"></span><label>Enable workflow features</label></div>
+            <p class="ck-help">Requires the workflow system in <code style="font-size:0.9em;background:#222">~/.claude/</code>. Off by default.</p>
+          </div>
+          <div class="ck-group">
+            <div class="ck-group-label">Analytics</div>
+            <div class="ck-row"><span class="ck-cb">✓</span><label>Time tracking</label></div>
+          </div>
+          <div class="ck-group" style="margin-bottom:0">
+            <div class="ck-group-label">Updates</div>
+            <div class="ck-row"><span class="ck-cb">✓</span><label>Update notifications</label></div>
+            <div class="ck-row" style="margin-top:0.35rem;margin-left:1.35rem"><span class="ck-btn-sm">Check for updates</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="ck-menu-open">
+        <div class="ck-mi hl"><span class="tick">⌘,</span>Settings…</div>
+      </div>
+    </div>
+    <div>
+      <p style="margin-top:0">
+        Grouping is the thing the flat strip structurally can't do. Four labelled groups make
+        <em>Workflow features</em> legible as a category rather than a fourth unexplained checkbox — and
+        it's the one setting that genuinely needs a help line, since it gates a whole feature class and
+        depends on an external install.
+      </p>
+      <p>
+        Reachable with a workspace focused (⌘, and the menu item both work anywhere), which is the
+        requirement that forced the menu mirror into option (ii) in the first place. Here it falls out
+        of the design instead of being bolted on.
+      </p>
+      <p class="caption" style="margin-bottom:0">
+        Not shown: PiP mode stays a View-menu tri-state. It's a <b>window command</b>, not a preference —
+        same reason "Zoom In" isn't in Settings.
+      </p>
+    </div>
+  </div>
+
+  <h2>Cost above the fold</h2>
+  <div class="measure">
+    <div class="m-card">
+      <div class="m-num bad">~170px</div>
+      <div class="m-lbl">(ii) strip + mirror</div>
+      <p class="m-note">4 controls. <b>Adds</b> to the problem in your screenshot. 3 projects visible.</p>
+    </div>
+    <div class="m-card">
+      <div class="m-num bad">~148px</div>
+      <div class="m-lbl">(iii-a) panel, gate only</div>
+      <p class="m-note">Unchanged from today. 3 projects visible. Settings in 4 places.</p>
+    </div>
+    <div class="m-card">
+      <div class="m-num ok">~52px</div>
+      <div class="m-lbl">(iii-b) panel + migrate</div>
+      <p class="m-note">A ⚙ button. <b>6 projects visible</b> — double. Settings in 2 places.</p>
+    </div>
+  </div>
+
+  <h2>Decision rule, re-run</h2>
+  <p>
+    My first pass asked <em>"where does one boolean go?"</em> — with that framing (iii) loses cleanly and
+    (ii) wins. Your screenshot reframes it as <em>"has the collection outgrown its container?"</em>, and the
+    honest answer changes, because the surviving non-overlap is no longer tidiness:
+  </p>
+  <div class="tscroll">
+  <table>
+    <thead>
+      <tr><th>What a panel does</th><th>Can the strip already do it?</th><th>Survives?</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Give the picker its real estate back</td>
+        <td class="no">No — the strip <em>is</em> the cost. Structural.</td>
+        <td class="yes">✓ yes</td>
+      </tr>
+      <tr>
+        <td>Reachable with a workspace focused</td>
+        <td class="no">No — <code>viewFor</code> renders the picker only when nothing is focused. Menu mirror is a workaround.</td>
+        <td class="yes">✓ yes</td>
+      </tr>
+      <tr>
+        <td>Grouping + a help line per setting</td>
+        <td class="no">No — a flat unlabelled row has no room.</td>
+        <td class="yes">✓ yes</td>
+      </tr>
+      <tr>
+        <td>Consolidate settings for their own sake</td>
+        <td>—</td>
+        <td class="no">✗ cut — that's M14's job, not a reason on its own</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="verdict">
+    <h3>Revised verdict (a): option (iii-b) — a minimal ⌘, Settings panel, and migrate the 3 existing controls into it</h3>
+    <p>
+      Three items survive the rule, and the first is the one I'd previously missed entirely: the picker
+      gets its real estate back. That's a benefit to the surface you touch on <em>every</em> project open,
+      not a home for one new toggle — which is why (ii) now reads as the wrong call. (ii) would have made
+      your screenshot <em>worse</em>.
+    </p>
+    <p>
+      <strong>Migrating the 3 controls is what makes it worth doing.</strong> Option (iii-a) — panel with only
+      the new gate — is the trap: it builds the surface, leaves the strip intact, and spreads settings
+      across four places. Either move them or don't build the panel.
+    </p>
+    <p>
+      <strong>M14 relationship changes from "defer" to "absorb."</strong> M14 becomes an <em>extension</em> of a
+      panel that exists (project-list management, hotkeys) rather than a migration of controls that kept
+      accumulating in the wrong place. Its scope line also needs a correction regardless: it lists
+      "menu-bar / PiP visibility toggles" and "yolo-mode toggle" as future work, but both shipped in M5/M6.
+    </p>
+    <p>
+      <strong>Scope guard for the build.</strong> Panel, <code>⌘,</code>, <code>Settings…</code> menu item, 4 groups,
+      migrate 3 controls, gate as the 4th. <em>Not</em> in scope: project-list management, hotkey editor,
+      search/filter in settings, per-project settings, or moving PiP mode out of the View menu.
+    </p>
+  </div>
+
+  <h2>Bookkeeping consequence</h2>
+  <p>
+    This is a bigger build than the verdict I first wrote, so WP2 needs honest re-sizing rather than
+    quietly absorbing it: <strong>WP2 goes S → M</strong>, gaining a panel task and a migration task.
+    WP1 stays a pure probe — decided here, built in WP2, exactly as you asked.
+  </p>
+</div>
+

@@ -71,6 +71,17 @@ See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for t
 - Identify technical and business constraints
 - If this came from a SURFACE-IN (F28: task escalated to feature), read the source task's WIP file for context
 
+**Before presenting UI/UX options in prose, check the mockup trigger.** When you are about to lay out several candidate designs for the operator to choose between, and **both** of these hold:
+
+- **(a)** there are **≥2 concrete alternatives for a single element, widget, or component**, and
+- **(b)** the difference between them is **spatial or visual, such that prose or ASCII loses it**,
+
+then prose is the wrong medium — recommend `/util-option-mockup` and pause for the operator to run it. **The self-test for clause (b):** *can you state the difference in one sentence and be confident the operator pictures the same thing you do?* If yes, write the sentence. If no, clause (b) holds.
+
+Why this is a gate and not a nicety: files give **structure**, they do not give **cost**, and layout decisions are decided by cost. A confident verdict reached by careful file-reading can still answer the wrong question — the failure mode is a framing error, which no amount of rigor *inside* the frame recovers.
+
+Do **not** fire on copy/naming/color-only choices, behavior choices with no layout change, or a difference ASCII conveys fine. Really simple UI/UX choices don't need a mockup. Full trigger, the does-not-fire list, and the construction requirements live in `skills/util-option-mockup/SKILL.md`.
+
 ### 2. 3rd-Party Probe Check
 
 Before writing the spec, check whether this feature depends on any 3rd-party service, external API, or SDK (e.g. Stripe, Twilio, SendGrid, AWS, Google Maps, an OAuth provider, any API you don't own).

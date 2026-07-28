@@ -3100,6 +3100,150 @@ fi
 
 echo ""
 
+# ───────────────────────────────────────────────────────────────────────────
+# [Phase 20] util-option-mockup host pointers
+#
+# WHY THIS PHASE EXISTS — measured, not assumed. Before it was written, deleting
+# BOTH host pointers outright left the suite at a fully green 585 PASS / 1 FAIL.
+# The pointers are the ONLY thing that makes the skill discoverable at the moment
+# it applies (an agent framing UI/UX options in feature-spec); the skill file
+# itself is inert without them. So the pointers, not the skill, are the load-
+# bearing artifact — and they were entirely unguarded.
+#
+# Reviewed against /test-assertion-review before writing. Three AT-RISK findings
+# came out of that review and are fixed below; each fix is annotated with the
+# mechanism it answers. Do not "simplify" these preconditions away — every one of
+# them was added because a naive form was empirically shown to pass on bad input.
+# ───────────────────────────────────────────────────────────────────────────
+echo "[Phase 20] util-option-mockup host pointers"
+
+# The two consuming surfaces, as (file, section-start regex, section-end regex).
+# Section-scoped extraction is deliberate: a bare file-wide `grep -c` still scores
+# 1 when the pointer is MOVED OUT of its section into unrelated prose, which is a
+# real regression (the trigger must fire where options get framed, not merely
+# exist somewhere in the file). Verified: moving the block from §1 to §3 drops the
+# section-scoped count 2 -> 0 while a file-wide count stays 2.
+POINTER_TARGET="util-option-mockup"
+
+check_pointer() {
+  local label="$1" file="$2" sec_start="$3" sec_end="$4"
+
+  # [M3] Existence precondition, fails CLOSED. Without it a deleted/renamed file
+  # yields count 0 — indistinguishable from "pointer removed" — and for the
+  # negative pin below it would read as a PASS.
+  if [ ! -f "$file" ]; then
+    check "$label — host file exists (precondition)" "fail" \
+      "$file does not exist; a pointer pin cannot be satisfied vacuously. If the skill was renamed, update this phase's target list deliberately"
+    return
+  fi
+  check "$label — host file exists (precondition)" "pass"
+
+  # [M3] Heading precondition, fails CLOSED and SEPARATELY from the pointer count.
+  # Renaming the heading is how this actually fires in practice; without this the
+  # failure message would blame a missing pointer when the real cause is a moved
+  # section boundary.
+  local nheads
+  nheads=$( (grep -cE "$sec_start" "$file" || true) | head -1 )
+  if [ "${nheads:-0}" -lt 1 ]; then
+    check "$label — target section heading present (precondition)" "fail" \
+      "no heading matching /$sec_start/ in $file — the section was renamed or removed, so the pointer assertion below cannot be evaluated. Fix the heading or update this phase"
+    return
+  fi
+  check "$label — target section heading present (precondition)" "pass"
+
+  # [M3] The END boundary needs its OWN fail-closed precondition — this is NOT
+  # symmetric decoration. awk's `f` flag latches on at sec_start and only clears
+  # at sec_end; if sec_end is renamed away, the window runs to EOF and this pin
+  # SILENTLY DEGRADES TO A FILE-WIDE grep. The move-out-of-section regression
+  # (the M2 case this phase's design justification rests on) then passes.
+  #
+  # Found by code-quality review, NOT by the mutation sweep — the sweep mutated
+  # the pointer and the start heading, never the end boundary, so 5/5 mutations
+  # FAILing was not evidence for this input. Reproduced before fixing: renaming
+  # `### 2.` to `## Step 2 - ` and moving the pointer to EOF scored PASS.
+  local nend
+  nend=$( (grep -cE "$sec_end" "$file" || true) | head -1 )
+  if [ "${nend:-0}" -lt 1 ]; then
+    check "$label — section END boundary present (precondition)" "fail" \
+      "no heading matching /$sec_end/ in $file — without it the awk window runs to EOF and this pin degrades to a file-wide grep, silently accepting a pointer moved OUT of its section. Fix the heading or update this phase"
+    return
+  fi
+  check "$label — section END boundary present (precondition)" "pass"
+
+  # [M5] Assert >=1, never ==N. feature-spec legitimately carries TWO references
+  # today (the recommendation line + the pointer to the full contract); an exact
+  # count would break the moment prose gains a legitimate third.
+  local n
+  n=$( (awk "/$sec_start/{f=1} /$sec_end/{f=0} f" "$file" | grep -c "$POINTER_TARGET" || true) | head -1 )
+  if [ "${n:-0}" -ge 1 ]; then
+    check "$label — references $POINTER_TARGET inside its target section" "pass"
+  else
+    check "$label — references $POINTER_TARGET inside its target section" "fail" \
+      "found ${n:-0} references to $POINTER_TARGET within /$sec_start/../$sec_end/ in $file (file-wide count: $( (grep -c "$POINTER_TARGET" "$file" || true) | head -1 )). The host pointer is what makes the skill discoverable at the moment it applies — without it the skill is inert. If the pointer was intentionally moved, update this phase"
+  fi
+}
+
+check_pointer "feature-spec §1" \
+  "skills/feature-spec/SKILL.md" \
+  '^### 1\. Elicit Requirements' \
+  '^### 2\.'
+
+check_pointer "product-wbs §3" \
+  "skills/product-wbs/SKILL.md" \
+  '^### 3\. Learning-Sequence Ordering' \
+  '^### 4\.'
+
+# DRIFT pin — the trigger contract is stated THREE times (skill = canonical,
+# feature-spec §1 = pointer, arch.md = registration) because a CLAUDE.snippet.md
+# entry was rejected on budget grounds (the snippet is already past 40k). That
+# duplication is deliberate, but nothing above pins the copies against EACH OTHER
+# — [Phase 20]'s pointer pins assert only that the STRING appears, never that the
+# CONTRACT agrees. This surface already drifted once during development (the
+# clause-(b) self-test was scoped in the skill and unscoped in the pointer, which
+# read as collapsing the conjunction), so the risk is demonstrated, not theoretical.
+#
+# Pin the one sentence that carries the load: the self-test must be scoped to
+# clause (b) in BOTH prose copies. Anchored on the scoping phrase, not the whole
+# sentence — a verbatim-sentence pin matches nothing the moment wording is edited.
+SELFTEST_ANCHOR='self-test for clause \(b\)'
+for st_file in skills/util-option-mockup/SKILL.md skills/feature-spec/SKILL.md; do
+  if [ ! -f "$st_file" ]; then
+    check "$(basename "$(dirname "$st_file")") scopes the self-test to clause (b)" "fail" \
+      "$st_file does not exist — a contract-drift pin cannot be satisfied vacuously"
+  else
+    st_n=$( (grep -cE "$SELFTEST_ANCHOR" "$st_file" || true) | head -1 )
+    if [ "${st_n:-0}" -ge 1 ]; then
+      check "$(basename "$(dirname "$st_file")") scopes the self-test to clause (b)" "pass"
+    else
+      check "$(basename "$(dirname "$st_file")") scopes the self-test to clause (b)" "fail" \
+        "$st_file states the self-test without scoping it to clause (b). Unscoped, a failed self-test reads as satisfying the WHOLE conjunctive trigger, bypassing clause (a) (>=2 concrete alternatives) — which is the exact drift caught in review on 2026-07-28. Keep the three statements of this contract in agreement"
+    fi
+  fi
+done
+
+# NEGATIVE pin — D8: feature-verify-human is deliberately NOT a host. verify-human
+# is where a missed trigger SHOWS UP, not where a mockup is BUILT; adding a pointer
+# there was considered and explicitly declined.
+#
+# [M3] A negative assertion is the classic vacuous pass: `grep -c` returns 0 for a
+# clean file AND for a file that does not exist. Measured directly during review —
+# both cases returned the same value. Hence the fail-CLOSED existence guard.
+VH_FILE="skills/feature-verify-human/SKILL.md"
+if [ ! -f "$VH_FILE" ]; then
+  check "feature-verify-human does NOT reference $POINTER_TARGET (D8)" "fail" \
+    "$VH_FILE does not exist — a negative assertion cannot be satisfied vacuously; if the skill was renamed, update this phase deliberately"
+else
+  vh_n=$( (grep -c "$POINTER_TARGET" "$VH_FILE" || true) | head -1 )
+  if [ "${vh_n:-0}" -eq 0 ]; then
+    check "feature-verify-human does NOT reference $POINTER_TARGET (D8)" "pass"
+  else
+    check "feature-verify-human does NOT reference $POINTER_TARGET (D8)" "fail" \
+      "$VH_FILE contains ${vh_n} reference(s) to $POINTER_TARGET, but D8 deliberately excluded it as a host — verify-human is where a missed trigger surfaces, not where a mockup is built. If that decision was reversed, update this phase and workflow-system/product/arch.md together"
+  fi
+fi
+
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

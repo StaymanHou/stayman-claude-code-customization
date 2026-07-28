@@ -7,6 +7,41 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 ---
 
 
+# mockup-artifact-for-uiux-decisions — 2026-07-28
+
+> Ship commit `6dcd525`. Review verdict 0 CRITICAL / 2 MAJOR / 3 MINOR. **Both MAJORs were FIXED IN-FEATURE**, not backlogged (see the WIP's `## Code-Quality Review` → Disposition, archived with the feature): MAJOR-1 was a missing `sec_end` fail-closed precondition that let the section-scoped pointer pin silently degrade to a file-wide grep — it falsified a guarantee `[Phase 20]`'s own comment block asserts, and the mutation sweep structurally could not catch it. MAJOR-2 added a drift pin across the three statements of the trigger contract. The 3 MINORs below remain open.
+
+## SURFACE-2026-07-28-QUALITY-DOCS-REFERENCE-UNLABELED
+
+- **Source:** feature:review-quality (mockup-artifact-for-uiux-decisions)
+- **Type:** tech-debt (documentation discoverability)
+- **Summary:** `docs/reference/verdict-a-mockup-claudesk-2026-07-28.html` (24KB, 487 lines) is committed as the exemplar the `util-option-mockup` procedure was reverse-engineered from, but it is **not self-describing from within this repo**: `docs/reference/` is a new directory with no README, the file's own `<title>` is "Verdict (a) — Settings surface mockup" (never says it is an exemplar, never names its origin project), and the only prose tying it to this feature lives in the WIP file — which `feature-finalize` archives.
+- **Context:** Post-archive, a reader encounters an unexplained Claudesk mockup in this repo's docs tree with no path back to why it exists. `skills/util-option-mockup/SKILL.md` §3 says "a published HTML artifact is the worked example" without linking it, so the one place a reader would look does not point at the file.
+- **Suggested action (hypothesis — verify before writing):** either one sentence in the skill's §3 linking the file explicitly, or a two-line `docs/reference/README.md` stating what the directory holds. The skill-side link is probably better — it puts the exemplar where someone following the procedure will actually look.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-28-QUALITY-MIXED-GREP-BRE-ERE
+
+- **Source:** feature:review-quality (mockup-artifact-for-uiux-decisions)
+- **Type:** tech-debt (consistency)
+- **Summary:** Inside `check_pointer()` in `tests/check-structure.sh` [Phase 20], the heading preconditions use `grep -cE` (ERE) while the section-scoped count uses plain `grep -c` (BRE). Both are correct for their current inputs — `POINTER_TARGET` is a literal string — but the mixed convention within one ~30-line function invites a future caller to pass an ERE to the BRE call site and get a silently wrong count.
+- **Suggested action:** use `grep -cF` for the literal target, making the intent explicit and immune to the mistake.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-28-QUALITY-CHECK-POINTER-GLOBAL-READ
+
+- **Source:** feature:review-quality (mockup-artifact-for-uiux-decisions)
+- **Type:** tech-debt (encapsulation)
+- **Summary:** `check_pointer()` in `tests/check-structure.sh` [Phase 20] takes four parameters (label, file, sec_start, sec_end) but reads `POINTER_TARGET` from the enclosing phase scope, making it slightly less self-contained than its signature suggests.
+- **Context:** Consistent with how other phases in this file are written, so not a defect today. Only becomes relevant if a second pointer target is ever added — at which point the global read becomes an actual bug rather than a style note.
+- **Suggested action:** pass the target as a fifth parameter if a second target is ever introduced; leave as-is otherwise.
+- **Priority:** low
+- **Status:** pending
+
+---
+
 # tour-state-survives-session-boundary — 2026-07-27
 
 ## SURFACE-2026-07-27-QUALITY-RUNTIMES-FRONTMATTER-NOT-A-BARE-DATE

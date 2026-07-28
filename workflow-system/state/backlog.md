@@ -9,7 +9,8 @@
 > One audit correction worth reading: `SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED` **names WP7e
 > as its resolver but was NOT resolved by it** — `[Phase 19]` cites the SURFACE in a comment without
 > ever pinning `Next Step:` present-and-LAST. It is annotated in place and carried forward.
-> **⚠️ The standing debt load is now sizable** — 18 open SURFACEs + 13 code-quality clusters here, and
+> **⚠️ The standing debt load is now sizable** — 19 open SURFACEs (18 at the cycle close, +1 added
+> 2026-07-28: the mockup-artifact hand-over from claudesk, TODO P1) + 13 code-quality clusters here, and
 > 28 finding bodies in `backlog-quality-findings.md`, 6 of them added by WP7e alone. This is a clean
 > cycle boundary, which is exactly the condition `/util-backlog-paydown` exists for. Running it is the
 > **operator's call** — `product-finalize` records dispositions; it does not pay the debt down.
@@ -19,6 +20,56 @@
 ---
 
 ## TODO
+
+## SURFACE-2026-07-28-MOCKUP-ARTIFACT-FOR-UIUX-DECISIONS
+
+- **Order:** P1 — **⚡ TACKLE IMMEDIATELY NEXT SESSION** (operator instruction, 2026-07-28). Pick this up before any other TODO item.
+- **Source:** cross-project hand-over from **claudesk** (M10.9 WP1 — settings-surface + invite probe). Operator asked at the end of that session to "hand over to mccc to convert that to something meaningful that will recreate this behavior for future works/projects."
+- **Target level:** feature:spec — this is a **new conditional procedure added to existing skills** (prose + gate conditions + structural pins), not a one-line edit. Small-but-real: multi-skill surface, needs a trigger-condition contract that does not over-fire.
+- **Type:** enhancement (workflow-system capability)
+- **Learning draft:** [`.claude/learnings/2026-07-28-mockup-artifact-for-uiux-decisions.md`](../../.claude/learnings/2026-07-28-mockup-artifact-for-uiux-decisions.md) — ported into this repo 2026-07-28. **Read it first; it is the spec input.**
+- **Raw origin session log:** `~/.claude/projects/-Users-stayman-Personal-projects-claudesk/6c014b4b-0427-48e2-9782-5d8885c579de.jsonl` (session `6c014b4b`, 2026-07-28 18:22:31Z → 20:10:10Z; the originating operator message is at **19:21:50Z**, greppable on `user mock-up artifacts` / `iii-b`). Per `docs/lessons/read-origin-session-log-before-planning.md`, **read this log before planning** — the learning draft is a compression that keeps the *what* and drops settled *how* decisions (the three candidate layouts, why the middle option was included, the screenshot that inverted the verdict).
+- **Summary:** At a UI-placement decision, code-reading produced the **wrong** verdict and a single operator screenshot inverted it — *files give structure, they don't give **cost**, and layout decisions are decided by cost.* The recovery that worked was a **lo-fi mockup artifact**: ≥3 candidate layouts side-by-side in the product's own design tokens at true proportion, each measured on one axis, including the deliberately unappealing middle option. Operator picked in one reply. The ask is to make this a **conditional** capability of the workflow system so it recurs without being re-taught.
+- **Suggested action (from the draft — treat as hypothesis, verify against the skills before writing):** add a CONDITIONAL rule firing only when **all three** hold: (a) ≥3 candidate surfaces, (b) a spatial/layout tradeoff, (c) competition for room with an already-shipped screen. Below that bar prose is enough — the operator explicitly scoped it: *"really simple UI/UX choices won't need mockup."* Four requirements make it work: **(1)** render in the product's real design tokens at true proportion (a designed-looking mockup actively misleads); **(2)** one measurable axis, and **label estimates as estimates**; **(3)** include the unappealing middle option so its trap is visible; **(4)** proactively **ask for a screenshot** of the running app when the decision's host is an existing screen.
+- **Candidate host skills:** `feature-spec`, `product-wbs` (decision presentation) + `feature-verify-human` (where a correction of this shape actually lands). Confirm hosts at spec time.
+- **Explicitly NOT a design prior:** this governs the **elicitation medium** for an unresolved decision, whereas design priors record a **resolved lean**. The operator **declined prior-capture twice** in the originating session — do not re-propose it as one.
+- **Open question for spec time:** the trigger is a three-way conjunction the agent must self-assess. Decide how it is stated so it does not over-fire on every two-option UI choice, and whether it needs a structural pin in `tests/check-structure.sh` or is prose-only.
+- **Priority:** high (operator-directed, next session)
+- **Status:** **in-progress** — spec written 2026-07-28 to `workflow-system/state/wip/mockup-artifact-for-uiux-decisions.md`. Origin log read pre-planning; the suggested action above was verified against actual skill prose and **corrected in four places** (see the spec's `## Findings from pre-spec verification`) — most notably: `product-wbs` §3 item-3 already covers mockup-as-a-*work-package*, which is a different thing from this mockup-as-a-*decision-tool*, and trigger clause (c) is really "host is an already-shipped surface whose occupancy the agent has not observed," not "competes for room."
+
+## SURFACE-2026-07-28-UTIL-OPTION-MOCKUP-SHAPE-UNPINNED
+
+- **Source:** feature:verify-codify (mockup-artifact-for-uiux-decisions, Phase 2)
+- **Target level:** task
+- **Type:** tech-debt (test coverage gap, deliberate)
+- **Summary:** `tests/check-structure.sh` [Phase 20] pins `util-option-mockup`'s **host pointers** but NOT its **util-family shape** (`## Category` heading vs `debug-*`'s `## Category Context`; emits-no-transition as claim AND behavior; frontmatter carrying neither `skills:` nor `tools:`). [Phase 19] pins that shape for the four `tutorial-*` skills; `util-option-mockup`, `util-prune-claude-md`, and `util-backlog-paydown` are shape-unpinned.
+- **Context:** Descoped deliberately, not forgotten. A sensitivity probe measured that deleting both host pointers left the suite fully green — so the pointers are the load-bearing artifact (an undiscoverable skill is inert) while the shape is comparatively safe (nothing breaks silently if a heading drifts; the skill just reads oddly). Pinning the shape first would have guarded the wrong thing.
+- **Suggested action (hypothesis — verify before writing):** generalize [Phase 19]'s util-family shape block into a helper that takes a skill list, then feed it `tutorial-*` + the three `util-*` skills. Note `arch.md` records the `## Category` vs `## Category Context` divergence as **intentional** — the helper must not normalize it. Run `/test-assertion-review` first; [Phase 19b] exists because the no-transition anchor shipped green while matching 24 of 46 SKILL.md files.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-28-WIP-TEMPLATE-OMITS-DRIVE-MODE-FRONTMATTER
+
+- **Source:** feature:verify-human (mockup-artifact-for-uiux-decisions, Phase 1)
+- **Target level:** task
+- **Type:** gap (two skills disagree about a file's shape)
+- **Summary:** `feature-plan`'s WIP template (`skills/feature-plan/SKILL.md` §4) creates the WIP file with **no YAML frontmatter block at all** — it opens with `# Feature: <Name>` and uses `**Key:** value` lines. But `feature-verify-human`'s auto-skip gate (a) reads `drive_mode` **from YAML frontmatter**, and specifies: *"If frontmatter has no `drive_mode` field, treat as Mode 2 (orchestrated) and do NOT auto-skip."*
+- **Context:** The operator selects a drive mode at `/session-start` (or `/session-restore`), but nothing writes it into the WIP file. Every feature therefore reaches verify-human with gate (a) failing, and **an operator who explicitly chose autopilot is silently downgraded to Mode 2** for the rest of the feature. Observed live 2026-07-28: operator selected `autopilot`, WIP had no frontmatter, the gate would have prompted for a manual skip-confirmation it was designed to elide. Worked around in-flight by hand-adding `drive_mode: autopilot`.
+- **Why it is invisible:** the failure mode is *extra friction*, not an error. Nothing breaks; the workflow just quietly asks for confirmations the operator already opted out of. Easy to misread as "autopilot doesn't do much."
+- **Suggested action (hypothesis — verify against the skills before writing):** have `feature-plan` §4 (and `feature-spec` §3, which creates the WIP on the complex path) stamp a YAML frontmatter block containing `drive_mode:` at file creation, sourced from the active session mode. Check whether `task-plan` / `incident-report` have the same split before fixing only the feature path. Consider a structural pin that the WIP template and the auto-skip gate agree on the field's location.
+- **Priority:** medium (affects every feature in every project using this workflow system; degrades an operator-selected setting)
+- **Status:** pending
+
+## SURFACE-2026-07-28-STRAY-SELF-SYMLINK-AT-REPO-ROOT
+
+- **Source:** feature:spec (mockup-artifact-for-uiux-decisions, Step 0)
+- **Target level:** task
+- **Type:** tech-debt (repo hygiene)
+- **Summary:** `git status` shows an untracked `my-claude-code-customization` entry at the repo root. It is a **self-referential symlink** (`my-claude-code-customization -> /Users/stayman/Personal/projects/my-claude-code-customization`), i.e. the repo root pointing at itself, created 2026-07-28 10:10.
+- **Context:** Harmless today, but a self-referential symlink inside a tracked repo is a recursion hazard for any tool that walks the tree without following-symlink guards (`find`, `grep -r`, `rsync`, some test harnesses). It also perpetually dirties `git status`.
+- **Suggested action:** confirm nothing depends on it, then `rm my-claude-code-customization` — or add it to `.gitignore` if something does. Check whether an `install.sh` run or a tour fixture created it before deleting.
+- **Priority:** low
+- **Status:** pending
 
 ## SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE
 - **Source:** feature:verify-self (tour-state-survives-session-boundary / WP7o, Phase 4)
@@ -53,6 +104,13 @@
 - **Suggested action:** Prefer the **restore-side** angle, which nobody has costed yet and which needs no state-machine surface: instead of asking every downstream reader to remember a second lookup location, have `/session-restore` **not lose the marker when it consumes the pointer** (e.g. it already edits `state_file` at step 6b — it could carry the tour fields into the WIP frontmatter there, or defer deleting the pointer while `tour:` is present and `tour_step` is unfinished). That keeps the trigger in **one** place the readers already check. **Explicitly NOT recommended:** making the general session skills mechanically consult WIP frontmatter via an orchestrator-evaluated precondition — that is state-machine surface, and WP7o deliberately held an empty diff on `transitions.md` + all four `agents/*/AGENTS.md` across four phases with the escalation clause re-checked each time. Reopening it to harden a layer redundant with a working primary mechanism inverts the feature's cost-benefit, and would make WP7e freeze pins against a design the operator has not seen run. Also **do NOT** soften `S33`/`S34` to make the suite green — that deletes the evidence, the exact failure mode this feature hit twice with inert pins.
 - **Priority:** medium
 - **Status:** pending
+
+## Code-quality findings — mockup-artifact-for-uiux-decisions (2026-07-28)
+- **Pointer:** 3 MINOR findings (0 CRITICAL / 2 MAJOR / 3 MINOR) from `feature-review-quality` on ship `6dcd525`. **Both MAJORs were FIXED IN-FEATURE** (see below); only the 3 MINORs remain: (1) `docs/reference/` exemplar is unlabeled and unlinked, so it becomes an orphan once the WIP is archived; (2) mixed `grep -c` BRE / `grep -cE` ERE inside one function; (3) `check_pointer()` reads `POINTER_TARGET` from enclosing scope. Full bodies: [`workflow-system/state/backlog-quality-findings.md`](backlog-quality-findings.md) → `# mockup-artifact-for-uiux-decisions — 2026-07-28`.
+- **Both MAJORs were fixed in-feature, not backlogged** — MAJOR-1: `check_pointer()` guarded the section START heading but gave the END boundary **no precondition**, so renaming the end heading let `awk`'s `f` flag run to EOF and the section-scoped pin **silently degraded to a file-wide grep** — accepting the pointer-moved-out-of-section regression that the phase's own inline comment claims to catch. Independently reproduced before acting (pointer at EOF, pin PASSed). **The mutation sweep could not have caught it**: it mutated the pointer and the start heading, never the end boundary — sensitivity to the inputs you thought to mutate is not evidence about the ones you did not. MAJOR-2: nothing pinned the three statements of the trigger contract against each other, on a surface that had **already drifted once** during development. Both closed with +4 assertions (592→596 PASS).
+- **Priority:** low (all 3)
+- **Status:** pending
+- **Pickup shape:** all three are small, independent hygiene edits with no ordering between them. (1) is the only one with real decay risk — it becomes an orphaned file the moment the WIP archives, so it is worth doing before the next cycle boundary; (2) and (3) are one-liners that can ride along with any future edit to `[Phase 20]`.
 
 ## Code-quality findings — tour-state-survives-session-boundary (2026-07-27)
 - **Pointer:** 6 findings (1 CRITICAL / 3 MAJOR / 3 MINOR) from `feature-review-quality` on ship `ccfedac`. The **CRITICAL was FIXED IN-FEATURE via `/feature-refactor`** (see below); of the rest, the 3 MINORs and 3 MAJORs remain here. Full bodies: [`workflow-system/state/backlog-quality-findings.md`](backlog-quality-findings.md) → `# tour-state-survives-session-boundary — 2026-07-27`.
