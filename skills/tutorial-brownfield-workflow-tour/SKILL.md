@@ -226,7 +226,7 @@ greenfield sample, NAMED-only on the real brownfield repo.
 > else, you talk about the boundary rather than acting on it.
 >
 > **This pointer brings the session back to THIS SKILL, not to the inner workflow's next state.** The
-> handoff you write here carries `tour: brownfield` + `tour_step: 8` and sets
+> handoff you write here carries `tour: brownfield` and sets
 > `resume_skill: /tutorial-brownfield-workflow-tour`, so `/session-restore` hands Session C back to *you*
 > and you finish the run — see Scene 1 for the exact fields. That is what makes the guard above actually
 > reachable: the two rules in this blockquote live in *this* file, so they only bind if this file is what
@@ -273,13 +273,14 @@ action — and drops a one-line marker into the WIP state file. *"One tiny point
 doc that's already on disk. It doesn't copy your plan into itself — it points at the files that hold
 it. Everything needed to bring you back is in your repo, not in the model's memory of this chat."*
 
-**Supply these four fields to the handoff** (it treats the tour ones as optional and writes them only when
-a `tutorial-*` skill asks — see `session-handoff` SKILL.md §2, "Tour-driven handoffs"):
+**Supply these three fields to the handoff** (it treats the tour one as optional and writes it only when
+a `tutorial-*` skill asks — see `session-handoff` SKILL.md §2, "Tour-driven handoffs", which is the
+**schema of record** for the tour pointer; resume is **arm-addressed, not step-addressed**, so there is
+deliberately no step field to supply):
 
 | Field | Value | Why |
 |---|---|---|
 | `tour:` | `brownfield` | Marks the pointer as belonging to a tour run, so the general session skills narrate a later boundary instead of offering it as a choice. |
-| `tour_step:` | `8` | The step to resume **at** — Step 7 is finishing, Step 8 is next. |
 | `resume_skill:` | `/tutorial-brownfield-workflow-tour` | Session C comes back to **this skill**, so you finish the run. **Not** the inner workflow's next state. |
 | `drive_mode:` | the mode this run is in (`stepping` on a first run) | Required on a tour pointer — without it restore falls back to its own default and silently changes gear mid-run. |
 

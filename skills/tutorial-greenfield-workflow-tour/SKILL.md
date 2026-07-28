@@ -372,7 +372,7 @@ beat honest for a skeptic.)
 > you talk about the boundary rather than acting on it.
 >
 > **This pointer brings the session back to THIS SKILL, not to the inner workflow's next state.** The
-> handoff you write here carries `tour: greenfield` + `tour_step: 8` and sets
+> handoff you write here carries `tour: greenfield` and sets
 > `resume_skill: /tutorial-greenfield-workflow-tour`, so `/session-restore` hands Session C back to *you*
 > and you finish the run — see Scene 1 for the exact fields. That is what makes the guard above actually
 > reachable: the two rules in this blockquote live in *this* file, so they only bind if this file is what
@@ -416,13 +416,14 @@ and the next action — and it drops a one-line marker into your WIP state file 
 one tiny pointer. It doesn't copy your whole plan into itself; it points at the files on disk that
 already hold it. Everything needed to bring you back is in your project, not in the model's head."*
 
-**Supply these four fields to the handoff** (it treats the tour ones as optional and writes them only when
-a `tutorial-*` skill asks — see `session-handoff` SKILL.md §2, "Tour-driven handoffs"):
+**Supply these three fields to the handoff** (it treats the tour one as optional and writes it only when
+a `tutorial-*` skill asks — see `session-handoff` SKILL.md §2, "Tour-driven handoffs", which is the
+**schema of record** for the tour pointer; resume is **arm-addressed, not step-addressed**, so there is
+deliberately no step field to supply):
 
 | Field | Value | Why |
 |---|---|---|
 | `tour:` | `greenfield` | Marks the pointer as belonging to a tour run, so the general session skills narrate a later boundary instead of offering it as a choice. |
-| `tour_step:` | `8` | The step to resume **at** — Step 7 is finishing, Step 8 is next. |
 | `resume_skill:` | `/tutorial-greenfield-workflow-tour` | Session C comes back to **this skill**, so you finish the run. **Not** the inner workflow's next state. |
 | `drive_mode:` | the mode this run is in (`stepping` on a first run) | Required on a tour pointer — without it restore falls back to its own default and silently changes gear mid-run. |
 
@@ -575,14 +576,18 @@ Rules for the block:
 - **It is per-branch** — Branch A and Branch B offer different options (below). Never show Branch A's
   replay option on a replay run.
 - **Options are named, never auto-run.** You are ending the tour; do not start any of these yourself.
+- **The cleanup offer is part of the block, but it is not an option.** It is a distinct trailing
+  element: it comes last, after the numbered options, and it is not counted or numbered among them.
+  Acting on it — deleting the sample if the user says yes — is the **only** permitted action after
+  the block; nothing else follows it.
 
 **Branch A (first run) — three options plus the cleanup offer:**
 
 > **Next Step:**
 >
-> **1 — Take it again in a faster gear.** `/exit`, `mkdir` a new empty folder and `cd` into it, then run
-> `/tutorial-greenfield-workflow-tour` directly in a fresh session and say yes when it asks if you're
-> replaying. You'll feel exactly which stops autopilot keeps and which FSD drops.
+> **1 — Take it again in a faster gear.** `mkdir` a new empty folder and `cd` into it, then `/exit` and
+> run `/tutorial-greenfield-workflow-tour` directly in a fresh session there, saying yes when it asks if
+> you're replaying. You'll feel exactly which stops autopilot keeps and which FSD drops.
 >
 > **2 — Point it at your own code.** Run `/tutorial-getting-started` in your real repo and take the
 > existing-code path. Same workflow, your codebase, nothing staged.
@@ -606,8 +611,8 @@ Rules for the block:
 >
 > *Housekeeping: this sample was a throwaway copy — want me to delete it, or keep it to poke at?*
 
-**Mechanics that must stay correct in the block** (they are compressed here, but they are the same
-mechanics spelled out above — do not let compression break them):
+**Mechanics that must stay correct in the block** (these are the mechanics, compressed — the narrative
+above only names them, so this is where they live; do not let compression break them):
 - **Option 1/Branch A is the replay** and it carries all four of its constraints: a **new empty folder**
   (the scaffolder refuses a non-empty one), `/exit` to a **fresh session** (a real session-boundary
   crossing), re-entry at **the arm skill directly — NOT `/tutorial-getting-started`** (the dispatcher

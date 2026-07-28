@@ -63,7 +63,7 @@ When you finish, label your output with this ID:
 
    Before writing, read the active WIP file's YAML frontmatter. If it contains a `drive_mode:` field, include it in the session pointer. If no `drive_mode` is present, omit the field entirely (do not default it).
 
-   **Optional tour fields.** Two further fields — `tour:` and `tour_step:` — are written **only** when a `tutorial-*` tour skill is driving this handoff as one of its own scripted beats; that skill supplies their values. They are **absent from every ordinary handoff** and must not be invented, defaulted, or inferred from the conversation. When they are absent, this skill behaves exactly as it always has. See "Tour-driven handoffs" below.
+   **Optional tour field.** One further field — `tour:` — is written **only** when a `tutorial-*` tour skill is driving this handoff as one of its own scripted beats; that skill supplies its value. It is **absent from every ordinary handoff** and must not be invented, defaulted, or inferred from the conversation. When it is absent, this skill behaves exactly as it always has. See "Tour-driven handoffs" below, which is the **schema of record** for the tour pointer.
 
 ```markdown
 ---
@@ -83,25 +83,38 @@ drive_mode: <stepping|orchestrated|autopilot|fsd>  # omit if WIP has no drive_mo
 - **Notes:** <any temporary context worth preserving>
 ```
 
-   **Tour-driven handoffs (optional — omit all of this unless a `tutorial-*` skill asked for it).** When a tour
-   skill drives this handoff as one of its scripted beats, it supplies two extra frontmatter fields so the next
-   session can pick the tour back up. Add them **only** on that skill's instruction:
+   **Tour-driven handoffs — THE SCHEMA OF RECORD for the tour pointer.** This block is the single canonical
+   definition of the `tour:` contract. Four other files participate in it (`session-restore`, both
+   `tutorial-*-workflow-tour` arms, and `docs/lessons/tutorial-tour-session-chain-flow.md`); each **cites this
+   block** rather than restating the rules, so there is exactly one place to change and no second posture can
+   drift in. If you are adding a fifth reader, cite this block too — do not re-describe the contract locally.
+
+   Omit all of this unless a `tutorial-*` skill asked for it. When a tour skill drives this handoff as one of its
+   scripted beats, it supplies one extra frontmatter field so the next session can pick the tour back up. Add it
+   **only** on that skill's instruction:
 
 ```yaml
 tour: <greenfield|brownfield>   # which tour arm is running
-tour_step: <n>                  # the tour step to resume AT
 ```
 
-   Two rules govern a pointer that carries `tour:`:
+   Three rules govern a pointer that carries `tour:`:
 
    - **`resume_skill` is the tour skill, not the inner workflow's next state.** The tour skill is what knows how
      to finish its own run, so it must be what `/session-restore` hands control back to. Pointing `resume_skill`
      at the inner workflow's next state instead strands the tour and leaves the next session holding two
      competing continuations. `state_file` still points at the inner WIP so the work content stays reachable.
-   - **`drive_mode` is required, not optional, on a tour pointer.** The tour skill sets its own mode; if it is
-     omitted here, `/session-restore` falls through to its default and silently changes the mode mid-run.
+   - **`drive_mode` is required on a tour pointer** — this is the one posture, stated once, here. The tour skill
+     sets its own mode; if it is omitted, `/session-restore` would fall through to its default and silently
+     change the mode mid-run. A tour pointer that reaches a reader *without* `drive_mode` is therefore a **defect
+     in whichever skill wrote it**, to be reported rather than silently defaulted over — readers must not paper
+     over it by substituting a default of their own.
+   - **Resume is arm-addressed, not step-addressed.** The pointer says *which tour* is running, never *which step*
+     it stopped at; the arm resumes itself by narrative position. There is deliberately no `tour_step:` field —
+     one existed until 2026-07-27 (WP7e) and was **dropped**: it was written by four files, read by none, and
+     promised a step-addressed precision nothing implemented. Do not reintroduce it without also building a
+     reader for it.
 
-   Both fields are inert everywhere else: absent `tour:` means every downstream reader takes its ordinary path.
+   The field is inert everywhere else: absent `tour:` means every downstream reader takes its ordinary path.
 
 3. **Annotate the state file.** Append a short marker to the file referenced in `state_file:` so the context is visible when someone opens that file directly:
 

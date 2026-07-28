@@ -113,8 +113,9 @@ or cover both:
 
   (Both paths converge on the same next move: you'll `/exit` and **relaunch in this directory in
   `auto` mode** — see Step 2's handoff for the exact command. Greenfield needs no git-safety check:
-  everything it creates is a throwaway sample it stamps itself, in an **empty** directory it refuses to
-  write into if anything is already there — so there is nothing of the user's in reach to protect.)
+  everything it creates is a throwaway sample it stamps itself, and it only ever writes into an
+  **empty** directory — if anything is already there, it refuses. So there is nothing of the user's in
+  reach to protect.)
 
 **About `auto` mode (why the relaunch below uses it).** Recommend the user relaunch the tour session
 in **`auto`** permission mode: the tour really *runs* things (executes the sample, writes files, hands

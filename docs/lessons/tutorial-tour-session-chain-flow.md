@@ -65,8 +65,10 @@ the user do it for real, not by narrating it.
    re-ask the fork, both of which a faster-gear replay is moving past).
 
 7. **The tour's state is written to DISK, not held in the conversation** (WP7o, 2026-07-27).
-   The Step-7 handoff writes `tour: greenfield|brownfield` + `tour_step: <n>` into
-   `workflow-system/state/.session.md` (optional fields, tour-only), and sets
+   The Step-7 handoff writes `tour: greenfield|brownfield` into
+   `workflow-system/state/.session.md` (an optional, tour-only field — the **schema of record** is
+   `skills/session-handoff/SKILL.md` §2, "Tour-driven handoffs"; resume is **arm-addressed, not
+   step-addressed**, and a `tour_step:` field was dropped in WP7e for having no reader), and sets
    **`resume_skill` to the arm skill** so Session C comes back to the arm rather than to the
    inner workflow's next state. That is what makes Session C **one thread** — the arm finishes
    the in-tour work and then graduates. Pointing `resume_skill` at the inner workflow instead

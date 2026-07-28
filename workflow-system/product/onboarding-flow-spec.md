@@ -47,6 +47,11 @@ soften the fork but not remove it.
 - `workflow-system/state/.session.md` gains two **optional, tour-only** fields — `tour: greenfield|brownfield`
   and `tour_step: <n>` — written **only** when a `tutorial-*` skill drives the handoff as one of its own beats.
   Absent from every ordinary handoff; when absent, every downstream reader takes its existing path unchanged.
+  > **SUPERSEDED 2026-07-27 (WP7e) — `tour_step:` was DROPPED; `tour:` alone is the marker.** The paragraph
+  > above is retained as the **as-built record of what WP7o shipped**, not as the current contract. `tour_step:`
+  > was written by four files and read by none, promising a step-addressed resume precision nothing implemented;
+  > resume is **arm-addressed**. Current schema of record: `skills/session-handoff/SKILL.md` §2, "Tour-driven
+  > handoffs". Operator ruling recorded in `SURFACE-2026-07-27-QUALITY-TOUR-STEP-FIELD-HAS-NO-READER`.
 - **`drive_mode` becomes required on a tour pointer.** The first-run branch now records `drive_mode: stepping`
   to the tour WIP (it previously wrote nothing, which is what let restore default to orchestrated).
   **Recording ≠ revealing** — the write is to disk; the modes-stay-hidden prohibition is untouched.

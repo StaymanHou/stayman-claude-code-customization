@@ -25,7 +25,7 @@ When you finish, label your output with one of these IDs:
    - `resume_skill` — the exact slash command to invoke next
    - `state_file` — the canonical WIP/doc file holding the work content
    - `drive_mode` — the active drive mode when handed off (may be absent for sessions handed off before this feature)
-   - `tour:` / `tour_step:` — **usually absent.** Present only when a `tutorial-*` skill wrote this pointer as one of its own beats. When present, `resume_skill` is that tour skill (step 5 hands control back to it, and it resumes any inner workflow itself), the mode comes from the pointer (step 4), and the mode menu is skipped (step 4b). When absent, every step below takes its ordinary path.
+   - `tour:` — **usually absent.** Present only when a `tutorial-*` skill wrote this pointer as one of its own beats. When present, `resume_skill` is that tour skill (step 5 hands control back to it, and it resumes any inner workflow itself), the mode comes from the pointer (step 4), and the mode menu is skipped (step 4b). When absent, every step below takes its ordinary path. The **schema of record** for this field is `skills/session-handoff/SKILL.md` §2 → "Tour-driven handoffs" — consult it rather than inferring the contract from this line; note in particular that resume is **arm-addressed, not step-addressed** (there is no `tour_step:` field).
 
 3. **Open `state_file`** and read the latest content, including any "Session Handoff" (or legacy "Session Pause") marker.
 

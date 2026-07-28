@@ -1,6 +1,6 @@
 ---
 name: tutorial-product-cycle-tour
-description: "Guided tour of the full product lifecycle for a brand-new user: watch a fuzzy idea become a milestone-ordered, dependency-mapped, feature-ready plan (vision → roadmap → arch → wbs). The deep-dive graduation tour (~30-45 min, real), reached from the greenfield tour's close. Run directly in a fresh session."
+description: "Guided tour of the full product lifecycle for a brand-new user: watch a fuzzy idea become a milestone-ordered, dependency-mapped, feature-ready plan (vision → roadmap → research → arch → wbs). The deep-dive graduation tour (~30-45 min, real), reached from the greenfield tour's close. Run directly in a fresh session."
 argument-hint: "(no arguments — the deep-dive graduation tour; run directly in a fresh session, reached from the greenfield tour's close)"
 ---
 

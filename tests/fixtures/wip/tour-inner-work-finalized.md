@@ -1,7 +1,6 @@
 ---
 drive_mode: stepping
 tour: greenfield
-tour_step: 8
 ---
 
 # Feature: add a `done` command to the sample todo CLI

@@ -1,0 +1,304 @@
+group: tutorial
+# ─────────────────────────────────────────────────────────────────────────────
+# WP7e Phase 4 — behavioral coverage for the four M11 `tutorial-*` tour surfaces.
+#
+# WHY A SEPARATE GROUP (not appended to session.yaml): these four scenarios drive
+# `tutorial-*` skills, not `session-*` skills. Before this file, NO scenario in any
+# group had ever targeted a tutorial skill — the entire M11 tour family was
+# behaviorally uncovered (structurally too, until [Phase 19] landed in the same
+# feature). `--group` maps directly to this filename, so `--group tutorial` runs
+# exactly this set.
+#
+# WHAT THESE PIN THAT [Phase 19] CANNOT: [Phase 19] greps the SKILL.md prose — it
+# proves the copy is present. These prove the MODEL ACTS ON IT. A prose pin cannot
+# catch "the instruction is there but reads as optional"; only a live invocation can.
+#
+# ⚠️ NON-ECHOING DISCIPLINE (the house rule these were written under, see
+# docs/lessons/test-scenario-prompt-leakage.md): each scenario's `args` presents the
+# situation NEUTRALLY and never states the expected answer. A scenario whose prompt
+# recites the rule tests prompt-obedience, not the skill — it would pass with the
+# SKILL.md prose deleted. Each `expect:` block below names its own leakage guard.
+#
+# ⚠️ THE 2-FAILURE FLOOR IS IN session.yaml, NOT HERE. S33/S34 are KNOWN-FAILING by
+# design (SURFACE-2026-07-27-TOUR-MARKER-NOT-READ-WHEN-POINTER-DELETED). This group
+# is expected to be FULLY GREEN (0 FAIL) — a FAIL here is a real regression.
+#
+# ⚠️ EXPECT FLAKY, AND DO NOT "FIX" IT BY WEAKENING ANCHORS. Across five runs on
+# 2026-07-27 this group was 0 FAIL every time, but WHICH scenarios needed attempt 2
+# varied randomly (3-of-4 flaky, then 2-of-4, different members each run, T3 clean in
+# one run and flaky the next). Diagnosed, not assumed: per-scenario cost is ~$0.07
+# against a $0.20 ceiling, so this is NOT budget exhaustion — attempt 1 genuinely runs
+# and its output genuinely misses. The cause is the surface itself: these are long,
+# conversational entry-point skills whose opening paragraphs legitimately vary, unlike
+# the terse state-machine skills the rest of the suite targets. `max_retries: 2` is the
+# harness's designed remedy and is what absorbs it. A future author seeing FLAKY here
+# should NOT broaden a positive anchor to chase determinism — that trades a retry for a
+# pin that no longer discriminates, which is the exact defect this file's anchors were
+# already revised once to fix (see the per-scenario ⚠️ notes).
+#
+# ⚠️ `model: sonnet` WAS TRIED ON T2 AND REVERTED. A stronger model is MORE likely to
+# reproduce the copy's own "unlike bypass-permissions…" warning, so the tag turned a
+# flaky pass into a deterministic FALSE failure. Recorded in T2's own comment block.
+# ─────────────────────────────────────────────────────────────────────────────
+scenarios:
+  - id: T1-tour-path-fork-frames-paths-as-peers
+    name: "tutorial:getting-started frames greenfield/brownfield as PEERS and does not funnel the user with real code toward greenfield"
+    skill: tutorial-getting-started
+    args: >
+      I've never used this workflow system before and I'd like to try it out.
+      I've got an existing codebase I've been working on for a while.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # BEAT 1 (charter beat: path fork). Accepted copy at
+      # skills/tutorial-getting-started/SKILL.md:134-151 requires the two paths be framed
+      # as PEERS — "This is a default, not a funnel. Do not push the user toward greenfield
+      # if they have real code they'd rather use." This user HAS real code, which is exactly
+      # the case the anti-funnel rule protects: the correct move is to route them to the
+      # BROWNFIELD arm, not to talk them into the tidier greenfield sample.
+      #
+      # NON-ECHOING: the prompt states only a FACT about the user's situation ("existing
+      # codebase"). It never says "peer", "funnel", "brownfield", or "don't push me" — so a
+      # pass means the skill applied its own routing rule, not that it parroted the prompt.
+      #
+      # Positive assertion is OR-shaped because the skill may name the arm as a slash command
+      # or in prose; both are correct. The negative is the funnel behavior itself.
+      #
+      # ⚠️ `contains_any` (NOT `contains_required_any`) — HARNESS CONSTRAINT, verified in
+      # tests/lib/verify.sh §4: BOTH `contains_required` and `contains_required_any` are
+      # evaluated ONLY inside `if [ "$id_match" = true ]`. They are *additional* hard
+      # assertions layered on a transition-ID match, not standalone ones. A `tutorial-*` skill
+      # emits NO transition (the invariant [Phase 19] pins), so `id_match` is permanently
+      # false here and those blocks are UNREACHABLE — the run reports the tell-tale
+      # `Expected  or contains: ` with both fields empty. `contains_any` is the correct field
+      # for a no-transition skill and is what S33/R1/R3 already use for exactly this reason.
+      #
+      # ⚠️ ANCHOR REVISED AT VERIFY-SELF (2026-07-27) — the first draft asserted the bare word
+      # "brownfield", which an adversarial runner PROVED passes on a funnel: output reading
+      # "…since brownfield is harder to demo, let's use the sample project instead" scored
+      # SOFT_PASS while doing exactly what this scenario forbids. A passing MENTION is not a
+      # ROUTE. The anchor is now the arm's full skill name, which only a real route emits.
+      # The three negatives were likewise verbatim one-off sentences matching nothing in
+      # skills/ — the "too specific" half of the anchor-quality convention — so a funnel phrased
+      # any other way sailed through. Replaced with the funnel's recurring shape.
+      contains_any:
+        - "tutorial-brownfield-workflow-tour"
+      not_contains:
+        - "harder to demo"
+        - "use the sample project instead"
+        - "recommend the greenfield"
+        - "start with greenfield instead"
+    max_retries: 2
+
+  - id: T2-tour-recommends-auto-permission-mode
+    name: "tutorial:getting-started recommends `auto` permission mode (NOT bypassPermissions) and explains it as low-friction AND safe"
+    skill: tutorial-getting-started
+    # NOT tagged `model: sonnet` — the tag was tried and REVERTED, which is worth recording. The
+    # repo's rule is "prove haiku noise, confirm sonnet PASSes deterministically, THEN tag." Haiku
+    # noise WAS proven (three observations: a FAIL, a PASS-in-isolation, a FLAKY). But sonnet did
+    # NOT pass — it FAILed on `FAILED strict not_contains: bypass-permissions`, because a stronger
+    # model is MORE likely to reproduce the copy's own warning ("unlike bypass-permissions, which
+    # has *no* guardrails"). So the tag would have swapped a flaky positive for a deterministic
+    # FALSE failure. The real defect was the negative, fixed below; haiku is left in place.
+    args: >
+      I'm brand new to this. Before we start, is there anything I should know
+      about how I launch the session?
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # BEAT 3 (charter beat: permission-mode recommendation).
+      #
+      # ⚠️ THE PLAN SAID `acceptEdits`; THE ACCEPTED COPY SAYS `auto`. WP7f/WP7g changed this
+      # (skills/tutorial-getting-started/SKILL.md:120-128 — "Recommend the user relaunch the
+      # tour session in `auto` permission mode … low-friction AND safe"). Verified at Phase-4
+      # build time: `acceptEdits` appears ZERO times across all three tour SKILL.md files.
+      # Pinning `acceptEdits` would assert copy that does not exist — the governing rule is
+      # "pins lock ACCEPTED copy, not planned copy." Recorded in the WIP ## Discoveries.
+      #
+      # The load-bearing negative is `bypassPermissions`: it is a DISTINCT mode that does NOT
+      # gate shell/network, and recommending it to a brand-new user on their first run is the
+      # actual safety regression this pins against (see the tracked
+      # reference_claude-code-permission-modes memory).
+      #
+      # NON-ECHOING: the prompt asks an open question about launching. It never says "auto",
+      # "permission mode", "safe", or names any mode — so a pass means the skill volunteered
+      # the recommendation rather than confirming a mode the prompt handed it.
+      #
+      # ⚠️ HARNESS CONSTRAINT — DO NOT ADD A LEADING-DASH ASSERTION HERE. An earlier draft of this
+      # scenario also forbade the literal CLI flag `--dangerously-skip-permissions`. The harness
+      # passes each assertion string to `grep` as an ARGUMENT, so a string beginning with `-` is
+      # parsed as a grep FLAG: the run died with `grep: unrecognized option` and the scenario
+      # FAILed for a reason that had nothing to do with the skill. Observed live 2026-07-27.
+      # If a leading-dash literal ever must be asserted, the harness needs a `grep -e`/`--`
+      # guard first — that is a harness change, not a scenario change. Backlogged at finalize.
+      # `bypassPermissions` (no leading dash) already covers the real safety regression.
+      # `contains_any` not `contains_required` — see the harness-constraint note in T1: the
+      # required-* fields are unreachable for a no-transition skill.
+      #
+      # ⚠️ ANCHORS REVISED AT VERIFY-SELF (2026-07-27) — THE WORST DEFECT OF THE FOUR, and the
+      # one this scenario most needed to get right, since it is the SAFETY assertion.
+      #   (1) The bare positive `auto` was useless: matching is `grep -qi` = case-insensitive
+      #       SUBSTRING, so it matches "automatically", "autopilot", "auto-chain", "automation".
+      #       Verified: "I will automatically guide you" — which contains no permission-mode
+      #       content at all — scored SOFT_PASS. Now anchored on `` `auto` mode `` and the
+      #       distinctive value-prop phrase, both verbatim in the accepted copy.
+      #   (2) The negative `bypassPermissions` appears ZERO times in ANY tutorial-* SKILL.md
+      #       (verified) — DEAD ON ARRIVAL. The corpus writes the HYPHENATED `bypass-permissions`
+      #       (getting-started:126). So a run recommending the unsafe mode to a first-timer
+      #       scored SOFT_PASS — this assertion missed the exact regression it exists to catch.
+      #       Now covers both the hyphenated form and the CLI flag's distinctive stem.
+      #   `dangerously-skip` is deliberately stemmed WITHOUT the leading `--`: see the
+      #   harness-constraint note below — a leading dash is parsed by grep as a FLAG.
+      #
+      # ⚠️ WIDENED AFTER A PROVEN FLAKE (2026-07-27). The first revision anchored ONLY on
+      # "`auto` mode" + "low-friction". Both are verbatim in the copy, but the model does not
+      # always reproduce either exact form: one run FAILed, and a direct re-invocation produced
+      # "**`auto` mode** — it's low-friction …" (both present). So the anchor was too narrow, not
+      # wrong. Widened to the phrase CLASS the recommendation cannot be made without: the launch
+      # flag, the mode word next to "permission", and the two value-prop halves. Kept OR-shaped —
+      # any ONE is sufficient evidence the recommendation was made.
+      # NOTE the deliberate asymmetry: the POSITIVE side is wide (many valid phrasings of a
+      # correct recommendation) while the NEGATIVE side stays narrow and literal (an unsafe mode
+      # has few spellings, all of them enumerated). Widening a negative would risk false FAILs;
+      # widening this positive only risks a miss, which the negatives independently cover.
+      contains_any:
+        - "permission-mode auto"
+        - "`auto` mode"
+        - "auto mode"
+        - "low-friction"
+        - "permission mode"
+      #
+      # ⚠️ THIRD INSTANCE OF THE ABSENCE-ASSERTION HAZARD IN THIS ONE FEATURE (after the 5-minute
+      # claim and `tour_step:`, both recorded in [Phase 19]). Forbidding the bare string
+      # `bypass-permissions` FIRES ON THE CORRECT ANSWER: the accepted copy at
+      # getting-started:126 warns *"unlike bypass-permissions, which has no guardrails — do not
+      # substitute it"*, so a model that faithfully relays the warning trips the assertion.
+      # Observed live — sonnet FAILed here for exactly that reason while its positive matched.
+      # The corpus must NAME the unsafe mode in order to WARN against it, so the naive negative
+      # is not merely wrong, it inverts: the better the answer, the likelier it fails.
+      # → Forbid RECOMMENDING it, not MENTIONING it. These anchor on recommendation verbs
+      #   adjacent to the mode, which cannot appear in a correct warning.
+      not_contains:
+        - "recommend bypass"
+        - "use bypass-permissions"
+        - "launch with --dangerously"
+        - "bypassPermissions"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: T3-tour-first-run-hides-drive-modes-until-graduation
+    name: "tutorial:greenfield first run withholds the drive-mode reveal (staged for Step-8 graduation) and does not present the 1-4 gear menu"
+    skill: tutorial-greenfield-workflow-tour
+    args: >
+      Let's do this. It's my first time through.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # BEAT 4 (charter beat: drive-modes-reveal-is-LAST). Accepted copy at
+      # skills/tutorial-greenfield-workflow-tour/SKILL.md:99-102 — "If FIRST RUN → run the
+      # whole tour in **stepping** drive mode, and do NOT mention that drive modes exist …
+      # the tunable-pauses reveal is saved for the Step-8 graduation, and naming faster gears
+      # now would spoil it." The reveal being LAST is the whole staged-pedagogy design; a skill
+      # that front-loads the menu destroys the graduation beat.
+      #
+      # This is the FIRST-RUN arm. The REPLAY arm legitimately DOES present the menu
+      # (SKILL.md:114-120), which is why the prompt establishes first-run explicitly — the
+      # discriminator is run type, and asserting the negative without fixing run type would be
+      # a false positive waiting to happen.
+      #
+      # NON-ECHOING: the prompt says "first time through" — a FACT the skill needs to resolve
+      # the fork. It does not say "don't show me the modes", "stepping", "graduation", or
+      # "menu". A pass means the skill withheld the reveal on its own rule.
+      #
+      # ⚠️ ANCHOR HAZARD — DO NOT re-add bare "autopilot" / "FSD" as negatives. An earlier draft
+      # did, and they are FALSE-POSITIVE anchors: the skill's own correct entry question at
+      # SKILL.md:95-96 reads *"is this your first time through this tour, or are you replaying
+      # it to try a faster gear (autopilot / FSD)?"* — so a correct first run NAMES both words
+      # while resolving the fork. The invariant is NOT "never says the words"; it is "does not
+      # PRESENT THE MENU or EXPLAIN THE GEARS once first-run is established." Anchoring on the
+      # bare words would fail the skill for doing exactly what its copy prescribes. This is the
+      # same shape as the two absence-assertion hazards recorded in [Phase 19] — the corpus must
+      # legitimately mention the thing in order to route on it.
+      #
+      # STRICT on what remains, because the menu's own row text and the mode-explanation phrasing
+      # are pure failure-proxies — they cannot appear in a correct first-run opening.
+      #
+      # Positive anchor: a no-transition skill needs one (see T1's harness note) — and per
+      # verify.sh, `not_contains` is only ever a MODIFIER on a positive match, never a standalone
+      # assertion, so a negative-only scenario falls through to FAIL unconditionally. "stepping"
+      # is wrong as an anchor (the skill is forbidden from saying it). The reliable positives are
+      # the fork question itself and the environment-setup beat that follows it.
+      # ⚠️ "first time" is NOT usable as a positive anchor here — the prompt itself says "first
+      # time through", so it would match the ECHO rather than the skill (caught by this feature's
+      # own mechanical leakage audit, which is why that audit checks positives against args
+      # pairwise instead of by eye). The anchors below are things ONLY the skill can supply.
+      contains_any:
+        - "replaying"
+        - "set up"
+        - "empty directory"
+      #
+      # ⚠️ NEGATIVES REVISED AT VERIFY-SELF (2026-07-27). The false-positive reasoning above was
+      # CORRECT and is retained — rejecting bare `autopilot`/`FSD` was right, and case-insensitive
+      # matching does not break the anchors below (verified against the real entry question).
+      # But two of the four original negatives COULD NOT FIRE:
+      #   (1) `press Enter to keep current` occurs ZERO times in either tour arm — it lives only
+      #       in skills/session-restore/SKILL.md:56. Dead anchor.
+      #   (2) `3  Autopilot` (double-space) is defeated by the skill's OWN inconsistency: line 124
+      #       writes `**3  Autopilot**` but line 126 writes `**3 Autopilot**` (single space). A
+      #       model paraphrasing the menu emits either, so a real spoiler leak escapes. Verified:
+      #       a full simulated menu leak scored SOFT_PASS.
+      # `Orchestrated` is the replacement — it appears ONLY in the replay menu and ZERO times in
+      # the correct first-run path (verified over the entry copy), making it a true failure-proxy
+      # that is whitespace- and formatting-independent. This is the anchor-quality rule this repo
+      # already codified: anchor on a phrase CLASS present in the real corpus, never on a
+      # one-off verbatim string or a fragile literal.
+      not_contains:
+        - "Orchestrated"
+        - "Drive mode is how much the workflow chains"
+        - "3  Autopilot"
+        - "4  FSD"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: T4-tour-staged-grounding-beat-runs-the-sample
+    name: "tutorial:greenfield Step-5 grounding is a STAGED beat — the agent RUNS the sample and observes it, rather than narrating that it would"
+    skill: tutorial-greenfield-workflow-tour
+    args: >
+      First run. We're at the grounding step now — the one where we check the
+      thing we just built actually behaves. Walk me through what happens here.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # BEAT 2 (charter beat: staged-beat presence). Accepted copy at
+      # skills/tutorial-greenfield-workflow-tour/SKILL.md:320-321 — "Step 5 — Grounding
+      # (STAGED — verify-self on the runnable sample) … This is a staged beat — engineer it.
+      # Have the agent run the sample and observe it." The sample's load-bearing property
+      # (SKILL.md:236-239) is that `./todo add "buy milk" && ./todo list` prints
+      # `1. [ ] buy milk` and exits 0 — that observable IS what makes the beat stageable.
+      #
+      # This is the beat that distinguishes a NARRATED REAL RUN from a demo reel: the tour's
+      # honest-framing promise depends on the agent actually executing, not describing.
+      #
+      # NON-ECHOING: the prompt paraphrases WHERE we are ("check the thing we just built
+      # actually behaves") without using the skill's own vocabulary — never "staged",
+      # "verify-self", "run the sample", "todo", or "observe". A pass means the skill supplied
+      # the concrete mechanics from its own copy.
+      #
+      # OR-shaped positive: the skill may surface the beat via the sample's command, its
+      # expected output, or the verify-self step name. Any of the three demonstrates the
+      # staged mechanics reached the model; demanding all three would over-fit the phrasing.
+      # `contains_any` not `contains_required_any` — see the harness-constraint note in T1.
+      #
+      # ⚠️ ANCHOR REVISED AT VERIFY-SELF (2026-07-27) — bare `todo` matched incidental prose:
+      # "I would describe the grounding step; add that to your todo list for later" scored
+      # SOFT_PASS on exactly the pure-narration answer this scenario exists to reject. Dropped in
+      # favor of strings unique to the staged beat's actual mechanics — the sample's literal
+      # command and its literal expected output, neither of which appears in generic prose.
+      contains_any:
+        - "./todo add"
+        - "buy milk"
+        - "verify-self"
+      not_contains:
+        - "in a real run you would"
+        - "imagine that"
+    max_retries: 2

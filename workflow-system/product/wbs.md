@@ -513,6 +513,12 @@ The standard rule details WPs for the **next milestone only**, because later mil
 > correctly, on the information it had. **7m.1's spirit is preserved:** the arms own all tour *narration copy*;
 > the general skills carry only a **mechanical `tour:` field read**. `check-structure.sh` [Phase 18] block (i)
 > was rewritten to pin exactly that narrowed invariant (fail-closed `[ -f ]` precondition retained).
+> **⚠️ PARTIALLY SUPERSEDED 2026-07-27 by WP7e:** the `tour_step:` field named in the AS-BUILT record below and
+> in task 7o.1 was **DROPPED** — it was written by four files and read by none. `tour:` alone is the marker, and
+> resume is **arm-addressed, not step-addressed**. The text below is preserved verbatim as the as-built record of
+> what WP7o shipped on 2026-07-27; it is **history, not the current contract**. Current schema of record:
+> `skills/session-handoff/SKILL.md` §2, "Tour-driven handoffs". Everything else in the record still holds.
+>
 > **AS-BUILT (2026-07-27, 4 phases):** **P1** — `.session.md` gains optional tour-only `tour:`/`tour_step:`;
 > `session-restore` takes the mode from a tour pointer (cannot reach the `orchestrated` default) and
 > **suppresses the 1–4 menu, naming no mode at all**; `session-reflect`/`session-handoff` narrate a tour-hosted

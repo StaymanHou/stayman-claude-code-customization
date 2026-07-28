@@ -1975,6 +1975,7 @@ echo ""
 # (delete-on-resolve-backlog-convention feature, SURFACE-2026-07-14-RESOLVED-ENTRY-AUDIT-TRAIL-CLUTTER):
 # a close deletes the resolved backlog entry in the same commit as the **Backlog resolved:**
 # CHANGELOG line — prevents drift back toward mark-and-retain (resolved-clutter regeneration).
+# ── Phase 11: Close-commit discipline + delete-on-resolve ─────────────────
 echo "[Phase 11] Close-commit discipline (no auto-push + amend) + delete-on-resolve"
 
 grep_check "feature-finalize forbids git push from close commit"   "skills/feature-finalize/SKILL.md"        "Do NOT \`git push\`"          1
@@ -2091,6 +2092,7 @@ fi
 
 echo ""
 
+# ── Phase 13: Design priors (capture + consult contract) ──────────────────
 echo "[Phase 13] Design priors (capture + consult contract)"
 
 # The design-priors feature (2026-06-26) adds a per-project design-priors.md doc
@@ -2138,6 +2140,7 @@ grep_check "transitions.md documents design priors as behavior-within-states (no
 
 echo ""
 
+# ── Phase 14: Project-memory location — harness symlink + tracked .claude/ ─
 echo "[Phase 14] Project-memory location — harness symlink + .claude/ track-by-default"
 
 # (1) The memory-link primitive exists and is executable.
@@ -2540,6 +2543,7 @@ else
 fi
 
 echo ""
+# ── Phase 18b: tour-narration probe property-test ─────────────────────────
 echo "[Phase 18b] tour-narration probe property-test (the probe's own anchors)"
 
 # WHY THIS PHASE EXISTS. Block (i)'s narration probe was mis-anchored TWICE inside a single feature (WP7o),
@@ -2658,6 +2662,407 @@ done
   else
     check "narration probe is case-STABLE (sensitive and insensitive agree on the arms)" "fail" \
       "case-sensitive=${cs} vs case-insensitive=${ci} — an anchor's behavior depends on \`-i\`, which the pin does not pass; pick a case-stable anchor rather than adding \`-i\` (CLAUDE.md corollary)"
+  fi
+fi
+
+echo ""
+
+# ── Phase 19: tutorial-* tour surface (WP7e) ──────────────────────────────
+echo "[Phase 19] tutorial-* tour surface (WP7e — pins operator-ACCEPTED copy)"
+
+# WHY THIS PHASE EXISTS. M11 built four user-facing tour surfaces across ten WPs and shipped ~1,650 lines
+# of prompt prose with ZERO structural pins. That gap was measured, not assumed:
+# SURFACE-2026-07-25-WP7N-CLOSE-STRUCTURE-UNPINNED recorded that deleting BOTH `Next Step:` blocks outright
+# still passed every suite. WP7e was deliberately sequenced LAST so these pins lock copy the operator has
+# ACCEPTED (final hands-on run 2026-07-27) rather than in-flight copy — "pins lock accepted copy, not current
+# copy" is the load-bearing rule of the whole WP.
+#
+# ⚠️ THE BEHAVIORAL SUITE CARRIES A DELIBERATE 2-FAILURE FLOOR — READ BEFORE "FIXING" A RED SESSION RUN.
+# The tour surface is covered in two places: these STRUCTURAL pins (prose is present) and BEHAVIORAL
+# scenarios (the model ACTS on it). Of the behavioral ones, exactly TWO are KNOWN-FAILING BY DESIGN:
+#   tests/scenarios/session.yaml :: S33-tour-boundary-reflect-narrates-does-not-fork
+#   tests/scenarios/session.yaml :: S34-tour-marker-survives-pointer-deletion
+# They encode SURFACE-2026-07-27-TOUR-MARKER-NOT-READ-WHEN-POINTER-DELETED — a real, open, unfixed defect.
+# "Full-group green" for the session group means GREEN EXCEPT THOSE TWO. Do NOT soften their assertions to
+# make the run green: the failing assertion IS the evidence the defect is still live, and deleting it
+# deletes the bug report. A GREEN S33/S34 is a STOP-AND-INVESTIGATE signal (either the defect was fixed —
+# then retire them deliberately — or the scenario stopped testing anything).
+# The tour's OTHER behavioral coverage lives in tests/scenarios/tutorial.yaml (group `tutorial`, added by
+# WP7e Phase 4 — the first scenarios ever to target a `tutorial-*` skill). That group is expected FULLY
+# GREEN; a failure there is a real regression, NOT part of this floor.
+#
+# ⚠️ TWO ABSENCE-ASSERTION HAZARDS govern this phase. Both are cases where the corpus must legitimately
+# MENTION a forbidden thing in order to FORBID it, so the naive `grep -c X → 0` pin is not merely wrong —
+# it fails on correct copy, and the obvious "fix" for that failing pin DELETES THE GUARDRAIL:
+#
+#   (1) THE 5-MINUTE CLAIM. The honest-framing invariant is "never promise a quick 5-minute tour." All four
+#       literal `5-minute` occurrences in the corpus are PROHIBITIONS ("**Never** promise…", "**FORBIDDEN:**
+#       any 'quick' or '5-minute' claim"). A `grep -c '5-minute' → 0` pin therefore FAILS on correct copy
+#       (truth is 4), and deleting the prohibitions to make it pass removes the rule from the prompt.
+#       → So we pin the POSITIVE PRESENCE of the prohibition, never the absence of the claim.
+#       → And it CANNOT be line-scoped: brownfield's governing `never` sits on the WRAPPED PRIOR LINE, so a
+#         single-line `never.*5-minute` reports 3-of-4 and reads as a real leak. All matching here is done
+#         against a newline-flattened copy of the file.
+#
+#   (2) THE `tour_step:` FIELD (dropped in WP7e Phase 2). Correct state is ZERO declarations but THREE
+#       surviving DELIBERATE NEGATIVE references ("There is deliberately no `tour_step:` field…") whose whole
+#       job is to stop the field being reintroduced. A bare `grep -c tour_step` returns 3 and misreads it.
+#       → So we pin the DECLARATION FORMS specifically (a YAML-position `^tour_step:` line, or a markdown
+#         table row defining it), never the bare substring.
+#
+# Both hazards were found the expensive way during this feature's own Phases 1–2 and are recorded in the
+# WIP's ## Discoveries. They are the same shape as the round-1/round-2 anchor defects that motivated
+# [Phase 18b] — see root CLAUDE.md, "A negative shell assertion fails OPEN…" and "A structural pin's ANCHORS
+# need their own property-test".
+
+TOUR_SKILLS="tutorial-getting-started tutorial-greenfield-workflow-tour tutorial-brownfield-workflow-tour tutorial-product-cycle-tour"
+
+# THE TWO PROSE-CLASS ANCHORS, hoisted so the pins below and the [Phase 19b] self-test consume ONE copy.
+# Only these two are hoisted+self-tested, because only these two can be WRONG IN THE TOO-GENERIC
+# DIRECTION — they match free prose, where an over-broad pattern silently matches unrelated text. The
+# phase's other anchors are STRUCTURAL FORMS (`^## Category$`, `^## Transitions`, a `| \`field:\` |`
+# table row, a literal heading like `NO mode menu, NO replay`) and are exempt by construction: they can
+# be wrong by being ABSENT (which fails loudly and is covered by the existence preconditions), but they
+# cannot quietly match something they were not meant to match.
+TOUR_NOTRANSITION_ANCHOR='(emits? no|does not emit|never emits?)[^.]{0,40}transition'
+TOUR_5MIN_PROHIBITION_ANCHOR='([Nn]ever|FORBIDDEN)[^.]{0,80}5-minute'
+
+# (a) THE FAMILY EXISTS UNDER THE `tutorial-` PREFIX, with the required sections and the util-family shape.
+#     The prefix itself is a pinned property: WP7b chose a three-skill `tutorial-` family so that "diverge
+#     and stay diverged" is enforced STRUCTURALLY (separate files) rather than by prose discipline.
+for ts in $TOUR_SKILLS; do
+  ts_file="skills/${ts}/SKILL.md"
+  if [ ! -f "$ts_file" ]; then
+    check "${ts} exists under the tutorial- prefix" "fail" \
+      "$ts_file does not exist — the tour family is pinned to the tutorial- prefix; if a skill was renamed or removed, update this phase's TOUR_SKILLS list deliberately"
+    continue
+  fi
+  check "${ts} exists under the tutorial- prefix" "pass"
+  # util-family shape: `## Category` (NOT the debug-* `## Category Context`), and a documented Transitions
+  # section. Anchored at line-start so a passing mention in prose cannot satisfy them.
+  grep_check "${ts} has a '## Category' section (util-family shape, not debug-*'s '## Category Context')" "$ts_file" '^## Category$' 1
+  grep_check "${ts} documents its transition surface in a '## Transitions' section" "$ts_file" '^## Transitions' 1
+  # The tour skills are meta-ops: they emit NO transition. That is a pinned PROPERTY, not a gap to fill.
+  # NB every conditional in this phase captures a COUNT with `|| true` rather than using a bare
+  # `if ... grep -q`: under `set -euo pipefail` a bare non-matching grep inside this loop aborts the whole
+  # script (observed during this phase's own build — the run died mid-loop with no summary).
+  ts_flat=$(tr '\n' ' ' < "$ts_file")
+  # ⚠️ ANCHOR HISTORY — do not loosen this back. The first shipped form was
+  # `(no|not emit an?|never emits?)[^.]{0,60}transition`, whose bare `no` alternative matched any "no"
+  # within 60 non-period chars of "transition": 24 of 46 SKILL.md files, INCLUDING feature-build,
+  # feature-ship and task-act, all of which DO emit transitions. Appending "On completion emit
+  # TRANSITION: F1" to a tour skill still scored 1 — the pin passed on the exact regression it exists to
+  # catch. That is the round-1 `Step [0-9]` too-generic defect from [Phase 18b] recurring, and it shipped
+  # GREEN through a 12-case deletion-mutation sweep, because DELETION-SENSITIVITY AND SPECIFICITY ARE
+  # INDEPENDENT PROPERTIES. The current form requires an explicit negated-emission verb; it is verified
+  # live against all four tour skills and verified to score 0 against the transition-emitting skills.
+  # [Phase 19b] below property-tests exactly this. $TOUR_NOTRANSITION_ANCHOR is the SINGLE SOURCE OF
+  # TRUTH — the pin and the self-test both consume this variable; never inline a second copy.
+  n=$( (printf '%s' "$ts_flat" | grep -ciE "$TOUR_NOTRANSITION_ANCHOR" || true) | head -1 )
+  # The disclaimer alone is not sufficient: a skill could SAY it emits nothing while also carrying a real
+  # `TRANSITION: <id>` emission line. Both halves are required — the claim, and its truthfulness.
+  emits=$( (grep -cE '^[[:space:]]*[-*`]*[[:space:]]*`?TRANSITION: [A-Z][0-9]' "$ts_file" || true) | head -1 )
+  if [ "${n:-0}" -ge 1 ] && [ "${emits:-0}" -eq 0 ]; then
+    check "${ts} documents that it emits NO transition, and emits none (util-family meta-op)" "pass"
+  elif [ "${n:-0}" -lt 1 ]; then
+    check "${ts} documents that it emits NO transition, and emits none (util-family meta-op)" "fail" \
+      "no explicit 'emits no transition'-class statement found in $ts_file — the tour skills are meta-ops outside the F/I/T/P/S namespace and must say so. NB the anchor deliberately requires a negated-emission verb ('emits no', 'does not emit', 'never emits'); a bare 'no ... transition' is too generic and was the inert-pin defect this phase fixed"
+  else
+    check "${ts} documents that it emits NO transition, and emits none (util-family meta-op)" "fail" \
+      "$ts_file claims to emit no transition but carries ${emits} real 'TRANSITION: <id>' emission line(s) — the claim and the behavior disagree; either the skill was wired into the state machine (update transitions.md + the orchestrator tables deliberately) or the emission is a copy-paste error"
+  fi
+  # util-family frontmatter shape: NO `skills:` (reference-only orchestrator marker) and NO `tools:`
+  # (executable-subagent marker), checked in FRONTMATTER POSITION only.
+  # ⚠️ The frontmatter extraction is itself a fail-closed guard. An earlier draft used a nested
+  # `sed -n '1,/^---$/{ /^---$/!p }' | sed -n '2,$p'` which silently produced an EMPTY string — so both
+  # forbidden-key checks were matching against nothing and PASSED VACUOUSLY. That is the unset/empty-corpus
+  # vacuous-pass class root CLAUDE.md codifies, hit inside the phase written to avoid it. The block below
+  # therefore (i) extracts by explicit line range and (ii) FAILS CLOSED if the extraction comes back empty.
+  ts_fm_end=$( (grep -nE '^---$' "$ts_file" || true) | sed -n '2p' | cut -d: -f1 )
+  if [ -z "${ts_fm_end:-}" ] || [ "${ts_fm_end:-0}" -lt 2 ]; then
+    check "${ts} frontmatter is extractable (precondition for the util-family shape checks)" "fail" \
+      "could not locate a closing '---' in $ts_file — frontmatter checks cannot be satisfied vacuously; fix the file or this pin"
+  else
+    check "${ts} frontmatter is extractable (precondition for the util-family shape checks)" "pass"
+    ts_fm=$(sed -n "2,$((ts_fm_end - 1))p" "$ts_file")
+    for forbidden in skills tools; do
+      fn=$( (printf '%s\n' "$ts_fm" | grep -cE "^${forbidden}:" || true) | head -1 )
+      if [ "${fn:-0}" -eq 0 ]; then
+        check "${ts} frontmatter has no '${forbidden}:' key (util-family, not orchestrator/subagent)" "pass"
+      else
+        check "${ts} frontmatter has no '${forbidden}:' key (util-family, not orchestrator/subagent)" "fail" \
+          "$ts_file frontmatter declares '${forbidden}:' — that marker makes it a reference orchestrator (skills:) or an executable subagent (tools:); the tutorial-* family is neither"
+      fi
+    done
+  fi
+
+  # (b) HAZARD 1 — the honest-framing PROHIBITION must be PRESENT (never assert the claim's absence).
+  #     Matched against the newline-flattened copy so brownfield's wrapped `never` is caught.
+  pn=$( (printf '%s' "$ts_flat" | grep -cE "$TOUR_5MIN_PROHIBITION_ANCHOR" || true) | head -1 )
+  if [ "${pn:-0}" -ge 1 ]; then
+    check "${ts} carries the no-5-minute-claim PROHIBITION (positive pin — see hazard 1)" "pass"
+  else
+    check "${ts} carries the no-5-minute-claim PROHIBITION (positive pin — see hazard 1)" "fail" \
+      "no 'never/FORBIDDEN … 5-minute' prohibition found in $ts_file. Do NOT 'fix' this by asserting 5-minute is absent — the honest-framing rule can only be stated by quoting the claim it bans, so the correct state is the prohibition PRESENT (hazard 1 at the top of this phase)"
+  fi
+  # An honest duration claim must exist somewhere in every tour surface (~10–15 for the arms/entry,
+  # ~30–45 for the deep-dive). Deliberately NOT partitioned per-file: the full-cycle tour legitimately
+  # cites the arms' ~10–15 when explaining what the user already did, so a per-file duration map would
+  # be wrong. En-dash-tolerant (`.` between the digits) per docs/lessons/verify-grep-blind-spots.md.
+  dn=$( (grep -cE '(10.15|30.45)' "$ts_file" || true) | head -1 )
+  if [ "${dn:-0}" -ge 1 ]; then
+    check "${ts} states an honest duration (~10–15 or ~30–45), the counterpart to the prohibition" "pass"
+  else
+    check "${ts} states an honest duration (~10–15 or ~30–45), the counterpart to the prohibition" "fail" \
+      "no ~10–15 or ~30–45 duration framing in $ts_file — banning the 5-minute claim is only half the invariant; the honest number has to be there too"
+  fi
+done
+
+# (c) HAZARD 2 — `tour_step:` DECLARATIONS are gone, but the deliberate NEGATIVE references must SURVIVE.
+#     Two paired assertions: zero declarations, and the guardrail prose still present. The second is what
+#     stops someone "fixing" a naive absence pin by deleting the very sentences that prevent reintroduction.
+tour_step_decl=0
+for f in $(git ls-files 'skills/*/SKILL.md' 'docs/lessons/*.md' 'tests/fixtures/**/*.md' 2>/dev/null); do
+  [ -f "$f" ] || continue
+  # Declaration forms only: a YAML-position line, or a markdown table row defining the field.
+  n=$( (grep -cE '^[[:space:]]*tour_step:|^\|[[:space:]]*`?tour_step:?`?[[:space:]]*\|' "$f" || true) | head -1 )
+  tour_step_decl=$(( tour_step_decl + ${n:-0} ))
+done
+if [ "$tour_step_decl" -eq 0 ]; then
+  check "no 'tour_step:' DECLARATIONS remain (WP7e dropped the field — declaration forms only, see hazard 2)" "pass"
+else
+  check "no 'tour_step:' DECLARATIONS remain (WP7e dropped the field — declaration forms only, see hazard 2)" "fail" \
+    "found $tour_step_decl tour_step: declaration(s) (YAML-position line or table row). The field was dropped in WP7e because nothing read it; reintroducing it requires building a reader first (session-handoff SKILL.md §2)"
+fi
+tour_step_guard="skills/session-handoff/SKILL.md"
+if [ ! -f "$tour_step_guard" ]; then
+  check "the 'deliberately no tour_step:' guardrail prose survives (hazard 2 — do not delete to silence a pin)" "fail" \
+    "$tour_step_guard does not exist — cannot verify the guardrail; if the skill was renamed, update this pin"
+else
+  grep_check "the 'deliberately no tour_step:' guardrail prose survives (hazard 2 — do not delete to silence a pin)" "$tour_step_guard" 'deliberately no `tour_step:` field' 1
+fi
+
+# (d) THE TOUR-POINTER SCHEMA OF RECORD (WP7e Phase 2). Exactly one canonical declaration, and a citation in
+#     each participating file. This is the shape that makes a FIFTH reader adding a local restatement FAIL —
+#     which is precisely the drift Phase 2 closed (two files independently legislating `drive_mode`).
+schema_canon="skills/session-handoff/SKILL.md"
+if [ ! -f "$schema_canon" ]; then
+  check "session-handoff §2 is THE canonical tour-pointer schema of record" "fail" \
+    "$schema_canon does not exist — if the skill was renamed, update this pin"
+else
+  grep_check "session-handoff §2 is THE canonical tour-pointer schema of record" "$schema_canon" 'THE SCHEMA OF RECORD' 1
+fi
+for citer in skills/session-restore/SKILL.md skills/tutorial-greenfield-workflow-tour/SKILL.md skills/tutorial-brownfield-workflow-tour/SKILL.md docs/lessons/tutorial-tour-session-chain-flow.md; do
+  cdesc="$(basename "$(dirname "$citer")")/$(basename "$citer") cites the schema of record (does not restate it)"
+  if [ ! -f "$citer" ]; then
+    check "$cdesc" "fail" "$citer does not exist — the schema-of-record citation set is pinned; update this list deliberately if a file moved"
+  else
+    grep_check "$cdesc" "$citer" 'schema of record' 1
+  fi
+done
+
+# (e) THE FULL-CYCLE TOUR'S no-replay / no-mode-menu invariants. It is the deep-dive graduation destination,
+#     deliberately WITHOUT the arms' replay + drive-mode-menu machinery — a design decision with a
+#     "do not regress this" section of its own.
+pct="skills/tutorial-product-cycle-tour/SKILL.md"
+if [ ! -f "$pct" ]; then
+  check "full-cycle tour keeps its no-replay / no-mode-menu invariant" "fail" \
+    "$pct does not exist — if the skill was renamed, update this pin"
+  check "full-cycle tour explains WHY there is no replay / no mode menu (do-not-regress rationale)" "fail" \
+    "$pct does not exist — cannot verify the rationale section"
+else
+  grep_check "full-cycle tour keeps its no-replay / no-mode-menu invariant" "$pct" 'NO mode menu, NO replay' 1
+  grep_check "full-cycle tour explains WHY there is no replay / no mode menu (do-not-regress rationale)" "$pct" 'Why no replay / no mode menu' 1
+fi
+
+# (f) THE ARMS' HANDOFF FIELD COUNT MATCHES THEIR TABLE. Phase 2's failure mode was exactly a stated count
+#     outliving its table ("four fields" over a 3-row table after `tour_step:` was dropped), so BOTH halves
+#     are pinned: the stated word AND the actual row count.
+#     ⚠️ Anchor hazard verified at Phase-2 verify-self: nearby "the two rules in this blockquote" counts
+#     BEHAVIORAL rules, and greenfield's "all four of its constraints" belongs to the replay option —
+#     neither is a field count. Hence the anchor is the full "Supply these <n> fields" phrase, not a
+#     bare numeral.
+for arm in greenfield brownfield; do
+  arm_file="skills/tutorial-${arm}-workflow-tour/SKILL.md"
+  if [ ! -f "$arm_file" ]; then
+    check "${arm} arm states 'Supply these three fields' matching its 3-row handoff table" "fail" \
+      "$arm_file does not exist — if the arm was renamed, update this pin"
+    continue
+  fi
+  stated=$( (grep -cE 'Supply these three fields' "$arm_file" || true) | head -1 )
+  rows=$( (grep -cE '^\| `(tour|resume_skill|drive_mode):`' "$arm_file" || true) | head -1 )
+  if [ "${stated:-0}" -ge 1 ] && [ "${rows:-0}" -eq 3 ]; then
+    check "${arm} arm states 'Supply these three fields' matching its 3-row handoff table" "pass"
+  else
+    check "${arm} arm states 'Supply these three fields' matching its 3-row handoff table" "fail" \
+      "stated-count phrase=${stated:-0} (need ≥1), actual table rows=${rows:-0} (need exactly 3) in $arm_file — a stated field count that outlives its table is the exact WP7e Phase-2 defect"
+  fi
+done
+
+echo ""
+# ── Phase 19b: [Phase 19] prose-anchor property-test ──────────────────────
+echo "[Phase 19b] [Phase 19] prose-anchor property-test (do the anchors DISCRIMINATE?)"
+
+# WHY THIS PHASE EXISTS — and why [Phase 19] alone was not enough.
+# [Phase 19] shipped 47 green pins that had been mutation-tested in TWELVE directions, and one of them was
+# INERT. Its `no-transition` anchor was `(no|not emit an?|never emits?)[^.]{0,60}transition`, whose bare
+# `no` alternative matched any "no" within 60 non-period characters of "transition" — 24 of 46 SKILL.md
+# files, INCLUDING feature-build, feature-ship and task-act, every one of which DOES emit transitions.
+# Appending "On completion emit TRANSITION: F1 to hand off." to a tour skill STILL SCORED 1, so the pin
+# passed on precisely the regression it existed to catch.
+#
+# THE LESSON, and the reason this phase is separate from the sweep that missed it:
+#
+#     DELETION-SENSITIVITY AND SPECIFICITY ARE INDEPENDENT PROPERTIES.
+#
+# [Phase 19]'s build ran a 12-case mutation sweep and every case passed: delete the property, the pin
+# FAILS. That proves an anchor is SENSITIVE. It says nothing about whether the anchor also MATCHES THINGS
+# IT MUST REJECT — and a pin can be perfectly sensitive while guarding nothing at all. Only a specificity
+# probe against a corpus that MUST NOT match can catch an over-broad anchor. This is the same defect class
+# as [Phase 18b]'s round-1 `Step [0-9]` anchor; it recurred one phase later, in a phase written citing
+# that very lesson, which is why it now has a standing test instead of a comment.
+#
+# SCOPE — which anchors are tested here, and why the rest are exempt:
+#   TESTED (2): $TOUR_NOTRANSITION_ANCHOR and $TOUR_5MIN_PROHIBITION_ANCHOR. Both are PROSE-CLASS: they
+#     match free-form English, where an over-broad pattern silently matches unrelated text. These are the
+#     only two anchors in [Phase 19] that can fail in the too-generic direction.
+#   EXEMPT (all others): the rest of [Phase 19] anchors on STRUCTURAL FORMS — `^## Category$`,
+#     `^## Transitions`, `THE SCHEMA OF RECORD`, a `| \`field:\` |` table row, the literal headings
+#     `NO mode menu, NO replay` / `Why no replay / no mode menu`, and `^tour_step:`. A structural form can
+#     be wrong by being ABSENT (fails loudly; already covered by [Phase 19]'s fail-closed existence
+#     preconditions), but it cannot quietly match prose it was not meant to match. Testing them here would
+#     add cases that cannot fail — the "pin shaped to pass" anti-pattern this repo has already been burned
+#     by. If a future anchor is added to [Phase 19] that matches PROSE, hoist it and add it here.
+#
+# NB no file is written; every case pipes a string to the matcher.
+
+anchor_match() { printf '%s\n' "$2" | grep -cE "$1" || true; }
+
+# (1) LIVENESS — each prose anchor must match the REAL corpus. A dead anchor guards nothing.
+if ! ls skills/tutorial-*/SKILL.md >/dev/null 2>&1; then
+  check "no-transition anchor is LIVE against all four tour skills" "fail" \
+    "no skills/tutorial-*/SKILL.md found — liveness cannot be established vacuously; if the arms were renamed, update this phase"
+  check "5-minute-prohibition anchor is LIVE against all four tour skills" "fail" \
+    "no skills/tutorial-*/SKILL.md found — liveness cannot be established vacuously; if the arms were renamed, update this phase"
+else
+  nt_live=0; fm_live=0; tour_n=0
+  for ts in $TOUR_SKILLS; do
+    ts_f="skills/${ts}/SKILL.md"
+    [ -f "$ts_f" ] || continue
+    tour_n=$(( tour_n + 1 ))
+    flat=$(tr '\n' ' ' < "$ts_f")
+    [ "$( (printf '%s' "$flat" | grep -ciE "$TOUR_NOTRANSITION_ANCHOR" || true) | head -1 )" -ge 1 ] && nt_live=$(( nt_live + 1 ))
+    [ "$( (printf '%s' "$flat" | grep -cE  "$TOUR_5MIN_PROHIBITION_ANCHOR" || true) | head -1 )" -ge 1 ] && fm_live=$(( fm_live + 1 ))
+  done
+  if [ "$tour_n" -ge 1 ] && [ "$nt_live" -eq "$tour_n" ]; then
+    check "no-transition anchor is LIVE against all four tour skills" "pass"
+  else
+    check "no-transition anchor is LIVE against all four tour skills" "fail" \
+      "matched $nt_live of $tour_n tour skills — an anchor that misses real copy cannot catch a reworded leak (the round-2 dead-anchor defect)"
+  fi
+  if [ "$tour_n" -ge 1 ] && [ "$fm_live" -eq "$tour_n" ]; then
+    check "5-minute-prohibition anchor is LIVE against all four tour skills" "pass"
+  else
+    check "5-minute-prohibition anchor is LIVE against all four tour skills" "fail" \
+      "matched $fm_live of $tour_n tour skills — every tour surface must carry the prohibition"
+  fi
+fi
+
+# (2) SPECIFICITY vs THE REAL CORPUS — the direction that catches over-broad anchors, and the one the
+#     [Phase 19] mutation sweep structurally could not. The no-transition anchor MUST score 0 against
+#     skills that genuinely emit transitions. These are real files, not synthetic strings: this is the
+#     exact check that would have caught the 24-of-46 defect on the day it was written.
+for emitter in feature-build feature-ship feature-verify-auto task-act incident-investigate product-wbs; do
+  em_file="skills/${emitter}/SKILL.md"
+  em_desc="no-transition anchor correctly REJECTS ${emitter} (a real transition-emitting skill)"
+  if [ ! -f "$em_file" ]; then
+    check "$em_desc" "fail" "$em_file does not exist — a specificity assertion cannot be satisfied vacuously; if the skill was renamed, update this list"
+  else
+    em_n=$( (tr '\n' ' ' < "$em_file" | grep -ciE "$TOUR_NOTRANSITION_ANCHOR" || true) | head -1 )
+    if [ "${em_n:-0}" -eq 0 ]; then
+      check "$em_desc" "pass"
+    else
+      check "$em_desc" "fail" \
+        "the anchor matches $em_file, which DOES emit transitions — it is too generic and would pass on a tour skill wired into the state machine (the exact inert-pin defect fixed in [Phase 19]). Require an explicit negated-emission verb; do not widen to a bare 'no'"
+    fi
+  fi
+done
+
+# (3) SPECIFICITY vs CRAFTED NEAR-MISSES — prose that mentions transitions but does NOT claim to emit
+#     none. Each line below is a shape the ORIGINAL over-broad anchor accepted.
+#     ⚠️ Each heredoc loop below is followed by a CASE-COUNT ASSERTION. Without one, a loop that runs
+#     ZERO iterations emits ZERO checks — and zero checks is indistinguishable from "all cases passed" in
+#     the summary. This is not hypothetical: it was reproduced on this very phase (emptying both heredoc
+#     bodies left `bash -n` clean, silently dropped 10 of 19 cases, and the suite reported a healthy-looking
+#     `572 PASS | 1 FAIL`). A typo'd closing delimiter does the same and additionally swallows the rest of
+#     the file as heredoc data. It is the [Phase 18b] zero-iteration trap recurring inside the phase written
+#     to prevent inert pins — so the count is asserted, not assumed.
+nm_cases=0
+while IFS='|' read -r nm_desc nm_text; do
+  [ -z "$nm_desc" ] && continue
+  nm_cases=$(( nm_cases + 1 ))
+  if [ "$(anchor_match "$TOUR_NOTRANSITION_ANCHOR" "$nm_text")" -eq 0 ]; then
+    check "no-transition anchor REJECTS $nm_desc" "pass"
+  else
+    check "no-transition anchor REJECTS $nm_desc" "fail" "the anchor accepts non-claiming prose: \"$nm_text\""
+  fi
+done <<'NEARMISS'
+a conditional emission|If there is no pending work, emit the transition immediately
+an ordering instruction|Do not skip this step; the transition ID is F12 and it must come last
+a bare negation near the word|There is no ambiguity about which transition applies here
+a back-loop description|On failure there is no forward transition — back-loop to build instead
+NEARMISS
+if [ "$nm_cases" -eq 4 ]; then
+  check "near-miss loop ran all 4 cases (zero-iteration guard)" "pass"
+else
+  check "near-miss loop ran all 4 cases (zero-iteration guard)" "fail" \
+    "ran $nm_cases of 4 expected cases — a heredoc loop that runs zero (or fewer) iterations emits zero checks, which is indistinguishable from all-passing. If you added or removed a case, update the expected count here deliberately; if you did not, the heredoc body or its NEARMISS delimiter is broken"
+fi
+
+# (4) SENSITIVITY — the leak each prose anchor must catch. Written as the leak first.
+lk_cases=0
+while IFS='|' read -r lk_which lk_desc lk_text; do
+  [ -z "$lk_which" ] && continue
+  lk_cases=$(( lk_cases + 1 ))
+  case "$lk_which" in
+    nt) lk_anchor="$TOUR_NOTRANSITION_ANCHOR"; lk_expect=1 ;;
+    fm) lk_anchor="$TOUR_5MIN_PROHIBITION_ANCHOR"; lk_expect=1 ;;
+  esac
+  if [ "$(anchor_match "$lk_anchor" "$lk_text")" -ge "$lk_expect" ]; then
+    check "anchor CATCHES $lk_desc" "pass"
+  else
+    check "anchor CATCHES $lk_desc" "fail" "this legitimate phrasing is missed by the anchor: \"$lk_text\""
+  fi
+done <<'HITS'
+nt|the 'emits no' phrasing|This skill emits no transition; it is a meta-op
+nt|the 'does not emit' phrasing|The tour does not emit a transition when it finishes
+nt|the 'never emits' phrasing|It never emits a transition of its own
+fm|the 'Never promise' prohibition|**Never** promise a "quick 5-minute tour" or a "5-minute demo"
+fm|the 'FORBIDDEN' prohibition|**FORBIDDEN:** any "quick" or "5-minute" claim
+fm|the wrapped-never prohibition (brownfield's real shape)|**never** compress the promise into a "quick 5-minute" claim.
+HITS
+if [ "$lk_cases" -eq 6 ]; then
+  check "sensitivity loop ran all 6 cases (zero-iteration guard)" "pass"
+else
+  check "sensitivity loop ran all 6 cases (zero-iteration guard)" "fail" \
+    "ran $lk_cases of 6 expected cases — same zero-iteration trap as the near-miss loop above. If you added or removed a case, update the expected count here deliberately; if you did not, the heredoc body or its HITS delimiter is broken"
+fi
+
+# (5) CASE-STABILITY — sensitive and insensitive runs must agree on the real tour corpus. Disagreement
+#     means an anchor depends on casing the pin does not pass; the fix is a different anchor, never `-i`.
+#     INSIDE the corpus guard by construction (the WP7o unset-variable vacuous-pass class).
+if ! ls skills/tutorial-*/SKILL.md >/dev/null 2>&1; then
+  check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "fail" \
+    "no skills/tutorial-*/SKILL.md found — case-stability cannot be established vacuously"
+else
+  tour_corpus=$(cat skills/tutorial-*/SKILL.md 2>/dev/null)
+  cs5=$( (printf '%s' "$tour_corpus" | tr '\n' ' ' | grep -cE  "$TOUR_5MIN_PROHIBITION_ANCHOR" || true) | head -1 )
+  ci5=$( (printf '%s' "$tour_corpus" | tr '\n' ' ' | grep -ciE "$TOUR_5MIN_PROHIBITION_ANCHOR" || true) | head -1 )
+  if [ "${cs5:-0}" -eq "${ci5:-0}" ]; then
+    check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "pass"
+  else
+    check "5-minute-prohibition anchor is case-STABLE on the tour corpus" "fail" \
+      "case-sensitive=${cs5} vs case-insensitive=${ci5} — an anchor depends on casing; pick a case-stable anchor rather than adding -i"
   fi
 fi
 

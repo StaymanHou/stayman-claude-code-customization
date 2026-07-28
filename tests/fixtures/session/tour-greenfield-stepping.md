@@ -6,7 +6,6 @@ resume_skill: /tutorial-greenfield-workflow-tour
 state_file: workflow-system/state/wip/tour-inner-work.md
 drive_mode: stepping
 tour: greenfield
-tour_step: 8
 ---
 
 # Session Handoff
