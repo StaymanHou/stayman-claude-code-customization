@@ -71,6 +71,25 @@ See `CLAUDE.snippet.md` → "Entry-skill product-context loading (GLOBAL)" for t
 - Identify technical and business constraints
 - If this came from a SURFACE-IN (F28: task escalated to feature), read the source task's WIP file for context
 
+**Elicitation discipline — grill the problem, one question at a time.** The operator cannot evaluate a spec's *silences*: reading a finished spec they check what is on the page, not the decision you quietly defaulted. So surface the consequential defaults as questions instead of burying them. Scope this to the **problem-definition** sections of the §3 template — Problem Statement, User Stories, Acceptance Criteria, Out of Scope — **not** Technical Constraints (technical/architectural choices are a different shape of question; they want synthesize-then-confirm-the-seams, not an interview).
+
+Ask a question **only when all three clauses hold** — this is a conjunction, not a checklist:
+
+- **(a) Not discoverable** — the answer cannot be found by reading the codebase, running a tool, or checking a doc. If it can, **look it up instead of asking**. Facts are yours to find; decisions are the operator's to make.
+- **(b) The operator's to decide** — a genuine judgment call about intent, priority, or acceptable tradeoff, not a detail you are competent to settle.
+- **(c) Expensive to reverse** — a wrong guess costs real rework later. If it is cheap to correct once someone notices, **do not ask**: take the sensible default and record it as an assumption.
+
+Clause (c) is what keeps this from becoming friction. A name, a label, an ordering, or a message's wording passes (a) and (b) but fails (c) — and three verification gates downstream (`verify-auto`, `verify-self`, `verify-human`) already catch cheap mistakes.
+
+Mechanics: **one question per turn** (never batch — several at once produces shallow answers to all of them); **attach your recommended answer** to each so the operator can confirm in one word and see where *your* model is wrong; **order by dependency** (settle the upstream decision first). Then close with both lists:
+
+- **Asked** — the questions put to the operator, and their answers.
+- **Assumed** — every default taken *without* asking, each stated explicitly. **This list is not optional**: it is what keeps ordinary spec review a real backstop for the questions you chose not to ask.
+
+**The budget is a filter, not a cap.** Do not target a question count. **Zero questions is a correct and common outcome** for a well-specified request; a genuinely fuzzy one may earn several. A short `Asked` list with a well-populated `Assumed` list is the target shape, not a shortfall.
+
+**Drive-mode behavior — the existing rule, not a new one.** Grilling is a user-input prompt, so the **Hard rule for AUTO exits** above already governs it: invoking a user-input or confirmation prompt on an AUTO transition *is* returning control to the user. Consequently, in **Mode 4 (FSD)** — where spec is AUTO — **grilling does not fire at all**; state your assumptions and proceed. In Modes 1–3 the spec pause is taken at skill *entry*, so grilling **reshapes a pause that already exists** rather than adding one. **No pause-policy row is added for grilling** — it emits no transition and schedules nothing. Full discipline: `skills/util-grill-me/SKILL.md` (also reachable standalone as `/util-grill-me`).
+
 **Before presenting UI/UX options in prose, check the mockup trigger.** When you are about to lay out several candidate designs for the operator to choose between, and **both** of these hold:
 
 - **(a)** there are **≥2 concrete alternatives for a single element, widget, or component**, and

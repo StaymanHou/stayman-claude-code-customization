@@ -70,8 +70,24 @@ Full discriminant, weighting, and exclusions: `CLAUDE.snippet.md` → "Design pr
 
 ### 3. Hand Off
 - Set `state: complete` in the frontmatter
-- Tell user to run `/product-roadmap` to break the vision into milestones
+- Offer the pressure-test fork below, then tell user to run `/product-roadmap` to break the vision into milestones
+
+**Offer the pressure-test fork (Modes 0–2 only).** The vision doc is the most expensive artifact in the system to get wrong — every milestone, work package, and feature spec downstream inherits its assumptions — and the operator cannot evaluate its *silences*: reading it they check what is on the page, not the decision you quietly defaulted. So once `vision.md` is written, offer two ways forward in one line:
+
+> Vision doc written. Two ways forward: **(1)** run `/util-grill-me` to pressure-test it one question at a time before roadmapping, then `/product-roadmap`; or **(2)** go straight to `/product-roadmap`.
+
+- **This is prose routing, not a transition.** Both arms exit **P2 → roadmap**. There is no new transition ID, no `transitions.md` entry, and no pause-policy row — grilling is a `util-*` utility that emits no transition and carries no `RETURN-TO:`, so the operator running `/product-roadmap` afterwards *is* the resumption. Nothing needs to route them back.
+- **Why the fork sits here and not in step 1.** An interview inside step 1 would ask this state to pause for a human *and* emit its terminal transition in the same turn, which a single non-interactive turn cannot satisfy. Placing the fork *after* the doc exists costs nothing: the work is already durable on disk, so a pause is free. Step 1 stays single-shot.
+- **Silent on AUTO exits — Modes 3 (autopilot) and 4 (FSD): do NOT offer the fork.** `P2` is AUTO in those modes, and offering a choice on an AUTO exit is a user-input prompt on an AUTO transition — the regression class the "Hard rule for AUTO exits" exists to prevent (P1 incidents 2026-05-16 / 2026-05-17). Skip the offer entirely and chain to roadmap. The operator can still run `/util-grill-me` on their own initiative.
+- Full grilling discipline (the three-clause gate, one-question-at-a-time mechanics, Asked/Assumed disclosure): `skills/util-grill-me/SKILL.md`.
 
 **Single-step mode only:** STOP here — do NOT start roadmapping. In orchestrated/autopilot/fsd modes the orchestrator chains to roadmap automatically based on the drive mode's pause policy.
+
+### 4. Emit Transition
+End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
+
+- `TRANSITION: P2` — vision doc created, hand off to roadmap
+
+This is the skill's **only** exit. Everything in steps 1–3 runs *inside* this state — a design-prior proposal (2b) and the pressure-test fork (3) change nothing about which transition you emit. Emit `TRANSITION: P2` on **both** fork arms: whether the operator pressure-tests first or goes straight to roadmap, the exit is the same.
 
 **Initiative:** {{args}}

@@ -5,6 +5,25 @@ scenarios:
   - id: P2
     name: "product:vision → roadmap after vision created"
     skill: product-vision
+    # model: sonnet tagged 2026-07-29 per the repo's recon discipline — haiku noise here is
+    # MEASURED, not presumed, and the tag was RE-TESTED after the skill was strengthened.
+    #
+    # product-vision had the weakest transition surface of any skill in the repo. Measured on
+    # haiku BEFORE this feature: 2/3 FAIL + 1/3 FLAKY — i.e. already unreliable, independent of
+    # any change here. Symptoms varied run to run (wrong ID T1, wrong ID P1, "no transition
+    # signal found"), the signature of a too-thin surface rather than one specific defect.
+    # For contrast, feature-spec restates F3/F4 nine times across a cheat-sheet table plus an
+    # AUTO hard rule and shows no such instability.
+    #
+    # RE-MEASURED 2026-07-29 after the skill gained a real "### 4. Emit Transition" section
+    # (which also closed a repo-wide gap — NO product skill had one): haiku is 2/3 FLAKY + 1/3
+    # FAIL. Better than the 2/3 FAIL baseline, but still NOT deterministic, so the tag STAYS.
+    # Untagging was actively considered and rejected on this measurement: a tag whose
+    # justification is gone is stale test-weakening, but removing this one would reintroduce a
+    # failing scenario. Re-test again if product-vision's surface is strengthened further.
+    # Sibling DP-capture-* scenarios below hit the same P1/P2 ambiguity and worked around it via
+    # `transition_id_any: [P2, P1]`.
+    model: sonnet
     args: "A developer tool that generates API documentation from code comments and type annotations"
     fixtures:
       claude_md: fixtures/CLAUDE.md
@@ -537,8 +556,26 @@ scenarios:
       demographic. Breadth would dilute the wedge." This is an identity/anti-persona
       statement with a transferable why — a design prior. Per §2b, propose recording
       it to design-priors.md (propose-never-auto-write).
-    # product-vision does not carry an "Emit Transition" section, so it asserts on the
-    # SOFT_PASS content path (like the existing P2 scenario), not a structured ID match.
+    # Assertion UNCHANGED, and deliberately so — it is load-bearing beyond design-priors.
+    # HISTORY (2026-07-29, grilling-elicitation-discipline): this scenario went 2/2 SOFT_PASS ->
+    # 3/3 FAIL when product-vision §1 was given an INLINED grilling interview, and stayed 3/3 FAIL
+    # through five prose fixes. Root cause was structural, not wording: an inlined interview asks
+    # one state to pause for a human AND emit its terminal transition in the same turn, which a
+    # single `--print` turn cannot satisfy (the harness SHARED_PROMPT says a TRANSITION line is
+    # REQUIRED every turn). Observed failure: the model opened the interview, batched five options,
+    # ignored the operator statement in system_prompt_extra, emitted no transition, and never
+    # reached §2b — so both the transition arm and the content arm missed.
+    #
+    # Resolved by moving grilling OUT of §1 into a soft fork at §3 Hand Off (offered after
+    # vision.md exists, silent on AUTO exits, both arms exiting P2). §1 is back to its original
+    # five-topic checklist and this scenario is back to baseline: 2 SOFT_PASS + 1 FLAKY, 0 FAIL
+    # over 3 runs. Sibling P2 never failed the same way because its args are a bare product
+    # description with nothing to react to, so no interview triggered — that contrast was the
+    # discriminator a differential test alone could not provide.
+    #
+    # THEREFORE: this scenario now also guards against re-inlining an interview into product-vision
+    # §1. If it starts failing after an edit to that skill, suspect a step-1 pause competing with
+    # the exit before suspecting design-priors. Do NOT weaken the assertion to make it green.
     expect:
       transition_id_any: [P2, P1]
       contains_any:
