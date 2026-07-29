@@ -12,10 +12,19 @@ install.sh sets up      -->   uninstall.sh reverses
   ~/.claude/skills/*            removes each into-this-repo symlink
   ~/.claude/agents/*            removes each into-this-repo symlink
   ~/.claude/hooks/*             removes each into-this-repo symlink (if repo has hooks/)
-  ~/.claude/hooks/claude-time-hook.pl + ~/.claude/bin/claude-time  removes both symlinks
+  (nothing — retired)          removes LEGACY ~/.claude/hooks/claude-time-hook.pl
+                               + ~/.claude/bin/claude-time (see note below)
   the <!-- BEGIN/END claude-workflow-system --> block in ~/.claude/CLAUDE.md  excises it (backup first)
   (prints settings.json perms)  prints them as "you may want to remove" (never edits)
 ```
+
+**Legacy claude-time row (asymmetric on purpose).** `tools/claude-time/` was retired from
+this repo on 2026-07-29 after Claudesk's Milestone 9 absorbed the capability natively, so
+`install.sh` no longer creates those two symlinks — but `uninstall.sh` still removes them,
+unconditionally, so installs made by *earlier* versions of `install.sh` are not stranded.
+This is the one row where uninstall does more than reverse a current install. The removal is
+still bounded by the into-repo guard, and its test seeds the links itself (as dangling
+into-repo links) so the assertions exercise a real removal rather than passing on absent paths.
 
 ## Usage
 

@@ -106,6 +106,21 @@ new_sandbox
 # Seed personal (non-block) content to prove it survives the excise.
 printf '# Personal notes\n\nKEEP-THIS-LINE\n' > "$SBHOME/.claude/CLAUDE.md"
 env HOME="$SBHOME" "$INSTALL" >/dev/null 2>&1
+# LEGACY claude-time links: tools/claude-time/ was retired 2026-07-29, so install.sh
+# no longer creates these. uninstall.sh still removes them (to not strand
+# pre-retirement installs), so the test must SEED them itself — otherwise the two
+# assertions below would pass on paths that never existed, guarding nothing
+# (the fails-OPEN-on-missing-file trap). Seeded as DANGLING into-repo links, which is
+# exactly what a pre-retirement install becomes once the tool directory is deleted.
+mkdir -p "$SBHOME/.claude/hooks" "$SBHOME/.claude/bin"
+ln -s "$REPO_ROOT/tools/claude-time/hook.pl"     "$SBHOME/.claude/hooks/claude-time-hook.pl"
+ln -s "$REPO_ROOT/tools/claude-time/claude-time" "$SBHOME/.claude/bin/claude-time"
+# Fail-closed precondition: if the seeding above ever stops working, these FAIL loudly
+# rather than letting the removal assertions go quietly vacuous.
+check "seed precondition: legacy claude-time hook link exists pre-uninstall" \
+  "[ -L '$SBHOME/.claude/hooks/claude-time-hook.pl' ]"
+check "seed precondition: legacy claude-time bin link exists pre-uninstall" \
+  "[ -L '$SBHOME/.claude/bin/claude-time' ]"
 POST_AG=$(find "$SBHOME/.claude/agents" -maxdepth 1 -type l | wc -l | tr -d ' ')
 env HOME="$SBHOME" "$UNINSTALL" >"$SB/u.out" 2>&1; RC=$?
 AFTER_SK=$(find "$SBHOME/.claude/skills" -maxdepth 1 -type l 2>/dev/null | wc -l | tr -d ' ')
@@ -118,8 +133,10 @@ check "CLAUDE.md workflow block excised" \
 check "non-block personal content survived" \
   "grep -qF 'KEEP-THIS-LINE' '$SBHOME/.claude/CLAUDE.md'"
 check "CLAUDE.md .bak backup written" "[ -f '$SBHOME/.claude/CLAUDE.md.bak' ]"
-check "claude-time hook symlink removed" "[ ! -L '$SBHOME/.claude/hooks/claude-time-hook.pl' ]"
-check "claude-time bin symlink removed" "[ ! -L '$SBHOME/.claude/bin/claude-time' ]"
+check "legacy claude-time hook symlink removed (seeded dangling into-repo link)" \
+  "[ ! -L '$SBHOME/.claude/hooks/claude-time-hook.pl' ]"
+check "legacy claude-time bin symlink removed (seeded dangling into-repo link)" \
+  "[ ! -L '$SBHOME/.claude/bin/claude-time' ]"
 
 # --- Test group 3: into-repo guard — foreign link + real dir at REAL skill paths ---
 new_sandbox

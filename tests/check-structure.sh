@@ -725,309 +725,9 @@ echo ""
 echo "[Phase 5] Hook script integrity"
 
 # (The notify-telegram.sh hook was removed 2026-06-24 — no longer needed.
-#  claude-time hook integrity is covered by Phase 5b below.)
-
-echo ""
-
-# ── Phase 5b: claude-time hook script integrity ───────────────────────────
-#
-# Phase 1 of the claude-code-time-tracking feature shipped tools/claude-time/hook.pl
-# (Perl). These structural assertions guard against regression of the artifact
-# itself — existence, executable bit, perl -c compile, symlink resolution.
-# Behavioral assertions live in tools/claude-time/test/test_hook.sh,
-# which is invoked at the bottom of this Phase.
-
-echo "[Phase 5b] claude-time hook script integrity"
-
-if [ -f tools/claude-time/hook.pl ]; then
-  check "tools/claude-time/hook.pl exists in repo" "pass"
-else
-  check "tools/claude-time/hook.pl exists in repo" "fail" "file missing"
-fi
-
-if [ -x tools/claude-time/hook.pl ]; then
-  check "tools/claude-time/hook.pl is executable" "pass"
-else
-  check "tools/claude-time/hook.pl is executable" "fail" "missing executable bit"
-fi
-
-if perl -c tools/claude-time/hook.pl 2>/dev/null; then
-  check "tools/claude-time/hook.pl passes perl -c" "pass"
-else
-  check "tools/claude-time/hook.pl passes perl -c" "fail" "perl -c failed"
-fi
-
-ct_link_target=$(readlink ~/.claude/hooks/claude-time-hook.pl 2>/dev/null || echo "")
-if echo "$ct_link_target" | grep -q "my-claude-code-customization/tools/claude-time/hook.pl"; then
-  check "~/.claude/hooks/claude-time-hook.pl symlink resolves to this repo" "pass"
-else
-  check "~/.claude/hooks/claude-time-hook.pl symlink resolves to this repo" "fail" \
-    "target: ${ct_link_target:-missing}"
-fi
-
-if [ -f tools/claude-time/README.md ]; then
-  check "tools/claude-time/README.md exists" "pass"
-else
-  check "tools/claude-time/README.md exists" "fail" "file missing"
-fi
-
-# Behavioral end-to-end test for the hook. Lives in the tool's own test/ dir
-# rather than being inlined here — it's a behavioral suite, not a structural
-# one. We invoke it and surface its pass/fail.
-if [ -x tools/claude-time/test/test_hook.sh ]; then
-  if tools/claude-time/test/test_hook.sh > /dev/null 2>&1; then
-    check "tools/claude-time/test/test_hook.sh — behavioral assertions" "pass"
-  else
-    err=$(tools/claude-time/test/test_hook.sh 2>&1 | grep '\[FAIL\]' | head -3)
-    check "tools/claude-time/test/test_hook.sh — behavioral assertions" "fail" "$err"
-  fi
-else
-  check "tools/claude-time/test/test_hook.sh exists + executable" "fail" "missing or not executable"
-fi
-
-# Privacy assertion — single-purpose, run every structural check.
-if [ -x tools/claude-time/test/privacy_check.sh ]; then
-  if tools/claude-time/test/privacy_check.sh > /dev/null 2>&1; then
-    check "tools/claude-time/test/privacy_check.sh — privacy invariant" "pass"
-  else
-    err=$(tools/claude-time/test/privacy_check.sh 2>&1 | grep '\[FAIL\]' | head -3)
-    check "tools/claude-time/test/privacy_check.sh — privacy invariant" "fail" "$err"
-  fi
-else
-  check "tools/claude-time/test/privacy_check.sh exists + executable" "fail" "missing or not executable"
-fi
-
-# v3 WP2 perf probe — durable smokes only (existence, syntax, --help). Numeric
-# perf thresholds are intentionally NOT pinned (host wall-clock variance would
-# make them flaky). The script is the artifact; re-run it manually any time
-# viz_data.py materially changes.
-if [ -f tools/claude-time/test/perf_window_data.py ]; then
-  check "tools/claude-time/test/perf_window_data.py exists" "pass"
-else
-  check "tools/claude-time/test/perf_window_data.py exists" "fail" "file missing"
-fi
-
-if python3 -m py_compile tools/claude-time/test/perf_window_data.py 2>/dev/null; then
-  check "tools/claude-time/test/perf_window_data.py passes py_compile" "pass"
-else
-  check "tools/claude-time/test/perf_window_data.py passes py_compile" "fail" "py_compile failed"
-fi
-
-if python3 tools/claude-time/test/perf_window_data.py --help > /dev/null 2>&1; then
-  check "tools/claude-time/test/perf_window_data.py --help exits 0" "pass"
-else
-  check "tools/claude-time/test/perf_window_data.py --help exits 0" "fail" "non-zero exit"
-fi
-
-# Phase 3 additions: reclassifier module + CLI + unit tests
-if [ -f tools/claude-time/reclassify.py ]; then
-  check "tools/claude-time/reclassify.py exists" "pass"
-else
-  check "tools/claude-time/reclassify.py exists" "fail" "file missing"
-fi
-
-if [ -x tools/claude-time/claude-time ]; then
-  check "tools/claude-time/claude-time CLI is executable" "pass"
-else
-  check "tools/claude-time/claude-time CLI is executable" "fail" "missing executable bit"
-fi
-
-if python3 -m py_compile tools/claude-time/reclassify.py 2>/dev/null && \
-   python3 -m py_compile tools/claude-time/claude-time 2>/dev/null; then
-  check "tools/claude-time Python sources compile" "pass"
-else
-  check "tools/claude-time Python sources compile" "fail" "py_compile failed"
-fi
-
-ct_cli_link_target=$(readlink ~/.claude/bin/claude-time 2>/dev/null || echo "")
-if echo "$ct_cli_link_target" | grep -q "my-claude-code-customization/tools/claude-time/claude-time"; then
-  check "~/.claude/bin/claude-time symlink resolves to this repo" "pass"
-else
-  check "~/.claude/bin/claude-time symlink resolves to this repo" "fail" \
-    "target: ${ct_cli_link_target:-missing}"
-fi
-
-# Reclassifier unit tests
-if (cd tools/claude-time/test && python3 -m unittest test_reclassify > /dev/null 2>&1); then
-  check "tools/claude-time/test/test_reclassify.py — unit tests" "pass"
-else
-  err=$(cd tools/claude-time/test && python3 -m unittest test_reclassify 2>&1 | tail -3)
-  check "tools/claude-time/test/test_reclassify.py — unit tests" "fail" "$err"
-fi
-
-# viz_data unit tests (Phase 2 of claude-time-visualize feature)
-if [ -f tools/claude-time/viz_data.py ]; then
-  check "tools/claude-time/viz_data.py exists" "pass"
-else
-  check "tools/claude-time/viz_data.py exists" "fail" "file missing"
-fi
-
-if python3 -m py_compile tools/claude-time/viz_data.py 2>/dev/null; then
-  check "tools/claude-time/viz_data.py compiles" "pass"
-else
-  check "tools/claude-time/viz_data.py compiles" "fail" "py_compile failed"
-fi
-
-if (cd tools/claude-time/test && python3 -m unittest test_viz_data > /dev/null 2>&1); then
-  check "tools/claude-time/test/test_viz_data.py — unit tests" "pass"
-else
-  err=$(cd tools/claude-time/test && python3 -m unittest test_viz_data 2>&1 | tail -3)
-  check "tools/claude-time/test/test_viz_data.py — unit tests" "fail" "$err"
-fi
-
-# CLI end-to-end tests
-if [ -x tools/claude-time/test/test_cli.sh ]; then
-  if tools/claude-time/test/test_cli.sh > /dev/null 2>&1; then
-    check "tools/claude-time/test/test_cli.sh — CLI end-to-end" "pass"
-  else
-    err=$(tools/claude-time/test/test_cli.sh 2>&1 | grep '\[FAIL\]' | head -3)
-    check "tools/claude-time/test/test_cli.sh — CLI end-to-end" "fail" "$err"
-  fi
-else
-  check "tools/claude-time/test/test_cli.sh exists + executable" "fail" "missing or not executable"
-fi
-
-# visualize CLI end-to-end tests (Phase 3 codify, claude-time-visualize feature)
-if [ -x tools/claude-time/test/test_visualize_cli.sh ]; then
-  if tools/claude-time/test/test_visualize_cli.sh > /dev/null 2>&1; then
-    check "tools/claude-time/test/test_visualize_cli.sh — visualize CLI end-to-end" "pass"
-  else
-    err=$(tools/claude-time/test/test_visualize_cli.sh 2>&1 | grep '\[FAIL\]' | head -3)
-    check "tools/claude-time/test/test_visualize_cli.sh — visualize CLI end-to-end" "fail" "$err"
-  fi
-else
-  check "tools/claude-time/test/test_visualize_cli.sh exists + executable" "fail" "missing or not executable"
-fi
-
-# Multi-instance scenario (real two-process reattribution end-to-end)
-if [ -x tools/claude-time/test/multi_instance.sh ]; then
-  if REPO_ROOT="$(pwd)" tools/claude-time/test/multi_instance.sh > /dev/null 2>&1; then
-    check "tools/claude-time/test/multi_instance.sh — cross-session reattribution" "pass"
-  else
-    err=$(REPO_ROOT="$(pwd)" tools/claude-time/test/multi_instance.sh 2>&1 | grep '\[FAIL\]' | head -3)
-    check "tools/claude-time/test/multi_instance.sh — cross-session reattribution" "fail" "$err"
-  fi
-else
-  check "tools/claude-time/test/multi_instance.sh exists + executable" "fail" "missing or not executable"
-fi
-
-# Concurrent-write stress (50 parallel writers, WAL safety)
-if [ -x tools/claude-time/test/stress_concurrent.sh ]; then
-  if tools/claude-time/test/stress_concurrent.sh > /dev/null 2>&1; then
-    check "tools/claude-time/test/stress_concurrent.sh — 50 concurrent writers" "pass"
-  else
-    err=$(tools/claude-time/test/stress_concurrent.sh 2>&1 | grep '\[FAIL\]' | head -3)
-    check "tools/claude-time/test/stress_concurrent.sh — 50 concurrent writers" "fail" "$err"
-  fi
-else
-  check "tools/claude-time/test/stress_concurrent.sh exists + executable" "fail" "missing or not executable"
-fi
-
-# bench.sh: existence only (perf assertion is OS-dependent; runs on demand via
-# `tools/claude-time/test/bench.sh`, not on every structural check)
-if [ -x tools/claude-time/test/bench.sh ]; then
-  check "tools/claude-time/test/bench.sh exists + executable" "pass"
-else
-  check "tools/claude-time/test/bench.sh exists + executable" "fail" "missing or not executable"
-fi
-
-echo ""
-
-# ── Phase 5c: claude-time viz prototype integrity ─────────────────────────
-#
-# Phase 1 of the claude-time-visualize feature transplanted the Claude Design
-# mockup (4 files) into tools/claude-time/viz/ verbatim and pinned all 4 to
-# their byte sizes — emit-time transforms in viz_render.py let the shipped
-# HTML diverge from the immutable source.
-#
-# The v2 cycle (claude-time-visualize-v2, started 2026-05-19) supersedes the
-# immutability pattern for editable files (`dashboard.jsx`, `data.js`):
-# direct source edits are now permitted because the cycle's UX evolution
-# (zoomable timeline, collapsible rows, etc.) exceeds what emit-time text
-# transforms can reasonably support. See workflow-system/product/wbs.md and CLAUDE.md.
-#
-# `index.html` and `design-canvas.jsx` stay pinned — they remain immutable
-# in v2 (the design-canvas prototype is a reference artifact, and the page
-# template doesn't need source-level evolution).
-
-echo "[Phase 5c] claude-time viz prototype integrity"
-
-VIZ_DIR="tools/claude-time/viz"
-
-# Expected sizes (bytes) — pinned only for files that v2 holds immutable.
-# `dashboard.jsx` and `data.js` are now editable; their integrity is guarded
-# by the JS-parse check below + downstream test coverage (test_visualize_cli.sh
-# asserts emitted-HTML behavior, which would break first if the source broke).
-declare -a VIZ_FILES=(
-  "index.html:2634"
-  "design-canvas.jsx:49676"
-)
-
-for entry in "${VIZ_FILES[@]}"; do
-  name="${entry%:*}"
-  expected="${entry##*:}"
-  path="$VIZ_DIR/$name"
-  if [ ! -f "$path" ]; then
-    check "$path exists" "fail" "file missing"
-    continue
-  fi
-  check "$path exists" "pass"
-  actual=$(wc -c < "$path" | tr -d ' ')
-  if [ "$actual" = "$expected" ]; then
-    check "$path byte-size = $expected (design contract pinned)" "pass"
-  else
-    check "$path byte-size = $expected (design contract pinned)" "fail" \
-      "actual=$actual; expected=$expected. The design extract is the source-of-truth."
-  fi
-done
-
-# Existence-only checks for the v2-editable files (no byte pin — see header).
-for editable in "dashboard.jsx" "data.js"; do
-  if [ -f "$VIZ_DIR/$editable" ]; then
-    check "$VIZ_DIR/$editable exists" "pass"
-  else
-    check "$VIZ_DIR/$editable exists" "fail" "file missing"
-  fi
-done
-
-# Syntax checks — the JS file must parse as plain JS; the JSX files must parse
-# with @babel/parser + jsx plugin (the same parser Babel-standalone uses at
-# runtime). We probe whether parser dependencies are present in /tmp; if not,
-# skip the JSX parse gracefully (the parsers are the v2 integrity check now
-# that two of the four files are no longer byte-pinned, and an actual render
-# error would surface in dev-time browser checks regardless).
-if command -v node >/dev/null 2>&1; then
-  if node --check "$VIZ_DIR/data.js" 2>/dev/null; then
-    check "viz/data.js parses as plain JS (node --check)" "pass"
-  else
-    check "viz/data.js parses as plain JS (node --check)" "fail" "node --check failed"
-  fi
-else
-  check "viz/data.js parses as plain JS (node --check)" "fail" "node not on PATH"
-fi
-
-# index.html: structural well-formed-ness via Python's HTMLParser
-if python3 -c "
-from html.parser import HTMLParser
-class V(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.opened = []
-    def handle_starttag(self, tag, attrs):
-        if tag not in ('meta','link','br','hr','img','input'):
-            self.opened.append(tag)
-    def handle_endtag(self, tag):
-        if self.opened and self.opened[-1] == tag:
-            self.opened.pop()
-import sys
-with open('$VIZ_DIR/index.html') as f:
-    p = V(); p.feed(f.read())
-sys.exit(0 if not p.opened else 1)
-" 2>/dev/null; then
-  check "viz/index.html is well-formed (no unclosed tags)" "pass"
-else
-  check "viz/index.html is well-formed (no unclosed tags)" "fail" "HTMLParser found unclosed tags"
-fi
+#  Phases 5b/5c, which pinned tools/claude-time/ hook + viz integrity, were removed
+#  2026-07-29 when that tool was retired from this repo — Claudesk's Milestone 9
+#  absorbed the capability natively.)
 
 echo ""
 
@@ -1218,10 +918,14 @@ echo ""
 #      command mentions "claudesk" is stripped from BOTH live and fixture before
 #      comparison. The harness must not police claudesk, and claudesk must not
 #      break the harness — the filter keeps the two fully decoupled.
-#   2. After filtering, a small documented set of INTENTIONAL_DIFFS remains
-#      (Notification/Stop are emptied in the fixture so tests never fire the
-#      claude-time notification hooks). The repo-owned claude-time hook IS still
-#      diffed exactly on every other event.
+#   2. After filtering, INTENTIONAL_DIFFS is currently EMPTY. Until 2026-07-29 it
+#      exempted hooks.Notification/Stop, because the fixture emptied them while live
+#      ran the repo-owned claude-time hook. That tool was retired from this repo on
+#      2026-07-29 (Claudesk's Milestone 9 absorbed the capability natively) and
+#      unwired from live settings, so no repo-owned hook remains: every event's
+#      leftover entries are claudesk's, which rule 1 already strips. Both sides now
+#      reduce to empty hook lists and ALL 10 events are diffed exactly — strictly
+#      more coverage than before, with no exemptions.
 #
 # This check FAILs if any field outside the documented diff set has drifted —
 # telling the developer to either update the fixture or document a new exception.
@@ -1238,25 +942,25 @@ FIXTURE = "tests/fixtures/settings.json"
 # Documented intentional diffs. Format: list of (path, expected_live, expected_fixture).
 # `path` is a tuple of nested keys; `MISSING` is a sentinel meaning the key is absent.
 # NOTE: these are evaluated AFTER host-specific (claudesk) hooks are stripped from
-# both sides — so the live expectations describe the claude-time-only shape.
+# both sides.
 MISSING = object()
-INTENTIONAL_DIFFS = [
-    # The fixture empties Notification/Stop so test runs never fire the claude-time
-    # notification hooks; live legitimately runs claude-time on both. (claudesk
-    # already stripped from both sides — see strip_host_specific below.)
-    (("hooks", "Notification"), "non-empty-list", []),
-    (("hooks", "Stop"), "any", []),
-    # UserPromptSubmit is NOT listed: after stripping claudesk, both sides reduce to
-    # the single claude-time hook and must match exactly — it is fully drift-checked.
-]
+# EMPTY as of the 2026-07-29 claude-time retirement. The two former entries
+# (hooks.Notification / hooks.Stop) existed only because the fixture emptied those
+# events while live ran the repo-owned claude-time hook on them. With that tool
+# retired and unwired from live settings, no repo-owned hook remains on ANY event —
+# the only leftovers are claudesk's, already stripped by strip_host_specific below.
+# Both sides therefore reduce to empty hook lists and all 10 events are now diffed
+# exactly. Re-adding an exemption here should require the same justification the
+# originals had: a repo-owned hook that live must run but tests must not fire.
+INTENTIONAL_DIFFS = []
 
 # Machine-local settings keys that are toggled OUTSIDE this repo (Claude Code
 # connector/UI preferences set per-machine, not committed here). These paths are
 # stripped from BOTH live and fixture before drift detection so they never flag —
 # while every repo-owned key stays fully drift-checked. Each entry is a key-PATH
 # (tuple of nested keys): we delete the specific leaf, never a whole container, so
-# repo-relevant siblings under env/statusLine (CLAUDE_TIME_TRACKING,
-# CLAUDE_CODE_ENABLE_TELEMETRY, statusLine.command) remain compared.
+# repo-relevant siblings under env/statusLine (CLAUDE_CODE_ENABLE_TELEMETRY,
+# CLAUDE_CODE_ATTRIBUTION_HEADER, statusLine.command) remain compared.
 HOST_LOCAL_KEYS = [
     ("disableClaudeAiConnectors",),
     ("tui",),

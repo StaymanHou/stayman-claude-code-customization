@@ -203,7 +203,8 @@ ${extra_prompt}"
   # --settings *merges on top of* the user's ~/.claude/settings.json (it does
   # not replace it). We rely on this merge to override only the fields where
   # tests want different behaviour from the developer's live config — primarily
-  # the live runtime hook entries (claude-time, claudesk), which we empty or
+  # the live runtime hook entries (claudesk's; the repo-owned claude-time hook was
+  # retired 2026-07-29), which we empty or
   # trim here so test runs don't fire host-specific machinery. We deliberately
   # do NOT pass --setting-sources project,local
   # to fully replace user settings: that path also strips access to user-level

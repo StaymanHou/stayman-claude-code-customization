@@ -5,8 +5,10 @@
 #   - the per-skill symlinks under ~/.claude/skills/
 #   - the per-agent symlinks under ~/.claude/agents/
 #   - the per-hook symlinks under ~/.claude/hooks/ (if a hooks/ dir exists in the repo)
-#   - the claude-time hook.pl + CLI bin symlinks (~/.claude/hooks/claude-time-hook.pl,
-#     ~/.claude/bin/claude-time)
+#   - the LEGACY claude-time hook.pl + CLI bin symlinks
+#     (~/.claude/hooks/claude-time-hook.pl, ~/.claude/bin/claude-time) — the tool was
+#     retired 2026-07-29 and install.sh no longer creates these, but they are still
+#     removed here so pre-retirement installs are not stranded
 #   - the marker-delimited <!-- BEGIN/END claude-workflow-system --> block from
 #     ~/.claude/CLAUDE.md
 # Optionally (with an explicit --project <dir>) it also removes that project's
@@ -158,12 +160,19 @@ if [ -d "$SOURCE_DIR/hooks" ]; then
   done
 fi
 
-# --- Remove claude-time hook + CLI symlinks ---
-CLAUDE_TIME_DIR="$SOURCE_DIR/tools/claude-time"
-if [ -d "$CLAUDE_TIME_DIR" ]; then
-  remove_link "$TARGET_DIR/hooks/claude-time-hook.pl" "hooks/claude-time-hook.pl"
-  remove_link "$TARGET_DIR/bin/claude-time"           "bin/claude-time"
-fi
+# --- Remove claude-time hook + CLI symlinks (legacy cleanup) ---
+# tools/claude-time/ was RETIRED from this repo on 2026-07-29 (Claudesk M9 absorbed
+# it natively), so install.sh no longer creates these two links. This removal is
+# deliberately kept, and deliberately UNCONDITIONAL: it exists to clean up installs
+# made by EARLIER versions of install.sh. Do not re-add a `[ -d tools/claude-time ]`
+# guard — that directory is gone, so such a guard is permanently false and would
+# silently strand every pre-retirement install.
+#
+# Safe without the guard because remove_link only ever removes a symlink whose target
+# points INTO this repo, and its raw-readlink fallback specifically covers the
+# now-expected DANGLING into-repo case (target deleted with the tool).
+remove_link "$TARGET_DIR/hooks/claude-time-hook.pl" "hooks/claude-time-hook.pl"
+remove_link "$TARGET_DIR/bin/claude-time"           "bin/claude-time"
 
 # --- Excise the marker-delimited block from ~/.claude/CLAUDE.md --------------
 GLOBAL_CLAUDE_MD="$TARGET_DIR/CLAUDE.md"

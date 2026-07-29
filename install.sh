@@ -91,46 +91,13 @@ if [ -d "$SOURCE_DIR/hooks" ]; then
   done
 fi
 
-# --- Symlink claude-time tool (hook + CLI) ---
-# The hook script lives under tools/claude-time/ rather than hooks/ because it's
-# part of a larger tool (with a CLI sibling). Symlink it into ~/.claude/hooks/
-# anyway so users can wire it from settings.json with the conventional path,
-# and the CLI into ~/.claude/bin/ so it lands on PATH (if the user adds that dir).
-CLAUDE_TIME_DIR="$SOURCE_DIR/tools/claude-time"
-if [ -d "$CLAUDE_TIME_DIR" ]; then
-  mkdir -p "$TARGET_DIR/hooks"
-  mkdir -p "$TARGET_DIR/bin"
-
-  # Helper: symlink-or-update with the same idempotency contract as the other loops.
-  link_artifact() {
-    local src="$1"
-    local link="$2"
-    local label="$3"
-    if [ ! -f "$src" ]; then
-      return  # source missing — silent no-op; check-structure.sh will catch it
-    fi
-    if [ -L "$link" ]; then
-      local current_target
-      current_target="$(readlink "$link")"
-      if [ "$current_target" = "$src" ]; then
-        echo "  [ok] $label (already linked)"
-        return
-      else
-        echo "  [update] $label (repointing symlink)"
-        rm "$link"
-      fi
-    elif [ -e "$link" ]; then
-      echo "  [skip] $label (exists but is not a symlink — manual resolution needed)"
-      return
-    else
-      echo "  [new] $label"
-    fi
-    ln -s "$src" "$link"
-  }
-
-  link_artifact "$CLAUDE_TIME_DIR/hook.pl"     "$TARGET_DIR/hooks/claude-time-hook.pl"  "hooks/claude-time-hook.pl"
-  link_artifact "$CLAUDE_TIME_DIR/claude-time" "$TARGET_DIR/bin/claude-time"            "bin/claude-time"
-fi
+# --- (retired 2026-07-29) claude-time tool linking ---
+# This script used to symlink tools/claude-time/{hook.pl,claude-time} into
+# ~/.claude/hooks/ and ~/.claude/bin/. The tool was retired from this repo after
+# Claudesk's Milestone 9 (2026-07-16) absorbed the capability natively, so a fresh
+# install here would have registered a redundant SECOND time-tracking hook.
+# uninstall.sh deliberately still removes those two symlinks (unconditionally) so
+# installs made by earlier versions of this script are not stranded.
 
 # --- Inject workflow snippet into ~/.claude/CLAUDE.md ---
 SNIPPET_FILE="$SOURCE_DIR/CLAUDE.snippet.md"

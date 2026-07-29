@@ -824,11 +824,11 @@ scenarios:
     skill: session-capture
     args: >
       I just learned that in this project specifically, when running the
-      claude-time tests, you must use the container-based test runner
-      (tools/claude-time/test/run-in-container.sh) rather than running
-      pytest on the host. This is a project-specific rule — save it as a
-      Context Rule in this project's CLAUDE.md so future sessions in this
-      project follow the convention.
+      uninstall tests, you must invoke them via the sandboxed runner
+      (tools/uninstall/test/run-tests.sh, which fakes $HOME per call) rather
+      than running them against your real home directory. This is a
+      project-specific rule — save it as a Context Rule in this project's
+      CLAUDE.md so future sessions in this project follow the convention.
     fixtures:
       claude_md: fixtures/CLAUDE.md
     expect:

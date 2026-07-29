@@ -8,7 +8,6 @@ tests/results/*.json
 viz-phase*.png
 viz-*-fullpage.png
 wp5b-*.png
-tools/claude-time/viz/verify-self-screenshot*.png
 
 # Local-only verify-self emitted HTML (consumable; re-emit on demand)
 tmp/
