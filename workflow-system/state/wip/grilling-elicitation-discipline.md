@@ -1,7 +1,7 @@
 # Feature: Grilling Elicitation Discipline
 
 **Workflow:** feature
-**State:** verify-codify (all phases complete)
+**State:** ship (complete)
 **Created:** 2026-07-29
 **Entry:** spec (complex feature)
 
@@ -20,7 +20,7 @@ Stock grill-me is **relentless**, and that is correct for a standalone tool with
 
 Grilling is also **for the problem, not the solution** — a distinction the source cluster makes structurally, and which this spec adopts. Pocock's `to-spec` explicitly says *"Do NOT interview the user — just synthesize what you already know"*, then confirms one specific technical thing: the seams. Grilling proper aims at *what are we building, for whom, what does done mean, what is out of scope*. That is why `product-arch` is out of scope here (see Out of Scope) despite being a strong candidate on first inspection.
 
-**Reference material** is cloned at `/private/tmp/claude-501/-Users-stayman-Personal-projects-my-claude-code-customization/92db8c84-02b0-4a9c-b11b-bfce684d017d/scratchpad/grill-refs/` (`mattpocock-skills`, `gusinov-grill-me`) — temporary, scratchpad-only, not to be committed.
+**Reference material** was cloned to a session scratchpad during spec (`mattpocock/skills`, `gusinov/grill-me`) and is **gone** — session scratchpads are swept, and nothing was committed to this repo (verified: 0 tracked files). Re-clone from GitHub if the sources are needed again: the load-bearing pieces were `skills/productivity/grilling/SKILL.md` (the 12-line primitive) and `skills/engineering/to-spec/SKILL.md` (which explicitly says *"Do NOT interview the user"* — the distinction that drove this feature's problem-vs-solution split).
 
 ## User Stories
 
@@ -271,10 +271,10 @@ Kept anyway, because it is correct guidance regardless of this scenario: an offe
     Final state: `[Phase 21]` **19 PASS / 0 FAIL**; full suite **585 PASS / 1 FAIL** (the standing `[Phase 7]` `effortLevel` host drift, reproduced at the pre-feature baseline); 3 scenarios **0 FAIL**; `bash -n` and YAML parse both clean. **All three phases complete.**
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** **All 3 phases complete** (14 impl leaves + 12 verify leaves). Next: `feature-ship`.
+- **Path:** Feature > review-quality
+- **Active scope:** **Shipped** (commit `0e26bbf` + the ship cleanup commit). All 3 phases complete: 14 impl leaves + 12 verify leaves, 0 unchecked nodes. Next: `feature-review-quality` against the ship-commit baseline (F38 — `drive_mode` is autopilot, not fsd, so the F17b skip path does not apply).
 - **Blocked:** none. `DP-capture-fires` sits at **~85%** (11/13 haiku, 6/7 sonnet) against a 6/6 baseline — **not** "back to baseline" (an earlier claim to that effect in this file was wrong and is corrected in the P2.8 record). The operator ACCEPTED the residual on 2026-07-29 after three fix hypotheses were refuted by measurement, so it is a closed decision rather than an open blocker.
-- **Unvisited:** ship → review-quality → finalize
+- **Unvisited:** review-quality → finalize
 - **Note for Phase 3 (P3.3):** the pin target changed with the re-plan. `product-vision`'s pointer now lives in **§3 Hand Off** (`^### 3\. Hand Off` → `^### 4\.`), not §1 — the section-scoped `check_pointer` call must use those boundaries, and both must carry fail-closed preconditions per the seventh mechanism. `feature-spec`'s pointer is still in §1. The two hosts are deliberately asymmetric.
 - **Design decision on record (2026-07-29, operator-authored):** grilling at vision is a **soft fork at hand-off**, not an inlined interview — one state must never be asked to pause for a human *and* emit a terminal transition in the same turn. `feature-spec` keeps its inlined block (it has the structural capacity; vision does not). The asymmetry is deliberate. (P3.1 baseline → P3.2 test-assertion-review → P3.3 `[Phase 21]` → P3.4 mutation+specificity sweep → P3.5 scenarios → P3.6 docs → P3.7 opportunistic helper → verify group)
 - **Open discoveries:** 9 logged below (arch.md size guard; product-arch confirm-the-seams follow-on; product-wbs elicitation gap; Phase-21 backlog overlap; build-time outcome correction; verify-self in-place shortcut; drive_mode frontmatter gap blocking auto-skip; Phase-7 settings drift → triaged above; **product-vision thin transition surface** → task-level backlog)
