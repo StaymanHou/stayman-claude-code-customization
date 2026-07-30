@@ -2968,8 +2968,10 @@ echo ""
 # block). Do NOT "normalize" the two hosts to one shape; the §3 boundaries below
 # are correct for product-vision and §1 is correct for feature-spec.
 #
-# Reviewed against /test-assertion-review BEFORE writing. THREE AT-RISK findings
-# came out of that review; each fix is annotated with the mechanism it answers.
+# Reviewed against /test-assertion-review BEFORE writing: THREE AT-RISK findings came out
+# of that pass. A FOURTH was found afterwards by an independent 15-mutation subagent sweep
+# (the end-boundary/seventh-mechanism guard below) — so this block carries FOUR annotated
+# mechanisms, not three. Each fix is annotated with the mechanism it answers.
 # A mutation sweep would have caught NONE of them — it proves an assertion CAN
 # fail, not that it discriminates, fails closed, or targets the right corpus.
 # Do not "simplify" these preconditions away.

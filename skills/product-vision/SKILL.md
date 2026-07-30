@@ -74,7 +74,7 @@ Full discriminant, weighting, and exclusions: `CLAUDE.snippet.md` → "Design pr
 
 **Precondition — is there a live operator to answer?** If you have no way to receive a reply before this response ends (a non-interactive `--print` run, a test harness, any automated invocation), **skip the fork entirely**: finish step 3's bullets, emit the step-4 transition, and stop. Do not print the offer, do not ask, do not stall — an offer nobody can answer is worse than no offer. Only when a live operator *can* reply do you continue to the fork below.
 
-**Offer the pressure-test fork (Modes 0–3; Mode 4 only is silent).** The vision doc is the most expensive artifact in the system to get wrong — every milestone, work package, and feature spec downstream inherits its assumptions — and the operator cannot evaluate its *silences*: reading it they check what is on the page, not the decision you quietly defaulted. So once `vision.md` is written, offer two ways forward in one line:
+**Offer the pressure-test fork (every mode except Mode 4 — i.e. Direct/mode-0, Stepping, Orchestrated, and Autopilot all offer it; only FSD is silent).** The vision doc is the most expensive artifact in the system to get wrong — every milestone, work package, and feature spec downstream inherits its assumptions — and the operator cannot evaluate its *silences*: reading it they check what is on the page, not the decision you quietly defaulted. So once `vision.md` is written, offer two ways forward in one line:
 
 > Vision doc written. Two ways forward: **(1)** run `/util-grill-me` to pressure-test it one question at a time before roadmapping, then `/product-roadmap`; or **(2)** go straight to `/product-roadmap`.
 

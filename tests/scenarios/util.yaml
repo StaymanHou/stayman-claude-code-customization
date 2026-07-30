@@ -197,12 +197,20 @@ scenarios:
       contains_any:
         - "Gate check"
         - "passing all three clauses"
+      # NB `cheap to reverse` was REMOVED from this OR-fanout on review (2026-07-29). It is one
+      # of the three literal reason-strings in the skill's own Assumed-list template
+      # (util-grill-me/SKILL.md: "discoverable / not the operator's / cheap to reverse"), so it
+      # is emitted whenever ANY default is disclosed with that reason — including in a run that
+      # wrongly asked all three cheap questions and then disclosed some unrelated cheap default.
+      # An OR-fanout is only as strong as its weakest arm, and that arm was satisfiable by the
+      # very failure state this scenario exists to reject. The surviving arms are all
+      # failure-DISCRIMINATING: they can only appear when the model actually declined to ask.
       contains_required_any:
         - "clauses: none"
         - "clauses:** none"
-        - "cheap to reverse"
         - "fail clause (c)"
         - "no questions"
+        - "none of the"
     max_retries: 2
 
   - id: UTIL-GRILL-GATE-LOOKS-UP-DISCOVERABLE-FACT
