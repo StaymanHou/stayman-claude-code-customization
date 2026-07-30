@@ -133,3 +133,100 @@ scenarios:
       contains_required:
         - "util-backlog-paydown"
     max_retries: 2
+
+  # ── util-grill-me — the three-clause gate ────────────────────────────────────
+  #
+  # util-grill-me emits NO transition (util-* category), so these assert via
+  # contains_any on the SOFT_PASS branch, same as the paydown disposition cases above.
+  #
+  # PROMPT-LEAKAGE DISCIPLINE (docs/lessons/test-scenario-prompt-leakage.md): each
+  # system_prompt_extra states the DECISION CONTEXT neutrally — the situation and the
+  # environmental facts — and never the expected answer or the rule's name. A scenario
+  # that recites "clause (c) says don't ask about cheap decisions" would pass even if
+  # the gate were deleted from the skill, testing prompt-obedience instead of the skill.
+  # Verify that property when editing: strip the block from SKILL.md and these must fail.
+  #
+  # Untagged (haiku) per the repo's recon discipline — a `model: sonnet` tag is earned by
+  # a MEASURED haiku failure plus a confirmed-deterministic sonnet pass, not added
+  # preemptively. NB this feature measured DP-capture-fires at ~85% on BOTH tiers, so if
+  # one of these proves flaky do not reach for the tag reflexively; measure both first.
+
+  - id: UTIL-GRILL-GATE-FIRES-ON-EXPENSIVE
+    name: "util-grill-me: asks when the decision is the operator's AND expensive to reverse"
+    skill: util-grill-me
+    args: >
+      Grill me on the user-data export API plan before I build it. The plan and the
+      environmental facts are already in your context.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      The plan under discussion: "Add a public HTTP API for exporting user data."
+      Environmental facts available to you: the repo has no existing export endpoint,
+      no rate-limiting middleware, and no documented retention policy. The operator has
+      not said who the export is for, whether it must include deleted records, or what
+      happens to an export that is half-written when a request times out. Those choices
+      determine the response schema and the storage layout, and changing them after
+      release would break any client already parsing the payload.
+    expect:
+      contains_any:
+        - "Gate check"
+        - "passing all three clauses"
+      contains_required_any:
+        - "recommended answer"
+        - "Recommended answer"
+        - "My recommendation"
+    max_retries: 2
+
+  - id: UTIL-GRILL-GATE-SKIPS-CHEAP-REVERSIBLE
+    name: "util-grill-me: does NOT ask about a cheap-to-reverse decision (clause (c))"
+    skill: util-grill-me
+    args: >
+      Grill me on the --quiet flag change before I build it. The change and the
+      environmental facts are already in your context.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      The change under discussion: "Add a --quiet flag to the existing log-tail command."
+      Environmental facts available to you: the command already parses flags in one place,
+      the behavior is a single early-return around one writer, and it ships behind no
+      public contract. The only things not yet settled are what to call the flag's short
+      form, whether the suppressed line reads "skipped" or "omitted" in the summary, and
+      whether --quiet sorts before or after --verbose in the help text. Any of those can
+      be changed later by editing one line.
+    expect:
+      contains_any:
+        - "Gate check"
+        - "passing all three clauses"
+      contains_required_any:
+        - "clauses: none"
+        - "clauses:** none"
+        - "cheap to reverse"
+        - "fail clause (c)"
+        - "no questions"
+    max_retries: 2
+
+  - id: UTIL-GRILL-GATE-LOOKS-UP-DISCOVERABLE-FACT
+    name: "util-grill-me: looks a discoverable fact up instead of asking (clause (a))"
+    skill: util-grill-me
+    args: >
+      Grill me on the workflow-state directory migration before I build it. The migration
+      and the environmental facts are already in your context.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      The migration under discussion: "Move the workflow state directory to a new path."
+      Environmental facts available to you: the current path, the set of files under it,
+      and every skill that reads or writes it are all recorded in the project's own
+      CLAUDE.md and are readable from the filesystem right now. What the operator has NOT
+      stated is whether existing projects must keep working without a manual step, which
+      determines whether this needs a compatibility shim that would be costly to retrofit.
+    expect:
+      contains_any:
+        - "Gate check"
+        - "passing all three clauses"
+      contains_required_any:
+        - "resolved from the environment"
+        - "Looked up rather than asked"
+        - "looked up rather than asked"
+        - "discoverable"
+    max_retries: 2

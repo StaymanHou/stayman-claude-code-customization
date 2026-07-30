@@ -2948,6 +2948,218 @@ fi
 
 echo ""
 
+# ───────────────────────────────────────────────────────────────────────────
+# [Phase 21] util-grill-me host pointers + util-family shape
+#
+# WHY THIS PHASE EXISTS — measured, not assumed. Before it was written, deleting
+# BOTH host pointers outright left the suite fully green at 566 PASS / 1 FAIL,
+# and `grep -rc util-grill-me tests/` returned 0. Same finding as [Phase 20]:
+# the pointers are the ONLY thing making the skill discoverable at the moment it
+# applies, so the pointers — not the skill file — are the load-bearing artifact.
+#
+# ASYMMETRIC HOSTS BY DESIGN. feature-spec carries an INLINED elicitation block
+# in §1; product-vision carries a hand-off FORK in §3 instead. That asymmetry is
+# deliberate and operator-ratified: an inlined interview in product-vision asked
+# one state to pause for a human AND emit its terminal transition in the same
+# turn, which a single non-interactive turn cannot satisfy — it went 2/2
+# SOFT_PASS -> 3/3 FAIL on scenario DP-capture-fires and survived five prose
+# fixes. feature-spec absorbed the identical block because it has the structural
+# capacity (9 F3/F4 restatements + a cheat-sheet table + an AUTO hard-rule
+# block). Do NOT "normalize" the two hosts to one shape; the §3 boundaries below
+# are correct for product-vision and §1 is correct for feature-spec.
+#
+# Reviewed against /test-assertion-review BEFORE writing. THREE AT-RISK findings
+# came out of that review; each fix is annotated with the mechanism it answers.
+# A mutation sweep would have caught NONE of them — it proves an assertion CAN
+# fail, not that it discriminates, fails closed, or targets the right corpus.
+# Do not "simplify" these preconditions away.
+# ───────────────────────────────────────────────────────────────────────────
+echo "[Phase 21] util-grill-me host pointers + util-family shape"
+
+GRILL_SKILL="skills/util-grill-me/SKILL.md"
+GRILL_TARGET="util-grill-me"
+
+# ── (a) HOST POINTERS — the load-bearing artifact ──────────────────────────
+# Section-scoped on purpose: a bare file-wide `grep -c` still scores >=1 when the
+# pointer is MOVED OUT of its section into unrelated prose, which is a real
+# regression (the trigger must fire where elicitation happens, not merely exist
+# somewhere in the file).
+check_grill_pointer() {
+  local label="$1" file="$2" sec_start="$3" sec_end="$4"
+
+  # [M3] Existence precondition, fails CLOSED. Without it a deleted/renamed file
+  # yields count 0 — indistinguishable from "pointer removed".
+  if [ ! -f "$file" ]; then
+    check "$label — host file exists (precondition)" "fail" \
+      "$file does not exist; a pointer pin cannot be satisfied vacuously. If the skill was renamed, update this phase's target list deliberately"
+    return
+  fi
+  check "$label — host file exists (precondition)" "pass"
+
+  # [M3] START boundary, fails CLOSED and SEPARATELY from the pointer count.
+  # Renaming the heading is how this fires in practice; without this the failure
+  # message would blame a missing pointer when the cause is a moved section.
+  local nstart
+  nstart=$( (grep -cE "$sec_start" "$file" || true) | head -1 )
+  if [ "${nstart:-0}" -lt 1 ]; then
+    check "$label — target section heading present (precondition)" "fail" \
+      "no heading matching /$sec_start/ in $file — the section was renamed or removed, so the pointer assertion below cannot be evaluated. Fix the heading or update this phase"
+    return
+  fi
+  check "$label — target section heading present (precondition)" "pass"
+
+  # [M3 — the seventh mechanism] The END boundary needs its OWN fail-closed
+  # precondition. This is NOT symmetric decoration: awk's `f` flag latches ON at
+  # sec_start and only clears at sec_end, so if sec_end is renamed away the window
+  # runs to EOF and this pin SILENTLY DEGRADES TO A FILE-WIDE grep — accepting the
+  # very moved-out-of-section regression it exists to catch.
+  #
+  # REPRODUCED LIVE before writing this guard: with product-vision's real §3
+  # boundaries the scoped count is 3; replacing the end pattern with one that
+  # never matches ALSO scored 3. Identical result, silently wrong pin.
+  local nend
+  nend=$( (grep -cE "$sec_end" "$file" || true) | head -1 )
+  if [ "${nend:-0}" -lt 1 ]; then
+    check "$label — section END boundary present (precondition)" "fail" \
+      "no heading matching /$sec_end/ in $file — without it the awk window runs to EOF and this pin degrades to a file-wide grep, silently accepting a pointer moved OUT of its section. Fix the heading or update this phase"
+    return
+  fi
+  check "$label — section END boundary present (precondition)" "pass"
+
+  # [M5] Assert >=1, never ==N. product-vision §3 legitimately carries THREE
+  # references today (the fork offer + the util-* property note + the full-discipline
+  # pointer); an exact count would break the moment prose gains a legitimate fourth.
+  local n
+  n=$( (awk "/$sec_start/{f=1} /$sec_end/{f=0} f" "$file" | grep -c "$GRILL_TARGET" || true) | head -1 )
+  if [ "${n:-0}" -ge 1 ]; then
+    check "$label — references $GRILL_TARGET inside its target section" "pass"
+  else
+    check "$label — references $GRILL_TARGET inside its target section" "fail" \
+      "found ${n:-0} references to $GRILL_TARGET within /$sec_start/../$sec_end/ in $file (file-wide count: $( (grep -c "$GRILL_TARGET" "$file" || true) | head -1 )). The host pointer is what makes the skill discoverable at the moment it applies — without it the skill is inert. If the pointer was intentionally moved, update this phase"
+  fi
+}
+
+check_grill_pointer "feature-spec §1 (inlined block)" \
+  "skills/feature-spec/SKILL.md" \
+  '^### 1\. Elicit Requirements' \
+  '^### 2\.'
+
+check_grill_pointer "product-vision §3 (hand-off fork)" \
+  "skills/product-vision/SKILL.md" \
+  '^### 3\. Hand Off' \
+  '^### 4\.'
+
+# ── (b) UTIL-FAMILY SHAPE ──────────────────────────────────────────────────
+if [ ! -f "$GRILL_SKILL" ]; then
+  check "util-grill-me SKILL.md exists (precondition for the shape checks)" "fail" \
+    "$GRILL_SKILL does not exist — the shape checks below cannot be satisfied vacuously. If the skill was renamed, update this phase deliberately"
+else
+  check "util-grill-me SKILL.md exists (precondition for the shape checks)" "pass"
+
+  # `## Category` (util-family), NOT debug-*'s `## Category Context`. Anchored at
+  # line-start and case-stable. [M4] This is a real phrase CLASS: 9 SKILL.md files
+  # carry `^## Category$` today, so it is neither a generic procedure word nor a
+  # verbatim one-off.
+  grep_check "util-grill-me has a '## Category' section (util-family shape, not debug-*'s '## Category Context')" \
+    "$GRILL_SKILL" '^## Category$' 1
+
+  # [M3/3b] Frontmatter extraction is itself a fail-closed guard. An earlier
+  # incarnation of this pattern (Phase 19) silently produced an EMPTY string, so
+  # both forbidden-key checks matched against nothing and PASSED VACUOUSLY.
+  # Extract by explicit line range and FAIL CLOSED when the range is unresolvable.
+  grill_fm_end=$( (grep -nE '^---$' "$GRILL_SKILL" || true) | sed -n '2p' | cut -d: -f1 )
+  if [ -z "${grill_fm_end:-}" ] || [ "${grill_fm_end:-0}" -lt 2 ]; then
+    check "util-grill-me frontmatter is extractable (precondition)" "fail" \
+      "could not locate a closing '---' in $GRILL_SKILL — frontmatter checks cannot be satisfied vacuously; fix the file or this pin"
+  else
+    check "util-grill-me frontmatter is extractable (precondition)" "pass"
+    grill_fm=$(sed -n "2,$((grill_fm_end - 1))p" "$GRILL_SKILL")
+    for forbidden in skills tools; do
+      gfn=$( (printf '%s\n' "$grill_fm" | grep -cE "^${forbidden}:" || true) | head -1 )
+      if [ "${gfn:-0}" -eq 0 ]; then
+        check "util-grill-me frontmatter has no '${forbidden}:' key (util-*, not orchestrator/subagent)" "pass"
+      else
+        check "util-grill-me frontmatter has no '${forbidden}:' key (util-*, not orchestrator/subagent)" "fail" \
+          "$GRILL_SKILL frontmatter declares '${forbidden}:' — that marker makes it a reference orchestrator (skills:) or an executable subagent (tools:); util-* skills are neither"
+      fi
+    done
+  fi
+
+  # Emits-no-transition, as CLAIM **and** BEHAVIOR.
+  #
+  # ⚠️ ANCHOR SCOPING — do not widen this back to a file-wide grep. The anchor is
+  # [Phase 19]'s hardened TOUR_NOTRANSITION_ANCHOR, but applied file-wide it matches
+  # 11 of 48 SKILL.md files, INCLUDING feature-spec and product-vision — which DO
+  # emit transitions (F3/F4, P2). The cause is this very feature: both host blocks
+  # state that *grilling* "emits no transition", and a file-wide grep cannot tell
+  # whose property is being described. product-vision additionally carries a real
+  # `TRANSITION: P2` line, so a naive claim-AND-behavior pin would flag a CORRECT
+  # file as self-contradictory.
+  #
+  # Scoping the claim to the skill's OWN `## Transitions` section fixes it, and was
+  # verified in both directions before shipping: 11 file-wide matches -> 2
+  # section-scoped (util-grill-me, util-option-mockup — exactly the util-family),
+  # while feature-build / feature-ship / task-act (real emitters) and
+  # feature-spec / product-vision (mention grilling's property, not their own) all
+  # score 0. Specificity and deletion-sensitivity are INDEPENDENT properties.
+  GRILL_NOTRANSITION_ANCHOR='(emits? no|does not emit|never emits?)[^.]{0,40}transition'
+  grill_tsec=$(awk '/^## Transitions/{f=1; next} /^## /{f=0} f' "$GRILL_SKILL" | tr '\n' ' ')
+  if [ -z "${grill_tsec// /}" ]; then
+    check "util-grill-me documents that it emits NO transition, and emits none (util-*)" "fail" \
+      "no '## Transitions' section content found in $GRILL_SKILL — the claim cannot be evaluated vacuously; util-* skills must document their (empty) transition surface"
+  else
+    grill_claim=$( (printf '%s' "$grill_tsec" | grep -ciE "$GRILL_NOTRANSITION_ANCHOR" || true) | head -1 )
+    grill_emits=$( (grep -cE '^[[:space:]]*[-*`]*[[:space:]]*`?TRANSITION: [A-Z][0-9]' "$GRILL_SKILL" || true) | head -1 )
+    if [ "${grill_claim:-0}" -ge 1 ] && [ "${grill_emits:-0}" -eq 0 ]; then
+      check "util-grill-me documents that it emits NO transition, and emits none (util-*)" "pass"
+    elif [ "${grill_claim:-0}" -lt 1 ]; then
+      check "util-grill-me documents that it emits NO transition, and emits none (util-*)" "fail" \
+        "no explicit 'emits no transition'-class statement inside $GRILL_SKILL's '## Transitions' section — util-* skills are outside the F/I/T/P/S namespace and must say so THERE (the anchor is deliberately section-scoped; a file-wide match is not accepted because host skills legitimately describe grilling's property)"
+    else
+      check "util-grill-me documents that it emits NO transition, and emits none (util-*)" "fail" \
+        "$GRILL_SKILL claims to emit no transition but carries ${grill_emits} real 'TRANSITION: <id>' emission line(s) — claim and behavior disagree; either the skill was wired into the state machine (update transitions.md + the orchestrator tables deliberately) or the emission is a copy-paste error"
+    fi
+  fi
+fi
+
+# ── (c) NEGATIVE PINS — the four deliberately-excluded hosts ───────────────
+# These exclusions are load-bearing DECISIONS, not omissions, and each has a
+# stated reason. Positive and negative pins live in the same phase, following
+# [Phase 20]'s precedent (it carries the feature-verify-human D8 exclusion
+# alongside its positive pointer pins).
+#
+#   task-plan     — does not interview the user at all; its own scope assessment
+#                   ESCALATES (T3) when a task needs new models/API/arch, and that
+#                   escalation IS the routing to a skill where grilling belongs.
+#   feature-plan  — same, and downstream of the spec where the problem is settled.
+#   product-wbs   — decomposition surfaces STRUCTURAL decisions (sizing, dependency
+#                   edges); it already has Spike/Probe WPs + design-priors consult.
+#   product-arch  — solution/technical, not problem-definition. Grilling is a
+#                   problem instrument; arch wants synthesize-then-confirm-the-seams.
+#
+# [M3] A negative assertion is the classic vacuous pass: `grep -c` returns empty
+# for a missing file AND 0 for a clean one, so a bare `-eq 0` test passes either
+# way. Measured directly during review. Hence the fail-CLOSED existence guard.
+# [M6] Verified no legitimate mention exists to trip on: all four hosts score 0
+# for even a loose case-insensitive `grill`, so this is a clean absence pin rather
+# than a forbid-the-term pin that could fire on correct prose.
+for excluded in task-plan feature-plan product-wbs product-arch; do
+  ex_file="skills/${excluded}/SKILL.md"
+  if [ ! -f "$ex_file" ]; then
+    check "${excluded} does NOT reference $GRILL_TARGET (deliberate exclusion)" "fail" \
+      "$ex_file does not exist — a negative assertion cannot be satisfied vacuously; if the skill was renamed, update this phase deliberately"
+  else
+    ex_n=$( (grep -c "$GRILL_TARGET" "$ex_file" || true) | head -1 )
+    if [ "${ex_n:-0}" -eq 0 ]; then
+      check "${excluded} does NOT reference $GRILL_TARGET (deliberate exclusion)" "pass"
+    else
+      check "${excluded} does NOT reference $GRILL_TARGET (deliberate exclusion)" "fail" \
+        "$ex_file contains ${ex_n} reference(s) to $GRILL_TARGET, but this host was deliberately excluded (see the reasons above this loop). If that decision was reversed, update this phase AND the feature's acceptance criteria together"
+    fi
+  fi
+done
+
+echo ""
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="
