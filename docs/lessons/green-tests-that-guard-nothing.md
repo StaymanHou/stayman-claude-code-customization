@@ -245,3 +245,19 @@ Two rules follow:
   and the confirmation step is load-bearing, not ceremony — because for
   assertions trippable by faithfully reproducing source copy, model strength is
   *anti*-correlated with passing.
+
+## 8. A stochastic scenario declared "fixed" on n=3 — sample size as a guard-nothing mechanism
+
+The seven mechanisms above are all about an assertion's *shape*. This one is about the **evidence used to believe a fix worked**, and it produces the same outcome: a green result that guards nothing, held with confidence.
+
+**The arithmetic.** Every scenario in `tests/scenarios/` invokes a real model, so its outcome is stochastic. At a **15%** per-run failure rate, three consecutive passes occur **~61%** of the time (`0.85³`). So "I ran it 3× and it passed" is *more likely than not* even when the defect is fully present. n=3 does not distinguish "fixed" from "still broken 15% of the time."
+
+**The live instance (2026-07-29, `grilling-elicitation-discipline`).** Scenario `DP-capture-fires` went 2/2 SOFT_PASS → 3/3 FAIL when an inlined elicitation block was added to `product-vision` §1. After a structural fix it was declared **resolved on 3 green runs**. It was not: larger sampling gave **11/13 (~85%)** against a **clean 6/6 baseline**. The claim was made twice and corrected only when a verify-self subagent re-measured independently and returned 1 FAIL in 3.
+
+**The rule.**
+- **Declaring a stochastic scenario fixed requires n≥6**, and the baseline must be measured at **equal depth** — comparing a 3-run "after" against a 2-run "before" is not a comparison. The original 2-run baseline here read SOFT_PASS and was the lucky 1-in-3.
+- **A single green is never evidence**; neither is three. State the observed ratio (`11/13`), not a verdict ("resolved").
+- **Measure the wrong-corpus direction too.** Before attributing a flake to model capacity, run the other tier: haiku ~85% vs sonnet ~86% here refuted the capacity hypothesis and correctly **denied** the scenario a `model: sonnet` tag. Per the repo's recon discipline, a tag is earned only when the stronger model passes *deterministically* — otherwise it spends the cost differential and still leaves a retry-dependent gate.
+- **A mutation that does not mutate is indistinguishable from an inert assertion.** One sweep attempt here used a regex that silently failed to match; the file was unchanged and the pin reported 0 FAILs — which reads exactly like a pin that does not work. Verify the mutation landed before trusting its verdict.
+
+**Why this belongs beside the other seven.** Mechanisms 1–7 are caught by inspecting the assertion. This one is invisible to inspection: the assertion is correct, the run is green, and the only defect is in how few times it was run. It is the sampling analogue of mechanism 5 — *sensitivity and specificity are independent* — extended in time: **a small sample and a real fix produce identical output.**

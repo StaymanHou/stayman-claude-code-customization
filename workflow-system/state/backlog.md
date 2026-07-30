@@ -349,3 +349,64 @@ Buried 2026-06-12:
 - **Suggested action:** (1) `'tests/fixtures/*.md' 'tests/fixtures/**/*.md'` plus a note that archives are deliberately out of scope; (2) add a comment recording the deliberate narrowness, since the surrounding prose presents the paired check as complete; (3) prefer quoted phrases over line ranges.
 - **Priority:** low
 - **Status:** pending
+
+## SURFACE-2026-07-29-AUTO-EXIT-NARRATIVE-STOP-RECURRED
+- **Source:** feature:build (grilling-elicitation-discipline) — operator-observed
+- **Target level:** task (possibly feature if a prose fix across all 12 cheat-sheet blocks is wanted)
+- **Type:** bug (orchestration adherence)
+- **Summary:** The agent repeatedly ended the turn on transitions marked **AUTO** in Mode 3, which is verbatim the P1 regression the "Hard rule for AUTO exits" exists to prevent. Observed after `F15` (Phase 2→3) and after `F8` (Phase 3 build→verify-auto), each time phrased as a courtesy offer ("Want me to continue, or pause here?").
+- **Context:** The rule is repeated 12+ times across the feature skills and was in-context at every invocation, so this is **not** a recall failure. The pull came from a plausible-sounding rationalization the rule does not admit: after a long or eventful phase, "this covered a lot of ground / nothing is committed yet / the next phase is large" felt like grounds for a check-in. Per-skill cheat-sheet placement fixes *recall* but not *rationalization*.
+- **The tell:** the stop is phrased as an offer rather than attributed to a specific PAUSE row. A legitimate Mode-3 pause always traces to a table row or an explicit human-input point; if the justification is about effort spent, tokens, or risk of losing work, it is rationalized drift. Committing state is a reason to commit, not to pause.
+- **Suggested action (hypothesis — verify before applying):** add an anti-rationalization clause naming the three seductive non-reasons. **But confirm first** whether adding *more* prose to a block already repeated 12× improves adherence — this instance is evidence that volume is not the binding constraint. Consider instead whether an offer-shaped stop on an AUTO transition is mechanically detectable in a transcript-review pass.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-07-29-PRODUCT-VISION-THIN-TRANSITION-SURFACE
+- **Source:** feature:build (grilling-elicitation-discipline)
+- **Target level:** task
+- **Type:** tech-debt
+- **Summary:** `product-vision` had the weakest transition surface in the repo — **no `## Emit Transition` section at all**, so its only exit signal was a single line in State Machine Context. Measured on haiku *before* this feature: scenario `P2` at **2/3 FAIL**. This feature added a `### 4. Emit Transition` section (improving `P2` to 2/3 FLAKY) but it is still not deterministic, so `P2` keeps its `model: sonnet` tag.
+- **Context:** The thinness is why an inlined elicitation block in §1 broke `DP-capture-fires` (2/2 SOFT_PASS → 3/3 FAIL) and survived five prose fixes. `feature-spec` absorbed the identical block with zero degradation because it restates F3/F4 nine times. **No `product-*` skill has an Emit Transition section** — this feature fixed one of seven.
+- **Suggested action (hypothesis — verify per skill):** give the remaining `product-*` skills real `## Emit Transition` sections, then re-measure `P2` on haiku and **untag if it passes deterministically** — a tag outliving its justification is stale test-weakening.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-07-29-F3-SCENARIO-FLAKY-ON-BOUNDARY-GATE
+- **Source:** feature:verify-self (grilling-elicitation-discipline)
+- **Target level:** task
+- **Type:** tech-debt (test reliability)
+- **Summary:** Scenario `F3` (`feature:spec → research when unknowns exist`) flakes on the primary integration-boundary gate. **Measured:** haiku 1 PASS / 2 FAIL; sonnet 2/2 FLAKY (passes only on retry, never cleanly). Proven pre-existing by a differential test (stashing only `feature-spec/SKILL.md` reproduced the identical failure).
+- **Context:** Deliberately **NOT** tagged `model: sonnet` — the recon discipline licenses a tag only when sonnet passes *deterministically*, and it does not. Tagging would spend the cost differential and still leave a retry-dependent gate. Same reasoning applied to `DP-capture-fires` (haiku ~85%, sonnet ~86% — statistically identical).
+- **Suggested action (hypothesis — verify the scenario's intent FIRST):** `F3` asserts `transition_id: F3` where a spec may legitimately reach F3 *or* F4 depending on the model's unknowns judgment. `transition_id_any: [F3, F4]` plus a `contains_required` discriminator on `/feature-research` may be right — **but loosening to `_any` could make it accept the wrong-branch behavior it exists to catch.**
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-29-CLAUDE-MD-OVER-40K-THRESHOLD
+- **Source:** feature:build (grilling-elicitation-discipline) P3.6
+- **Target level:** task
+- **Type:** tech-debt
+- **Summary:** Root `CLAUDE.md` is now **~47k chars**, over the 40k harness threshold that triggers a session-start warning. This feature added three convention bullets (~4.6k) to a file already near the limit.
+- **Context:** `/util-prune-claude-md` is the designated remedy (extracts bulky bullets to `docs/lessons/<topic>.md` or `arch.md`). Deliberately not run during the feature — pruning is a whole-file editorial pass over unrelated conventions, and it is operator-triggered by design.
+- **Suggested action:** run `/util-prune-claude-md`. Two of this feature's three new bullets are strong extraction candidates: the **anchor-scoping rule** and the **first-try-green discrimination-test rule** are both self-contained enough for `docs/lessons/`.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-07-29-WIP-DRIVE-MODE-FRONTMATTER-BLOCKS-AUTOSKIP
+- **Source:** feature:verify-human (grilling-elicitation-discipline) — observed live
+- **Target level:** task
+- **Type:** bug
+- **Summary:** `feature-verify-human`'s Mode-3 auto-skip gate is **unreachable on every feature planned by `feature-plan`**, because gate (a) requires `drive_mode:` in the WIP frontmatter and neither `feature-plan` §4 nor `feature-spec` §3 stamps it. Observed live: gates (b), (c), (d) were all clean, the operator had selected autopilot *in chat*, and the skill still PAUSEd — correctly, per its own fail-closed rule.
+- **Context:** Duplicates/overlaps the existing `SURFACE-2026-07-28-WIP-TEMPLATE-OMITS-DRIVE-MODE-FRONTMATTER`; recorded here as a **live confirmation** with the concrete manifestation rather than as a second item. The fail-closed behavior is right; the template gap is what defeats the intent.
+- **Suggested action:** merge into the existing SURFACE as corroborating evidence rather than tracking separately.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-07-29-PRODUCT-ARCH-CONFIRM-THE-SEAMS-PASS
+- **Source:** feature:spec (grilling-elicitation-discipline) — scope decision
+- **Target level:** feature
+- **Type:** new-work
+- **Summary:** Grilling is a **problem-definition** instrument, so `product-arch` was deliberately excluded from this feature. Arch decisions are solution/technical and want a differently-shaped technique: **synthesize the design, then confirm the seams** (Matt Pocock's `to-spec` move — it explicitly says *"Do NOT interview the user"*), optionally with `DESIGN-IT-TWICE`'s constraint-varied parallel subagents.
+- **Context:** The strongest *rejected* candidate at spec time, rejected on principle rather than cost. Folding it in would have produced a skill vague about what it is for.
+- **Suggested action:** a separate feature. Note `[Phase 21]` currently carries a **negative pin** asserting `product-arch` has no grilling pointer — that pin must be updated deliberately if this lands.
+- **Priority:** low
+- **Status:** pending

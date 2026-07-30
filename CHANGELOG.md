@@ -3,6 +3,7 @@
 ## 2026-07-29
 
 - **Task closed:** retired `tools/claude-time/` from this repo entirely (32 files) and dropped its linking from `install.sh`, so a fresh install no longer registers a redundant second time-tracking hook alongside the capability Claudesk absorbed natively in its Milestone 9 — resolving the inbound `HANDOFF-from-claudesk-2026-07-29.md` and unblocking Claudesk's M10.9 WP3.5a install wizard.
+- **Feature shipped:** a gated elicitation discipline (`/util-grill-me`) that hardens a plan before it is built by putting only the consequential decisions to the operator one at a time — wired into `feature-spec` §1 as an inlined block and into `product-vision` §3 as a hand-off fork, and pinned by `[Phase 21]`.
 
 ## 2026-07-28
 
