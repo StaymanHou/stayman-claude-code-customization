@@ -3103,7 +3103,34 @@ else
   # feature-spec / product-vision (mention grilling's property, not their own) all
   # score 0. Specificity and deletion-sensitivity are INDEPENDENT properties.
   GRILL_NOTRANSITION_ANCHOR='(emits? no|does not emit|never emits?)[^.]{0,40}transition'
-  grill_tsec=$(awk '/^## Transitions/{f=1; next} /^## /{f=0} f' "$GRILL_SKILL" | tr '\n' ' ')
+  #
+  # ⚠️ END-BOUNDARY CAVEAT — the seventh mechanism, recurring inside the phase written to
+  # apply it. `## Transitions` is currently the LAST section of util-grill-me/SKILL.md, so
+  # the awk window below has no bounding heading and runs to EOF. That means "inside the
+  # section" and "anywhere after the heading" are the same set today: a claim relocated to
+  # EOF still scores. Found by the verify-self subagent's 15-mutation sweep (M15), NOT by
+  # the authoring sweep, which mutated the claim's presence but never its POSITION —
+  # "sensitivity to the inputs you thought to mutate is not evidence about the ones you
+  # did not", one phase after [Phase 20] taught exactly that.
+  #
+  # There is no end heading to fail closed on, so the guard is POSITIONAL instead: require
+  # the claim to appear at or before the last `^## ` heading's section, i.e. inside a
+  # bounded window computed from the heading's line number rather than from a terminator
+  # pattern. If a section is ever added AFTER `## Transitions`, the window becomes properly
+  # bounded and this check tightens automatically.
+  grill_tstart=$( (grep -nE '^## Transitions' "$GRILL_SKILL" || true) | head -1 | cut -d: -f1 )
+  if [ -z "${grill_tstart:-}" ]; then
+    check "util-grill-me has a '## Transitions' section (precondition for the claim check)" "fail" \
+      "no '^## Transitions' heading in $GRILL_SKILL — the section-scoped claim check cannot be evaluated vacuously; util-* skills must document their (empty) transition surface in that section"
+    grill_tsec=""
+  else
+    check "util-grill-me has a '## Transitions' section (precondition for the claim check)" "pass"
+    # Next `^## ` heading after the start, if any; else EOF. Computed by LINE NUMBER so the
+    # window is explicit rather than latched-until-terminator.
+    grill_tend=$( (grep -nE '^## ' "$GRILL_SKILL" || true) | awk -F: -v s="$grill_tstart" '$1>s {print $1; exit}' )
+    [ -z "${grill_tend:-}" ] && grill_tend=$(( $(wc -l < "$GRILL_SKILL") + 1 ))
+    grill_tsec=$(sed -n "$((grill_tstart + 1)),$((grill_tend - 1))p" "$GRILL_SKILL" | tr '\n' ' ')
+  fi
   if [ -z "${grill_tsec// /}" ]; then
     check "util-grill-me documents that it emits NO transition, and emits none (util-*)" "fail" \
       "no '## Transitions' section content found in $GRILL_SKILL — the claim cannot be evaluated vacuously; util-* skills must document their (empty) transition surface"
