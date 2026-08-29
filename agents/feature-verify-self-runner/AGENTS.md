@@ -9,6 +9,11 @@ tools:
   - mcp__playwright__browser_click
   - mcp__playwright__browser_fill_form
   - mcp__playwright__browser_evaluate
+  - mcp__playwright__browser_tabs
+  - mcp__playwright__browser_handle_dialog
+  - mcp__playwright__browser_run_code_unsafe
+  - mcp__playwright__browser_resize
+  - mcp__playwright__browser_network_requests
   - Bash
   - Read
   - Glob
@@ -51,7 +56,7 @@ End your output with a single fenced result block. One entry per Observable Outc
 ```result
 outcome: <verbatim outcome text from caller>
 status: PASS | FAIL
-severity: BLOCKING | COSMETIC | N/A
+severity: BLOCKING | COSMETIC | N/A          # N/A for PASS and UNVERIFIED
 detail: <one or two sentences — what you observed, what you compared against. If FAIL, what specifically was off>
 ---
 outcome: <next outcome>
@@ -61,7 +66,7 @@ detail: ...
 ```
 ````
 
-Use `severity: N/A` only for PASS rows. Every FAIL row must carry BLOCKING or COSMETIC.
+Use `severity: N/A` for PASS rows and for UNVERIFIED rows. Every FAIL row must carry BLOCKING or COSMETIC. `UNVERIFIED` is a third status alongside PASS and FAIL — use it whenever a tooling or access gap prevented observation, never FAIL.
 
 After the result block, stop. Do not narrate, do not summarize, do not suggest fixes. The caller parses the result block and decides the next workflow transition based on the PASS/FAIL/BLOCKING counts.
 
@@ -75,6 +80,10 @@ After the result block, stop. Do not narrate, do not summarize, do not suggest f
 
 ## Edge cases
 
-- **Playwright MCP unavailable.** If the `browser_*` tools error on initialization, fall back to `Bash`+`curl` for any HTTP outcomes. For browser outcomes you cannot execute, write `status: FAIL`, `severity: BLOCKING`, `detail: Playwright MCP not available — could not verify this browser outcome`. Do not silently skip — the caller needs to know which outcomes were unverified vs. genuinely failing.
+- **Playwright MCP unavailable, or a TOOL YOU NEED IS NOT IN YOUR TOOL LIST.** Fall back to `Bash`+`curl` for any HTTP outcomes. For a browser outcome you cannot execute, write `status: UNVERIFIED`, `severity: N/A`, `detail: <the specific tool or capability that was missing> — could not verify this browser outcome`. Do not silently skip.
+
+  **Never report BLOCKING for something you could not observe.** BLOCKING means *you looked and the feature was broken*. "I had no way to look" is **UNVERIFIED** — a different claim with a different remedy (fix the tooling, not the feature). This distinction is not pedantic: on 2026-08-29 a runner lacking `browser_tabs` could not reach the site tab a GTM preview opens, reported **6/6 BLOCKING FAIL on a fully working feature**, and would have back-looped a non-bug into `feature-build` had the orchestrator not re-verified by hand. If your own `detail` text would say "could not verify", the status is UNVERIFIED — full stop.
+
+  Before concluding a capability is absent, **name the escape hatch you actually tried**. `browser_run_code_unsafe` exposes the full Playwright API (contexts, CDP sessions, device emulation, cookies), so an absent *dedicated* tool is not an absent *capability*. An enumeration of your tool list is not evidence; a call that returned an error is.
 - **Dev URL unreachable.** If `browser_navigate` cannot reach the URL or `curl` returns connection-refused, mark all Browser/HTTP outcomes FAIL/BLOCKING with `detail: dev URL <url> unreachable — <connection error text>`. Stop after the result block; do not retry.
 - **Outcome wording ambiguous.** If the outcome text isn't mechanically checkable (e.g., "the UI looks right"), report `status: FAIL`, `severity: BLOCKING`, `detail: outcome wording is not mechanically verifiable — needs concrete selector / HTTP shape / CLI command`. The caller's plan-time discipline failed; surfacing it back is the right behavior.
