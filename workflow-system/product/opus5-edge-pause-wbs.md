@@ -10,6 +10,31 @@ parent-backlog: SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS (superseded in part
 
 > ## ⛔ WP-A3 GATE FAILED — 2026-09-21. Track B is NOT unblocked.
 >
+> ### ⚠️ UPDATE 2026-09-21 (later the same day): the "does not discriminate" verdict below is NOT SAFE TO RELY ON.
+>
+> Reading the raw responses — which the analysis below never did; it worked off the
+> aggregate `outcome` column — found the classifier **conflates a correct pause with the
+> bug.** `NEXT-ACTION: HAND-BACK-TO-OPERATOR` is emitted both by a turn that *ran*
+> verify-human's procedure and then handed to the human (**correct — that is how
+> verify-human ends**) and by one that *skipped* the procedure and narrated a checklist
+> (**the bug**). All 13/13 of `chained-hermes-b`'s edge-pauses are the correct kind — that
+> one slice supplies 13 of the 23 control "failures" and is why it led at 65%.
+>
+> Re-scoring with a procedure split moves controls 57.5% → 20.0% and stops 23.3% → 13.3%
+> (valid-only: 45.2% → 25.8% and 17.0% → 9.4%). **Most of the reversal is the classifier.**
+> A smaller reversal survives, so there is a second effect too — but **whether the harness
+> discriminates is now an OPEN QUESTION, not a settled negative result.**
+>
+> Those split figures are **not** a measurement — the discriminator was three ad-hoc prose
+> regexes (the keyword failure mode this repo keeps relogging) and one hand-read run it
+> scored was genuinely ambiguous. They evidence *that the defect exists*, not its size.
+>
+> **Consequences:** WP-A5's conclusions still hold (the permission-mode theory is dead).
+> The drive loop stays buried — this points at a *cheaper* fix than a rebuild. The 100 runs
+> can be **re-scored offline for free** (full bodies in the ledger), so the next step costs
+> no API spend. Track B's gate must not be re-evaluated until the classifier is fixed.
+> Filed: `SURFACE-2026-09-21-REPLAY-CLASSIFIER-CONFLATES-CORRECT-PAUSE-WITH-BUG` (high).
+>
 > The full matrix ran (5 slices × n=20 = 100 runs on opus). The harness produces
 > edge-pauses at depth, but it **does not discriminate**: the negative controls
 > fired at **57.5%** against **23.3%** for the real stop slices — Fisher exact

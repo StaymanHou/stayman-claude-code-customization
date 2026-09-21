@@ -282,3 +282,71 @@ originally skipped and had to be told to go back for.
    ("could the CLI resolve/call the skill from this cwd?") returned a true
    answer that was *irrelevant to the actual configuration*, which is what made
    it convincing.
+
+## The reversal is partly a CLASSIFIER defect, not only an environment effect (2026-09-21)
+
+Reading the raw responses in `tests/results/wp-a3-baseline.jsonl` — which had never been
+done; the WP-A3 analysis worked entirely off the `outcome` column — found that
+`NEXT-ACTION: HAND-BACK-TO-OPERATOR` **conflates two opposite behaviours**:
+
+| what the turn did | correct? | classifier |
+|---|---|---|
+| ran verify-human's procedure (auto-skip gate, integration boundary, `P<n>.verify-human.<k>` leaves) then handed to the human | **correct — that is how verify-human ENDS** | `edge-pause` 🐛 |
+| skipped the procedure and narrated a checklist itself | **the bug** | `edge-pause` 🐛 |
+
+Both end in a human pause, so both emit the same mandated line. The binary the prompt
+forces cannot separate "paused *because I did the work*" from "paused *instead of* doing
+the work" — and the second is the entire bug.
+
+**This is what put the ranking backwards.** All **13/13** of `chained-hermes-b`'s
+edge-pauses score 3/3 on procedure signals — every one *performed* verify-human and handed
+back correctly. That single slice supplies **13 of the 23** control "failures" and is why
+it topped the chart at 65%. Conversely the two slices the harness almost never flags
+(`stop-claudesk-b`, `stop-hermes-a`) score **0/3** on their edge-pauses — no procedure,
+just a stop. The real bug shape is where the harness is *quietest*.
+
+**Re-tallying with the category split** (`edge-pause` AND <2 procedure signals = bug):
+
+| | as classified | procedure-split |
+|---|---|---|
+| stops | 23.3% | **13.3%** |
+| controls | **57.5%** | **20.0%** |
+| valid-only stops | 17.0% | **9.4%** |
+| valid-only controls | **45.2%** | **25.8%** |
+
+So the defect accounts for **most of the reversal but not all of it** — controls still come
+out higher. Two effects, not one; the environment effect is real but much smaller than
+WP-A3 reported.
+
+**⚠️ The split above is NOT trustworthy enough to act on, and must not be quoted as a
+result.** `did_work()` is three prose regexes written in the same session — *prose-keyword
+classification*, the exact failure this project has logged repeatedly (root `CLAUDE.md`:
+classify structurally, never on prose keywords). Hand-reading one `stop-hermes-a` run that
+it scored 0 showed a genuinely ambiguous turn: a detailed verify-self summary followed by a
+handback, with no verify-human procedure. Whether that is "the bug" or "a reasonable
+summary before stopping" is a **judgment call the regexes silently made.** Treat the numbers
+as *evidence that a category defect exists*, not as a measurement of its size.
+
+**What a real fix needs** (none of it done):
+1. A **structural** discriminator, not keywords — e.g. require the turn to emit the Work-Tree
+   leaf lines verify-human is specified to write, and check for *those*; or split the mandated
+   line into three options (`INVOKE` / `HAND-BACK-AFTER-RUNNING-<skill>` /
+   `HAND-BACK-WITHOUT-RUNNING-<skill>`) so the model declares the distinction itself.
+2. **Hand-label a sample first** to establish ground truth, then measure the discriminator
+   against it. n≥6 per arm minimum.
+3. Re-run only after 1 and 2. The existing 100 runs can be **re-scored offline for free** —
+   full response bodies are in the ledger — so the discriminator can be validated before any
+   new spend.
+
+### Two process failures worth more than the finding
+
+**1. Nobody read the raw output.** The ledger was committed *with full response bodies* and
+the entire WP-A3 conclusion ("the harness does not discriminate"), its gate rewrite, and a
+re-scope proposal were built from the aggregate `outcome` column. The defect was visible in
+the first response anyone opened. **Read the raw output before theorising about the aggregate.**
+
+**2. A structural-looking signal is not a structural signal.** `classify()` was carefully
+built to avoid keyword matching (its `edge` prose annotation is deliberately *unused*), and
+the `NEXT-ACTION:` line genuinely is mechanical. But mechanical *form* is not correct
+*categories*: the line is a faithful reading of a distinction that was itself wrong. The
+earlier keyword fix moved the defect up a level rather than removing it.

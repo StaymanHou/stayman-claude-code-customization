@@ -358,6 +358,49 @@ next action in a dry run rather than to *call* the skill. Controls still fire hi
 stops on the valid-only subset (45.2% vs 17.0%). The discrimination failure is still open.
 
 
+## SURFACE-2026-09-21-REPLAY-CLASSIFIER-CONFLATES-CORRECT-PAUSE-WITH-BUG
+
+**Priority:** high
+**Route:** task:plan (blocks any future use of the replay harness as a measuring instrument)
+**Found:** 2026-09-21, by reading the raw WP-A3 responses for the first time
+
+`tools/replay-baseline.sh`'s `NEXT-ACTION: HAND-BACK-TO-OPERATOR` classification **conflates
+two opposite behaviours**: (a) ran verify-human's procedure then handed to the human — which
+is *correct*, that is how verify-human ends — and (b) skipped the procedure and narrated a
+checklist — *the bug*. Both emit the same mandated line, so both score `edge-pause`.
+
+**This is most of why WP-A3's ranking came out backwards.** All 13/13 of `chained-hermes-b`'s
+edge-pauses show full procedure signals (auto-skip gate + integration boundary + numbered
+`verify-human` leaves) — correct runs, mis-scored. That one slice supplies 13 of the 23
+control "failures" and is why it led at 65%. The two slices the harness rarely flags score
+0/3 — i.e. the real bug shape is where it is *quietest*.
+
+Re-scoring with a procedure split: stops 23.3%→13.3%, controls 57.5%→20.0% (valid-only
+17.0%→9.4% and 45.2%→25.8%). **Most of the reversal, not all** — controls remain higher, so
+there is a second, smaller effect as well.
+
+**⚠️ Do not quote those split numbers as a result.** The discriminator used was three
+prose regexes written ad hoc — prose-keyword classification, the failure mode this repo has
+logged repeatedly. Hand-reading one run it scored 0 found a genuinely ambiguous turn. The
+numbers evidence *that a category defect exists*, not its size.
+
+**Fix, in order:**
+1. Build a **structural** discriminator — check for the Work-Tree leaf lines verify-human is
+   specified to emit, or split the mandated line three ways (`INVOKE` /
+   `HAND-BACK-AFTER-RUNNING-<skill>` / `HAND-BACK-WITHOUT-RUNNING-<skill>`).
+2. **Hand-label a ground-truth sample** (n≥6/arm), then validate the discriminator against it.
+3. Only then re-run. **The existing 100 runs can be re-scored offline for free** — full
+   response bodies are in `tests/results/wp-a3-baseline.jsonl` — so step 1 costs no API spend.
+
+**Corollary for the WBS:** WP-A3's "the harness does not discriminate" verdict is **not
+safe to rely on**. The harness may discriminate adequately once scored correctly; that is now
+an open question rather than a settled negative result. Track B's gate should not be
+re-evaluated until this is fixed.
+
+Detail: `docs/lessons/long-context-replay-harness.md` → "The reversal is partly a CLASSIFIER
+defect".
+
+
 ## Buried
 
 The following items were buried by user decision. Full content preserved in [`workflow/backlog-deferred-2026-05.md`](backlog-deferred-2026-05.md).
