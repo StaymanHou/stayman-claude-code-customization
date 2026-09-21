@@ -2,11 +2,33 @@
 shape: temporary-wbs
 cycle: opus5-edge-pause
 created: 2026-09-21
-status: active
+status: gate-failed-pending-rescope
 parent-backlog: SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS (superseded in part — see WP-A1)
 ---
 
 # Temporary WBS — Opus-5 Edge-Pause + Long-Context Replay Harness
+
+> ## ⛔ WP-A3 GATE FAILED — 2026-09-21. Track B is NOT unblocked.
+>
+> The full matrix ran (5 slices × n=20 = 100 runs on opus). The harness produces
+> edge-pauses at depth, but it **does not discriminate**: the negative controls
+> fired at **57.5%** against **23.3%** for the real stop slices — Fisher exact
+> **p = 0.001, in the wrong direction.**
+>
+> Per this WBS's own gate that is a **STOP-AND-RE-SCOPE**, not a proceed.
+> **WP-B1/B2 remain blocked.** The live route forward is **WP-B3** (upstream
+> filing), which never depended on the instrument: the production measurement
+> stands on its own (979 turns, 8.2% vs 1.6%, p = 4.1×10⁻⁶).
+>
+> Nondeterminism is *not* the explanation — χ² across slices p = 1.9×10⁻⁴
+> rejects a single shared rate. One real confound (16/100 runs never emitted
+> F10b) and one post-hoc hypothesis (terminal-turn content) are written up in
+> `docs/lessons/long-context-replay-harness.md` → "WP-A3 result".
+>
+> **The negative controls are the only reason this was caught.** The first gate
+> checked solely "pooled rate distinguishable from zero" and returned **PASS**
+> on this same run. Sensitivity is not specificity.
+
 
 **This is NOT a roadmap milestone.** It reserves no milestone number and is **deleted on
 completion** (fold-back-and-delete, §Completion below). Two tracks are scoped here:
@@ -92,7 +114,7 @@ Standard three axes — **Impact · Effort · Risk** — with this WBS's governi
 
 ## Track A — Long-context replay harness (the instrument)
 
-### WP-A1 · Promote the transcript renderer to a real tool `[impact: high · effort: low · risk: low]`
+### WP-A1 · Promote the transcript renderer to a real tool `[DONE 2026-09-21 — 025a870]`
 
 The renderer exists only as a scratchpad script and will be lost on the next scratchpad clear (it
 already was once this session).
@@ -105,7 +127,7 @@ already was once this session).
   renderer's `--help`/exit-code contract.
 - **Resolves the reusable half of** `SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS`.
 
-### WP-A2 · Capture 3 additional opus-5 F10b stop slices `[impact: high · effort: low · risk: med]`
+### WP-A2 · Capture 3 additional opus-5 F10b stop slices `[DONE 2026-09-21 — ad60d1e; 3 stops + 2 controls, operator-audited]`
 
 One session is an anecdote. 25 real opus-5 stops exist in the claudesk logs; 6 are recent.
 
@@ -113,7 +135,7 @@ One session is an anecdote. 25 real opus-5 stops exist in the claudesk logs; 6 a
   `tests/sessions/AUDIT-LOG.md` (**the audit is the risk item — these are real work logs**).
 - Also capture ≥2 *chained* (non-failing) F10b turns as **negative controls**.
 
-### WP-A3 · Establish the baseline rate, n≥20 per slice `[impact: high · effort: med · risk: low]`
+### WP-A3 · Establish the baseline rate, n≥20 per slice `[RUN 2026-09-21 — a14b578; GATE FAILED, see banner]`
 
 - Drive each slice n≥20 on opus; record edge-pause / chained / other.
 - **Gate:** the pooled baseline must be **distinguishable from zero** with a reported CI. If the
@@ -123,7 +145,7 @@ One session is an anecdote. 25 real opus-5 stops exist in the claudesk logs; 6 a
   (eighth mechanism): n≥6 is the floor for *any* claim; n≥20 is what a ~10%→~2% delta needs.
 - Est. ~$70–100 total on opus across 4 slices.
 
-### WP-A4 · Wire replay into `tests/run-tests.sh` as a scenario type `[impact: med · effort: med · risk: med]`
+### WP-A4 · Wire replay into `tests/run-tests.sh` as a scenario type `[DO NOT START — blocked by A3's failed gate]`
 
 **Deliberately last in Track A, and optional.** The v1 attempt died partly by building the runner
 integration before knowing what it should assert.
@@ -138,7 +160,9 @@ integration before knowing what it should assert.
 
 ## Track B — The opus-5 F10b edge-pause (the bug)
 
-**Every WP in Track B is BLOCKED on WP-A3 clearing its gate.**
+**Every WP in Track B is BLOCKED on WP-A3 clearing its gate — and as of 2026-09-21 it
+DID NOT.** WP-B1/B2 are therefore **not startable**. **WP-B3 is the live route**: it
+rests on the production measurement, not on the replay instrument.
 
 ### WP-B1 · A/B the two mitigations against baseline `[impact: high · effort: med · risk: low]`
 
@@ -173,6 +197,14 @@ integration before knowing what it should assert.
 - **Multi-turn drive-loop replay** (v1's Option C) — **Buried.** The transcript-as-prompt approach
   reproduces the bug at ~$0.35/run with no orchestration loop; the drive loop is strictly more
   expensive for no demonstrated gain. Anchor: revisit only if WP-A3 fails its <2% gate.
+  **⚠️ THIS ANCHOR HAS NOW FIRED (2026-09-21).** WP-A3 failed — not on the <2% arm, but on
+  discrimination, which is the stronger failure. The un-bury argument is also stronger than
+  the anchor anticipated: in single-turn replay the model **cannot actually invoke a skill**,
+  so "hand back" may be the only coherent action available to it in many contexts, which
+  would put a floor under *both* arms and is a candidate explanation for controls firing at
+  57.5%. A drive loop lets the model actually call the tool, making "did it chain?" a real
+  observation instead of a declared intention. **This is the leading re-scope candidate** —
+  but it is a hypothesis for the re-scope to test, not a decision taken here.
 - **Opus 4.7 model pinning** (memory `feedback_replay_harness_research_conditions`) —
   **Deferred/superseded for this WBS.** That memory pins 4.7 to mirror the *2026-05-16* bug's
   conditions; the bug here is opus-5-specific, so **opus-5 is the correct pin**. The memory's own
