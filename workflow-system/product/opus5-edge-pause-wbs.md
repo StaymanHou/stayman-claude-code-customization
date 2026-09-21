@@ -394,3 +394,6 @@ cwd?"* — returned a **true** answer (`dontAsk` really does block `Skill`) that
 fact about a component is not a finding about the system until you confirm the system exercises
 it. This is the same independence lesson as `[Phase 20]`, in a new costume: I varied the
 variable I had thought of, and it moved — which said nothing about whether it was the one in play.
+
+## Session Handoff — 2026-09-21 18:57
+Handed off. See `workflow-system/state/.session.md` to restore.
