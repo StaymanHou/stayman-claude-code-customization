@@ -238,8 +238,34 @@ originally skipped and had to be told to go back for.
 1. **Drop runs that never emit F10b** — they are not observations of this bug.
    Either filter them or make the framing reliably reach the transition.
 2. **Test the terminal-turn hypothesis** on fresh slices, pre-registered.
-3. **Ask whether single-turn replay can work at all.** The model cannot
-   actually invoke a skill in this harness, so "hand back" may be the only
-   coherent action in many contexts — which would put a floor under *both*
-   arms. That points back at the multi-turn drive loop the WBS buried, and is
-   the strongest argument for un-burying it.
+3. ~~**Ask whether single-turn replay can work at all.** The model cannot
+   actually invoke a skill in this harness...~~ — **CAUSE FOUND 2026-09-21, and
+   it is a fixable harness defect, not a property of single-turn replay.**
+
+   The reason the model "cannot actually invoke a skill" is that
+   `tools/replay-baseline.sh:311` passes **`--permission-mode dontAsk`, which
+   blocks the `Skill` tool outright**: *"Permission to use Skill has been denied
+   because Claude Code is running in don't ask mode."* Verified as a clean pair
+   from the same cwd and model — `dontAsk` → DENIED, `bypassPermissions` →
+   `SKILL_CALL_OK`.
+
+   **So "hand back" was the only *permitted* action in all 100 WP-A3 runs**, in
+   both arms. That is a hard floor under stops and controls alike and is
+   sufficient to explain controls at 57.5%: the instrument was measuring its own
+   permission configuration, not the bug.
+
+   This does **not** vindicate the multi-turn drive loop — it removes the main
+   argument for un-burying it. The cheap fix (flip the mode, re-classify on
+   `tool_use` rather than prose) is testable at ~$10 and is pre-registered as
+   **WP-A5**. The drive loop stays buried pending that result.
+
+   **A false lead worth recording, because the negative control is what killed
+   it.** The first hypothesis was that `cd /tmp` left the `Skill` tool unable to
+   *resolve* the skill (no `.claude/skills/` there). A probe cwd with skills
+   symlinked in listed all four `feature-verify-*` skills — **but so did bare
+   `/tmp`**, since skills resolve from user-global `~/.claude/skills/`
+   regardless of cwd. Running only the positive arm would have "confirmed" a
+   false cause and driven a rebuild around it. **Sensitivity to the variable you
+   thought to vary is not evidence about the one you did not** — WP-A3 varied
+   slice and n, never the permission mode, so the mode's effect was invisible to
+   the whole matrix.

@@ -99,10 +99,16 @@ Two things I can say about why, from n=100:
 1. **It is not simply model nondeterminism.** χ² for homogeneity across the five
    slices is p = 1.9×10⁻⁴ — the slices do not share a single rate, so something
    slice-specific drives it.
-2. **A likely structural cause:** in single-turn replay the model *cannot
-   actually invoke a skill*, so "hand back" may be the only coherent action
-   available to it in many contexts — a floor under both arms. If so, a
-   reproduction needs a real multi-turn drive loop, not a rendered transcript.
+2. **The cause, found after this table was first written — it is my own harness
+   bug, not a model behaviour.** My runner passed `--permission-mode dontAsk`,
+   which **blocks the `Skill` tool outright** (*"Permission to use Skill has been
+   denied because Claude Code is running in don't ask mode"*). So the model could
+   not chain in *any* of the 100 runs, in either arm — "hand back" was the only
+   permitted action. That is a hard floor under stops and controls alike and is
+   sufficient to explain the controls firing higher. **The harness was measuring
+   its own permission configuration.** I am re-running with the mode flipped and
+   classification moved from prose to `tool_use` blocks; until that lands, treat
+   the replay numbers above as void rather than as evidence about Opus 5.
 
 The **production** measurement at the top does not depend on this harness. It is
 a direct count over real session logs.
