@@ -226,3 +226,31 @@ On completion: confirm each WP resolved; fold WP-A1/A2's durable artifacts into
 `SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS` per the delete-on-resolve rule (CHANGELOG entry
 lands in the *same commit* as the backlog deletion); record the measured rates in
 `docs/lessons/`; then **delete this file**.
+
+### Disposition 2026-09-21 — NOT deleted, deliberately
+
+**The delete clause does not fire, because this cycle did not complete — it failed a gate.**
+Fold-back-and-delete assumes the work resolved and its durable half landed elsewhere. Here
+**WP-B1/B2 were never started** and a live re-scope question is open, so deleting this file
+would destroy the only record of *what to re-scope and why*. Deleting on a failed gate would
+also quietly convert "we measured this and it did not work" into "this was never tried" — the
+precise erasure that let three prior attempts at this bug class repeat each other.
+
+**What DID fold back (the durable half is safe independent of this file):**
+
+| artifact | home |
+|---|---|
+| transcript renderer | `tools/render-session-transcript.py` + `[Phase 8b]` (8 assertions) |
+| baseline runner | `tools/replay-baseline.sh` (resumable; discrimination gate) |
+| derivation script | `tools/analysis/measure-f10b-handback-rate.py` |
+| 5 audited slices | `tests/sessions/` + `AUDIT-LOG.md` signoffs |
+| audit procedure | `tests/sessions/README.md` (written this cycle; had never existed) |
+| the n=100 result | `docs/lessons/long-context-replay-harness.md` → "WP-A3 result" |
+| raw ledger | `tests/results/wp-a3-baseline.jsonl` (100 runs, committed) |
+| upstream filing | `docs/upstream/opus5-f10b-edge-pause-issue.md` (drafted, NOT filed) |
+| validity-gate rule | root `CLAUDE.md` → `## Conventions` |
+
+**Delete this file when** either (a) WP-B3 is filed and the re-scope is formally declined —
+at which point the durable artifacts above carry everything and this file is redundant; or
+(b) a re-scoped Track A supersedes it, in which case the successor WBS cites it and this one
+goes. **Do not delete it merely because the cycle stopped being active.**

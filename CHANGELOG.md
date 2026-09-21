@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-21
+
+- **Feature shipped:** a long-context replay harness (`tools/render-session-transcript.py` + `tools/replay-baseline.sh` + five operator-audited session slices under `tests/sessions/`, guarded by `[Phase 8b]`) that renders a real session's prior ~500 turns back into a fresh run, so a behavior appearing only at ~300k context can be driven at ~$0.35/run instead of being unreproducible.
+- **Feature shipped:** `tests/sessions/README.md`, the two-tier session-slice audit procedure — cited as canonical by three tools and `AUDIT-LOG.md` since May but never actually written, because the 2026-05-16 feature was abandoned at the phase that would have produced it; writing it surfaced a live `CLAUDE_CODE_MESSAGING_TOKEN` in a captured slice that no Tier-1 pattern covers, caught by the human gate rather than the automated one.
+- **Feature shipped:** a measured verdict on that harness, recorded as a negative result — across 100 runs its negative controls handed back at 57.5% against 23.3% for the real failure slices (Fisher p = 0.001, backwards), so it does not discriminate the bug from replay framing, Track B stays blocked, and the gate that had passed it (checking only that the rate exceeded zero) was rewritten to require controls near zero.
+- **Feature shipped:** an independent re-derivation of the production claim at n=928 — Opus 5 hands back at the verify-self→verify-human boundary in 7.6% of autopilot turns vs 2.0% for Opus 4.8 (Fisher p = 3.8×10⁻⁴, ~3.8× risk ratio) — plus a drafted-but-unfiled upstream issue at `docs/upstream/`, reproducing the earlier recorded figure only after rediscovering a drive-mode gate that had not been recorded alongside it.
+
 ## 2026-07-29
 
 - **Task closed:** retired `tools/claude-time/` from this repo entirely (32 files) and dropped its linking from `install.sh`, so a fresh install no longer registers a redundant second time-tracking hook alongside the capability Claudesk absorbed natively in its Milestone 9 — resolving the inbound `HANDOFF-from-claudesk-2026-07-29.md` and unblocking Claudesk's M10.9 WP3.5a install wizard.
