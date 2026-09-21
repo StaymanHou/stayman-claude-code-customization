@@ -1,6 +1,6 @@
 # Long-context replay harness — reproducing a deep-context behavioral bug
 
-**Added 2026-09-21** (opus5-edge-pause WP-A1/WP-A2). Companion to the temporary
+**Added 2026-09-21** (opus5-edge-pause WP-A1/A2/A3). Companion to the temporary
 WBS at `workflow-system/product/opus5-edge-pause-wbs.md`, which is
 **deleted on completion** — this doc is the durable half.
 
@@ -8,8 +8,14 @@ WBS at `workflow-system/product/opus5-edge-pause-wbs.md`, which is
 
 `tools/render-session-transcript.py` renders a **captured, redacted** session
 slice back into plain transcript text, which `--append-system-prompt` feeds to
-a fresh `claude --print` run. That reproduces a deep-context behavioral bug
-that no synthetic scenario in `tests/scenarios/` can reach.
+a fresh `claude --print` run. It reaches a context depth no synthetic scenario
+in `tests/scenarios/` can.
+
+> **Read the WP-A3 result below before building on this.** The instrument works
+> mechanically and produces edge-pauses at depth — but measured against negative
+> controls it **does not discriminate** the bug from ordinary replay behaviour
+> (controls 57.5% vs stops 23.3%, p = 0.001, backwards). It is not currently a
+> valid surface for A/B-ing a mitigation.
 
 ## Why it exists: context depth is the load-bearing variable
 
@@ -162,3 +168,78 @@ Positive confirmation criteria for a genuine instance:
   mirror the *2026-05-16* bug's conditions. For an **opus-5-specific** bug that
   is the wrong instrument; operator ratified the per-scenario opt-out
   2026-09-21. The dot-free `/tmp` cwd rule is unaffected.
+
+## WP-A3 result: the harness does not discriminate (2026-09-21, n=100)
+
+Full matrix: 5 slices × n=20 on opus, ~19s/run, 0 unclassifiable.
+
+| slice | edge-pause | expected |
+|---|---|---|
+| `chained-hermes-b` | 13/20 = 65% | chained — **control** |
+| `stop-claudesk-a` | 10/20 = 50% | stop |
+| `chained-claudesk-c` | 10/20 = 50% | chained — **control** |
+| `stop-claudesk-b` | 2/20 = 10% | stop |
+| `stop-hermes-a` | 2/20 = 10% | stop |
+
+**Stops 14/60 = 23.3% · controls 23/40 = 57.5% · Fisher p = 0.001, controls
+HIGHER.** The gate fails: a surface whose negative controls fire more than its
+positives cannot A/B a mitigation.
+
+### Is it just LLM nondeterminism?
+
+The obvious reading — "LLMs are stochastic, we can't control this" — is
+**testable, and the data rejects it.** If one global coin governed every run,
+all five slices would sit near the pooled 37% and the spread would be sampling
+noise. Chi-square for homogeneity across the five slices: **X² = 22.1, df = 4,
+p = 1.9×10⁻⁴.** The slices do not share a rate. Something slice-specific is
+driving the outcome; nondeterminism is the *noise*, not the *signal*.
+
+Two more specific factors came out of the post-hoc analysis:
+
+**1. A confound: 16 of 100 runs never emitted F10b at all.** Those runs never
+reached the transition under study, so they cannot exhibit the bug — yet they
+landed in the edge-pause bucket at 88% (vs 27% for runs that did emit F10b,
+Fisher p = 9.3×10⁻⁶). They were measuring "the model did something else
+entirely." **Restricting to the 84 valid runs narrows the gap but does not
+close it: stops 17.0%, controls 45.2%, p = 0.010, still backwards.** So the
+confound is real and worth fixing, and it is not the whole story.
+
+**2. A hypothesis, explicitly not a finding.** The two 10% slices are the two
+whose rendered context ends on a `tool_result` stating the verify-self work is
+complete *and recorded* (one carries a commit hash). The three 50%+ slices end
+on vaguer terminal content — a bare `ok`, an unchecked checklist. A plausible
+mechanism is that an unambiguous "this step is finished and written down"
+signal is what licenses the model to continue, and its absence invites a
+hand-back regardless of what the production run did. **This is a post-hoc
+pattern over five points. It needs a pre-registered test on fresh slices
+before anyone treats it as true.**
+
+### What this costs, and what survives
+
+Track B stays blocked; this routes to **WP-B3** (upstream filing). The
+production measurement is unaffected and stands on its own — 979 real turns,
+8.2% opus-5 vs 1.6% opus-4-8, Fisher p = 4.1×10⁻⁶. What failed is the *replay
+instrument*, not the observation.
+
+**The gate itself was also defective and is now fixed.** It originally checked
+only that the pooled rate was distinguishable from zero — which this trivially
+is (CI lower bound 14.4%) — and returned **PASS**. Sensitivity is not
+specificity: a harness that fires often is not a harness that fires
+*correctly*. Without the negative controls this run would have been recorded as
+a success and WP-B1 would have A/B'd a mitigation against prompt framing.
+`replay-baseline.sh --report` now requires controls near zero and returns FAIL
+when they fire at or above the stop slices.
+
+**The controls were the whole experiment.** They were also the part of WP-A2 I
+originally skipped and had to be told to go back for.
+
+### If this is re-scoped, the open questions are
+
+1. **Drop runs that never emit F10b** — they are not observations of this bug.
+   Either filter them or make the framing reliably reach the transition.
+2. **Test the terminal-turn hypothesis** on fresh slices, pre-registered.
+3. **Ask whether single-turn replay can work at all.** The model cannot
+   actually invoke a skill in this harness, so "hand back" may be the only
+   coherent action in many contexts — which would put a floor under *both*
+   arms. That points back at the multi-turn drive loop the WBS buried, and is
+   the strongest argument for un-burying it.
