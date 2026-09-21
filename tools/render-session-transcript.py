@@ -171,8 +171,12 @@ def main():
     ap.add_argument("--source", required=True,
                     help="path to a captured slice (tests/sessions/<name>.jsonl)")
     ap.add_argument("--end-index", type=int, required=True,
-                    help="index of the assistant turn to REPRODUCE (exclusive); "
-                         "context is accumulated backward from here")
+                    help="RECORD index (0-based line in the .jsonl, NOT a turn "
+                         "count) of the assistant turn to REPRODUCE, exclusive; "
+                         "context accumulates backward from here. Logs interleave "
+                         "attachment/mode/system records, so record index >> turn "
+                         "count: passing a turn count silently renders far less "
+                         "depth. Check the reported turn count in the output.")
     ap.add_argument("--budget-chars", type=int, default=BUDGET_DEFAULT,
                     help="total character budget (default: %(default)s)")
     ap.add_argument("--tool-cap", type=int, default=TOOL_CAP_DEFAULT,
