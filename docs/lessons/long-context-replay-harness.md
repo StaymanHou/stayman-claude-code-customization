@@ -468,3 +468,63 @@ none, because it produces a confident, cheap-looking number. The first table abo
 under an hour" and would have bought an underpowered run that looked funded. **Ask what the unit
 of independent variation is before sizing anything** — here it is the slice (k=5), not the run
 (n=100). The clustering was visible in WP-A3's own χ² result the whole time.
+
+### Paired A/B setup (2026-09-21): the decision bar needed its OWN error rates measured
+
+Per the power calculation, an unpaired A/B is unaffordable (~33 slices/arm against ~25 that
+exist). `tools/replay-paired.sh` implements the paired within-slice design instead: control and
+mitigation run on the **same** slices, arms **interleaved** within each slice so model drift is
+shared rather than loaded onto whichever arm ran last, and the rendered transcript is
+**byte-identical across arms** — the mitigation is injected as *current-instruction* context,
+never written into the transcript (which would rewrite history and confound the comparison).
+
+Three arms: `control` (no added instruction), `m-prose` (disambiguates the cheat-sheet
+parenthetical the failing runs literally cite — *"AUTO (chain into verify-human, which itself
+PAUSEs)"* — by locating the pause in the **state**, reachable only by entering it), and
+`m-actdontask` (the operator's stated lean: a **timing** rule, saying nothing about F10b).
+
+**M-prose had to be rewritten from scratch.** The WBS recorded it as "recoverable from this
+session's reverted diff" — true only *within* that session. It was never committed, is not in
+any stash, and is absent from the reflog. **A mitigation that exists only as an uncommitted
+working-tree diff is not recoverable across a session boundary**; record the diff in the WIP or
+commit it behind a flag.
+
+#### The bar's false-positive rate was 7.9%, and a synthetic null caught it
+
+The pre-registered bar (reduce in ≥k−1 slices · increase in zero · pooled drop ≥10 points · no
+negative control degrades) was written with **no noise floor**. Testing the reporter against a
+synthetic ledger where **both arms had identical true rates** printed **`VERDICT: WIN`** with a
+26.7-point apparent drop — because at n=20/slice chance alone clears a 10-point pooled
+threshold often enough to matter.
+
+Measured with `tools/analysis/simulate-paired-bar.py` (4000 trials/cell, control rate 20%, k=3):
+
+| n/slice | power 20%→5% | power 20%→10% | **false-positive** |
+|---|---|---|---|
+| 20 | 77% | 46% | **7.9%** ← unacceptable |
+| **40** | **88%** | 49% | **2.6%** ← chosen |
+| 60 | 94% | 50% | 0.8% |
+| 80 | 96% | 49% | 0.3% |
+
+**The middle column is flat in n.** A fix that merely *halves* the rate sits near 50% power at
+every n, because criterion (c) demands a 10-point pooled drop. **This design can only see a
+LARGE effect** — pre-registered, not discovered afterwards. A null here means "not large", not
+"worthless", and must not be reinterpreted as promising.
+
+Two further corrections found by testing the gate rather than trusting it:
+- **Criterion (d) was initially too strict.** Requiring *any* non-increase on a negative control
+  failed an arm whose control slices had *identical* true rates — at n=20 one extra BUG run is
+  +5 points of noise on a 0–11% base. Now a material +10 points, matching (c).
+- **(d) was computed but excluded from the verdict** — printed as an aside while `VERDICT`
+  used only (a)–(c). A criterion that does not gate the verdict is decoration.
+
+Validated against four synthetic ledgers: real win → WIN; null → WIN **but flagged provisional
+with the n warning** (the honest behaviour at n=20 — the bar's own false-positive rate, surfaced
+rather than hidden); helps-2-hurts-1 → NOT A WIN via (b); fixes-stops-but-breaks-controls → NOT
+A WIN via (d).
+
+**The transferable rule: a pre-registered bar with unmeasured error rates is not a safeguard.**
+Pre-registration stops you moving the goalposts; it does not tell you whether the goalposts are
+in a sensible place. Simulate the bar under a **known null** before running anything through it —
+the same negative-control logic this cycle keeps rediscovering, applied to the decision rule
+itself rather than to the instrument.
