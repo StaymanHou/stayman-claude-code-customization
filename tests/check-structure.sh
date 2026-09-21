@@ -3337,6 +3337,87 @@ for excluded in task-plan feature-plan product-wbs product-arch; do
 done
 
 echo ""
+echo "[Phase 22] F10b edge-pause mitigation (m-prose) — shipped 2026-09-21"
+# Guards the mitigation measured in the paired A/B (0 BUG in 45 runs vs 8.9%
+# control). Provenance: docs/lessons/long-context-replay-harness.md.
+#
+# SECTION-SCOPED to the cheat-sheet block, per [Phase 21]: an unscoped grep
+# would also match docs/lessons prose that legitimately QUOTES the old wording
+# when explaining this very fix (mechanism 6 — naming a thing to forbid it).
+# BOTH boundaries are precondition-guarded, per the [Phase 20] lesson: if the
+# END heading is renamed away, an awk window silently runs to EOF and the pin
+# degrades to a file-wide grep, accepting the moved-out-of-section regression
+# it exists to catch.
+vs_file="skills/feature-verify-self/SKILL.md"
+vs_start="## Orchestrator Pause Policy (cheat-sheet)"
+vs_end="## Severity Taxonomy"
+
+if [ ! -f "$vs_file" ]; then
+  # FAIL-CLOSED. A negative assertion over a missing file is satisfied
+  # vacuously (grep -c prints 0), so absence of the file must be a FAILURE.
+  #
+  # MEASURED CAVEAT (do not trust this branch alone): the suite dies earlier
+  # under `set -e` in [Phase 10] if this file is missing, so in practice this
+  # branch is UNREACHABLE on a rename and a rename test shows 0 FAILs *here*.
+  # The rename is still caught — by that crash (exit 1) and by the line-193
+  # pins — just not by Phase 22. Kept because it fails closed if the earlier
+  # phases are ever reordered or made non-fatal.
+  check "feature-verify-self SKILL.md exists (precondition for Phase 22)" "fail" \
+        "$vs_file not found — a rename would make every check below vacuous"
+elif ! grep -qxF "$vs_start" "$vs_file"; then
+  check "feature-verify-self cheat-sheet START heading present" "fail" \
+        "'$vs_start' not found — section scoping cannot be applied"
+elif ! grep -qxF "$vs_end" "$vs_file"; then
+  check "feature-verify-self cheat-sheet END heading present" "fail" \
+        "'$vs_end' not found — the section window would run to EOF and this pin would degrade to a file-wide grep"
+else
+  # Whole-line comparison, not index(): "## Severity Taxonomy RENAMED" CONTAINS
+  # "## Severity Taxonomy", so a substring test would still close the window and
+  # mask the very rename the precondition above exists to catch.
+  vs_sec=$(awk -v s="$vs_start" -v e="$vs_end" \
+             '$0==s{f=1} $0==e{f=0} f' "$vs_file")
+
+  # A1 — the F10b row carries the imperative. REJECTS: a row that merely names
+  # the next state without telling the orchestrator to invoke it.
+  n=$(printf '%s' "$vs_sec" | grep -c 'F10b.*invoke `feature-verify-human` via the Skill tool now' || true)
+  [ "$n" -ge 1 ] \
+    && check "F10b row instructs invoking feature-verify-human via the Skill tool" "pass" \
+    || check "F10b row instructs invoking feature-verify-human via the Skill tool" "fail" \
+             "the imperative was removed from the F10b cheat-sheet row"
+
+  # A2 — the ambiguous parenthetical must NOT return. This is the exact phrase
+  # failing production runs cite as their reason to stop. Scoped to the section
+  # so a lesson doc quoting it while explaining the fix does not trip this.
+  n=$(printf '%s' "$vs_sec" | grep -c 'which itself PAUSEs' || true)
+  [ "$n" -eq 0 ] \
+    && check "F10b row does NOT reintroduce the ambiguous 'which itself PAUSEs'" "pass" \
+    || check "F10b row does NOT reintroduce the ambiguous 'which itself PAUSEs'" "fail" \
+             "the parenthetical that failing runs cite as their reason to stop is back"
+fi
+
+# A3 — the prohibition paragraph. Anchored on three phrase CLASSES, each
+# matching exactly 1 file repo-wide; all three must survive. Held in an array
+# with the probe JOINED from it (one source of truth, per mechanism 4).
+if [ ! -f "$vs_file" ]; then
+  check "feature-verify-self SKILL.md exists (precondition for edge-pause prohibition)" "fail" \
+        "$vs_file not found"
+else
+  EDGE_ANCHORS=(
+    'belongs to the verify-human STATE'
+    'edge-pause regression'
+    'described, not performed'
+  )
+  missing=""
+  for a in "${EDGE_ANCHORS[@]}"; do
+    grep -qF "$a" "$vs_file" || missing="$missing|$a"
+  done
+  [ -z "$missing" ] \
+    && check "feature-verify-self carries the edge-pause prohibition (3 anchors)" "pass" \
+    || check "feature-verify-self carries the edge-pause prohibition (3 anchors)" "fail" \
+             "missing anchor(s): ${missing#|}"
+fi
+
+echo ""
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

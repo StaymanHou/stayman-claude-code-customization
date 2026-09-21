@@ -28,10 +28,12 @@ When invoked by `/session-start` in orchestrated mode, the orchestrator reads `T
 
 | Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
-| F10b (verify-self → verify-human) | PAUSE | AUTO (chain into verify-human, which itself PAUSEs) | AUTO (chain into verify-human, which itself PAUSEs) | AUTO — **skip verify-human entirely**, chain directly to `feature-verify-codify` |
+| F10b (verify-self → verify-human) | PAUSE | AUTO — **invoke `feature-verify-human` via the Skill tool now** | AUTO — **invoke `feature-verify-human` via the Skill tool now** | AUTO — **skip verify-human entirely**, chain directly to `feature-verify-codify` |
 | F9b (back-loop to build) | PAUSE | AUTO | AUTO | AUTO |
 
 **Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode, the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F10b` followed by a polite narrative summary ("Verify-self complete; ready to run verify-human") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. **This explicitly includes the `AskUserQuestion` tool (and any other user-input/confirmation prompt): invoking it on an AUTO transition IS "returning control to the user" and is the same regression class as the narrative-summary stop above — do NOT call it to "just confirm" the handoff. The only thing that pauses an AUTO transition is the human-input points the active drive mode's pause policy explicitly marks PAUSE.** See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
+
+**The verify-human PAUSE belongs to the verify-human STATE, not to the edge into it.** You reach that pause by **entering** the state: `feature-verify-human` evaluates its own auto-skip gate (§2 of its SKILL.md) and decides for itself whether to pause or to emit `F11` without prompting. Ending your turn *at* `F10b` "so the human can review" is the **edge-pause regression** — it skips the auto-skip gate, the integration-boundary check, and the leaf construction, and writes verify-human's output (a phase summary, a hand-written checklist) *without ever running verify-human*. The operator then sees something that looks like the skill's output, which is what makes it expensive: the checks were **described, not performed**. Do not end your turn on `F10b` in autopilot — invoke the skill.
 
 ## Severity Taxonomy
 
