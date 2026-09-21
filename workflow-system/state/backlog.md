@@ -384,18 +384,30 @@ prose regexes written ad hoc — prose-keyword classification, the failure mode 
 logged repeatedly. Hand-reading one run it scored 0 found a genuinely ambiguous turn. The
 numbers evidence *that a category defect exists*, not its size.
 
-**Fix, in order:**
-1. Build a **structural** discriminator — check for the Work-Tree leaf lines verify-human is
-   specified to emit, or split the mandated line three ways (`INVOKE` /
-   `HAND-BACK-AFTER-RUNNING-<skill>` / `HAND-BACK-WITHOUT-RUNNING-<skill>`).
-2. **Hand-label a ground-truth sample** (n≥6/arm), then validate the discriminator against it.
-3. Only then re-run. **The existing 100 runs can be re-scored offline for free** — full
-   response bodies are in `tests/results/wp-a3-baseline.jsonl` — so step 1 costs no API spend.
+**Steps 1–3 DONE 2026-09-21 (same day, no API spend).**
+1. ✅ Structural discriminator built: `tools/analysis/score-replay-procedure.py`, keyed on the
+   `P<n>.verify-human.<k>` leaf format `feature-verify-human/SKILL.md` §3 **specifies**.
+   Separates TOOLBLOCK (dontAsk denied Read/Bash) and excludes it from rates.
+2. ✅ Hand-labelled ground truth: `tests/results/wp-a3-handlabels.json`, 10 runs labelled by
+   reading each response **before** the scorer existed. Agreement **10/10**; `--validate`
+   refuses to print rates on disagreement; mutation-tested in both directions.
+3. ✅ Re-scored offline. **The reversal is gone:** controls 57.5% → **5.3%**, stops 23.3% →
+   **20.0%**. `chained-hermes-b` (the 65% leader) is **0 BUG / 13 CORRECT**.
 
-**Corollary for the WBS:** WP-A3's "the harness does not discriminate" verdict is **not
-safe to rely on**. The harness may discriminate adequately once scored correctly; that is now
-an open question rather than a settled negative result. Track B's gate should not be
-re-evaluated until this is fixed.
+**Remaining open — the instrument is UNDERPOWERED, not broken.** Fisher p = 0.073 (all runs),
+p = 0.481 (valid-only); CIs overlap. Direction correct, significance absent. To close:
+more n per slice (runner is resumable, ~$0.35/run), more slices per arm (20 uncaptured real
+opus-5 stops remain), and fix the TOOLBLOCK contaminant (2/100) by widening the permission
+mode. **Run a power calculation first.**
+
+**One hand label was corrected during validation** (`chained-claudesk-c` run 1): the scorer was
+right, my label was wrong — I had read only the first 2200 chars of a response whose leaves
+appeared later. Recorded in the label file, not silently flipped.
+
+**Corollary for the WBS:** WP-A3's "the harness does not discriminate" verdict is
+**WITHDRAWN**. Rescored, the harness discriminates in the correct direction. Track B remains
+blocked — but on *insufficient power*, not on a broken instrument, which is a materially
+better position. The WBS banner carries the corrected status.
 
 Detail: `docs/lessons/long-context-replay-harness.md` → "The reversal is partly a CLASSIFIER
 defect".

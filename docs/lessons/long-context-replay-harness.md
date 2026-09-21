@@ -350,3 +350,55 @@ built to avoid keyword matching (its `edge` prose annotation is deliberately *un
 the `NEXT-ACTION:` line genuinely is mechanical. But mechanical *form* is not correct
 *categories*: the line is a faithful reading of a distinction that was itself wrong. The
 earlier keyword fix moved the defect up a level rather than removing it.
+
+### Re-scored with a validated structural discriminator (2026-09-21): the reversal is GONE, but the harness is UNDERPOWERED, not proven
+
+`tools/analysis/score-replay-procedure.py` re-scores the committed ledger offline (no API
+spend). It keys on the leaf format `skills/feature-verify-human/SKILL.md` §3 **specifies** the
+skill must emit — `P<n>.verify-human.<k>` — so a turn that emitted ≥1 leaf *ran the procedure*.
+That is a specified output format, not a prose keyword. It also separates **TOOLBLOCK** (stopped
+because `dontAsk` denied Read/Bash) and excludes those runs from the rates entirely.
+
+**Validated 10/10 against hand labels assigned by reading the responses before the scorer was
+written** (`--validate`). The gate refuses to print rates on any disagreement.
+
+| | original scoring | re-scored |
+|---|---|---|
+| stops | 23.3% | **20.0%** (12/60) |
+| controls | **57.5%** | **5.3%** (2/38) |
+| valid-only stops | 17.0% | **13.2%** (7/53) |
+| valid-only controls | **45.2%** | **6.9%** (2/29) |
+
+**The reversal was entirely an artefact of the classifier.** `chained-hermes-b` — the slice that
+led at 65% and supplied 13 of the 23 control "failures" — scores **0 BUG / 13 CORRECT**: every
+one was verify-human performed correctly and then handed to the human, exactly as specified.
+
+**⚠️ BUT THE DIRECTION BEING RIGHT IS NOT THE SAME AS THE INSTRUMENT WORKING.**
+
+- all runs: Fisher **p = 0.073** — not significant at 0.05
+- valid-only: Fisher **p = 0.481** — nowhere near
+- 95% CIs overlap heavily: stops 11.8–31.8%, controls 1.5–17.3%
+
+So: **stops fire ~4× more than controls, in the correct direction, and it could still be
+chance.** n=20/slice was powered for a ~10%→~2% delta on a *pooled* rate, not for separating
+20% from 5% across two arms of 3 and 2 slices. **Do not A/B a mitigation on this yet** — per
+WP-B1's own pre-registration rule, a mitigation "works" only if its CI excludes the control's
+point estimate, and these CIs cannot support that test.
+
+**What it would take** (all cheap, none done): more n per slice (the runner is resumable, so
+this is additive — ~$0.35/run), more slices per arm (25 real opus-5 stops exist in the logs, 5
+are captured), and fixing the TOOLBLOCK contaminant by widening the permission mode. A power
+calculation should precede the spend rather than following it.
+
+**Status change:** WP-A3's verdict — *"the harness does not discriminate"* — is **withdrawn**.
+The correct statement is *"the harness's scoring was wrong; rescored, it discriminates in the
+right direction at n=100 without reaching significance."* Whether it can A/B a mitigation is
+**open and testable**, which is a materially better position than a failed gate.
+
+**The lesson, which is the same one twice in one day:** the WP-A3 conclusion, its gate rewrite,
+a re-scope proposal, and a whole session of "the instrument is broken" all rested on an
+aggregate column that was computing the wrong thing. The raw responses were committed the whole
+time. **Read the raw output.** And when a validation disagrees, inspect the disagreement rather
+than adjusting either side — the single 9/10 mismatch here was *my hand label* being wrong (I
+had read only the first 2200 chars of a response whose leaves appeared later), which is recorded
+in the label file rather than silently flipped.

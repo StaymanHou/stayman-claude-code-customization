@@ -10,7 +10,39 @@ parent-backlog: SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS (superseded in part
 
 > ## ⛔ WP-A3 GATE FAILED — 2026-09-21. Track B is NOT unblocked.
 >
-> ### ⚠️ UPDATE 2026-09-21 (later the same day): the "does not discriminate" verdict below is NOT SAFE TO RELY ON.
+> ### ⛔ UPDATE 2026-09-21 (later the same day): the "does not discriminate" verdict below is **WITHDRAWN**.
+>
+> **Re-scored offline with a validated structural discriminator, the reversal disappears:**
+>
+> | | as scored by WP-A3 | re-scored |
+> |---|---|---|
+> | stops | 23.3% | **20.0%** (12/60) |
+> | controls | **57.5%** | **5.3%** (2/38) |
+>
+> `chained-hermes-b` — the slice that led at 65% and supplied 13 of the 23 control
+> "failures" — scores **0 BUG / 13 CORRECT**. Every one was verify-human *performed
+> correctly* then handed to the human, which is how the skill is specified to end.
+> **The reversal was an artefact of the scoring, not a property of replay.**
+>
+> **⚠️ The direction being right is NOT the instrument working.** Fisher **p = 0.073**
+> (all runs) and **p = 0.481** (valid-only); 95% CIs overlap (stops 11.8–31.8%, controls
+> 1.5–17.3%). Stops fire ~4× more than controls **and it could still be chance.**
+> **Do not A/B a mitigation on this yet** — WP-B1's own rule requires a CI that excludes
+> the control's point estimate, and these cannot support that.
+>
+> **Corrected status: the gate is neither passed nor failed — it is UNDERPOWERED.** Track B
+> stays blocked, but on "needs more n", not on "the instrument is broken". Cheap and
+> additive from here: the runner is resumable (~$0.35/run), 20 more real opus-5 stop
+> sessions are uncaptured, and the TOOLBLOCK contaminant (2/100) is a one-flag fix.
+> **Run a power calculation before the spend.**
+>
+> Scorer: `tools/analysis/score-replay-procedure.py` (validated **10/10** against
+> `tests/results/wp-a3-handlabels.json`, hand-labelled before the scorer was written;
+> refuses to print rates on any disagreement, mutation-tested both directions).
+>
+> ---
+>
+> #### Original update (superseded by the re-score above, kept for the record)
 >
 > Reading the raw responses — which the analysis below never did; it worked off the
 > aggregate `outcome` column — found the classifier **conflates a correct pause with the
