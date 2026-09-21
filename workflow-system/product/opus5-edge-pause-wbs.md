@@ -34,7 +34,17 @@ parent-backlog: SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS (superseded in part
 > stays blocked, but on "needs more n", not on "the instrument is broken". Cheap and
 > additive from here: the runner is resumable (~$0.35/run), 20 more real opus-5 stop
 > sessions are uncaptured, and the TOOLBLOCK contaminant (2/100) is a one-flag fix.
-> **Run a power calculation before the spend.**
+> **Power calculation DONE 2026-09-21 — and it says do NOT fund the run as scoped.**
+> The runs are **clustered by slice** (stop arm = 40%/10%/10% across 3 slices, not one 20%
+> rate). At ICC ≈ 0.12 the design effect at 20 runs/slice is **3.30**, so WP-A3's 100 runs
+> carry the weight of **~30 independent observations**. A properly powered per-slice A/B for
+> 20%→10% needs **~33 slices/arm** — 60–80 audited slices against the ~25 that exist, and
+> each new slice costs a **Tier-2 human audit** (the real bottleneck, not the ~$0.35/run).
+> **Adding runs to the existing 5 slices buys almost nothing; adding slices buys power.**
+> Recommended instead: a **paired within-slice design** (control and mitigation on the *same*
+> slices, test the per-slice difference) — cancels the slice-level variance, needs no new
+> audits, ~$140. It can only detect a *large* mitigation effect; pre-register that bar.
+> Full sizing tables: `docs/lessons/long-context-replay-harness.md` → "Power calculation".
 >
 > Scorer: `tools/analysis/score-replay-procedure.py` (validated **10/10** against
 > `tests/results/wp-a3-handlabels.json`, hand-labelled before the scorer was written;

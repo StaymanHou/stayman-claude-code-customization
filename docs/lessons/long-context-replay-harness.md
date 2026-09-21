@@ -402,3 +402,69 @@ time. **Read the raw output.** And when a validation disagrees, inspect the disa
 than adjusting either side — the single 9/10 mismatch here was *my hand label* being wrong (I
 had read only the first 2200 chars of a response whose leaves appeared later), which is recorded
 in the label file rather than silently flipped.
+
+### Power calculation (2026-09-21): the binding constraint is SLICES, not runs — and slices cost human audit time
+
+Run before any re-spend, per the corrected status above. Two-sided α=0.05, power=80%.
+
+**Naive two-proportion sizing** (treating each run as an independent trial):
+
+| true stops | true controls | n/arm | total runs | cost | wall-clock |
+|---|---|---|---|---|---|
+| 20.0% | 5.3% (observed) | 79 | 158 | ~$55 | 0.8h |
+| 20.0% | 10.0% (conservative) | 199 | 398 | ~$139 | 2.1h |
+| 15.0% | 8.0% (pessimistic) | 325 | 650 | ~$228 | 3.4h |
+
+At ~$0.35 and ~19s per run that reads as trivially affordable — **and it is wrong.**
+
+**The runs are CLUSTERED BY SLICE.** The stop arm's pooled 20% is not one rate; it is
+**40% (8/20), 10% (2/20), 10% (2/20)** across three slices. Controls: 11.1%, 0.0%. Runs within
+a slice share a fixed rendered context, so they are correlated — the χ² homogeneity rejection
+in the WP-A3 section (p = 1.9×10⁻⁴) was already telling us this, read as a problem rather than
+as a design parameter.
+
+Estimated **ICC ≈ 0.12** (rough — k=3 and k=2 slices). Design effect `DE = 1 + (m−1)·ICC`:
+
+| runs per slice | DE | effective n from 20 runs |
+|---|---|---|
+| 5 | 1.48 | 13.5 |
+| 10 | 2.09 | 9.6 |
+| **20 (what WP-A3 ran)** | **3.30** | **6.1** |
+| 40 | 5.71 | 3.5 |
+
+**So WP-A3's 100 runs carry roughly the weight of ~30 independent observations**, and the
+n=20/slice choice sat in the region of sharply diminishing returns. Correctly sized for
+20%→10%:
+
+- naive: 199 runs/arm
+- clustered at 20 runs/slice: **656 runs/arm ≈ 33 slices/arm**
+- clustered at 10 runs/slice: **415 runs/arm ≈ 42 slices/arm**
+
+**Adding runs to the existing 5 slices buys almost nothing** — DE grows with m, so each extra
+run is worth less than the last. **Adding slices is what buys power.** And slices are the
+expensive resource: each needs a **Tier-2 human audit** before it can be committed (these are
+real work logs — the audit caught a live `CLAUDE_CODE_MESSAGING_TOKEN` that no Tier-1 pattern
+matched). ~20 uncaptured opus-5 stop sessions exist; 5 are captured. **The bottleneck is
+operator audit time, not API spend.**
+
+**Recommendation: do NOT fund the run as scoped.** A properly powered per-slice A/B needs
+~30–40 slices per arm, i.e. 60–80 audited slices — far beyond the ~25 that exist. Three
+options that are actually available:
+
+1. **Paired/within-slice design.** Run control and mitigation on the *same* slices and test the
+   *difference* per slice (paired test, slice as its own control). This cancels the
+   slice-level variance that is eating the power — the right design for k≈5 clusters, and it
+   uses the slices already audited. **This is the recommendation.** ~$140 for 2 arms × 5 slices
+   × 40 runs, and no new audits.
+2. **Accept a bigger detectable effect.** With 5 slices, a paired design can see a *large*
+   mitigation effect (e.g. 20%→5%) but not a modest one. Pre-register that bar honestly rather
+   than discovering it after.
+3. **Measure in production instead.** No clustering problem at all — every F10b turn is its own
+   observation, the classifier already works, and n accrues for free as the workflow is used.
+   Slow, but it is the only surface that has ever detected this bug unambiguously.
+
+**The transferable lesson:** a power calculation on the *wrong variance component* is worse than
+none, because it produces a confident, cheap-looking number. The first table above says "$55,
+under an hour" and would have bought an underpowered run that looked funded. **Ask what the unit
+of independent variation is before sizing anything** — here it is the slice (k=5), not the run
+(n=100). The clustering was visible in WP-A3's own χ² result the whole time.
