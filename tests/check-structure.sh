@@ -1179,6 +1179,154 @@ fi
 
 echo ""
 
+# ── Phase 8b: render-session-transcript.py contract ───────────────────────
+# Regression coverage for tools/render-session-transcript.py, written
+# 2026-09-21 during opus5-edge-pause WP-A1. This tool is the *instrument* the
+# Track-B measurement depends on: it renders a captured session slice back
+# into transcript text for --append-system-prompt, and it is the only known
+# way to reproduce the opus-5 F10b edge-pause (context depth is the
+# load-bearing variable — synthetic ~26k-context scenarios go clean).
+#
+# Two assertion families, and the second is the load-bearing one:
+#   (1) liveness    — exists / executable / compiles / --help exits 0. Same
+#                     shape as Phase 8 above, incl. the P1.5 regression class
+#                     (--help silently exiting non-zero).
+#   (2) error-path  — each documented exit code still fires. These guard
+#                     against SILENT DEGRADATION, which is this tool's real
+#                     risk: if the range check or the redaction guard is
+#                     dropped, the tool still "works" and still prints a
+#                     success line — it just renders a shallower context or
+#                     reads an unredacted log. Both failures are invisible in
+#                     the output and would corrupt a measurement rather than
+#                     break a build.
+#
+# Exit-code contract asserted here (matches the module docstring):
+#   0 ok · 1 arg/source error incl. unaudited-source refusal · 2 end-index
+#   out of range · 3 zero renderable turns.
+# Note 1 (not argparse's default 2) for usage errors is deliberate — it
+# matches the sibling capture-session-slice.sh asserted above, and the
+# ArgParser.error override in the tool exists solely to hold that line.
+
+echo "[Phase 8b] render-session-transcript.py contract"
+
+RST="tools/render-session-transcript.py"
+# Real captured slice, not a synthetic path: mechanism-1 (sensitivity vs
+# relevance) — the error paths must be driven through the same reader the
+# production caller uses, so a parseable source is required for the
+# --end-index range assertion to reach the range check at all.
+RST_SLICE="tests/sessions/2026-05-16-autopilot-f8-pause.jsonl"
+
+if [ -f "$RST" ]; then
+  check "$RST exists" "pass"
+
+  if [ -x "$RST" ]; then
+    check "$RST is executable" "pass"
+  else
+    check "$RST is executable" "fail" "chmod +x missing"
+  fi
+
+  # Compile rather than import: the tool has no yaml dependency, so it must
+  # compile under whichever python3 is on PATH (pyenv shim included).
+  if command -v python3 &>/dev/null; then
+    if python3 -m py_compile "$RST" 2>/dev/null; then
+      check "$RST compiles" "pass"
+    else
+      check "$RST compiles" "fail" "py_compile failed"
+    fi
+    rm -rf tools/__pycache__
+  else
+    check "$RST compiles" "fail" "python3 not available"
+  fi
+
+  if "./$RST" --help >/dev/null 2>&1; then
+    check "$RST --help exits 0" "pass"
+  else
+    check "$RST --help exits 0" "fail" "exits $?"
+  fi
+
+  set +e
+  "./$RST" >/dev/null 2>&1
+  rc=$?
+  set -e
+  if [ "$rc" = "1" ]; then
+    check "$RST missing-arg exits 1" "pass"
+  else
+    check "$RST missing-arg exits 1" "fail" "got $rc (argparse default 2 means the ArgParser.error override was removed)"
+  fi
+
+  set +e
+  "./$RST" --bogus-flag >/dev/null 2>&1
+  rc=$?
+  set -e
+  if [ "$rc" = "1" ]; then
+    check "$RST unknown-arg exits 1" "pass"
+  else
+    check "$RST unknown-arg exits 1" "fail" "got $rc"
+  fi
+
+  # --- error-path family: silent-degradation guards ---
+  # Fail CLOSED on a missing fixture. Without this precondition both
+  # assertions below would pass vacuously on exit 1 (source-not-found) after
+  # a slice rename, while guarding nothing.
+  if [ ! -f "$RST_SLICE" ]; then
+    check "$RST end-index out-of-range exits 2" "fail" \
+      "$RST_SLICE does not exist — the range check cannot be reached, so this assertion cannot be satisfied non-vacuously"
+    check "$RST refuses an unaudited source" "fail" \
+      "$RST_SLICE does not exist — cannot drive the redaction guard"
+  else
+    # Out-of-range must be distinguishable from a generic arg error, or a
+    # dropped range check would render a silently truncated context.
+    set +e
+    "./$RST" --source "$RST_SLICE" --end-index 999999 --out /dev/null >/dev/null 2>&1
+    rc=$?
+    set -e
+    if [ "$rc" = "2" ]; then
+      check "$RST end-index out-of-range exits 2" "pass"
+    else
+      check "$RST end-index out-of-range exits 2" "fail" \
+        "got $rc — a dropped range check renders a TRUNCATED context and still reports success"
+    fi
+
+    # The redaction boundary: a path under .claude/projects must be refused
+    # unless --allow-unaudited is passed.
+    #
+    # The probe source must EXIST and be otherwise fully renderable. An
+    # earlier version of this assertion pointed at a nonexistent synthetic
+    # path and passed vacuously: with the guard deleted the tool still
+    # exits 1, on source-not-found, which is the same code the assertion
+    # read as proof of refusal. Mutation M7 (delete the guard) scored 0 FAIL.
+    # So: copy the real audited slice UNDER a .claude/projects path, making
+    # the path the only thing wrong with it.
+    rst_tmp=$(mktemp -d)
+    mkdir -p "$rst_tmp/.claude/projects"
+    rst_raw="$rst_tmp/.claude/projects/probe-slice.jsonl"
+    cp "$RST_SLICE" "$rst_raw"
+    set +e
+    # (a) raw path, no opt-in  -> refused (1)
+    "./$RST" --source "$rst_raw" --end-index 50 --out /dev/null >/dev/null 2>&1
+    rc_refuse=$?
+    # (b) same raw path WITH opt-in -> allowed (0). Proves 1 came from the
+    #     guard and not from anything else about the file.
+    "./$RST" --source "$rst_raw" --end-index 50 --out /dev/null --allow-unaudited >/dev/null 2>&1
+    rc_optin=$?
+    # (c) audited slice, no opt-in -> allowed (0). Proves the guard is not a
+    #     blanket refusal.
+    "./$RST" --source "$RST_SLICE" --end-index 50 --out /dev/null >/dev/null 2>&1
+    rc_allow=$?
+    set -e
+    rm -rf "$rst_tmp"
+    if [ "$rc_refuse" = "1" ] && [ "$rc_optin" = "0" ] && [ "$rc_allow" = "0" ]; then
+      check "$RST refuses an unaudited source" "pass"
+    else
+      check "$RST refuses an unaudited source" "fail" \
+        "raw rc=$rc_refuse (want 1), raw+opt-in rc=$rc_optin (want 0), audited rc=$rc_allow (want 0)"
+    fi
+  fi
+else
+  check "$RST exists" "fail" "file not found"
+fi
+
+echo ""
 # ── Phase 9: Orchestrator pause-policy cheat-sheet block ──────────────────
 #
 # Each feature SKILL.md affected by incident
