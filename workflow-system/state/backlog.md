@@ -32,9 +32,16 @@ Handed off at a clean boundary (no active WIP). See `workflow-system/state/.sess
 - **Priority:** low
 - **Type:** tooling defect (over-broad redaction pattern)
 - **Summary:** `tools/capture-session-slice.sh`'s Tier-1 FACEBOOK pattern (`EAAA…`) matches
-  inside **embedded base64 PNG data**, not just real Facebook tokens. Two of three WP-A2
-  captures reported Tier-1 hits (14 and 5) that were entirely image bytes; the third, which
-  had no screenshots, reported 0.
+  inside **embedded base64 PNG/JPEG data**, not just real Facebook tokens. Across all five
+  WP-A2 captures every single Tier-1 substitution was `FACEBOOK_TOKEN` inside image bytes —
+  counts 14 / 5 / 0 / 4 / 15, where the 0 is the one slice containing no screenshots. So the
+  pattern's observed precision on this corpus is **0/38**.
+
+  (A second suspected pattern, `AT-REST`, was a measurement error on my side rather than a
+  tool defect: a `grep -o 'REDACTED-[A-Z-]*'` matched the substring inside the literal
+  backlog title `SURFACE-2026-07-28-USER-PROMPTS-STORED-UN`**`REDACTED-AT-REST`** quoted in
+  a captured session. Real substitutions carry brackets. Recorded here so the next reader
+  does not go looking for a nonexistent 14th pattern.)
 - **Why it matters (two ways, neither urgent):**
   1. **It inflates the audit signal.** "Tier-1 patterns matched: 14" reads as 14 secrets
      found. A human doing the Tier-2 read starts from a number that overstates real exposure,
@@ -48,9 +55,8 @@ Handed off at a clean boundary (no active WIP). See `workflow-system/state/.sess
   base64-looking runs from Tier-1 matching, e.g. skip any candidate match sitting inside a
   `[A-Za-z0-9+/]{120,}={0,2}` run, or (narrower) require a word boundary plus a plausible
   token length for the FACEBOOK pattern specifically. Check whether the other 12 patterns
-  have the same exposure — JWT (`eyJ`) and AWS (`AKIA`) are the likely siblings, and the
-  AT-REST pattern also fired twice on the hermes slice with no screenshots, so it may be a
-  separate case. **Do not loosen a pattern without a positive control** proving it still
+  have the same exposure — JWT (`eyJ`) and AWS (`AKIA`) are the likely siblings (both are
+  base64-adjacent alphabets). **Do not loosen a pattern without a positive control** proving it still
   catches a real token of that kind: per `docs/lessons/green-tests-that-guard-nothing.md`,
   a redaction pattern that stops matching is indistinguishable from one with nothing to match.
 - **Not blocking WP-A2/A3:** over-redaction inside image bytes does not affect the rendered

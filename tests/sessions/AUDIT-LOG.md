@@ -59,9 +59,69 @@ numbers. No real secrets surfaced. Specifically:
     username in absolute paths. Already present in the committed
     2026-05-16 slice; flagged for the Tier-2 decision, not silently kept.
 
+**CORRECTION (same session).** An earlier version of this note reported "2
+`REDACTED-AT-REST`" substitutions in `hermes-a`. That was a measurement error
+of mine, not a tool finding: a `grep -o 'REDACTED-[A-Z-]*'` matched the
+substring inside the *literal backlog title*
+`SURFACE-2026-07-28-USER-PROMPTS-STORED-UN`**`REDACTED-AT-REST`** quoted in the
+captured session. `AT-REST` is not one of the 13 Tier-1 kinds. Real
+substitutions carry brackets (`[REDACTED-<KIND>]`); verified counts are
+**claudesk-a 14, claudesk-b 5, hermes-a 0, claudesk-c 4, hermes-b 15**, all
+`FACEBOOK_TOKEN` and all inside base64 image data. `hermes-a` has **no real
+redactions at all**.
+
 **What the automated scan CANNOT judge, and why the human read is the gate:**
 these are real work logs. `claudesk-a` and `claudesk-b` carry claudesk product
 and UI design discussion plus 1 and 3 embedded screenshots respectively;
 `hermes-a` carries a household/personal-assistant domain (household facts,
 preferences, recipes) — the substantive content is the part a tool cannot
 clear. Human turns per slice: 13 / 7 / 5.
+
+<!-- opus5-edge-pause WP-A2, part 2 — NEGATIVE CONTROLS, captured 2026-09-21.
+     Same PENDING-operator Tier-2 gate as the three stop slices above. -->
+
+2026-09-21 - 2026-09-21-opus5-f10b-chained-claudesk-c.jsonl - audited by PENDING - Tier-1 patterns matched: 4 - Tier-2 manual edits: PENDING
+2026-09-21 - 2026-09-21-opus5-f10b-chained-hermes-b.jsonl - audited by PENDING - Tier-1 patterns matched: 15 - Tier-2 manual edits: PENDING
+
+### WP-A2 negative controls — why these two
+
+WP-A2 requires ≥2 **chained** (non-failing) F10b turns. Without them WP-A3
+cannot distinguish "the harness reproduces the bug" from "the harness makes the
+model stop regardless of context" — a replay surface that stops on every slice
+measures the harness, not the model.
+
+| slice | project | records | F10b turn | outcome |
+|---|---|---|---|---|
+| `chained-claudesk-c` | claudesk | 1903 | idx 1902 (term. `2a5fc686`) | `Skill(feature-verify-human)` invoked on the **next turn** |
+| `chained-hermes-b` | my-hermes-agent | 2034 | idx 2033 (term. `2dbcb326`) | same, with args passed |
+
+Both hand-verified: `claude-opus-5`, autopilot active (0 stepping), depth
+comparable to the stop slices (1902 and 2033 vs 2192 / 1062 / 1865), and
+**no human turn between the F10b emission and the invocation** — the chain was
+autonomous, not operator-pushed. That last check is what makes them controls
+rather than just "sessions that eventually reached verify-human."
+
+**`chained-hermes-b` is the minimal contrast pair, and is the most valuable
+slice in the set.** It emits the same opening clause as the failures —
+
+> "Autopilot chains into verify-human, **which evaluates its own auto-skip
+> gate**." → invokes the skill
+
+versus `stop-claudesk-a`:
+
+> "Autopilot chains into verify-human, **which is itself a PAUSE point — so
+> this is where I stop**." → writes the checklist by hand, invokes nothing
+
+Same premise, opposite completion. The divergence is in what the model believes
+verify-human's pause *means* — whether the pause belongs to the state (enter it,
+let it decide) or to the edge into it (stop before entering). Any mitigation
+measured in WP-B1 should move `stop-*` behaviour toward `chained-*` behaviour
+without suppressing the pause itself.
+
+**Detector note (method, not a finding).** A first pass reported only 1 chained
+turn at depth, which contradicted the measured 8.2% stop rate and was a defect
+in my detector, not a property of the logs: it searched for "verify-human" in
+tool-input blobs and missed the ordinary `Skill` invocation shape. Corrected
+count is **265** autonomous chained turns. Both errors so far have inflated the
+apparent failure rate — treat any rate this detector produces as unverified
+until hand-checked.
