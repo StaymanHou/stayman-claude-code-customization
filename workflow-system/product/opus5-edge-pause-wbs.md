@@ -254,6 +254,3 @@ precise erasure that let three prior attempts at this bug class repeat each othe
 at which point the durable artifacts above carry everything and this file is redundant; or
 (b) a re-scoped Track A supersedes it, in which case the successor WBS cites it and this one
 goes. **Do not delete it merely because the cycle stopped being active.**
-
-## Session Handoff — 2026-09-21 13:33
-Handed off. See `workflow-system/state/.session.md` to restore.
