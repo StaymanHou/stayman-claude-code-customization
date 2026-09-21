@@ -182,11 +182,28 @@ if tot_n:
     lo,hi=wilson(tot_k,tot_n)
     print(f"POOLED over stop slices: {tot_k}/{tot_n} = {tot_k/tot_n:.1%}  [95% CI {lo:.1%}, {hi:.1%}]")
     print()
-    print("WP-A3 GATE: pooled rate must be distinguishable from zero.")
+    # DISCRIMINATION CHECK — added 2026-09-21 after the first full run.
+    # A pooled rate above zero is necessary but NOT sufficient: if the control
+    # slices edge-pause at the same rate or higher, the harness is measuring
+    # itself, not the bug. The original gate lacked this and returned PASS on a
+    # run whose controls fired at 57.5% vs 23.3% for the stops (p=0.001, the
+    # WRONG WAY ROUND). Sensitivity is not specificity.
+    ck=sum(1 for r in rows if r.get("expected")=="chained" and r["outcome"]=="edge-pause")
+    cn=sum(1 for r in rows if r.get("expected")=="chained")
+    print("WP-A3 GATE: pooled rate distinguishable from zero AND controls near zero.")
+    if cn:
+        print(f"  controls: {ck}/{cn} = {ck/cn:.1%} edge-pause (want ~0%)")
     if tot_n < 20:
         print(f"  UNDECIDED — only {tot_n} stop-slice runs recorded; gate needs the full matrix.")
+    elif cn and ck/cn >= tot_k/tot_n:
+        print(f"  FAIL — controls ({ck/cn:.1%}) fire at or above the stop slices ({tot_k/tot_n:.1%}).")
+        print("  The harness does not DISCRIMINATE. A mitigation A/B'd on this surface")
+        print("  would measure prompt framing, not the bug. STOP and re-scope (WBS gate).")
+    elif cn and ck/cn > 0.10:
+        print(f"  MARGINAL — controls fire at {ck/cn:.1%}; false-positive floor too high to")
+        print("  resolve a ~10%->~2% delta. Re-scope before Track B.")
     elif lo > 0.02:
-        print(f"  PASS — CI lower bound {lo:.1%} > 2%. Harness is sensitive enough to A/B a fix.")
+        print(f"  PASS — CI lower bound {lo:.1%} > 2%, controls near zero. Harness discriminates.")
     elif lo > 0:
         print(f"  MARGINAL — CI lower bound {lo:.1%} excludes zero but is under 2%.")
         print("  Per the WBS: re-scope rather than proceed to Track B on a blunt instrument.")
