@@ -62,6 +62,27 @@ Handed off at a clean boundary (no active WIP). See `workflow-system/state/.sess
 - **Not blocking WP-A2/A3:** over-redaction inside image bytes does not affect the rendered
   transcript (images are truncated), so the captured slices remain usable as-is.
 
+- **SECOND, INDEPENDENT DEFECT IN THE SAME REPORTING PATH (found 2026-09-21 at signoff).**
+  `tools/capture-session-slice.sh:206` counts redactions with
+  `count=$(grep -c "\[REDACTED-${kind}\]" "$OUT" || true)`. **`grep -c` counts matching
+  LINES, not occurrences** — and a session-log slice is one JSON object per line, so a line
+  holding 14 substitutions reports as **1**. Verified on a real slice: `grep -c` → 1,
+  `grep -o … | wc -l` → 14. Every "Tier-1 patterns matched" figure the tool has ever printed
+  is a line count, including the one recorded for the committed 2026-05-16 slice.
+  - **Why this is worse than the base64 false positive:** it under-reports, and it
+    under-reports *silently*. The base64 issue inflates a number a reader might discount; this
+    one deflates it, so a slice with many real substitutions looks nearly clean. The two
+    defects also partially cancel, which is how both survived: on `stop-claudesk-a` the tool
+    printed "1" (line count) for 14 substitutions that were themselves all false positives.
+  - **Fix:** `grep -o "pattern" "$OUT" | wc -l` (or `grep -c` only where a line count is
+    genuinely wanted). Then re-verify the 2026-05-16 slice's recorded count.
+  - **The same bug bit twice more in one session, in different code:** an ad-hoc `grep -c`
+    reported 1 occurrence of a live token in `stop-claudesk-b` when there were 2 (caught only
+    by asserting an expected count), and it mis-set two AUDIT-LOG entries. Documented as a
+    standing caveat in `tests/sessions/README.md` §3. **Treat `grep -c` on a `.jsonl` as a
+    bug by default** — one record per line means line counts and occurrence counts almost
+    never agree.
+
 ## SURFACE-2026-08-02-VERIFY-HUMAN-ASKS-HUMAN-TO-RUN-MECHANICAL-CHECKS
 
 - **Source:** operator (session-start, 2026-08-02) — direct request, not a workflow-run discovery

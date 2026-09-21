@@ -21,9 +21,9 @@ The audit procedure is described in `tests/sessions/README.md` (the canonical re
      the actual gate — see the WP-A2 risk note in the WBS. Do NOT git add the
      .jsonl files until <your-name> replaces PENDING below. -->
 
-2026-09-21 - 2026-09-21-opus5-f10b-stop-claudesk-a.jsonl - audited by PENDING - Tier-1 patterns matched: 1 - Tier-2 manual edits: PENDING
-2026-09-21 - 2026-09-21-opus5-f10b-stop-claudesk-b.jsonl - audited by PENDING - Tier-1 patterns matched: 1 - Tier-2 manual edits: PENDING
-2026-09-21 - 2026-09-21-opus5-f10b-stop-hermes-a.jsonl - audited by PENDING - Tier-1 patterns matched: 0 - Tier-2 manual edits: PENDING
+2026-09-21 - 2026-09-21-opus5-f10b-stop-claudesk-a.jsonl - audited by Stayman - Tier-1 patterns matched: 14 - Tier-2 manual edits: 0
+2026-09-21 - 2026-09-21-opus5-f10b-stop-claudesk-b.jsonl - audited by Stayman - Tier-1 patterns matched: 5 - Tier-2 manual edits: 2
+2026-09-21 - 2026-09-21-opus5-f10b-stop-hermes-a.jsonl - audited by Stayman - Tier-1 patterns matched: 0 - Tier-2 manual edits: 0
 
 ### WP-A2 capture notes (agent-prepared input for the Tier-2 read)
 
@@ -80,8 +80,8 @@ clear. Human turns per slice: 13 / 7 / 5.
 <!-- opus5-edge-pause WP-A2, part 2 — NEGATIVE CONTROLS, captured 2026-09-21.
      Same PENDING-operator Tier-2 gate as the three stop slices above. -->
 
-2026-09-21 - 2026-09-21-opus5-f10b-chained-claudesk-c.jsonl - audited by PENDING - Tier-1 patterns matched: 4 - Tier-2 manual edits: PENDING
-2026-09-21 - 2026-09-21-opus5-f10b-chained-hermes-b.jsonl - audited by PENDING - Tier-1 patterns matched: 15 - Tier-2 manual edits: PENDING
+2026-09-21 - 2026-09-21-opus5-f10b-chained-claudesk-c.jsonl - audited by Stayman - Tier-1 patterns matched: 4 - Tier-2 manual edits: 0
+2026-09-21 - 2026-09-21-opus5-f10b-chained-hermes-b.jsonl - audited by Stayman - Tier-1 patterns matched: 15 - Tier-2 manual edits: 0
 
 ### WP-A2 negative controls — why these two
 
@@ -165,9 +165,16 @@ the earlier `AT-REST` figure was a grep artifact, see the CORRECTION above):
 | `chained-claudesk-c` | 4 | yes | 0 |
 | `chained-hermes-b` | 15 | yes | 0 |
 
-**What remains PENDING and is not delegable.** The pre-scan covers categories
-1, 3, 4 mechanically and found nothing else. **Category 2 (proprietary
-content) and category 5 (third-party content) still need your read** — these
-are claudesk product/UI work and hermes household/personal-assistant domain,
-and no scan can judge whether that content is shareable as a committed test
-fixture. Human turns per slice: 13 / 7 / 5 / (claudesk-c) / (hermes-b).
+**Operator Tier-2 read: COMPLETE (2026-09-21, signed off above).** The
+agent pre-scan covered categories 1, 3 and 4 mechanically; the operator
+reviewed categories 2 (proprietary content) and 5 (third-party content) — the
+claudesk product/UI work and the hermes household/personal-assistant domain —
+and cleared all five slices for commit. Only `stop-claudesk-b` required a
+Tier-2 edit (the messaging token, 2 occurrences).
+
+**Tier-1 counts in the signoff lines above are verified bracketed-substitution
+counts, Tier-1 only.** They deliberately differ from the numbers
+`capture-session-slice.sh` printed at capture time, which used a `grep -c`
+line-count and therefore under-reported (it said 1 where the file holds 14).
+`stop-claudesk-b` holds 7 substitutions total: 5 Tier-1 + the 2 Tier-2 edits,
+which are counted in the Tier-2 column, not the Tier-1 one.

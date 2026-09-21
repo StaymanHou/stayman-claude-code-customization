@@ -1,0 +1,13 @@
+# Tier-1 Redactions for: 2026-09-21-opus5-f10b-stop-hermes-a
+# Source: /Users/stayman/.claude/projects/-Users-stayman-Personal-projects-my-hermes-agent/82ba9cfd-f3e5-4b9d-b44e-bda24033cd3c.jsonl
+# Captured: 2026-09-21T15:01:24Z
+# Slice:     1866 lines,  2673331 bytes (pre-redaction)
+# Terminator uuid: 056f62ca-d0e0-4302-8717-e1a5097d5973
+#
+# Each entry is a single-line diff: line number in RAW slice, then -RAW / +REDACTED.
+# If no entries follow, no Tier-1 patterns matched.
+# ----------------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------
+# Redactions by kind:
