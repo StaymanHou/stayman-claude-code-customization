@@ -26,6 +26,36 @@ Handed off at a clean boundary (no active WIP). See `workflow-system/state/.sess
 
 ## TODO
 
+## SURFACE-2026-09-21-CAPTURE-SLICE-FACEBOOK-PATTERN-FALSE-POSITIVE
+
+- **Source:** feature:WP-A2 (opus5-edge-pause) — observed while capturing 3 F10b stop slices
+- **Priority:** low
+- **Type:** tooling defect (over-broad redaction pattern)
+- **Summary:** `tools/capture-session-slice.sh`'s Tier-1 FACEBOOK pattern (`EAAA…`) matches
+  inside **embedded base64 PNG data**, not just real Facebook tokens. Two of three WP-A2
+  captures reported Tier-1 hits (14 and 5) that were entirely image bytes; the third, which
+  had no screenshots, reported 0.
+- **Why it matters (two ways, neither urgent):**
+  1. **It inflates the audit signal.** "Tier-1 patterns matched: 14" reads as 14 secrets
+     found. A human doing the Tier-2 read starts from a number that overstates real exposure,
+     which is the wrong direction for an audit aid to err in — it trains the reader to
+     discount the count.
+  2. **It corrupts the image rather than protecting anything.** The substitution rewrites
+     bytes inside a base64 blob. Harmless today (the renderer truncates tool/image content
+     anyway), but a future consumer that decodes those images would get corrupt PNGs, and the
+     `.redactions.diff` record makes it look intentional.
+- **Suggested action (hypothesis — verify against the script before writing):** exclude
+  base64-looking runs from Tier-1 matching, e.g. skip any candidate match sitting inside a
+  `[A-Za-z0-9+/]{120,}={0,2}` run, or (narrower) require a word boundary plus a plausible
+  token length for the FACEBOOK pattern specifically. Check whether the other 12 patterns
+  have the same exposure — JWT (`eyJ`) and AWS (`AKIA`) are the likely siblings, and the
+  AT-REST pattern also fired twice on the hermes slice with no screenshots, so it may be a
+  separate case. **Do not loosen a pattern without a positive control** proving it still
+  catches a real token of that kind: per `docs/lessons/green-tests-that-guard-nothing.md`,
+  a redaction pattern that stops matching is indistinguishable from one with nothing to match.
+- **Not blocking WP-A2/A3:** over-redaction inside image bytes does not affect the rendered
+  transcript (images are truncated), so the captured slices remain usable as-is.
+
 ## SURFACE-2026-08-02-VERIFY-HUMAN-ASKS-HUMAN-TO-RUN-MECHANICAL-CHECKS
 
 - **Source:** operator (session-start, 2026-08-02) — direct request, not a workflow-run discovery
