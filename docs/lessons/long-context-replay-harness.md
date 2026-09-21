@@ -528,3 +528,66 @@ Pre-registration stops you moving the goalposts; it does not tell you whether th
 in a sensible place. Simulate the bar under a **known null** before running anything through it —
 the same negative-control logic this cycle keeps rediscovering, applied to the decision rule
 itself rather than to the instrument.
+
+### The paired A/B's bar was unclearable at the observed baseline (2026-09-21, at 224/600 runs)
+
+Stopped at 224/600 (15/40 per cell, balanced) for an unrelated machine shutdown. The interim
+read is what matters, and it is not the result the bar was built to report.
+
+**m-prose looks strong on every axis except the one that decides:**
+
+| slice | control | m-prose | delta |
+|---|---|---|---|
+| stop-claudesk-a | 13.3% | **0.0%** | −13.3% |
+| stop-claudesk-b | 6.7% | **0.0%** | −6.7% |
+| stop-hermes-a | 6.7% | **0.0%** | −6.7% |
+| **pooled** | **8.9%** | **0.0%** | **−8.9%** |
+
+3/3 slices improved, 0 worsened, **0 BUG in 45 runs**, negative controls intact. Verdict:
+**NOT A WIN**, failing criterion (c) — pooled drop ≥10 points — by 1.1 points.
+`m-actdontask` is flat (−2.2%, 1/3 slices), consistent with it not targeting F10b.
+
+**The bar is arithmetically unclearable at this baseline, and finishing the run cannot fix
+it.** Criterion (c) was calibrated against a 20% control rate. The control arm is running at
+**8.9%**, so a *perfect* mitigation — exactly what m-prose delivered — yields at most an
+8.9-point drop:
+
+| control rate | best possible pooled drop | clears (c)? |
+|---|---|---|
+| **8.9% (observed)** | **8.9%** | **NO — not even at perfection** |
+| 10.0% | 10.0% | yes |
+| 20.0% (assumed) | 20.0% | yes |
+
+Simulated power of the full bar at the observed 8.9% control rate with a *perfect* fix:
+**37.3% at n=15, 37.7% at n=40, 30.8% at n=80.** Power **falls** with n, because more data
+pins the pooled drop nearer its 8.9 ceiling. **The remaining 376 runs (~$130, ~2.2h) cannot
+produce a WIN.** Spending them would buy a more precise measurement of a threshold that
+cannot be met.
+
+**Why the baseline moved is unresolved and must not be asserted.** Same slices, same prose,
+same model, same scorer, two days apart: `stop-claudesk-a`'s control arm went 40% (8/20) →
+13.3% (2/15). Fisher **p = 0.134** for that slice, **p = 0.170** pooled (20.0% → 8.9%) —
+**not distinguishable from noise.** Both readings are equally consistent with one true rate
+somewhere in the overlapping CIs (WP-A3 21.9–61.3%, paired 3.7–37.9%). So: the 20% planning
+figure is not reliable, *and* "the baseline dropped" is not a finding. What is established is
+only that **the bar's calibration input was never measured precisely enough to calibrate
+against.**
+
+**The generalisable error: a threshold in ABSOLUTE points is only meaningful against a base
+rate you have actually pinned down.** The power calculation sized n for a 20%→10% effect and
+never asked whether 20% was solid — it came from 60 runs with a CI of roughly 12–32%. A
+relative criterion ("reduces the rate by ≥60%") would have been robust to exactly this, and
+would have scored m-prose's 8.9%→0.0% as the total elimination it is. **Sizing the sample
+while leaving the threshold's own input unvalidated is the same class of error as measuring a
+rate without a negative control** — the check was applied to n, not to the quantity n was
+derived from.
+
+**Recommendation on the record: do NOT finish the run as configured.** The options are (a)
+re-specify the criterion as relative and re-report the *existing* 224 runs against it —
+no new spend, but it must be labelled a post-hoc re-specification, never a pre-registered
+win; (b) spend the remaining budget on more slices instead of more runs per cell, since
+between-slice variance is what the CIs are actually wide on; or (c) accept 0/45 as
+sufficient signal to ship m-prose and verify it in production, where the classifier is
+structural and n accrues for free. **(c) is the recommended path** — production is the only
+surface that ever detected this bug unambiguously, and a mitigation measured there needs no
+replay instrument at all.
