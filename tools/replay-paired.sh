@@ -64,6 +64,7 @@
 #   tools/replay-paired.sh --ledger <same> --arms control,m-prose --n 20
 #
 # Exit codes: 0 ok/clean stop | 1 arg or prerequisite error | 2 missing slice
+#             4 aborted after MAX_FAILS consecutive empty results (default 12)
 
 set -euo pipefail
 
@@ -188,12 +189,39 @@ except OSError: pass
 print(n)' "$LEDGER" "$1" "$2"
 }
 
+# Deadline as an EPOCH instant, resolved once at startup. Two bugs this avoids:
+#  (1) `date +%H%M` yields e.g. 0930, and bash arithmetic reads a leading zero
+#      as octal -- "0830" is an invalid octal literal and errors out, so any
+#      morning deadline broke the comparison outright.
+#  (2) comparing HHMM has no midnight wraparound: a deadline earlier in the
+#      clock-day than "now" looked already-past and stopped the run instantly.
+#      Resolving to an epoch and rolling forward a day fixes both.
+DEADLINE_EPOCH=""
+resolve_deadline() {
+  [ -n "$DEADLINE" ] || return 0
+  case "$DEADLINE" in
+    *:*) ;;
+    *) echo "ERROR: --deadline wants HH:MM (got '$DEADLINE')" >&2; exit 1 ;;
+  esac
+  local today
+  today="$(date +%Y-%m-%d)"
+  # BSD date (macOS) first, then GNU date.
+  DEADLINE_EPOCH="$(date -j -f '%Y-%m-%d %H:%M' "$today $DEADLINE" +%s 2>/dev/null                    || date -d "$today $DEADLINE" +%s 2>/dev/null || true)"
+  [ -n "$DEADLINE_EPOCH" ] || { echo "ERROR: cannot parse --deadline '$DEADLINE'" >&2; exit 1; }
+  if [ "$DEADLINE_EPOCH" -le "$(date +%s)" ]; then
+    DEADLINE_EPOCH=$(( DEADLINE_EPOCH + 86400 ))
+    echo "Note: --deadline $DEADLINE already passed today; treating it as tomorrow."
+  fi
+}
 past_deadline() {
-  [ -n "$DEADLINE" ] || return 1
-  [ "$(date +%H%M)" -ge "$(echo "$DEADLINE" | tr -d ':')" ]
+  [ -n "$DEADLINE_EPOCH" ] || return 1
+  [ "$(date +%s)" -ge "$DEADLINE_EPOCH" ]
 }
 
 IFS=',' read -r -a ARM_LIST <<<"$ARMS"
+resolve_deadline
+FAILS=0
+MAX_FAILS=${MAX_FAILS:-12}
 
 if [ "$MODE" = "report" ]; then
   exec /usr/bin/python3 tools/analysis/report-paired-ab.py --ledger "$LEDGER"
@@ -227,11 +255,18 @@ echo "Ledger: $LEDGER"
 [ -n "$DEADLINE" ] && echo "Deadline: $DEADLINE"
 echo ""
 
-# INTERLEAVE arms within each slice, so any drift in model behaviour over the
-# run is shared across arms instead of loading onto whichever arm ran last.
-for row in "${MATRIX[@]}"; do
-  IFS='|' read -r label slice ei exp <<<"$row"
-  for i in $(seq 1 "$N"); do
+# ROUND-ROBIN over (run-index x slice x arm), in that nesting order.
+#
+# Run-index OUTERMOST is what makes an early stop analysable. A slice-major
+# order (finish slice 1's 120 runs, then slice 2...) would, on a 1-hour stop of
+# a 3.2-hour job, leave ~3 slices complete and 2 with ZERO data -- and the
+# paired bar needs all 3 stop slices, so the result would be unanalysable
+# despite being "balanced". Round-robin instead yields EQUAL PARTIAL DEPTH
+# across every (slice, arm) cell, which --report can analyse at whatever n was
+# reached. Arms stay adjacent within a slice so model drift is still shared.
+for i in $(seq 1 "$N"); do
+  for row in "${MATRIX[@]}"; do
+    IFS='|' read -r label slice ei exp <<<"$row"
     for arm in "${ARM_LIST[@]}"; do
       have=$(count_done "$label" "$arm")
       [ "$have" -ge "$i" ] && continue
@@ -255,9 +290,24 @@ $PROMPT" --output-format json 2>/dev/null | jq -r '.result // empty')
       set -e
       t1=$(date +%s)
       if [ -z "$out" ]; then
-        echo "  $label/$arm run $i: empty (rc=$rc) — NOT recorded, retrying"
-        sleep 5; continue
+        # Bounded retry. An unbounded `continue` here spins forever on a
+        # sustained API outage or a malformed-response bug, which is the worst
+        # failure for an unattended run: it burns the whole window printing
+        # retry lines and records nothing. Cap it, then move on to the next
+        # cell so the rest of the matrix still fills.
+        FAILS=$(( FAILS + 1 ))
+        echo "  $label/$arm run $i: empty (rc=$rc) — not recorded (fail $FAILS/$MAX_FAILS)"
+        if [ "$FAILS" -ge "$MAX_FAILS" ]; then
+          echo ""
+          echo "ABORT: $MAX_FAILS consecutive empty results — the API or the"
+          echo "harness is broken, not the model. Nothing further recorded."
+          echo "Ledger is intact and resumable: re-run the identical command."
+          exit 4
+        fi
+        sleep 5
+        continue
       fi
+      FAILS=0
       printf '%s' "$out" > "$SCRATCH/resp.txt"
       /usr/bin/python3 - "$LEDGER" "$label" "$exp" "$arm" "$i" \
           "$(( t1 - t0 ))" "$MODEL" "$SCRATCH/resp.txt" <<'RECPY'
