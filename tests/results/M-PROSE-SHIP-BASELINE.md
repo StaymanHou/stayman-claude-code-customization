@@ -49,20 +49,32 @@ evidence only. The decision to ship rests on production measurement, below.
 2026-09-21, then:
 
 ```bash
-/usr/bin/python3 tools/analysis/measure-f10b-handback-rate.py
+/usr/bin/python3 tools/analysis/measure-f10b-handback-rate.py --since 2026-09-21T21:33Z
 ```
 
 Read **opus-5's rate** and compare against **7.6% (21/278)**.
+
+**Use the INSTANT, not the date.** m-prose shipped at `2026-09-21T21:33Z`
+(commit `07ff3ba`). A bare `--since 2026-09-21` admits the whole ship day and
+returned **16 "post-ship" opus-5 turns recorded 12:43–15:29Z — hours BEFORE the
+edit existed**, at an apparent 28.6%. That is this session's own pre-ship work,
+not evidence about the mitigation. The filter was verified to partition exactly:
+pre-ship 914 + post-ship 14 = 928 unfiltered, and opus-5 264 + 14 = 278.
+
+As of the ship commit the correct window returns **0 turns** — the honest
+starting state. Nothing can be concluded until turns accumulate.
 
 - The classifier is **structural** (was a `verify-human` tool_use emitted?) and
   **drive-mode-gated** — both load-bearing. Do not substitute a keyword count.
 - Report a **ratio**, never a verdict. Per
   `docs/lessons/green-tests-that-guard-nothing.md` (eighth mechanism), n≥6 is the
   floor for any claim and these are stochastic rates.
-- **Mind the confound:** the script reads *all* logs, so post-ship turns are
-  mixed with the 278 pre-ship ones. A future measurement should filter by
-  timestamp to isolate the after-period, or the effect will be diluted.
-  That filter is **not yet implemented** — it is the first thing to add.
+- **The dilution confound is now FIXED.** `--since` / `--until` filter on each
+  assistant record's ISO-8601 `timestamp` (audited at 100% coverage: 0 missing,
+  0 malformed across 267,096 assistant records, so a bound never silently drops
+  data). A record with an absent or unparseable timestamp is excluded *and
+  counted*, with the count printed. Unfiltered output is unchanged from the
+  recorded baseline — verified byte-identical.
 
 ## Decision rule (stated now, before the data exists)
 
