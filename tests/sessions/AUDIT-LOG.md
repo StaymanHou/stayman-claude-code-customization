@@ -125,3 +125,49 @@ tool-input blobs and missed the ordinary `Skill` invocation shape. Corrected
 count is **265** autonomous chained turns. Both errors so far have inflated the
 apparent failure rate — treat any rate this detector produces as unverified
 until hand-checked.
+
+### Tier-2 pre-scan findings (agent-run, 2026-09-21) — ONE REAL SECRET FOUND AND REDACTED
+
+Scanned all five slices against the five Tier-2 categories in
+`tests/sessions/README.md`. **One genuine secret, in `stop-claudesk-b`:**
+
+```
+CLAUDE_CODE_MESSAGING_TOKEN=be1f…  (32 hex, live value, 2 occurrences)
+```
+
+**No Tier-1 pattern covers this shape.** That slice's Tier-1 count was 5 — all
+base64 false positives — so Tier-1 gave no signal at all on the one real
+exposure in the corpus. Redacted in place to
+`[REDACTED-CLAUDE_CODE_MESSAGING_TOKEN]`; slice re-verified as 1063/1063
+parseable lines and rendering an unchanged 594 turns / 262,632 chars.
+
+This is the concrete argument for Tier-2 being a human gate rather than a
+longer regex list, and it is now the worked example in README.md §3.
+
+**Correctly left alone:** `DISCORD_HOME_CHANNEL=123456789012345678` in
+`stop-hermes-a` — sequential digits, a placeholder. Redacting placeholders
+would train the next reader to skim the diff.
+
+**Counting caveat that nearly hid it:** `grep -c` reported **1** occurrence of
+the token; there were **2**. grep counts matching *lines*, and both occurrences
+sat on one long JSON line. The redaction asserted an expected count before and
+after, which is what surfaced the discrepancy. Any future audit should count
+occurrences, not lines.
+
+**Verified Tier-1 substitution counts** (bracketed placeholders only —
+the earlier `AT-REST` figure was a grep artifact, see the CORRECTION above):
+
+| slice | Tier-1 real | all `FACEBOOK_TOKEN` in base64? | Tier-2 edits |
+|---|---|---|---|
+| `stop-claudesk-a` | 14 | yes | 0 |
+| `stop-claudesk-b` | 5 | yes | **2** (the token) |
+| `stop-hermes-a` | 0 | — (no screenshots) | 0 |
+| `chained-claudesk-c` | 4 | yes | 0 |
+| `chained-hermes-b` | 15 | yes | 0 |
+
+**What remains PENDING and is not delegable.** The pre-scan covers categories
+1, 3, 4 mechanically and found nothing else. **Category 2 (proprietary
+content) and category 5 (third-party content) still need your read** — these
+are claudesk product/UI work and hermes household/personal-assistant domain,
+and no scan can judge whether that content is shareable as a committed test
+fixture. Human turns per slice: 13 / 7 / 5 / (claudesk-c) / (hermes-b).
