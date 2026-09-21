@@ -99,10 +99,22 @@ Two things I can say about why, from n=100:
 1. **It is not simply model nondeterminism.** χ² for homogeneity across the five
    slices is p = 1.9×10⁻⁴ — the slices do not share a single rate, so something
    slice-specific drives it.
-2. **A likely structural cause:** in single-turn replay the model *cannot
-   actually invoke a skill*, so "hand back" may be the only coherent action
-   available to it in many contexts — a floor under both arms. If so, a
-   reproduction needs a real multi-turn drive loop, not a rendered transcript.
+2. **A structural cause I suspected, tested, and had to drop.** I thought the
+   model simply *could not* chain in this harness — that "hand back" was the
+   only action available, flooring both arms. My runner does pass
+   `--permission-mode dontAsk`, which really does block the `Skill` tool. But
+   checking the 100 recorded responses rather than the invocation: **0 hit a
+   tool denial, 100/100 emitted the required next-action line, and 63 declared
+   INVOKE.** The harness asks the model to *declare* its next action in a dry
+   run, not to call the skill, so the permission mode is inert for the decision
+   under study and the floor hypothesis is dead. (`dontAsk` does block `Read`
+   and `Bash`, and exactly 1 of 100 runs stopped citing that — a real but ~1%
+   contaminant.)
+
+   **So I cannot currently explain the backwards discrimination**, and I would
+   rather say that than offer a tidy cause I have already falsified. Restricting
+   to the 84 runs that reached the transition: stops 17.0%, controls 45.2% —
+   still backwards.
 
 The **production** measurement at the top does not depend on this harness. It is
 a direct count over real session logs.

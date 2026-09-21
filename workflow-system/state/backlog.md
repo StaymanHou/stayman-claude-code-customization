@@ -331,6 +331,33 @@ _(no open items)_
 
 ---
 
+## SURFACE-2026-09-21-REPLAY-RUNNER-DONTASK-BLOCKS-READ-BASH
+
+**Priority:** low
+**Route:** task:plan (fold into any future WP-A re-run; not worth a standalone task)
+**Found:** 2026-09-21, WP-A5 probe
+
+`tools/replay-baseline.sh:311` passes `--permission-mode dontAsk`, which blocks `Read` and
+`Bash` inside the replayed turn. **1 of 100 WP-A3 runs edge-paused explicitly because of
+this** (`chained-claudesk-c` run 2):
+
+> *"Both Read and Bash are denied — the session is in don't-ask mode with no tool access, so
+> I can't expand the checklist leaves or stage fixtures. I'll stop rather than work around
+> it."*
+
+That is a manufactured hand-back — the model stopped for a harness-configuration reason, not
+for the behaviour under study. Any future run should widen the mode (keeping
+`--disallowed-tools "Edit,Write,NotebookEdit"`, which becomes load-bearing once permissions
+widen) so reads and greps inside the turn are available.
+
+**Scope honestly: this is ~1% of outcomes and does NOT explain the discrimination failure.**
+An earlier framing of this SURFACE claimed `dontAsk` blocked the `Skill` tool and so floored
+both arms at "hand back". **The ledger refutes that** — 0/100 runs hit a `Skill` denial and
+63/100 declared `NEXT-ACTION: INVOKE`, because the harness asks the model to *declare* its
+next action in a dry run rather than to *call* the skill. Controls still fire higher than
+stops on the valid-only subset (45.2% vs 17.0%). The discrimination failure is still open.
+
+
 ## Buried
 
 The following items were buried by user decision. Full content preserved in [`workflow/backlog-deferred-2026-05.md`](backlog-deferred-2026-05.md).

@@ -243,3 +243,42 @@ originally skipped and had to be told to go back for.
    coherent action in many contexts — which would put a floor under *both*
    arms. That points back at the multi-turn drive loop the WBS buried, and is
    the strongest argument for un-burying it.
+
+   **Partly tested 2026-09-21, and the floor hypothesis is NOT the explanation.**
+   A re-scope probe proposed that the runner's `--permission-mode dontAsk`
+   (which *does* block the `Skill` tool: *"Permission to use Skill has been
+   denied…"*, verified as a clean `dontAsk`/`bypassPermissions` pair) had made
+   chaining impossible in all 100 runs. **The ledger refutes that:**
+
+   - **0/100** responses hit a permission denial on `Skill`.
+   - **100/100** emitted the required `NEXT-ACTION:` line, and **63 declared
+     `INVOKE`.**
+
+   The harness never asked the model to *call* the skill — `PROMPT` asks it to
+   **declare** its next action on a machine-readable line, explicitly as a dry
+   run. So `dontAsk` is inert for the decision under study, the model was never
+   prevented from expressing "chain", and it expressed it in a clear majority of
+   runs. **The floor-under-both-arms hypothesis is dead as stated**, and with it
+   the strongest argument the WBS recorded for un-burying the drive loop.
+
+   **What the probe did establish, and it is narrow:** `dontAsk` blocks `Read`
+   and `Bash` too, and **1 of 100 runs** edge-paused *because of that* —
+   > *"Both Read and Bash are denied — the session is in don't-ask mode with no
+   > tool access, so I can't expand the checklist leaves… I'll stop rather than
+   > work around it."*
+
+   That is a real contaminant worth removing (it manufactures a hand-back for a
+   harness-configuration reason), but it is **~1% of outcomes, not the 57.5%
+   control rate.** The discrimination failure remains unexplained: restricting
+   to the 84 runs that emitted F10b still gives stops **9/53 = 17.0%** vs
+   controls **14/31 = 45.2%** — backwards.
+
+   **Methodological note, recorded because it nearly shipped as a finding.** The
+   probe's premise came from reading the runner's `claude --print` invocation and
+   reasoning about what the model *could* do, without checking what it *did*.
+   The 100-run ledger with full responses was already committed and answered the
+   question in one query. **Read the recorded evidence before theorising about
+   the instrument that produced it** — and note that an intermediate check
+   ("could the CLI resolve/call the skill from this cwd?") returned a true
+   answer that was *irrelevant to the actual configuration*, which is what made
+   it convincing.

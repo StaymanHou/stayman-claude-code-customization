@@ -203,8 +203,15 @@ rests on the production measurement, not on the replay instrument.
   so "hand back" may be the only coherent action available to it in many contexts, which
   would put a floor under *both* arms and is a candidate explanation for controls firing at
   57.5%. A drive loop lets the model actually call the tool, making "did it chain?" a real
-  observation instead of a declared intention. **This is the leading re-scope candidate** —
-  but it is a hypothesis for the re-scope to test, not a decision taken here.
+  observation instead of a declared intention. ~~**This is the leading re-scope candidate**~~
+  — but it is a hypothesis for the re-scope to test, not a decision taken here.
+  - **⛔ THAT HYPOTHESIS WAS TESTED AND REFUTED — WP-A5, 2026-09-21.** 63 of the 100 runs
+    declared `NEXT-ACTION: INVOKE`, and 0 hit a tool denial on `Skill`. The model was never
+    floored into hand-back; the harness asks for a *declaration* in a dry run, not a call.
+    **So the drive loop's recorded justification no longer holds, and it STAYS BURIED.**
+    Un-burying it now requires a new argument — "did it chain?" being a declared intention
+    rather than an observation is still *true*, but it is no longer evidenced as the cause
+    of the discrimination failure, which remains unexplained.
 - **Opus 4.7 model pinning** (memory `feedback_replay_harness_research_conditions`) —
   **Deferred/superseded for this WBS.** That memory pins 4.7 to mirror the *2026-05-16* bug's
   conditions; the bug here is opus-5-specific, so **opus-5 is the correct pin**. The memory's own
@@ -254,3 +261,69 @@ precise erasure that let three prior attempts at this bug class repeat each othe
 at which point the durable artifacts above carry everything and this file is redundant; or
 (b) a re-scoped Track A supersedes it, in which case the successor WBS cites it and this one
 goes. **Do not delete it merely because the cycle stopped being active.**
+
+---
+
+## WP-A5 · Cheap discrimination probe `[RUN 2026-09-21 — PREMISE REFUTED, no runs spent]`
+
+**Operator-approved re-scope, chosen over building the multi-turn drive loop. Executed the
+same day and closed without spending the $10, because its premise did not survive contact
+with the recorded evidence.**
+
+### The hypothesis, and why it was wrong
+
+I proposed that `tools/replay-baseline.sh:311`'s `--permission-mode dontAsk` had blocked the
+`Skill` tool, making chaining *impossible* in all 100 WP-A3 runs — a hard floor under both
+arms, and a mechanical explanation for controls at 57.5%.
+
+The mode **does** block `Skill`, verified as a clean pair (same cwd, same model):
+`dontAsk` → *"Permission to use Skill has been denied…"*; `bypassPermissions` → `SKILL_CALL_OK`.
+
+**But that was never the operative constraint, and the committed ledger says so:**
+
+| check over `tests/results/wp-a3-baseline.jsonl` (n=100) | result |
+|---|---|
+| responses hitting a `Skill` permission denial | **0 / 100** |
+| responses emitting the required `NEXT-ACTION:` line | **100 / 100** |
+| responses declaring `NEXT-ACTION: INVOKE` | **63 / 100** |
+
+`PROMPT` (line ~240) asks the model to **declare** its next action on a machine-readable line
+in an explicit dry run — it never asks it to *call* the skill. So `dontAsk` is inert for the
+decision under study, the model was never prevented from expressing "chain", and it expressed
+it in a clear majority of runs.
+
+### What it did establish — narrow, and worth keeping
+
+`dontAsk` also blocks `Read`/`Bash`, and **1 of 100 runs** edge-paused explicitly because of
+that (`chained-claudesk-c` run 2: *"Both Read and Bash are denied… I'll stop rather than work
+around it"*). A manufactured hand-back, worth removing from any future run — but **~1% of
+outcomes, not a 57.5% floor.** Filed as
+`SURFACE-2026-09-21-REPLAY-RUNNER-DONTASK-BLOCKS-READ-BASH` (low).
+
+### Consequences for the re-scope
+
+1. **The WP-A3 result stands entirely unchanged.** Stops 14/60 = 23.3%, controls 23/40 =
+   57.5%. Valid-only (the 84 runs that emitted F10b): stops **9/53 = 17.0%**, controls
+   **14/31 = 45.2%**. Still backwards, still `p ≈ 0.01`. **The discrimination failure is
+   unexplained.**
+2. **The drive-loop argument is WEAKER, not stronger.** The WBS's recorded reason for
+   un-burying it was "the model cannot actually invoke a skill, so hand-back may be the only
+   coherent action" — a *floor under both arms*. That specific claim is now refuted: 63/100
+   runs did declare INVOKE. **The anchor's own premise is gone. The drive loop stays buried**,
+   and un-burying it needs a *new* argument rather than this one.
+3. **Track A remains gate-failed and not startable.** WP-B3 (upstream filing) is still the
+   live route; it never depended on the instrument.
+
+### The methodological failure, recorded because it nearly shipped as a finding
+
+The premise came from reading the runner's CLI invocation and reasoning about what the model
+*could* do — without checking what it *did*. The 100-run ledger, with full response bodies,
+was already committed and settled the question in a single query.
+
+**Read the recorded evidence before theorising about the instrument that produced it.** The
+trap was that an intermediate check — *"can the CLI resolve and call this skill from this
+cwd?"* — returned a **true** answer (`dontAsk` really does block `Skill`) that was
+**irrelevant to the actual configuration**, which is exactly what made it convincing. A true
+fact about a component is not a finding about the system until you confirm the system exercises
+it. This is the same independence lesson as `[Phase 20]`, in a new costume: I varied the
+variable I had thought of, and it moved — which said nothing about whether it was the one in play.
