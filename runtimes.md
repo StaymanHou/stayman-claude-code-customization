@@ -18,10 +18,9 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
   - 4s — 2026-07-21  <!-- uninstall-sh (WP4) Phase 3 verify-codify; 40/40 PASS. Runs the real install.sh+uninstall.sh against ~9 throwaway fake-$HOME sandboxes; each install is fast (~0.4s), so the whole suite lands at ~4s. `env HOME=<sandbox>` per-call isolation (SURFACE-2026-07-21-UNINSTALL-TEST-HOME-EXPORT-HAZARD). -->
 
 ## ./tests/check-structure.sh
-- **Last:** 7s (2026-09-21)
-- **Use timeout:** 71000
+- **Last:** 6s (2026-09-21)
+- **Use timeout:** 69000
 - **History:**
-  - 7s — 2026-09-21
   - 6s — 2026-09-21
   - 28s — 2026-07-29 (after [Phase 21], +18 assertions)
   - 9s — 2026-07-29  <!-- retire-claude-time task (T12). **566 PASS / 1 FAIL**; count 597→566 (**−31**). Runtime 29s→9s, a 69% cut — by far the largest drop recorded here, and the reason is instructive: deleted Phases 5b/5c were not grep-based like the rest of the suite, they SPAWNED subprocesses (perl -c, 4× python3 -m py_compile, 2× python3 -m unittest, and 6 nested shell suites incl. test_hook.sh / privacy_check.sh / test_cli.sh / test_visualize_cli.sh / multi_instance.sh / stress_concurrent.sh's 50 concurrent writers). **The −31 was measured against a recorded baseline, not predicted:** the plan first estimated −63 from static `check "` source-site count, but 5b/5c are written as if/else pairs where two source sites emit ONE runtime assertion — so the real emitted count was 31 (25 in 5b, 6 in 5c). Recording both numbers because the static-vs-emitted gap is a repeatable trap for any future phase deletion. Lone FAIL is the pre-existing `effortLevel: live=<missing> fixture="xhigh"` drift (tracked since 2026-07-25, untouched by this task). Phase 7 showed NO new hook drift, confirming the fixture↔live lockstep edit landed correctly. -->

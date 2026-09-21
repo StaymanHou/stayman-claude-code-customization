@@ -331,50 +331,6 @@ _(no open items)_
 
 ---
 
-## SURFACE-2026-09-21-REPLAY-RUNNER-DONTASK-BLOCKS-SKILL-TOOL
-
-**Priority:** high
-**Route:** task:plan
-**Found:** 2026-09-21, re-scoping Track A of the opus5-edge-pause cycle
-
-`tools/replay-baseline.sh:311` passes `--permission-mode dontAsk`, which **blocks the
-`Skill` tool outright** — *"Permission to use Skill has been denied because Claude Code is
-running in don't ask mode."* The model therefore **could not chain in any of WP-A3's 100
-runs**, in either arm. "Hand back" was the only *permitted* action, which is a hard floor
-under the stop slices and the negative controls alike and is sufficient on its own to
-explain controls firing at 57.5% vs stops at 23.3%.
-
-**The WP-A3 replay numbers are void as evidence about model behaviour** — the instrument
-was measuring its own permission configuration. The *production* measurement (2.0% vs
-7.6%, n=928) is unaffected; it is a direct count over real session logs and never used
-this runner.
-
-**Confirmed as a clean pair** (same cwd, same model, same `--disallowed-tools`):
-
-| `--permission-mode` | `Skill(feature-verify-human)` |
-|---|---|
-| `dontAsk` | DENIED — tool blocked by mode |
-| `bypassPermissions` | `SKILL_CALL_OK` |
-
-**Fix (scoped, pre-registered as WP-A5 in `workflow-system/product/opus5-edge-pause-wbs.md`):**
-1. `--permission-mode bypassPermissions`, keeping `--disallowed-tools "Edit,Write,NotebookEdit"`
-   — with permissions widened, that write-block becomes load-bearing rather than belt-and-braces.
-2. Re-classify on a `Skill` **tool_use block**, not on prose. `classify()` currently reads
-   prose, which violates root `CLAUDE.md`'s classify-structurally rule and cannot distinguish
-   "said it would chain" from "chained".
-3. Drop runs that never emit F10b (16/100 in WP-A3) — not observations of this bug.
-
-**Also worth a second look:** `--no-session-persistence` and `--disallowed-tools` were never
-varied either. Per the lesson below, that means nothing is known about their effect.
-
-**Transferable lesson (already recorded in root `CLAUDE.md` and the harness lesson doc):**
-sensitivity to the variable you thought to vary is not evidence about the one you did not.
-WP-A3 varied slice and n across 100 runs; it never varied the permission mode, so the mode's
-effect was invisible to the entire matrix. A **false first hypothesis** (that `cd /tmp` left
-skills unresolvable) was killed only by running the negative arm — bare `/tmp` lists the
-skills too, since they resolve from user-global `~/.claude/skills/` regardless of cwd.
-
-
 ## Buried
 
 The following items were buried by user decision. Full content preserved in [`workflow/backlog-deferred-2026-05.md`](backlog-deferred-2026-05.md).
