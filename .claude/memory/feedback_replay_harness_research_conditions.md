@@ -16,4 +16,6 @@ not a default flip: the bug under study there is a *measured opus-5-specific* re
 (8.2% vs 1.6% on opus-4-8 at F10b, Fisher p = 4.1×10⁻⁶), so 4.7 is the wrong instrument —
 it largely does not exhibit the behaviour. The 4.7 default still stands for the original
 2026-05-16 autopilot-pause-policy bug class. The dot-free `/tmp` cwd rule is **unaffected**
-and still applies. See [[project_pain_points]].
+and still applies. See [[project_pain_points]]. For a *different* axis of the same harness — runs
+not being independent draws because they share prompt-cache state — see
+[[project_replay-harness-run-independence]].
