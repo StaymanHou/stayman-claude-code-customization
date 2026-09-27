@@ -26,6 +26,25 @@ Handed off at a clean boundary (no active WIP). See `workflow-system/state/.sess
 
 ## TODO
 
+## SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE
+
+- **Source:** global learning from `light-bot-remastered` M6 WP2 (schema and migrations), 2026-09-27. It was ported to `.claude/learnings/2026-09-27-verify-human-is-for-alignment-not-correctness.md`.
+- **Target level:** feature. **Fold it into the same `/feature-spec` as `SURFACE-2026-08-02-VERIFY-HUMAN-ASKS-HUMAN-TO-RUN-MECHANICAL-CHECKS`** rather than running it as a separate feature. The two overlap on `feature-verify-human` §2/§3 and would conflict if built apart.
+- **Type:** design gap plus operator-stated rule (a real-run instance of the 08-02 defect)
+- **Summary:** A real verify-human checklist asked the operator to run `npm run check` and paste the tail, run `migrations apply` and paste the output, and run `create-class` in a real terminal to confirm the PIN didn't echo. Two of those three repeated checks that verify-auto or verify-self had **already** run. Only after handing the TTY check to the human did the agent try to drive it through a `script` pty. The operator then stated the rule: *"if something is self-drivable by you, you should drive it during verify-self or verify-auto. Never surface a leaf like this unless the output / behavior is to be verified by human not for correctness, but for alignment of the expectation and spec."*
+- **What this adds to the 08-02 item:**
+  1. **The first operator-stated answer to 08-02's "load-bearing distinction."** A verify-human leaf is admissible only if its answer is an **alignment** judgment ("is this the behaviour, wording, format or tradeoff you meant?"). Any pass/fail fact the agent can observe is inadmissible. This supports 08-02's *present-the-evidence* direction: verify-human shows the captured result (command, exit code, key output line) as context for the alignment question and **never re-asks** for a check an earlier stage already ran.
+  2. **A stage-ownership rule that 08-02 does not cover:** a correctness check belongs to the cheapest stage that can observe it. **verify-auto** owns deterministic checks of the changed code and config, *including the consuming config surface* (e.g. `npm run check` after a tsconfig edit). **verify-self** owns running-system behaviour: CLI under real argv/stdin/TTY, `curl` against the consuming endpoint, a migration applied through the real tool, Playwright.
+  3. **verify-self scope:** "not Playwright-shaped" is never a reason to defer to a human. Drive TTY prompts through a pty, typing each input only after its prompt appears, so the check measures no-echo and not buffered input. `UNVERIFIED → human` is reserved for things the agent genuinely can't drive (physical hardware, a real classroom, the operator's own account). This maps onto 08-02's "agent-blocked, yes by necessity" row.
+  4. **`feature-plan` authoring:** every correctness outcome must be written so the agent can drive it, awkward ones included, and human-judgment items must be kept separate from Observable Outcomes and labelled as alignment questions. 08-02 doesn't touch `feature-plan`.
+- **Context:** The learning's proposed rewrite of the §2 boundary mandate ("integration boundary ⇒ **verify-self** captures a run against the consuming surface; verify-human may show it and ask about intent") is the same move as 08-02's suggested action (b). The two items agree on direction. `light-bot-remastered` isn't in 08-02's surveyed corpus list, so this session is **one more corpus instance** for 08-02's required log-mining first step. It's evidence for that step, not a replacement for it.
+- **Suggested action:** these are hypotheses to check against the code before editing.
+  - Carry items 2–4 into the 08-02 spec as additional scope.
+  - Check the pty technique against the verify-self-runner's **observe-only contract** (cf. `SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE`). Driving a CLI that writes state is not observe-only.
+  - Check **portability**: `script -qec` is util-linux (GNU) syntax, and macOS BSD `script` takes a different form (`script -q /dev/null <cmd>`). The light-bot case ran inside a Linux dev image, so the skill prose must not hard-code one form.
+- **Priority:** medium-high (same as 08-02, which it amplifies)
+- **Status:** pending
+
 ## SURFACE-2026-09-21-CAPTURE-SLICE-FACEBOOK-PATTERN-FALSE-POSITIVE
 
 - **Source:** feature:WP-A2 (opus5-edge-pause) — observed while capturing 3 F10b stop slices
@@ -119,6 +138,7 @@ Handed off at a clean boundary (no active WIP). See `workflow-system/state/.sess
 
 - **Suggested action (hypothesis — verify against both SKILL.md files before writing):** run `/feature-spec`, whose **first phase is the log-mining + joint review above**. Settle the taxonomy with the operator from that evidence (that is the explicit ask), then (a) add a category-routing rule to `feature-verify-human` §2/§3 upstream of the existing pre-filter table, (b) rewrite the §2 boundary mandate so the **agent** executes the boundary probe and presents captured output, (c) extend `feature-verify-self` to run the front-loaded categories and record their captured evidence in the WIP tree, (d) re-check whether the four-gate auto-skip simplifies. Structural pins in `tests/check-structure.sh` + scenarios per the usual discipline; run `/test-assertion-review` before writing assertions.
 - **Risk to weigh in the debate:** over-routing. Removing a human gate is hard to reverse in practice — the operator stops seeing a class of output and does not notice it stopped. Prefer *present-the-evidence* (operator still reads, just does not execute) over *silently skip* wherever the two are close. The known-limitation note at line 86 is precedent for what a mis-route costs.
+- **Related (2026-09-27):** `SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE` has a real-run instance from `light-bot-remastered` and an **operator-stated rule** (verify-human is for alignment, not correctness). It extends this item's scope to verify-auto ownership, pty-driven verify-self checks, and `feature-plan` outcome authoring. Build both in one spec.
 - **Priority:** medium-high (touches every feature's verify loop in every project using this system; the operator-facing friction is recurring, and the current rule mandates the friction rather than merely permitting it)
 - **Status:** pending
 
