@@ -1,8 +1,5 @@
 # Backlog
 
-## Session Handoff — 2026-07-28 19:26
-Handed off at a clean boundary (no active WIP). See `workflow-system/state/.session.md` to restore (`/session-restore`).
-
 > **Cycle-boundary sweep — `/product-finalize`, 2026-07-28 (Claudesk Handoff Cycle, M7–M12).**
 > Every open item was audited at the cycle close. **Nothing was resolved by this cycle that is not
 > already deleted** — the cycle's own origin SURFACEs (doc-layout unify, standalone uninstall,
