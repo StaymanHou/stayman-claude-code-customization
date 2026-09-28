@@ -2,7 +2,7 @@
 shape: temporary-wbs
 cycle: opus5-edge-pause
 created: 2026-09-21
-status: gate-failed-pending-rescope
+status: archived-2026-09-28 (frozen by operator; m-prose shipped 2026-09-21T21:33Z; gate UNDERPOWERED, not failed — see banner update; Track B now measured in production per tests/results/M-PROSE-SHIP-BASELINE.md → Addendum 2026-09-28)
 parent-backlog: SURFACE-2026-05-16-MULTI-TURN-REPLAY-HARNESS (superseded in part — see WP-A1)
 ---
 

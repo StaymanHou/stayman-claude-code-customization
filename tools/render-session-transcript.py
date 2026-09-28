@@ -3,7 +3,7 @@
 into plain transcript TEXT suitable for `claude --append-system-prompt`.
 
 This is the *instrument* half of the opus-5 F10b edge-pause investigation
-(workflow-system/product/opus5-edge-pause-wbs.md, WP-A1). It exists because
+(workflow-system/product/archive/opus5-edge-pause/opus5-edge-pause-wbs.md, WP-A1). It exists because
 context depth is the load-bearing variable in reproducing that bug class:
 synthetic scenarios at ~26k context do not fail, while real failures sit at a
 median ~445k tokens / ~1005 turns. Rendering a real session's prior turns back

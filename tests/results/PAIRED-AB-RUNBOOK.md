@@ -95,4 +95,4 @@ drift is shared rather than loaded onto whichever arm ran last.
 - **Anything ambiguous** → it is a null. See caveat 1.
 
 Context and provenance: `docs/lessons/long-context-replay-harness.md`,
-`workflow-system/product/opus5-edge-pause-wbs.md` (banner carries corrected status).
+`workflow-system/product/archive/opus5-edge-pause/opus5-edge-pause-wbs.md` (banner carries corrected status).

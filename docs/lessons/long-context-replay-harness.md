@@ -1,8 +1,8 @@
 # Long-context replay harness — reproducing a deep-context behavioral bug
 
 **Added 2026-09-21** (opus5-edge-pause WP-A1/A2/A3). Companion to the temporary
-WBS at `workflow-system/product/opus5-edge-pause-wbs.md`, which is
-**deleted on completion** — this doc is the durable half.
+WBS at `workflow-system/product/archive/opus5-edge-pause/opus5-edge-pause-wbs.md` (archived
+2026-09-28 when the operator froze the work) — this doc is the durable half.
 
 ## The capacity, in one line
 
