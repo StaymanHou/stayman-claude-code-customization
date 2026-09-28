@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-28
+
+- **Task closed:** the F10b hand-back measurement now parses a separate row per Opus release instead of substring-matching `opus-5`, which had silently counted Opus 5.5 (first seen 2026-09-22T18:09Z, ~21h after m-prose shipped) as Opus 5 — splitting the 51 "post-ship opus-5" turns into opus-5 0/16 and opus-5-5 0/35, with the pre-ship baseline reproducing byte-identically, and a dated addendum to the ship baseline restating the open question as model-agnostic ("does the hand-back still happen with the fix in place?") because the fix and the model change cannot be separated from production data.
+
 ## 2026-09-21
 
 - **Feature shipped:** a long-context replay harness (`tools/render-session-transcript.py` + `tools/replay-baseline.sh` + five operator-audited session slices under `tests/sessions/`, guarded by `[Phase 8b]`) that renders a real session's prior ~500 turns back into a fresh run, so a behavior appearing only at ~300k context can be driven at ~$0.35/run instead of being unreproducible.

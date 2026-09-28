@@ -73,11 +73,20 @@ def vh(rec):
         if isinstance(b,dict) and b.get("type")=="tool_use":
             if "verify-human" in json.dumps(b.get("input") or {}): return True
     return False
+# One bucket per Opus family+minor, parsed from the model ID -- never substring
+# matching. The original `"opus-5" in m` silently merged claude-opus-5-5 into
+# opus-5: Opus 5.5 first appears 2026-09-22T18:09Z, ~21h after m-prose shipped,
+# so 35 of the first 51 "post-ship opus-5" turns were a different model and the
+# fix was confounded with a model change. Parsing means the NEXT minor release
+# gets its own row instead of joining an existing one. An optional 8-digit date
+# suffix (claude-opus-5-20260101) is not read as a minor version.
+OPUS_ID=re.compile(r"opus-(\d+)(?:[-.](\d{1,2}))?(?!\d)")
 def norm(m):
-    if "opus-5" in m: return "opus-5"
-    if "opus-4-8" in m or "opus-4.8" in m: return "opus-4-8"
-    if "opus-4-7" in m or "opus-4.7" in m: return "opus-4-7"
-    return None
+    mo=OPUS_ID.search(m)
+    if not mo: return None
+    return f"opus-{mo.group(1)}" + (f"-{mo.group(2)}" if mo.group(2) else "")
+def _order(k):
+    return tuple(int(x) for x in k.split("-")[1:])
 ap=argparse.ArgumentParser(add_help=True)
 ap.add_argument("--since",help="only count turns on/after this UTC date (YYYY-MM-DD)")
 ap.add_argument("--until",help="only count turns on/before this UTC date (YYYY-MM-DD)")
@@ -154,7 +163,9 @@ if SINCE or UNTIL:
     period=f"  [period: {A.since or 'start'} .. {A.until or 'now'} UTC]"
 print("AUTOPILOT/FSD-gated (the only context where auto-chain is expected):"+period)
 print(f"{'model':<12}{'F10b turns':>12}{'stopped':>10}{'rate':>9}")
-for k in ("opus-4-7","opus-4-8","opus-5"):
+# The three historic rows always print (the recorded baseline table has them);
+# any other bucket prints once it has data, in version order.
+for k in sorted({"opus-4-7","opus-4-8","opus-5"}|set(tally),key=_order):
     n,s=tally[k]
     print(f"{k:<12}{n:>12}{s:>10}{(s/n if n else 0):>8.1%}")
 print(f"TOTAL turns: {sum(v[0] for v in tally.values())}")

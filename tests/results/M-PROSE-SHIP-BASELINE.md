@@ -87,3 +87,54 @@ starting state. Nothing can be concluded until turns accumulate.
 Setting this bar *before* seeing post-ship data is deliberate — the replay A/B's
 bar was set against an unvalidated base rate and became unclearable, which is the
 mistake this rule exists to avoid repeating.
+
+## Addendum 2026-09-28 — Opus 5.5 entered the window; the question is restated
+
+**Nothing above is edited.** The baseline and the decision rule stand as
+pre-registered. This section records a confound found after the fact and the
+question the operator chose to answer instead.
+
+**What happened.** `claude-opus-5-5` first appears in the logs at
+**2026-09-22T18:09Z**, about 21h after m-prose shipped (`2026-09-21T21:33Z`); the
+last `claude-opus-5` turn is 19:57Z the same day. The measurement script bucketed
+models by substring (`"opus-5" in m`), so Opus 5.5 was **silently counted as
+opus-5**. The "51 post-ship opus-5 turns, 0 stopped" reading of 2026-09-28 was
+really two models. The script now parses one bucket per family+minor, so the next
+release gets its own row too. The pre-ship table is unaffected (0 Opus 5.5 turns
+before ship; output verified identical).
+
+| window | model | fix | F10b turns | stopped |
+|---|---|---|---|---|
+| pre-ship | opus-5 | no | 278 | 21 (7.6%) |
+| post-ship, 09-21 22:25Z → 09-22 18:42Z | opus-5 | yes | 16 | 0 |
+| post-ship, 09-23 → 09-27 | opus-5-5 | yes | 35 | 0 |
+
+**What it does and does not show.**
+
+- The only fix-only evidence is **opus-5 0/16**. At the 7.6% baseline, 0/16
+  happens by chance ~28% of the time — consistent with the fix working,
+  not evidence of it.
+- **opus-5-5 has no no-fix arm.** Every 5.5 turn ran on patched prose, so the fix
+  and the model change are **not separable** from production data. Separating them
+  would need replaying 5.5 on the old prose — the audited-slice cost already judged
+  not worth it for one prose edit.
+- Pooled with-fix: **0/51**, ~2% by chance at 7.6%. The improvement the operator
+  noticed is real in the data; its **cause is unattributed**.
+- The original rule's "≥100 opus-5 turns" is **unreachable** — the operator no
+  longer runs Opus 5.
+
+**Restated question (operator decision, 2026-09-28):** *with the fix in place,
+does the hand-back still happen in practice?* — model-agnostic, not "did m-prose
+cause the drop." The fix stays shipped either way.
+
+- Count **with-fix Opus-family turns pooled** (currently opus-5 + opus-5-5) since
+  `2026-09-21T21:33Z`, reading the per-model rows alongside so a model-specific
+  regression is still visible.
+- **Same thresholds:** ≤3% over ≥100 turns → close Track B; ≥6% → inconclusive
+  about the fix but a live problem, re-open; between → keep accumulating. (WP-B3,
+  the upstream filing, was dropped by the operator on 2026-09-22 and is not the
+  ≥6% route any more.)
+- **A close under this reading must say so:** "the hand-back is gone in practice;
+  whether m-prose or Opus 5.5 removed it is not determined."
+- If a future model lands mid-window, record its first-seen instant here before
+  reading any pooled number.
