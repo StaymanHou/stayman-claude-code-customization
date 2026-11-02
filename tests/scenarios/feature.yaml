@@ -210,30 +210,22 @@ scenarios:
     max_retries: 2
 
   - id: F13-prefiltered
-    name: "feature:verify-human excludes verify-self [x] items from checklist"
+    name: "feature:verify-human lists verify-self PASS items in the digest, never as checklist leaves"
     skill: feature-verify-human
     model: sonnet  # Haiku flakes: no structured TRANSITION line; sonnet is reliable (PASS strictly 2026-06-09). See backlog SURFACE-2026-05-13-VERIFY-CODIFY-SCENARIOS-NEED-SONNET-TAG (recon 2026-06-09).
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-verify-self-passed.md
+      wip: fixtures/wip/feature-verify-self-passed-backend.md
     system_prompt_extra: |
-      verify-self completed with all outcomes [x] (PASS):
-      - P1.verify-self.1 GET /api/notification-preferences → 200: PASS [x]
-      - P1.verify-self.2 PUT /api/notification-preferences/:category → 200: PASS [x]
-      - P1.verify-self.3 Browser /settings/notifications no JS errors: PASS [x]
-      The human checklist must NOT include any of these items — they were
-      already confirmed by the agent. The human should only see items that
-      require genuine human judgment. Human approves the phase.
+      The operator replies "continue" to anything you ask.
     expect:
-      transition_id: F13
-      contains_any:
-        - "/feature-verify-codify"
+      transition_id_any: [F11, F13]
+      contains_required_any:
+        - "Already verified by agent"
       not_contains:
-        - "P1.verify-self.1"
-        - "P1.verify-self.2"
-        - "P1.verify-self.3"
-        - "GET /api/notification-preferences"
+        - "paste the response"
+        - "paste the output"
     max_retries: 2
 
   - id: F8-reverify
@@ -524,7 +516,7 @@ scenarios:
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-verify-auto-passed.md
+      wip: fixtures/wip/feature-verify-self-passed-backend.md
     system_prompt_extra: |
       Phase 1 is purely backend API work — database table and REST
       endpoints. There is no UI, no user-facing interface to manually
@@ -546,14 +538,11 @@ scenarios:
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-verify-auto-passed.md
+      wip: fixtures/wip/feature-verify-self-passed-backend-align.md
     system_prompt_extra: |
-      The human tested the API endpoints and found issues:
-      - The PATCH endpoint doesn't validate that category names exist
-      - The GET endpoint returns 200 with empty body instead of 404 for
-        non-existent users
-      - The response format doesn't match the documented API contract
-      Human rejects this phase.
+      The human's reply to your checklist: "vh.1 — no, those defaults are
+      wrong: sms should be on and push off for new users. Also, while
+      trying it, PATCH accepted a category name that doesn't exist."
     expect:
       transition_id: F12
       contains_any:
@@ -571,7 +560,7 @@ scenarios:
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-verify-auto-passed.md
+      wip: fixtures/wip/feature-verify-self-passed-backend-align.md
     system_prompt_extra: |
       The human verified the API endpoints:
       - GET /preferences returns correct defaults for new users
@@ -1455,28 +1444,28 @@ scenarios:
     max_retries: 2
 
   - id: F-boundary-human
-    name: "feature:verify-human cannot skip when phase wires into existing endpoint"
+    name: "feature:verify-human back-loops when the consuming surface was never driven (never hands the operator a command)"
     skill: feature-verify-human
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-verify-wire-into-existing.md
+      wip: fixtures/wip/feature-verify-human-boundary-no-evidence.md
     system_prompt_extra: |
-      Phase 1 adds a new MusicPoolService module and wires it into the
-      existing POST /distribution/match handler — the line that
-      previously read `video_id = sheet.lookup(...)` now reads
-      `video_id = MusicPoolService.get_random(service.session)`.
-      There is no UI for this phase. The Observable Outcomes
-      previously verified by the agent target the new admin endpoints
-      under /music/pool/* and a CLI smoke test. The human is at the
-      terminal and can run shell commands.
+      P1.3 replaced the Google-Sheet lookup inside the existing
+      POST /distribution/match handler with MusicPoolService.get_random.
+      There is no UI for this phase. The human is at the terminal and
+      can run shell commands.
     expect:
-      transition_id: F13
-      contains_any:
+      transition_id: F12
+      contains_required_any:
         - "/distribution/match"
+      # Strict on a failure-proxy only: the heading appears solely when the skill
+      # builds a "run this for me" leaf (empty sections are omitted), which is the
+      # anti-pattern — a missed consuming-surface check handed to the operator.
+      # Observed live 2026-09-29 (dev server down → curl handed over).
       not_contains:
-        - "nothing to manually verify"
-        - "nothing to manually test"
+        - "### Needs you to run"
+      not_contains_strict: true
     max_retries: 2
 
   - id: F-boundary-codify
@@ -1797,81 +1786,146 @@ scenarios:
       not_contains: []
     max_retries: 2
 
-  # ── Auto-skip gate (feature: verify-human-auto-skip-when-no-integration-boundary, 2026-06-07) ──
-  # When drive_mode is autopilot AND verify-self all-PASS AND no integration boundary,
-  # feature-verify-human emits F11 without asking "do you agree to skip?". The affirmation
-  # block still prints in chat as the operator's read-time veto.
+  # ── Zero-leaf rule (feature: verify-human-alignment-only, 2026-09-29) ──
+  # Replaces the 2026-06-07 four-gate auto-skip. verify-human is for alignment, not
+  # correctness: when every check was agent-driven and agent-judged there are zero
+  # admissible leaves, so in autopilot the skill prints its "Already verified by
+  # agent" digest and emits F11 without prompting. An integration boundary no longer
+  # forces a pause; it obliges the digest to carry the consuming-surface evidence.
+  # Prompts state facts only — the expected behaviour lives in the SKILL.md.
   - id: F-verify-human-auto-skip-fires
-    name: "feature:verify-human auto-skips F11 in autopilot when no integration boundary"
+    name: "feature:verify-human zero-leaf phase advances in autopilot with the digest printed"
     skill: feature-verify-human
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
       wip: fixtures/wip/feature-verify-self-passed-isolated.md
     system_prompt_extra: |
-      The WIP frontmatter has drive_mode: autopilot. verify-self is complete
-      with all 3 leaves [x] (PASS). Phase 1 only added isolated new artifacts:
-      a new preferences/helpers.py module that nothing imports, a new
-      /admin/preferences/status endpoint nothing links to, and a new
-      standalone prefs_admin CLI tool nothing invokes. The 5-condition
-      integration-boundary check returns "no boundary" — no existing endpoint,
-      UI page, CLI command, scheduled job, or external-system call consumes
-      these new artifacts. No Observable Outcome cites a consuming surface
-      by name. All four Auto-skip gates are clean.
-      Per §2 "Auto-skip gate (Mode 3+ + no boundary + verify-self all-PASS)"
-      of feature-verify-human SKILL.md, you must print the affirmation block
-      naming the isolated new artifacts, print a line "Auto-skipped per
-      drive_mode=autopilot — no integration boundary detected.", and emit
-      TRANSITION: F11 immediately. Do NOT ask "do you agree to skip?".
+      The operator selected autopilot for this session.
     expect:
       transition_id: F11
-      contains_any:
-        - "Auto-skipped"
-        - "no integration boundary"
-        - "isolated new artifacts"
-        - "/feature-verify-codify"
+      contains_required_any:
+        - "Already verified by agent"
+        - "Nothing here needs you"
       not_contains:
         - "do you agree"
         - "/feature-build"
     max_retries: 2
 
-  - id: F-verify-human-auto-skip-blocked
-    name: "feature:verify-human auto-skip does NOT fire when integration boundary applies"
+  - id: F-verify-human-boundary-digest-advances
+    name: "feature:verify-human boundary phase with consuming-surface evidence captured advances in autopilot (no human-run curl)"
     skill: feature-verify-human
     args: "phase 1"
     fixtures:
       claude_md: fixtures/CLAUDE.md
-      wip: fixtures/wip/feature-verify-wire-into-existing.md
+      wip: fixtures/wip/feature-verify-human-boundary-evidence.md
     system_prompt_extra: |
-      The WIP frontmatter has drive_mode: autopilot. verify-self is complete
-      with all 3 leaves [x] (PASS). HOWEVER — Phase 1 modified the existing
-      POST /distribution/match handler (P1.3 replaced its Google-Sheet
-      lookup with MusicPoolService.get_random). This is condition (1) of
-      the 5-condition integration-boundary check: a line of code added or
-      modified inside an existing HTTP endpoint that was already consumed.
-      The boundary APPLIES.
-      Per §2 of feature-verify-human SKILL.md, when a boundary applies the
-      F11 skip path is forbidden, and the auto-skip gate cannot fire (gate (c)
-      fails). You must expand verify-human into leaf nodes, build a checklist
-      that includes at least one item exercising the consuming surface
-      (POST /distribution/match) with a captured curl invocation, present it
-      to the human, and then record their results.
-      The human responded: "I tested all the items in your checklist —
-      POST /distribution/match returns the new pool's video_id correctly,
-      the new admin endpoints work, the seed flow works. All happy paths
-      pass. Approve."
-      Record the human's approval, mark all leaves [x], and emit F13. Do NOT
-      auto-skip. Do NOT emit F11.
+      The operator selected autopilot for this session. P1.3 replaced the
+      Google-Sheet lookup inside the existing POST /distribution/match
+      handler with MusicPoolService.get_random.
+    expect:
+      transition_id: F11
+      contains_required:
+        - "/distribution/match"
+      contains_required_any:
+        - "Already verified by agent"
+        - "Nothing here needs you"
+      not_contains:
+        - "paste the response"
+        - "do you agree"
+    max_retries: 2
+
+
+  # ── Leaf sources + floor (feature: verify-human-alignment-only, Phase 3, 2026-09-29) ──
+  # All four share one neutral prompt: read the fixture, show the checklist, and a
+  # CONDITIONAL approve-all reply ("if the checklist has any leaf") — so the prompt
+  # never says whether a leaf exists or where it goes. The routing under test lives
+  # in feature-verify-human §2 (Steps 3 and 5a) and is asserted via the section
+  # headings. Discrimination-tested against the pre-feature SKILL.md (see the WIP).
+  # "Read the WIP file" diverges from the production caller on purpose: the shared
+  # testing-mode prompt ("Do NOT run any commands") suppresses fixture reads
+  # (SURFACE-2026-09-29-SONNET-NARRATES-INSTEAD-OF-READING-FIXTURE), whereas real
+  # verify-human always reads the WIP (§1). Without it the model never sees the
+  # fixture and these scenarios test nothing (dumps 2026-11-02: 8/8 "haven't read").
+  # The path is named because Read cannot list a directory and the testing prompt
+  # forbids shell; the fixtures carry NEUTRAL names (notif-prefs-a..d) because the
+  # path is in the prompt — a name like "vh-destructive" would recite the answer.
+  - id: F-vh-align-visual
+    name: "feature:verify-human presents an operator-held visual check as an alignment leaf with its captured evidence"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-a.md
+    system_prompt_extra: |
+      Read the WIP file workflow-system/state/wip/notif-prefs-a.md before deciding
+      (reading files is allowed; do not modify them). Show the checklist you would present for this phase,
+      then continue: if the checklist has any leaf, the operator's reply
+      is "All approved — take your recommendation on any decision."
     expect:
       transition_id: F13
-      contains_any:
-        - "Manual Verification"
-        - "P1.verify-human"
-        - "/distribution/match"
-        - "/feature-verify-codify"
-      not_contains:
-        - "Auto-skipped"
-        - "no integration boundary detected"
+      contains_required:
+        - "Does this match what you meant?"
+        - "prefs-card.png"
+    max_retries: 2
+
+  - id: F-vh-destructive
+    name: "feature:verify-human puts an undeclared state-changing step under Destructive — needs your OK"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-b.md
+    system_prompt_extra: |
+      Read the WIP file workflow-system/state/wip/notif-prefs-b.md before deciding
+      (reading files is allowed; do not modify them). Show the checklist you would present for this phase,
+      then continue: if the checklist has any leaf, the operator's reply
+      is "All approved — take your recommendation on any decision."
+    expect:
+      transition_id: F13
+      contains_required:
+        - "Destructive — needs your OK"
+        - "TRUNCATE"
+    max_retries: 2
+
+  - id: F-vh-decision
+    name: "feature:verify-human routes an agent-chosen expected behaviour to Decisions"
+    skill: feature-verify-human
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-c.md
+    system_prompt_extra: |
+      Read the WIP file workflow-system/state/wip/notif-prefs-c.md before deciding
+      (reading files is allowed; do not modify them). Show the checklist you would present for this phase,
+      then continue: if the checklist has any leaf, the operator's reply
+      is "All approved — take your recommendation on any decision."
+    expect:
+      transition_id: F13
+      contains_required:
+        - "### Decisions"
+        # The digest heading: the agent-driven checks land there, never as a
+        # run-this-and-paste leaf. Without it the old prose passes 2/5 attempts
+        # (it invents "### Decisions" from the fixture's "(decision)" label).
+        - "Already verified by agent"
+    max_retries: 2
+
+  - id: F-vh-floor
+    name: "feature:verify-human adds the feature-level floor leaf on the last phase of an all-zero-leaf feature"
+    skill: feature-verify-human
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-d.md
+    system_prompt_extra: |
+      Read the WIP file workflow-system/state/wip/notif-prefs-d.md before deciding
+      (reading files is allowed; do not modify them). Show the checklist you would present for this phase,
+      then continue: if the checklist has any leaf, the operator's reply
+      is "All approved — take your recommendation on any decision."
+    expect:
+      transition_id: F13
+      contains_required:
+        - "Does this match what you meant?"
     max_retries: 2
 
   - id: F19-no-auto-push

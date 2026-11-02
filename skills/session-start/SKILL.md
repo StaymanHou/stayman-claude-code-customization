@@ -39,7 +39,7 @@ When you finish dispatching, label your output with one of these IDs (the test h
 - **S9** — pause at feature-finalize (orchestration PAUSE step)
 - **S10** — user asked for end-to-end driving but no mode picked yet — present the drive-mode menu (do NOT skip directly to build)
 - **S11** — Mode 4 (FSD): chain past plan into build without pausing
-- **S12** — Mode 3 (Autopilot): pause only at verify-human (and auto-skips it when no integration boundary + verify-self all-PASS)
+- **S12** — Mode 3 (Autopilot): pause only at verify-human (and auto-skips it when it has zero admissible leaves — nothing needs the operator)
 - **S13** — Mode 1 (Stepping): pause after every skill, tell the user the next slash command (do NOT auto-chain)
 - **S14** — Mode 4 (FSD): skip verify-human, chain to verify-codify
 
@@ -51,7 +51,7 @@ Four modes control how aggressively the orchestrator chains between steps. The f
 |------|------|----------------|
 | 1 | **Stepping** | Pause after every skill — you confirm each transition manually |
 | 2 | **Orchestrated** | Standard policy from AGENTS.md (spec, plan, verify-human, finalize pause; everything else auto) |
-| 3 | **Autopilot** | Only `verify-human` pauses (and auto-skips it when no integration boundary + verify-self all-PASS); all other steps auto-chain |
+| 3 | **Autopilot** | Only `verify-human` pauses (and auto-skips it when nothing needs you — zero admissible leaves, digest printed); all other steps auto-chain |
 | 4 | **FSD** | No pauses at all; `verify-human` is **skipped** (verify-self result is the acceptance gate); runs to completion |
 
 **Precedence rule (critical — read before driving):**
@@ -126,7 +126,7 @@ State your classification (1–2 sentences), then present the mode menu (the har
 >
 >   1. Stepping     — pause after every skill; you confirm each transition
 >   2. Orchestrated — standard pauses (spec, plan, verify-human, finalize)
->   3. Autopilot    — only pauses at verify-human (and auto-skips it when no integration boundary); everything else chains automatically
+>   3. Autopilot    — only pauses at verify-human (and auto-skips it when nothing needs you); everything else chains automatically
 >   4. FSD          — no pauses; verify-human skipped; runs to completion
 >
 > (Type 1–4 — or just press Enter for Autopilot)
@@ -154,7 +154,7 @@ You are now the orchestrator for the classified workflow. You do **NOT** spawn a
 1. Invoke the current skill via the `Skill` tool.
 2. When the skill returns, **re-read the active drive mode** and check the pause-policy table in `workflow-system/product/transitions.md` → "Drive modes" for that step.
 3. If the policy says PAUSE for the active mode: stop and wait for the user (the harness's Notification hook fires automatically).
-4. If the policy says AUTO (or SKIP for verify-human in Mode 4, or AUTO-SKIP for verify-human in Mode 3 when the gate is clean): invoke the next skill immediately — do **not** ask the user to retype a slash command, and do **not** treat `"Run /x"` or `**STOP**` in the skill's output as a stop signal.
+4. If the policy says AUTO (or SKIP for verify-human in Mode 4, or AUTO-SKIP for verify-human in Mode 3 when it has zero admissible leaves): invoke the next skill immediately — do **not** ask the user to retype a slash command, and do **not** treat `"Run /x"` or `**STOP**` in the skill's output as a stop signal.
 5. Repeat until the workflow reaches a terminal state or the user explicitly pauses.
 
 **Anti-example — the exact failure pattern this rule prevents:**

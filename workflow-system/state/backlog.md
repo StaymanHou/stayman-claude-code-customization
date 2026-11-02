@@ -35,6 +35,56 @@
 - **Priority:** high
 - **Status:** pending
 
+## SURFACE-2026-09-29-VERIFY-HUMAN-DIGEST-FORMAT-ADHERENCE
+
+- **Source:** feature:verify-codify (verify-human-alignment-only, Phase 2)
+- **Target level:** task
+- **Type:** tech-debt (prose adherence, stochastic)
+- **Summary:** On zero-leaf phases, haiku sometimes advances correctly (F11) but summarises the digest in prose instead of printing the `### Already verified by agent` block and the `Nothing here needs you — advanced per drive_mode=…` line that §2 Step 5b requires. First-attempt rate across the session ~3–5/6 on `F-verify-human-auto-skip-fires`; every run passes within 2 attempts.
+- **Context:** The printed digest is the operator's read-time veto in autopilot — a summary loses the per-check lines. The transition itself is right in every recorded run.
+- **Suggested action:** measure on the production-tier model (the scenario harness is haiku); if it reproduces there, try moving the digest template into Step 5b itself (show the exact block) rather than pointing at §4. Measure n≥6 before/after.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-09-29-SONNET-NARRATES-INSTEAD-OF-READING-FIXTURE
+
+- **Source:** feature:verify-self (verify-human-alignment-only, Phase 2 re-measure)
+- **Target level:** task
+- **Type:** tech-debt (test-harness artifact)
+- **Summary:** Under the scenario harness's testing-mode system prompt, sonnet often *describes* what it would do ("I'd read `workflow-system/state/wip/`…") instead of opening the fixture WIP — so it never sees evidence the fixture carries and reasons from the prompt alone. Measured on `F-verify-human-boundary-digest-advances`: sonnet 2/6 first-attempt, 3 hard FAILs emitting F12 because "nothing in the state I was given" showed the consuming-surface line that is in the fixture; haiku reads the fixture and passes 9/12 first-attempt on the same pair.
+- **Context:** Any scenario whose correct answer depends on fixture contents (not on the prompt) is confounded on sonnet. Do not `model: sonnet`-tag such scenarios as a flakiness remedy — sonnet is worse here for a harness reason.
+- **Suggested action:** check the harness's testing-mode wording in `tests/run-tests.sh` (`full_prompt`) — permit read-only tool use explicitly ("you may Read files; do not modify them") — then re-measure n≥6 on both tiers.
+- **Update (same day):** also observed on **haiku** — `F-boundary-human` attempt 1: "I cannot actually execute this skill because I have no access to the WIP file … the most common happy-path scenario … TRANSITION: F13". Not sonnet-specific; the testing-mode prompt suppresses fixture reads on both tiers, intermittently.
+- **Root cause found (2026-11-02, verify-human-alignment-only P3.1):** the model *cannot discover the fixture filename* — `Read` on `workflow-system/state/wip/` fails with EISDIR, `Glob` is not in the harness tool surface, and the testing-mode prompt forbids shell (`ls`). Dumps: 8/8 "I haven't read the WIP", then 24 runs "could not locate the WIP" → `TRANSITION: none`/F12. Naming the exact path in `system_prompt_extra` fixed it (4/4 first-attempt). Two cautions for the fix: fixture filenames become visible in the prompt, so they must be neutral (a name like `vh-destructive` recites the answer); and the general fix belongs in `tests/run-tests.sh` — e.g. append "The WIP file is `workflow-system/state/wip/<basename>`" whenever `fixtures.wip` is set — which would also explain/repair other scenarios' fixture-blindness on both tiers.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-09-29-F-BOUNDARY-SELF-SOFT-PASS-ONLY
+
+- **Source:** feature:verify-self (verify-human-alignment-only, Phase 1)
+- **Target level:** task
+- **Type:** tech-debt (weak scenario)
+- **Summary:** `tests/scenarios/feature.yaml::F-boundary-self` (verify-self must back-loop F9b when a boundary phase has no consuming-surface outcome) almost never produces a structured `F9b` on haiku — measured 0/4 on the committed skill, 1/5 after this feature's edit — and is scored SOFT_PASS only through its `contains_any: /distribution/match` fallback, which any response that merely names the endpoint satisfies.
+- **Context:** The harness treats SOFT_PASS as passing, so the suite reports this scenario green while it does not discriminate the back-loop. Same class as the "green on the first try" lesson in root `CLAUDE.md`.
+- **Suggested action:** move the endpoint anchor to `contains_required_any`, measure n≥6 on haiku and sonnet, then either fix the fixture/prompt so F9b is reachable or tag it per the recon discipline; discrimination-test by deleting the boundary back-loop prose.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-09-29-SESSION-END-GARBAGE-COLLECT-VERIFY-PROCESSES
+
+- **Source:** operator (feature session `verify-human-alignment-only`, 2026-09-29) — direct request, not a workflow-run discovery
+- **Target level:** task (possibly feature if a shared primitive + pins are wanted — decide at `/task-plan`)
+- **Type:** gap (resource hygiene at session/work boundaries)
+- **Summary:** Add a "garbage collect" step to the close/handoff boundary so processes spawned for verification don't linger after the work ends: Playwright MCP browser instances, Tauri MCP / dev-mode app processes (e.g. claudesk dev builds), and similar verify-time leftovers. Nothing in `feature-finalize`, `session-handoff`, `feature-verify-self`, or the runner currently closes or reaps them.
+- **Context:** verify-self is being extended (feature `verify-human-alignment-only`) to drive more surfaces itself — native windows, ptys, dev apps — which raises the number of processes a phase leaves behind. The operator has observed lingering browsers and dev apps.
+- **Suggested action (hypotheses — verify against the skills before writing):**
+  - Decide the host: `feature-finalize` (per-feature close), `session-handoff` (session boundary — also covers task/incident sessions), or both via one shared routine; consider also a lighter pass at the end of `feature-verify-self`, since the runner is the main spawner.
+  - Scope the reaping to processes **this session/project started** (track spawned PIDs, or match on the project path / MCP-owned profile dirs) — never a blanket `pkill` that could kill the operator's own browser or an unrelated dev app. Prefer the MCP's own close tool (`browser_close`) before signals.
+  - Report what was reaped in chat (read-time veto), and skip silently when nothing is found.
+  - Check macOS specifics (Playwright's Chromium profile dirs, `tauri dev` child trees: node + cargo + the app binary).
+- **Priority:** medium
+- **Status:** pending
+
 ## SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE
 
 - **Source:** global learning from `light-bot-remastered` M6 WP2 (schema and migrations), 2026-09-27. It was ported to `.claude/learnings/2026-09-27-verify-human-is-for-alignment-not-correctness.md`.

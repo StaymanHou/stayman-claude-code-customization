@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-07-28
+updated: 2026-09-29
 ---
 
 # Architecture
@@ -230,6 +230,25 @@ updated: <YYYY-MM-DD>
 - Incident-workflow skills — unaffected.
 - `session-*` skills — unaffected. The Work Tree is carried transparently through pause/resume because it lives in the WIP file.
 - `install.sh` — no new files, no new symlinks needed for Phases 1–2.
+
+## Revision 2026-09-29
+
+### verify-human is for alignment, not correctness (feature `verify-human-alignment-only`)
+
+**Problem.** verify-human handed the operator checks the agent could drive — copy-paste commands, curls, re-runs of what verify-auto/verify-self had already run — and the integration-boundary rule *mandated* a human-run `curl`. Mining 727 real checklists and 300 skip events from this machine's session logs showed: every run-a-command item had a pass/fail answer and none ever caught a defect; the operator's real catches came from rendered output vs a reference/taste, data only they knew, decisions, and spec consequences seen for the first time; edge-case items caught almost nothing (4 of 203 catches) while the sad paths that mattered were found by exploring the happy path.
+
+**Design.**
+- **Routing axis:** *can the agent drive it?* × *does the agent hold the expected result?* — not fact-vs-judgment. Agent-drivable + agent-judged → verify-auto/verify-self, shown in an "Already verified by agent" **digest**, never re-asked.
+- **Five leaf sources only** (verify-human §2 Step 3): an Alignment question from the plan; a spec `Assumed` default/decision first visible in the phase; a decision (incl. an agent-chosen expected behaviour, marked `(decision)` at plan time); `UNVERIFIED: undrivable` / `no harness` (with a `buildable:` note); `UNVERIFIED: destructive`. Fixed checklist sections replace ad-hoc headings; happy path first; no sad-path leaves.
+- **Step 2 stop:** verify-self not run, a BLOCKING failure, or missing consuming-surface evidence → back-loop F12 (the agent drives it; the operator is never handed the command).
+- **Zero-leaf rule** replaces the four-gate auto-skip and the boundary's forced pause: zero leaves → F11 (autopilot silently, orchestrated one-line confirm), digest always printed in §4 format.
+- **Feature-level floor:** on the last phase of a feature whose every phase advanced with zero leaves, one "see it in action" leaf (main happy path end to end + the spec defaults it depends on). 14 of 15 defects missed at skipped gates in the logs were caught by a later human look in the same work package.
+- **Upstream:** `feature-plan` authors Alignment questions separately from Observable outcomes and declares state-changing steps; the verify-self runner gains `CAPTURED` + `evidence:` rows, a **mutation fence** (declared, dev/test-only state changes; never git writes, shared/prod/paid resources, outside the project), real OS input over synthetic events, "look at what you produced", and two `UNVERIFIED` forms; `feature-spec`/`feature-plan` stamp `drive_mode` into WIP frontmatter.
+
+**Transitions.** No new IDs. F11's trigger changed (zero admissible leaves); F12 also fires agent-initiated from §2 Step 2.
+
+**Tests.** `[Phase 23]` (upstream surfaces) and `[Phase 24]` (verify-human procedure) in `tests/check-structure.sh`, each sweep-verified (56 cases, 0 wrong). Behavioral scenarios rewritten/added in `tests/scenarios/feature.yaml`; haiku first-attempt rates are stochastic (≈⅔–⅚) and every scenario passes within the harness retry — rates, not verdicts, are recorded in the feature's archived WIP.
+
 
 ## Revision 2026-07-20
 

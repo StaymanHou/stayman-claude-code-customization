@@ -20,21 +20,21 @@ This is the third step of the per-phase verification loop: `build → verify-aut
 
 **Valid transitions from here:**
 - **F13 → verify-codify:** Human approves → tell user to run `/feature-verify-codify`
-- **F11 → verify-codify:** Nothing for human to test (with confirmation) → tell user to run `/feature-verify-codify`
-- **F12 → build (back-loop):** Human rejects → document issues, tell user to run `/feature-build`
+- **F11 → verify-codify:** Zero admissible leaves — nothing needs the operator (§2 zero-leaf rule: auto in autopilot/fsd, one-line confirm otherwise) → tell user to run `/feature-verify-codify`
+- **F12 → build (back-loop):** Human rejects — or §2 Step 2 found verify-self incomplete (not run, a BLOCKING failure, or missing consuming-surface evidence) → document issues, tell user to run `/feature-build`
 
 ## Orchestrator Pause Policy (cheat-sheet)
 
-This skill is the **one forced human-pause** in the per-phase loop for Modes 1–2 — invocation itself PAUSEs while the human walks the checklist (§5 of the Procedure). In Mode 3 the pause is **conditional**: when the §2 Auto-skip gate is clean (no integration boundary + verify-self all-PASS), the skill AUTO-SKIPs by emitting F11 without prompting; otherwise Mode 3 still PAUSEs. Mode 4 SKIPs invocation entirely.
+This skill is the **one forced human-pause** in the per-phase loop for Modes 1–2 — invocation itself PAUSEs while the human walks the checklist (§5 of the Procedure). In Mode 3 the pause is **conditional**: when §2 leaves **zero admissible leaves** (every check was agent-driven and agent-judged), the skill prints the digest and AUTO-SKIPs by emitting F11 without prompting; otherwise Mode 3 still PAUSEs. Mode 4 SKIPs invocation entirely.
 
 Once the human has responded (or in Mode 3 auto-skip, immediately) and this skill emits an exit transition, the orchestrator reads `TRANSITION: <id>` and uses this table to decide whether to chain or pause:
 
 | Transition | Mode 1 — Stepping | Mode 2 — Orchestrated | Mode 3 — Autopilot | Mode 4 — FSD |
 |---|---|---|---|---|
-| Skill invocation (entry — present checklist) | PAUSE | **PAUSE** (await human) | **PAUSE** (await human) — or AUTO-SKIP when §2 Auto-skip gate clean (no boundary + verify-self all-PASS) | **SKIP** (orchestrator chains verify-self → verify-codify directly) |
+| Skill invocation (entry — present checklist) | PAUSE | **PAUSE** (await human; zero leaves → one-line confirm) | **PAUSE** (await human) — or AUTO-SKIP when §2 leaves zero admissible leaves (digest printed) | **SKIP** (orchestrator chains verify-self → verify-codify directly) |
 | F13 (human approves → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
-| F11 (human-confirmed skip → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
-| F11 (AUTO-SKIP — auto-skip gate clean, no prompt) | n/a | n/a | AUTO | n/a (skipped) |
+| F11 (human-confirmed zero-leaf continue → verify-codify) | PAUSE | AUTO | AUTO | n/a (skipped) |
+| F11 (AUTO-SKIP — zero admissible leaves, digest printed, no prompt) | n/a | n/a | AUTO | n/a (skipped) |
 | F12 (back-loop to build with scoped leaves) | PAUSE | AUTO | AUTO | n/a (skipped) |
 
 **Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode (i.e., the human has already responded), the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user a second time after the human's reply. Emitting a clean `TRANSITION: F13` followed by a polite narrative summary ("Phase approved; ready to run verify-codify") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. **This explicitly includes the `AskUserQuestion` tool (and any other user-input/confirmation prompt): invoking it on an AUTO transition IS "returning control to the user" and is the same regression class as the narrative-summary stop above — do NOT call it to "just confirm" the handoff. The only thing that pauses an AUTO transition is the human-input points the active drive mode's pause policy explicitly marks PAUSE.** See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
@@ -44,65 +44,65 @@ Once the human has responded (or in Mode 3 auto-skip, immediately) and this skil
 ### 1. Read Current Node
 Read the WIP file in `workflow-system/state/wip/`. Find `## Current Node` — this tells you which phase's `verify-human` node is active and whether this is a first run or re-entry from a back-loop.
 
-### 2. Assess Whether Human Testing is Needed
+### 2. Decide what — if anything — needs the operator
 
-First, determine whether this phase has an **integration boundary**. A phase has a boundary when any of the following is true:
+**verify-human is for alignment, not correctness.** The operator's rule: *if something is self-drivable by the agent, it is driven in verify-auto or verify-self; a leaf reaches the operator only when the answer is theirs to give.* So this step does not ask "is there anything to test?" — it builds a digest of what the agent already verified and collects only the leaves whose answer is the operator's.
 
-1. A line of code was added or modified inside a file that an existing HTTP endpoint, route, controller, resolver, or middleware already consumed.
-2. A line of code was added or modified inside an existing UI page, view, or component such that user-visible behavior changes.
-3. A line of code was added or modified inside an existing CLI command or argument parser.
-4. A line of code was added or modified inside an existing scheduled job, cron, queue consumer, or background worker.
-5. The request/response shape, payload, or destination of an existing outbound call to an external system was changed.
+**Work through Steps 1–5 in order.** Step 2 can stop the procedure with a back-loop; otherwise each step feeds the next.
 
-**If a boundary applies, the F11 skip path is forbidden.** Even when there is no UI to click, the human checklist MUST include at least one item: a recorded `curl` (or equivalent CLI invocation) against the consuming surface, with the response captured. Phrase the item so the human can copy-paste-run it: e.g. "Run `curl -sS -X POST http://localhost:8000/distribution/match -d '{...}'` and paste the response — confirm the `video_id` field is one the new pool would produce." Do **not** mark the phase complete on the human's "looks fine" alone — require the captured response.
+**Step 1 — Build the digest.** Read the phase's `verify-auto` and `verify-self` subtrees; each leaf carries an `evidence:` line. Write one digest line per check (what ran → result, key output line). Everything in the digest is done: it is **never** re-asked and never turned into "run this and paste the output". Process choices that do **not** change what ships (a plan-wording fix, an evidence substitution) go on an **Assumed** line under the digest, not in a leaf.
 
-**If no boundary applies** (the phase only adds isolated new artifacts that no existing surface consumes):
-- Affirm this in writing: "This phase does NOT wire into any existing endpoint, route, UI page, CLI command, scheduled job, or external-system call. It only adds isolated new artifacts: [list them]."
-- Then check the **Auto-skip gate** below. If gates clean, auto-skip without prompting. Otherwise, ask the human: "Given that affirmation, do you agree to skip to verify-codify?" Only proceed to verify-codify (F11) if the human confirms.
+**Step 2 — Check that verify-self ran clean, and the boundary evidence (stop here if not).** If the phase's `verify-self` node is `NOT-STARTED`, or any of its leaves is `FAILED` (BLOCKING), verify-self did not finish its job — **back-loop with `TRANSITION: F12`** naming those leaves; never build a digest from outcomes nobody observed. Then: Decide whether the phase has an **integration boundary** — a line added or modified inside an existing HTTP endpoint/route/controller/resolver/middleware, an existing UI page/view/component with user-visible change, an existing CLI command or parser, an existing scheduled job/queue consumer/worker, or a changed request/response/destination of an existing outbound call. If it does, the digest **must** contain a line naming the **consuming surface** (the existing endpoint/page/command) with its actual captured output — saying you will run it is not evidence. (Exception: if verify-self recorded the consuming surface — or any check — as `UNVERIFIED: undrivable — …`, `no harness — …`, or `destructive — …`, it is **not** a gap: it goes to Step 3 as kind (d) or (e).) If that line is missing — or any other correctness check was never driven upstream and has no such `UNVERIFIED` record — it is a verify-self gap, **never a leaf**: run it now if it is read-only and reachable, and add it to the digest; otherwise **back-loop with `TRANSITION: F12`**, recording a `<!-- status: FAILED -->` leaf that names the check and the consuming surface and notes verify-self missed it. Never hand the operator a command for it. A stopped dev server, container, or stale build is something the agent starts or rebuilds (containers per the project `CLAUDE.md`), not a reason to hand it over.
 
-The skip path is gated by the affirmation, not by the agent's general judgment that "there is nothing to test."
+**Step 3 — Collect leaves from these five sources, and nowhere else.**
 
-#### Auto-skip gate (Mode 3+ + no boundary + verify-self all-PASS)
+| # | Source | Why the operator is needed | Checklist section |
+|---|---|---|---|
+| (a) | An item in the phase's `**Alignment questions:**` block not marked `(decision)` (verify-self captured its evidence as `CAPTURED`) — rendered output vs a reference or their taste, data/behaviour whose ground truth is theirs | the agent can observe it but cannot know what "right" is | Does this match what you meant? |
+| (b) | A spec `Assumed` default or review decision whose consequence **first becomes visible in this phase** | agreeing to a spec in the abstract is not informed consent; seeing the behaviour is | Does this match what you meant? |
+| (c) | A decision: accept or fix a `FAILED-cosmetic` item; an Alignment question the plan marked `(decision)` (an expected behaviour the agent chose where the spec was silent); accept an evidence gap or a tradeoff | the operator is the decider — a test written on the agent's guess would lock the guess in | Decisions |
+| (d) | verify-self recorded `UNVERIFIED: undrivable — …` or `UNVERIFIED: no harness — …` (physical hardware, the operator's own accounts or files, an unreachable system, operator-only facts, feel, taste without a reference; or no way to drive the surface in this project) | necessity, not category | Needs you to run |
+| (e) | verify-self recorded `UNVERIFIED: destructive — needs operator OK` | only the operator may authorise it | Destructive — needs your OK |
 
-In drive_mode `autopilot` (Mode 3) or `fsd` (Mode 4), the human "do you agree to skip?" prompt is redundant when the objective gate is already clean — the operator has opted into autopilot, and the affirmation rules above provide an objective check. The auto-skip elides the prompt but **still prints the affirmation block in chat** so the operator retains a read-time veto.
+**Nothing else becomes a leaf.** In particular:
+- **Not a command's pass/fail, an exit code, a status code, or "element is present"** — conformance to the spec is the agent's check, and it is in the digest.
+- **Not a flow just because it changed, touches an integration boundary, or matters.** If the Alignment questions block says `none` and no spec decision first shows up in this phase, there are **no** (a)/(b) leaves.
+- **Not a sad/edge path.** A sad path belongs to verify-codify when a test can reach it; verify-self drives it with real input when only a running system can; only if neither can reach it (a native dialog, a real restart, live external output) and it is UX-critical is it kind (d), with the reason.
 
-**Read `drive_mode`** from the WIP file's YAML frontmatter (`drive_mode: autopilot` or `drive_mode: fsd`). Then evaluate all four conditions:
+**Step 4 — Order: happy path first.** If one of the collected (a)/(b) leaves is about the phase's **main intended flow**, put it first and invite the operator to try it in the running system ("open it, do the main thing, poke at it") rather than handing them a list of cases — the sad paths that mattered in practice were found that way, not from edge-case items. This step only orders leaves; it never adds one.
 
-1. **(a) drive_mode is `autopilot` or `fsd`** — read from WIP frontmatter. If frontmatter has no `drive_mode` field, treat as Mode 2 (orchestrated) and do NOT auto-skip.
-2. **(b) verify-self all-PASS** — scan the current phase's `verify-self` subtree in the Work Tree. Every leaf must be `[x]` (no `UNVERIFIED`, no `FAILED`, no `FAILED-cosmetic`, no `NOT-STARTED`). If verify-self itself is `NOT-STARTED` or any leaf is non-PASS, do NOT auto-skip.
-3. **(c) No integration boundary applies** — the 5-condition check above returned "no boundary." If a boundary applies, auto-skip is irrelevant (the F11 skip path is forbidden entirely).
-4. **(d) No observable outcome cites a consuming surface by name** — re-read the phase's Observable Outcomes block. If any outcome line names an existing endpoint, UI route, CLI command, job, or external system that the phase modifies (rather than adds fresh), this is a boundary signal that (c) may have missed. Be conservative: if you cannot affirm "none of the outcomes references a consuming surface this phase touches," do NOT auto-skip.
+#### Zero-leaf rule — nothing needs the operator
 
-**When ALL four gates clean:**
-- Print the affirmation block in chat (the same paragraph from above naming the isolated new artifacts).
-- Print one additional line: `Auto-skipped per drive_mode=<mode> — no integration boundary detected.`
-- Emit `TRANSITION: F11` immediately. Do NOT ask "do you agree to skip?" — the operator's autopilot opt-in is the consent.
-- Update the WIP tree exactly as the human-confirmed F11 path would (mark verify-human `[x]`, update Current Node).
+**Step 5 — If Step 3 collected zero leaves:**
+- **5a. Feature-level floor — at least one look per feature.** If any later phase in the Work Tree is `NOT-STARTED`, this is **not** the last phase — skip 5a and go to 5b. On the last phase, if every earlier phase's `verify-human` also advanced with zero leaves, **do not advance**: add one leaf under "Does this match what you meant?" — *the feature's main happy path, end to end, in the running system, plus the spec's `Assumed` defaults it depends on — "now that you see it, still what you want?"* — and present it (§3–§5). Without this, a whole feature can reach ship with no human look at all; in the session logs, nearly every defect a skipped gate missed was caught by a later human look in the same work package. Applies in `stepping`, `orchestrated`, and `autopilot`; `fsd` skips verify-human entirely (the operator opted out).
+- **5b. Advance.** Print the digest **in the §4 format, not as a summary** — the `## Manual Verification — Phase <N>` heading, then `### Already verified by agent` with one line per check (including the consuming-surface line when there is a boundary). It is the operator's read-time veto: a prose summary of "all checks passed" does not replace it, even when advancing without asking. Read `drive_mode` from the WIP's YAML frontmatter (absent → treat as `orchestrated`):
+  - **`autopilot` / `fsd`:** print `Nothing here needs you — advanced per drive_mode=<mode>.` and emit `TRANSITION: F11` without asking.
+  - **`orchestrated` / `stepping`:** ask one line — `Nothing here needs you — continue?` — and emit `TRANSITION: F11` on confirmation.
+  - Update the WIP tree as for any F11: mark `verify-human` `[x]`, update Current Node.
 
-**When ANY gate fails:** fall through to the existing F11-with-confirmation path (ask the human, wait for "skip" confirmation, then emit F11).
+A phase whose deliverable is a decision artifact (probe results, a retrospect, a baseline) never reaches Step 5 by accident: the decision it asks for is kind (c), so it is a leaf.
 
-This auto-skip applies only to the F11 path (no boundary, isolated artifacts). The F13 (human approves checklist) and F12 (back-loop) paths are unchanged and never auto-skip — those require actual human judgment by definition.
-
-**Known limitation — probe/decision-artifact false positive.** A phase whose load-bearing deliverable is a human decision ACK (probe results, retrospect findings, baseline measurements) with no integration boundary will be auto-skipped under the current gates. The operator's read-time veto (the printed affirmation block) is the recovery mechanism — manually run `/feature-build <leaf-id>` if a misclassification needs review. A future cycle may add a 5th gate (no decision-artifact outcomes) when a real regression hits.
 
 ### 3. Expand verify-human into leaf nodes (first run)
 
 **On first run for this phase** (verify-human node has no children yet):
-- Expand the `verify-human` node into individual leaf items in the WIP tree — one leaf per check
-- Each leaf gets a node ID (e.g., `P1.verify-human.1`, `P1.verify-human.2`) and `<!-- status: NOT-STARTED -->`
+- Expand the `verify-human` node into one leaf per admissible item from §2 — each with a node ID (e.g., `P1.verify-human.1`) and `<!-- status: NOT-STARTED -->`
+- Each (a)/(b) leaf carries its captured evidence (from the verify-self `CAPTURED` leaf) so the operator judges what they see, not what they would have to go and produce
 
 **On re-entry from build back-loop** (verify-human node already has children):
 - Present only leaves that are `FAILED` or `BLOCKED` — skip any `[x]` leaves
 - Do not re-present items the human already approved
 
-**Pre-filter from verify-self:** Read `verify-self` results in the WIP tree before building the checklist. Apply these rules strictly — do not present items the agent already confirmed:
+**Sorting verify-self results:**
 
-| verify-self status | Action in human checklist |
-|--------------------|--------------------------|
-| `[x]` (PASS) | **EXCLUDED entirely** — do not show it, do not mention it. The agent confirmed it; the human's time is better spent on judgment calls. |
-| `UNVERIFIED` (Playwright unavailable) | **INCLUDE**, annotated: "agent could not verify — check manually" |
-| `FAILED-cosmetic` | **INCLUDE as low-priority note** — not a blocker, human may choose to accept or reject |
-| `FAILED` (BLOCKING) | Agent should have caught this in verify-self and back-looped already. If it appears here, **INCLUDE as blocker** and note it was missed by verify-self. |
+| verify-self leaf | Goes to |
+|---|---|
+| `[x]` PASS (with `evidence:`) | **Digest** — one line, no action asked |
+| `[x]` `align:` … (CAPTURED) | **Does this match what you meant?** — leaf carrying the captured evidence; an `align:` item the plan marked `(decision)` goes to **Decisions** instead |
+| `UNVERIFIED: undrivable — …` / `UNVERIFIED: no harness — …` | **Needs you to run** — leaf stating why the agent could not, and the smallest input needed from the operator; for *no harness*, carry the runner's `buildable:` note so the operator can decide once whether to build one |
+| `UNVERIFIED: destructive — needs operator OK` | **Destructive — needs your OK** — leaf naming the exact step |
+| `FAILED-cosmetic` | **Decisions** — "accept as-is or fix now?" with a recommendation |
+| `FAILED` (BLOCKING), or `verify-self` still `NOT-STARTED` | **Not a leaf** — Step 2 back-loops (F12); verify-self should have back-looped already |
 
 **Severity reference** (for classifying any new issues found during human testing):
 - **BLOCKING:** blank page, JS console error, crash, missing required element, broken navigation, auth failure, data loss, wrong HTTP status on critical endpoint
@@ -112,24 +112,35 @@ This auto-skip applies only to the F11 path (no boundary, isolated artifacts). T
 
 ### 4. Present Checklist
 
-For each leaf item (after filtering), present as:
+Present in this order, omitting any empty section:
 
 ```markdown
 ## Manual Verification — Phase <N>
 
-### Happy Path
-- [ ] P1.verify-human.1: <action> → Expected: <result>
-- [ ] P1.verify-human.2: <action> → Expected: <result>
+### Already verified by agent
+- <check> — <command/action> → <exit/status>, <key output line>
+- …
+**Assumed:** <agent-ratify items and defaults taken without asking — or omit>
 
-### Edge Cases
-- [ ] P1.verify-human.3: <edge case> → Expected: <result>
+### Does this match what you meant?
+- [ ] P<N>.verify-human.1: (only if admissible) <the main happy path — where to try it in the running system, plus the captured evidence> — try it: is this what you meant?
+- [ ] P<N>.verify-human.2: <evidence shown inline or by path> — <one alignment question: "is this what you meant?" / "now that you see it, still what you want?">
+
+### Decisions
+- [ ] P<N>.verify-human.3: <the choice> — options: <A> / <B>; recommended: <A>, because <reason>
+
+### Needs you to run
+- [ ] P<N>.verify-human.4: <step> — agent could not because <reason>; needed from you: <the minimal input>
+
+### Destructive — needs your OK
+- [ ] P<N>.verify-human.5: <exact state-changing step and what it touches> — OK to run?
 
 ### Blocked (cannot test until above resolved)
-- [ ] P1.verify-human.4: BLOCKED: depends on P1.verify-human.1
-
-### Agent could not verify (check manually)
-- [ ] P1.verify-human.5: <item> [UNVERIFIED by agent]
+- [ ] P<N>.verify-human.6: BLOCKED: depends on P<N>.verify-human.1
 ```
+
+The digest's lines come from the `evidence:` lines recorded by verify-auto and verify-self. The operator can pull any digest line back ("show me that one") — show the full output then.
+
 
 ### 5. Pause for the human
 Present the checklist and wait.
@@ -162,7 +173,7 @@ A human **correction or rejection** at this gate is a high-signal capture moment
 End your output with the canonical transition token so the orchestrator can act on it (the orchestrator reads `TRANSITION: <id>`; the bare slash-command prose above is advisory for single-step users only):
 
 - `TRANSITION: F13` — human approves all leaves, hand off to verify-codify
-- `TRANSITION: F11` — human confirmed skip (no integration boundary, isolated artifacts only), hand off to verify-codify
-- `TRANSITION: F12` — human rejected one or more leaves, back-loop to build with scoped leaf IDs
+- `TRANSITION: F11` — zero admissible leaves (digest printed; auto in autopilot/fsd, confirmed otherwise), hand off to verify-codify
+- `TRANSITION: F12` — human rejected one or more leaves, or §2 Step 2 found verify-self incomplete; back-loop to build with scoped leaf IDs
 
 **Scope:** {{args}}

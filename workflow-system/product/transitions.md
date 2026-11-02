@@ -39,7 +39,7 @@ The full pause policy per workflow and per drive mode is in the **Drive modes** 
 | 0 | **Direct** | Direct slash command (e.g. `/feature-plan`) — not via session-start | One skill runs, then stops. The skill's own "Hand Off" prose is authoritative. No chaining. |
 | 1 | **Stepping** | session-start option 1 | Pause after every skill. The orchestrator summarises what was done and tells the user which slash command to run next — but does not invoke it automatically. |
 | 2 | **Orchestrated** | session-start option 2 | Follows the pause-policy table in `agents/<workflow>-workflow/AGENTS.md` exactly. Skill-level stop signals are ignored; `TRANSITION: <id>` tokens are the sole machine signal. |
-| 3 | **Autopilot** | session-start option 3 / default (Enter) | All steps AUTO except `verify-human` (conditional — AUTO-SKIPs when no integration boundary + verify-self all-PASS, else PAUSE) and ESCALATE (always PAUSE). |
+| 3 | **Autopilot** | session-start option 3 / default (Enter) | All steps AUTO except `verify-human` (conditional — AUTO-SKIPs when zero admissible leaves (every check agent-driven and agent-judged; digest printed), else PAUSE) and ESCALATE (always PAUSE). |
 | 4 | **FSD** | session-start option 4 | All steps AUTO. `verify-human` is **skipped** — `verify-self` result is the acceptance gate. ESCALATE remains PAUSE. Runs until terminal state. |
 
 #### Mode precedence
@@ -67,7 +67,7 @@ Skill-level `**STOP**` and `"Run /x"` prose are **never** authoritative in modes
 | build | PAUSE | AUTO | AUTO | AUTO |
 | verify-auto | PAUSE | AUTO | AUTO | AUTO |
 | verify-self | PAUSE | AUTO | AUTO | AUTO |
-| verify-human | PAUSE | PAUSE | **PAUSE** (or **AUTO-SKIP** when no integration boundary + verify-self all-PASS) | **SKIP** |
+| verify-human | PAUSE | PAUSE | **PAUSE** (or **AUTO-SKIP** when zero admissible leaves (every check agent-driven and agent-judged; digest printed)) | **SKIP** |
 | verify-codify | PAUSE | AUTO | AUTO | AUTO |
 | ship | PAUSE | AUTO | AUTO | AUTO |
 | review-quality — F39 (clean, MINOR-backlogged, Mode-3 MAJOR-backlogged) | PAUSE | AUTO | AUTO | **SKIP** (entire skill) |
@@ -156,7 +156,7 @@ I'll drive the <workflow> workflow. Which drive mode do you want?
 
   1. Stepping     — pause after every skill; you confirm each transition
   2. Orchestrated — standard pauses (spec, plan, verify-human, finalize)
-  3. Autopilot    — only pauses at verify-human (and auto-skips it when no integration boundary); everything else chains automatically
+  3. Autopilot    — only pauses at verify-human (and auto-skips it when nothing needs you); everything else chains automatically
   4. FSD          — no pauses; verify-human skipped; runs to completion
 
 (Type 1–4 — or just press Enter for Autopilot)
@@ -306,9 +306,9 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 
 **Per-phase loop:** `plan` decomposes a milestone into phases. The loop `build → verify-auto → verify-self → verify-human → verify-codify` executes once per phase. After all phases complete → ship.
 
-**verify-self:** Agent spawns a one-shot subagent with Playwright/curl tools to observe the running system against the phase's Observable Outcomes. Blocking failures return to build; cosmetic failures are noted but don't block. The subagent is one-shot — all inputs must be in the spawn prompt (dev URL, Observable Outcomes, severity taxonomy). Human checklist in verify-human is pre-filtered: items the agent already confirmed are excluded.
+**verify-self:** Agent spawns a one-shot subagent with Playwright/curl tools to observe the running system against the phase's Observable Outcomes. Blocking failures return to build; cosmetic failures are noted but don't block. The subagent is one-shot — all inputs must be in the spawn prompt (dev URL, Observable Outcomes, severity taxonomy). verify-human is for alignment, not correctness: agent-driven checks go in its "Already verified by agent" digest, and a leaf reaches the operator only when the answer is theirs (operator-held expected result, a spec decision seen in action, a decision, an undrivable check, or an out-of-fence state change).
 
-**Integration-boundary rule (verify-self / verify-human / verify-codify):** A phase has an integration boundary when it modifies a line of code inside an existing HTTP endpoint, route, UI surface, CLI command, scheduled job, or external-system call. When a boundary applies, all three verify SKILLs require an outcome / check / test that targets the consuming surface by name (not just the new module). When no boundary applies, each SKILL provides an affirmation-gated path that lets the phase proceed normally. Full rules in:
+**Integration-boundary rule (verify-self / verify-human / verify-codify):** A phase has an integration boundary when it modifies a line of code inside an existing HTTP endpoint, route, UI surface, CLI command, scheduled job, or external-system call. When a boundary applies, verify-self must drive the consuming surface by name (not just the new module) and record the captured response, verify-human's digest must carry that evidence (it never hands the operator a command to run), and verify-codify must add a test on the consuming surface. A boundary does not by itself force a verify-human leaf. Full rules in:
 - `skills/feature-verify-self/SKILL.md` ("Integration-boundary rule" section)
 - `skills/feature-verify-human/SKILL.md` (Procedure §2)
 - `skills/feature-verify-codify/SKILL.md` (Procedure §2 "Integration-boundary check")
@@ -334,7 +334,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 | F10 | verify-auto | verify-self | Tests pass → user runs `/feature-verify-self <dev-url>` |
 | F10b | verify-self | verify-human | All blocking outcomes pass (cosmetic issues noted) |
 | F9b | verify-self | build | Back-loop: blocking observable outcome failed |
-| F11 | verify-human | verify-codify | Phase has no integration boundary (agent affirms in writing) — human confirms skip in Modes 1–2; in Mode 3, auto-skips without prompt when verify-self is also all-PASS — see verify-human SKILL.md "Integration-boundary rule" and "Auto-skip gate" |
+| F11 | verify-human | verify-codify | Zero admissible leaves — nothing needs the operator (every check agent-driven and agent-judged; digest printed). Modes 1–2 confirm in one line; Mode 3 auto-advances without prompt — except the **feature-level floor** (last phase of a feature whose every phase was zero-leaf gets one "see it in action" leaf). See verify-human SKILL.md §2 "Zero-leaf rule" (Step 5a is the feature-level floor) |
 | F12 | verify-human | build | Back-loop: human rejects |
 | F13 | verify-human | verify-codify | Human approves happy path |
 | F14 | verify-codify | verify-human | Back-loop: new tests reveal issues human missed |

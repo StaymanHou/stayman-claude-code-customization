@@ -33,7 +33,7 @@ When invoked by `/session-start` in orchestrated mode, the orchestrator reads `T
 
 **Hard rule for AUTO exits.** When this skill's emitted transition is `AUTO` in the current drive mode, the orchestrator **must immediately invoke the next skill via the `Skill` tool**. It must **NOT** return control to the user. Emitting a clean `TRANSITION: F10b` followed by a polite narrative summary ("Verify-self complete; ready to run verify-human") is the regression mode this block exists to prevent (P1 incident, 2026-05-16): the `TRANSITION` token is the chain signal; the summary text is not a stop signal. If the transition you just emitted is AUTO in the active drive mode, your next action is a `Skill` invocation, not a turn-end. **This explicitly includes the `AskUserQuestion` tool (and any other user-input/confirmation prompt): invoking it on an AUTO transition IS "returning control to the user" and is the same regression class as the narrative-summary stop above — do NOT call it to "just confirm" the handoff. The only thing that pauses an AUTO transition is the human-input points the active drive mode's pause policy explicitly marks PAUSE.** See `agents/feature-workflow/AGENTS.md` → "Pause policy by drive mode" for the canonical table and the precedence rule.
 
-**The verify-human PAUSE belongs to the verify-human STATE, not to the edge into it.** You reach that pause by **entering** the state: `feature-verify-human` evaluates its own auto-skip gate (§2 of its SKILL.md) and decides for itself whether to pause or to emit `F11` without prompting. Ending your turn *at* `F10b` "so the human can review" is the **edge-pause regression** — it skips the auto-skip gate, the integration-boundary check, and the leaf construction, and writes verify-human's output (a phase summary, a hand-written checklist) *without ever running verify-human*. The operator then sees something that looks like the skill's output, which is what makes it expensive: the checks were **described, not performed**. Do not end your turn on `F10b` in autopilot — invoke the skill.
+**The verify-human PAUSE belongs to the verify-human STATE, not to the edge into it.** You reach that pause by **entering** the state: `feature-verify-human` sorts its own admissible leaves (§2 of its SKILL.md) and decides for itself whether to pause or to emit `F11` without prompting. Ending your turn *at* `F10b` "so the human can review" is the **edge-pause regression** — it skips the admissibility sort, the digest, and the leaf construction, and writes verify-human's output (a phase summary, a hand-written checklist) *without ever running verify-human*. The operator then sees something that looks like the skill's output, which is what makes it expensive: the checks were **described, not performed**. Do not end your turn on `F10b` in autopilot — invoke the skill.
 
 ## Severity Taxonomy
 
@@ -84,7 +84,25 @@ If a boundary applies, **at least one Observable Outcome for this phase must cit
 
 If you reach §1 of the procedure and find the current phase has a boundary but no outcome citing the consuming surface, **do not run the verification subagent**. Instead, document the missing outcome and back-loop to build (F9b) so the plan can be updated and the missing outcome verified. Cite the specific consuming surface (e.g. `POST /distribution/match`) in your back-loop message.
 
+**verify-self — not the human — drives the consuming surface.** The boundary outcome is run here, and its captured response (command, status/exit code, key output line) is recorded in the WIP tree. `feature-verify-human` shows it in its "Already verified by agent" digest; it never hands the operator a `curl` to run and paste back.
+
 If a boundary does not apply (the phase only adds isolated new artifacts — a new module nothing imports, a new endpoint nothing links to, a constant, a renamed private function), this rule does not apply. Note in your output: "No integration boundary — phase adds isolated new artifacts only."
+
+## Driving scope — what verify-self must drive instead of deferring
+
+verify-human asks the operator **only** what the operator alone can answer (see `skills/feature-verify-human/SKILL.md` §2). Everything else is driven here, so the rules below are what keep correctness checks from falling through to the human:
+
+- **"Not Playwright-shaped" is never a reason to defer.** Drive a TTY prompt through a pty (`script -q /dev/null <cmd>`), typing each input only after its prompt appears, so the check measures the real behaviour (e.g. no-echo) and not buffered input. Drive a native window through its dev webview or accessibility tree, an interactive CLI through scripted stdin. Popping windows during a check is acceptable.
+- **Look at what you produced.** When the phase generates images, PDFs, rendered pages or media, open them (`Read` the file, screenshot the page) and check them against the outcome and any reference. A structural check ("file exists, 5 slides") is not a look — past runs passed distorted images and a still-broken empty state this way.
+- **Real input over synthetic events.** When an outcome is about interaction (drag, click, keyboard, focus), drive it with real input — Playwright's `page.mouse`/`page.keyboard`, or OS-level input (`osascript`, `cliclick`) for native windows. Synthetic DOM events can pass while the real gesture fails.
+- **Rebuild or launch before calling anything undrivable.** A stale build, an app that was never started, or a stopped container is an environment gap — rebuild, launch, or `docker compose up -d` first.
+- **Compare against a reference when one exists.** If the outcome names — or the repo contains — a reference artifact (sample images, expected output, a golden file), compare the output against it rather than checking only structure. A render that is structurally present but does not match the reference is a FAIL.
+- **`UNVERIFIED` needs a stated reason, in one of two forms:**
+  - `UNVERIFIED: undrivable — <reason>` — physical objects or target hardware not on hand, the operator's own accounts/credentials/files, a network or external system the agent cannot reach, real-world or household/domain facts only the operator knows, how an interaction feels in the hand, taste with no reference, multi-day real use.
+  - `UNVERIFIED: no harness — <what is missing>; buildable: yes (<how>) | no` — the project has no way to drive this surface (a UI runtime with no automation hook or MCP, a host process that hides its behaviour, a legacy project with no dev environment or tests). Say whether a harness could be built and roughly how, so the operator can decide once to build it rather than check by hand every phase.
+  "No dedicated tool" is not a reason (see the runner's escape-hatch rule), and neither is an environment gap.
+- **Alignment questions get their evidence captured here.** For each item in the phase's `**Alignment questions:**` block, capture the evidence the operator will judge (run the command and keep the output, take the screenshot, save the rendered file path) **without** judging it — only the operator holds the expected result.
+- **State-changing steps: declared only, dev/test only.** The runner may run a state-changing step only when the Observable outcome declares it (e.g. `CLI (state-changing, dev DB): …`) **and** it targets the project's own dev/test environment. Never git operations, shared/production/paid resources, or anything outside the project dir. An undeclared or out-of-fence step is not run: record it as `UNVERIFIED: destructive — needs operator OK` so verify-human surfaces it.
 
 ## Procedure
 
@@ -104,6 +122,7 @@ If a boundary does not apply (the phase only adds isolated new artifacts — a n
 
 1. `<dev-url>` — from `{{args}}` (the URL the running app is at).
 2. `<observable-outcomes>` — verbatim from the current phase's `**Observable outcomes:**` block in the WIP tree.
+3. `<alignment-questions>` — verbatim from the current phase's `**Alignment questions:**` block (or `none`).
 
 **Invoke the subagent** by passing exactly this shape to the `Agent` tool:
 
@@ -116,11 +135,14 @@ Agent({
 Observable outcomes to verify:
 <observable-outcomes>
 
+Alignment questions (capture evidence only — status CAPTURED, no PASS/FAIL judgment):
+<alignment-questions>
+
 (Your standing instructions — severity taxonomy, procedure, output format, hard rules — live in your agent definition. Apply them to the outcomes above and emit the result block.)`
 })
 ```
 
-The subagent's response will end with a fenced `result` block — one entry per Observable Outcome with `status`, `severity`, `detail`.
+The subagent's response will end with a fenced `result` block — one entry per Observable Outcome and per Alignment question, with `status`, `severity`, `detail`, `evidence`.
 
 **Bootstrap-skip fallback.** If `Agent({subagent_type: 'feature-verify-self-runner', ...})` returns `Agent type 'feature-verify-self-runner' not found` (the subagent definition was added mid-session and the harness's agent registry was loaded earlier — same bootstrap-skip pattern as SURFACE-2026-06-11-SKILL-HARNESS-REGISTRY-LOADED-ONCE-AT-SESSION-START), fall back to `subagent_type: 'general-purpose'` for this one invocation and append a one-line note to the WIP's `## Discoveries` section: `[SURFACED-<date>] Phase <N> verify-self — feature-verify-self-runner not in agent registry (bootstrap-skip); fell back to general-purpose.` This fallback is for the new-session bootstrap case only; in steady-state operation the named subagent should always resolve.
 
@@ -130,8 +152,12 @@ Read the `result` block from the subagent's output. For each outcome:
 - `PASS` → mark the corresponding verify-self leaf `[x]` in the WIP tree
 - `FAIL / BLOCKING` → **before marking `FAILED`, check the Subagent Re-Verification Heuristic above.** If the FAIL is mechanically implied by sibling PASSes on a JIT-compiled / lazy-mount / async-fetch page, re-verify directly from the orchestrator before classifying. Otherwise, mark leaf `FAILED` with detail.
 - `FAIL / COSMETIC` → mark leaf with `<!-- status: FAILED-cosmetic -->` and note — does NOT block handoff
+- `CAPTURED` (Alignment question) → record an `[x]` leaf `align: <question> — evidence: <evidence>`; the capture succeeded, the judgment belongs to verify-human
+- `UNVERIFIED` → mark leaf `<!-- status: UNVERIFIED: <reason> -->` carrying the runner's stated reason; it is surfaced to verify-human
 
-**Playwright unavailable:** If the subagent errors on Playwright tools, fall back to curl-only for HTTP outcomes. Annotate browser outcomes as `<!-- status: UNVERIFIED: Playwright MCP not available — check manually -->`. These items ARE surfaced to verify-human.
+**Record the evidence line on every leaf** (`— evidence: <command → exit/status, key output line>`). verify-human builds its "Already verified by agent" digest from these lines, so a PASS leaf without evidence cannot be shown to the operator.
+
+**Playwright unavailable:** If the subagent errors on Playwright tools, fall back to curl-only for HTTP outcomes. Annotate browser outcomes as `<!-- status: UNVERIFIED: Playwright MCP not available — check manually -->` — only after the escape hatch (`browser_run_code_unsafe`, a dev webview, a pty) was actually tried. These items ARE surfaced to verify-human.
 
 #### In-place fix shortcut (BLOCKING-fail handling — narrow exception)
 

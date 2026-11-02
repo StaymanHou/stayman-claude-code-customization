@@ -258,6 +258,12 @@ ${extra_prompt}"
     local result_text; result_text=$(echo "$output" | jq -r '.result // empty' 2>/dev/null) || result_text=""
     local run_cost; run_cost=$(echo "$output" | jq -r '.total_cost_usd // 0' 2>/dev/null) || run_cost=0
     local run_duration; run_duration=$(echo "$output" | jq -r '.duration_ms // 0' 2>/dev/null) || run_duration=0
+    # Opt-in: TEST_DUMP_DIR=<dir> keeps each attempt's model output — the results
+    # JSON records only the verdict, so a "no transition signal" FAIL is otherwise
+    # undiagnosable without re-running by hand.
+    if [ -n "${TEST_DUMP_DIR:-}" ]; then
+      mkdir -p "$TEST_DUMP_DIR" && printf '%s\n' "$result_text" > "$TEST_DUMP_DIR/${id}-attempt${attempt}.txt"
+    fi
 
     cost=$(echo "$cost + $run_cost" | bc 2>/dev/null || echo "$cost")
     duration=$((duration + ${run_duration%.*}))

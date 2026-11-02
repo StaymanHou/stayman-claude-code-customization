@@ -21,14 +21,16 @@ Users cannot configure which notifications they receive. Phase 1 adds isolated n
   - CLI: `python -m preferences.helpers` exits 0 and prints a JSON dump of default categories (new module — nothing imports it yet)
   - HTTP: GET /admin/preferences/status → 200, body has `count` field (new dedicated admin endpoint, no UI link, no other code calls it)
   - CLI: `python -m prefs_admin --check` exits 0 (new standalone CLI tool, no existing entry point invokes it)
+  **Alignment questions:**
+  - none
   - [x] P1.1 Create new `preferences/helpers.py` module with pure category-default functions
   - [x] P1.2 Create new admin endpoint `/admin/preferences/status` (no consumers yet)
   - [x] P1.3 Create new `prefs_admin` CLI tool as a standalone entry point
   - [x] verify-auto
   - [x] verify-self
-    - [x] P1.verify-self.1 CLI: `python -m preferences.helpers` exits 0
-    - [x] P1.verify-self.2 HTTP: GET /admin/preferences/status → 200, body has `count` field
-    - [x] P1.verify-self.3 CLI: `python -m prefs_admin --check` exits 0
+    - [x] P1.verify-self.1 CLI: `python -m preferences.helpers` exits 0 — evidence: `python -m preferences.helpers` → exit 0, stdout `{"categories": ["email", "push", "sms"]}`
+    - [x] P1.verify-self.2 HTTP: GET /admin/preferences/status → 200, body has `count` field — evidence: `curl -s localhost:8000/admin/preferences/status` → 200, `{"count": 3}`
+    - [x] P1.verify-self.3 CLI: `python -m prefs_admin --check` exits 0 — evidence: `python -m prefs_admin --check` → exit 0, `3 categories OK`
   - [ ] verify-human  <!-- status: NOT-STARTED -->
   - [ ] verify-codify  <!-- status: NOT-STARTED -->
 

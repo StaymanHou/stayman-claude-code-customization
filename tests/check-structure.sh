@@ -177,12 +177,14 @@ grep_check "product-context SKILL.md cites ephemeral-port range with 49152 ancho
 grep_check "product-context SKILL.md retains daemon-unreachable hard-blocker clause" "skills/product-context/SKILL.md" "[Dd]aemon ([Ii]s )?unreachable" 1
 grep_check "product-context SKILL.md adds container-down self-start instruction" "skills/product-context/SKILL.md" "[Ss]tart the container\(s\) yourself" 1
 
-# Auto-skip gate shipped to feature-verify-human/SKILL.md §2 (feature:
-# verify-human-auto-skip-when-no-integration-boundary). The gate is prose-only
-# behavioral guidance — the regression net is presence of its load-bearing anchors.
-# Two pins: the operator-visible affirmation tail-line, and the 4-gate heading anchor.
-grep_check "feature-verify-human SKILL.md retains 'Auto-skipped per drive_mode' affirmation line" "skills/feature-verify-human/SKILL.md" "Auto-skipped per drive_mode" 1
-grep_check "feature-verify-human SKILL.md retains 4-gate Auto-skip heading anchor" "skills/feature-verify-human/SKILL.md" "Mode 3\+ \+ no boundary \+ verify-self all-PASS" 1
+# Zero-leaf rule in feature-verify-human/SKILL.md §2 (feature: verify-human-alignment-only,
+# 2026-09-29) — replaced the 2026-06-07 four-gate auto-skip. Prose-only behavioral
+# guidance; the regression net is presence of its load-bearing anchors. Two pins: the
+# operator-visible advance line printed in autopilot, and the rule's heading.
+# Re-anchored via /test-assertion-review: both anchors are unique to this file
+# (git grep → 1 file each); deleting either line FAILs its pin (verified on a copy).
+grep_check "feature-verify-human SKILL.md retains the zero-leaf advance line" "skills/feature-verify-human/SKILL.md" "Nothing here needs you — advanced per drive_mode" 1
+grep_check "feature-verify-human SKILL.md retains the Zero-leaf rule heading" "skills/feature-verify-human/SKILL.md" "^#### Zero-leaf rule" 1
 grep_check "feature-workflow AGENTS.md retains AUTO-SKIP pause-policy annotation" "agents/feature-workflow/AGENTS.md" "AUTO-SKIP" 1
 
 # In-place fix shortcut shipped to feature-verify-self/SKILL.md §3 (feature:
@@ -1577,7 +1579,7 @@ ROW_MAPPING = {
         # F13/F11 exit rows describe orchestrator behavior AFTER the skill emits
         # a transition (post-human-response). AGENTS.md has no row for these —
         # the canonical row describes the invocation-pause policy. Skip from
-        # comparison. F11-AUTO-SKIP is similar: governed by the auto-skip gate,
+        # comparison. F11-AUTO-SKIP is similar: governed by the zero-leaf rule,
         # documented in the SKILL itself, not in AGENTS.md's pause-policy table.
         ("F13 ",                  None),
         ("F11 (human-confirmed",  None),
@@ -3416,6 +3418,138 @@ else
     || check "feature-verify-self carries the edge-pause prohibition (3 anchors)" "fail" \
              "missing anchor(s): ${missing#|}"
 fi
+
+echo ""
+# [Phase 23] verify-human-alignment-only — upstream surfaces (Phase 1 of the feature)
+#
+# Pins the Phase 1 prose that moves correctness checks OUT of verify-human and
+# into the stages that can drive them: drive_mode frontmatter stamped by the WIP
+# templates (without it the Mode-3 path of verify-human never fires), the plan's
+# per-phase Alignment-questions block + rule, the runner's evidence/CAPTURED
+# result contract, its mutation fence, the reviewer's read-only Bash rule, and
+# verify-self's Driving-scope section.
+#
+# Reviewed against /test-assertion-review before writing:
+#   [M3] every window fails CLOSED on missing file, start heading, AND end
+#        heading (per [Phase 20]: a missing end boundary silently widens the
+#        awk window to EOF and degrades the pin to a file-wide grep);
+#   [M3] no anchor contains emphasis markup (`**never**` was replaced);
+#   [M4] anchors live in arrays and are checked one by one, so deleting any
+#        single anchor is a FAIL on its own;
+#   [M5] line-start anchors (`^drive_mode: <stepping`, `^evidence: `) reject the
+#        wrong input "template field deleted, explanatory prose kept" — the
+#        prose lines start with `- **`, not the field.
+# Sweep (delete each anchor / rename each end boundary / nonexistent file →
+# each FAILs) recorded in the feature's WIP.
+# ───────────────────────────────────────────────────────────────────────────
+echo "[Phase 23] verify-human-alignment-only — upstream surfaces"
+
+check_section_anchors() {
+  local label="$1" file="$2" sec_start="$3" sec_end="$4"; shift 4
+  if [ ! -f "$file" ]; then
+    check "$label — file exists (precondition)" "fail" "$file does not exist; if it was renamed, update [Phase 23] deliberately"
+    return
+  fi
+  local nstart nend
+  nstart=$( (grep -cE "$sec_start" "$file" || true) | head -1 )
+  nend=$( (grep -cE "$sec_end" "$file" || true) | head -1 )
+  if [ "${nstart:-0}" -lt 1 ]; then
+    check "$label — section start present (precondition)" "fail" "no line matching /$sec_start/ in $file — section renamed or removed"
+    return
+  fi
+  if [ "${nend:-0}" -lt 1 ]; then
+    check "$label — section end present (precondition)" "fail" "no line matching /$sec_end/ in $file — without it the window runs to EOF and the pin degrades to a file-wide grep"
+    return
+  fi
+  local window a n missing=""
+  window=$(awk -v s="$sec_start" -v e="$sec_end" '$0 ~ s {f=1; next} f && $0 ~ e {f=0} f' "$file")
+  for a in "$@"; do
+    n=$( (printf '%s\n' "$window" | grep -cE -- "$a" || true) | head -1 )
+    [ "${n:-0}" -ge 1 ] || missing="$missing|$a"
+  done
+  if [ -z "$missing" ]; then
+    check "$label" "pass"
+  else
+    check "$label" "fail" "missing in $file between /$sec_start/ and /$sec_end/: ${missing#|}"
+  fi
+}
+
+P23_PLAN_ANCHORS=(
+  '^drive_mode: <stepping \| orchestrated \| autopilot \| fsd>$'
+  '^  \*\*Alignment questions:\*\*$'
+  "Seed them from the spec's decisions"
+  "Conformance to the spec is the agent's check"
+)
+check_section_anchors "feature-plan §4 template stamps drive_mode + carries Alignment questions block and rule" \
+  "skills/feature-plan/SKILL.md" '^### 4\. Create Phased Plan' '^### 4b\. ' "${P23_PLAN_ANCHORS[@]}"
+
+P23_SPEC_ANCHORS=( '^drive_mode: <stepping \| orchestrated \| autopilot \| fsd>$' )
+check_section_anchors "feature-spec §3 template stamps drive_mode" \
+  "skills/feature-spec/SKILL.md" '^### 3\. Create Specification' '^### 4\. Evaluate Next Step' "${P23_SPEC_ANCHORS[@]}"
+
+P23_RUNNER_OUT_ANCHORS=( '^status: PASS \| FAIL \| UNVERIFIED \| CAPTURED$' '^evidence: ' )
+check_section_anchors "verify-self-runner result block carries CAPTURED status + evidence field" \
+  "agents/feature-verify-self-runner/AGENTS.md" '^## Output format' '^## What you do NOT do' "${P23_RUNNER_OUT_ANCHORS[@]}"
+
+P23_FENCE_ANCHORS=( 'git stash' 'dev/test environment' 'destructive — needs operator OK' )
+check_section_anchors "verify-self-runner mutation fence (declared dev/test only; git writes forbidden)" \
+  "agents/feature-verify-self-runner/AGENTS.md" '^## Mutation fence' '^## Output format' "${P23_FENCE_ANCHORS[@]}"
+
+P23_REVIEWER_ANCHORS=( 'is for reading only' 'git stash' )
+check_section_anchors "code-quality-reviewer forbids git writes from Bash" \
+  "agents/code-quality-reviewer/AGENTS.md" '^# Code-Quality Reviewer$' '^## Scope of your review' "${P23_REVIEWER_ANCHORS[@]}"
+
+P23_SELF_ANCHORS=( 'Not Playwright-shaped' 'Compare against a reference' 'Alignment questions get their evidence captured' 'declared only, dev/test only' )
+check_section_anchors "feature-verify-self Driving scope section" \
+  "skills/feature-verify-self/SKILL.md" '^## Driving scope' '^## Procedure' "${P23_SELF_ANCHORS[@]}"
+
+echo ""
+# [Phase 24] verify-human-alignment-only — verify-human procedure (Phase 2 of the feature)
+#
+# Pins the §2 procedure of feature-verify-human that replaced the four-gate
+# auto-skip and the human-run boundary curl: the ordered Steps 1–5, the Step 2
+# back-loop (verify-self incomplete / consuming-surface evidence missing), the
+# five named leaf sources, the feature-level floor (5a) skipped on non-last
+# phases, the digest printed in §4 format (5b), and the five fixed checklist
+# sections. Also pins the floor in the state-machine docs and verify-self's
+# stricter driving rules. Reuses [Phase 23]'s check_section_anchors (both window
+# boundaries fail CLOSED; anchors checked one by one; no emphasis markup inside
+# an anchor). Sweep (each anchor deleted / moved out of its window, each
+# boundary removed, nonexistent file → FAIL) recorded in the feature's WIP.
+# ───────────────────────────────────────────────────────────────────────────
+echo "[Phase 24] verify-human-alignment-only — verify-human procedure"
+
+P24_VH_S2_ANCHORS=(
+  'Step 1 — Build the digest'
+  'Step 2 — Check that verify-self ran clean'
+  'back-loop with `TRANSITION: F12`'
+  'Step 3 — Collect leaves from these five sources'
+  'Nothing else becomes a leaf'
+  'Step 4 — Order: happy path first'
+  'This step only orders leaves; it never adds one'
+  '5a\. Feature-level floor'
+  'skip 5a and go to 5b'
+  'in the §4 format, not as a summary'
+)
+check_section_anchors "feature-verify-human §2 ordered procedure (Steps 1–5, F12 stop, five sources, floor, digest format)" \
+  "skills/feature-verify-human/SKILL.md" '^### 2\. Decide what' '^### 3\. Expand verify-human' "${P24_VH_S2_ANCHORS[@]}"
+
+P24_VH_S4_ANCHORS=(
+  '^### Already verified by agent$'
+  '^### Does this match what you meant\?$'
+  '^### Decisions$'
+  '^### Needs you to run$'
+  '^### Destructive — needs your OK$'
+)
+check_section_anchors "feature-verify-human §4 checklist template carries the five fixed sections" \
+  "skills/feature-verify-human/SKILL.md" '^### 4\. Present Checklist' '^### 5\. Pause for the human' "${P24_VH_S4_ANCHORS[@]}"
+
+P24_SELF_ANCHORS=( 'Look at what you produced' 'Real input over synthetic events' 'Rebuild or launch before calling anything undrivable' 'UNVERIFIED: no harness —' 'buildable: yes' )
+check_section_anchors "feature-verify-self Driving scope carries the stricter driving rules" \
+  "skills/feature-verify-self/SKILL.md" '^## Driving scope' '^## Procedure' "${P24_SELF_ANCHORS[@]}"
+
+grep_check "transitions.md F11 row names the feature-level floor" "workflow-system/product/transitions.md" '^\| F11 \|.*feature-level floor' 1
+grep_check "feature-workflow AGENTS.md AUTO-SKIP prose names the feature-level floor" "agents/feature-workflow/AGENTS.md" 'AUTO-SKIP.*except the feature-level floor' 1
 
 echo ""
 # ── Summary ────────────────────────────────────────────────────────────────

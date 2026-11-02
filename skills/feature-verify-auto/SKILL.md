@@ -44,6 +44,9 @@ Concrete examples of appropriate verify-auto checks:
 - **Import smoke:** `python -c "from mymodule import MyClass; MyClass()"` — confirms the module loads and the class is instantiable
 - **Type check (scoped):** `mypy mymodule.py` or `tsc --noEmit src/mycomponent.tsx`
 - **Unit smoke:** run a single targeted test file, not the full suite — e.g. `pytest tests/test_mymodule.py`
+- **Consuming config surface:** when the change is to config, run the check that *reads* it — e.g. `npm run check` after editing a `tsconfig` it consumes, `docker compose config` after editing a compose file.
+
+**Ownership — a correctness check belongs to the cheapest stage that can observe it.** verify-auto owns deterministic checks of the changed code and config (above). verify-self owns behaviour of the running system. Record each check you ran with its command, exit code, and key output line in the WIP tree under `verify-auto`: `feature-verify-human` lists these in its "Already verified by agent" digest and **never** asks the operator to re-run one.
 
 ## Procedure
 

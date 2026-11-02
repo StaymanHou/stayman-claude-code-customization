@@ -98,6 +98,10 @@ Before writing the plan, check whether this feature depends on any 3rd-party ser
 **If entering for a new feature** (F2 or F4→F7), create or update `workflow-system/state/wip/<feature-name>.md` using the **Work Tree format** (see `## Work Tree Format (GLOBAL)` in your system context):
 
 ```markdown
+---
+drive_mode: <stepping | orchestrated | autopilot | fsd>
+---
+
 # Feature: <Name>
 
 **Workflow:** feature
@@ -115,6 +119,8 @@ Before writing the plan, check whether this feature depends on any 3rd-party ser
   - HTTP: <e.g. GET /endpoint → 200, body contains {field: type}>
   - CLI: <e.g. command exits 0, stdout matches pattern>
   - Console: <e.g. no JS errors on page load>
+  **Alignment questions:**
+  - <an operator-held check — e.g. "Slide 2 composite vs `/sample/2.png`: is this the layout you meant?" — or "none">
   - [ ] P1.1 <impl task>  <!-- status: NOT-STARTED -->
   - [ ] P1.2 <impl task>  <!-- status: NOT-STARTED -->
   - [ ] verify-auto  <!-- status: NOT-STARTED -->
@@ -144,11 +150,15 @@ Before writing the plan, check whether this feature depends on any 3rd-party ser
 ```
 
 **Rules for this template:**
+- **`drive_mode:` frontmatter** is stamped at file creation from the active session mode (the mode the operator picked at `/session-start` or `/session-restore`). Single-step invocation with no session mode → `orchestrated`. If the WIP already exists (created by `feature-spec`), keep its value. `feature-verify-human` reads this field; without it an operator who chose autopilot is silently downgraded to Mode 2.
 - **Observable outcomes** are written NOW at plan time — not at verify time. They describe what must be true about the *running system* from the outside (HTTP responses, browser state, CLI output). They are the agent's verification target in `feature-verify-self`.
   - **Each outcome must be mechanically verifiable** — it must be checkable by Playwright, curl, or a CLI command. Prose outcomes ("the feature works correctly", "the UI looks good") are NOT acceptable. If you cannot describe a concrete check, the outcome is not done.
   - **Every phase must include at least one HTTP, Browser, or CLI outcome.** If a phase has no user-facing surface (pure internal refactor), state that explicitly and use a CLI smoke-test (e.g., `python -c "from mymodule import MyClass; MyClass()"` exits 0).
   - **Bad:** `Browser: The login page looks correct` → **Good:** `Browser: Playwright navigates to /login, snapshot contains input[type=email] and input[type=password], no JS console errors`
   - **Bad:** `HTTP: API works` → **Good:** `HTTP: POST /api/login with valid credentials → 200, body contains {"token": string}`
+- **Every correctness outcome must be agent-drivable** — including the awkward ones. A TTY prompt is driven through a pty (`script -q`), a native window through its dev webview or accessibility tree, an interactive CLI through scripted stdin. "Not Playwright-shaped" is never a reason to leave a correctness check for the human. When a reference exists on disk (sample images, expected output files), the outcome names it so verify-self compares against it.
+- **State-changing steps are declared in the outcome.** If verifying an outcome requires changing state (apply a migration, write a dev DB row, `chmod` a named temp file, start a container), say so in the outcome text — e.g. `CLI (state-changing, dev DB): …`. verify-self may run only **declared** state changes, and only against the project's own dev/test environment — never git operations, shared/production/paid resources, or anything outside the project dir. An undeclared or out-of-fence step becomes a `destructive — needs your OK` item at verify-human.
+- **Alignment questions are separate from Observable outcomes.** An Alignment question is a check where **only the operator holds the expected result**: rendered output vs a reference or their taste, data or behaviour whose ground truth is theirs (domain meaning, their own files), or a product decision. verify-self captures the evidence for each one (runs the command, takes the screenshot) without judging it; verify-human presents that evidence with the question. A command's pass/fail is **never** an Alignment question — that is an Observable outcome. **Seed them from the spec's decisions:** for each spec decision — the spec's *Assumed* defaults first, since the operator never saw those as a question — whose consequence first becomes visible in this phase, add "<decision> in action: now that you see it, still what you want?". Agreeing to a spec in the abstract is not informed consent; seeing the behaviour is. Conformance to the spec is the agent's check, not an Alignment question. **Lead with the happy path** — the main intended flow, to be tried in the running system — and do **not** author sad-path Alignment questions: a sad path is an Observable outcome (verify-self drives it with real input) or a verify-codify test. **If you had to choose an expected behaviour the spec did not give** (what an empty state, a conflict, or an unusual input should do), add it as an Alignment question marked `(decision)` so the operator decides it before a test pins your guess. Write `none` when a phase has no operator-held check.
 - **All 5 verification group nodes** (`verify-auto`, `verify-self`, `verify-human`, `verify-codify`) must be pre-populated as `NOT-STARTED` under every phase. Do not omit any.
 - **`## Current Node`** must be initialized pointing to Phase 1's first impl task. This is the position pointer every subsequent skill reads first.
 - **No depth cap** — nest as needed, but prefer splitting wide phases into sibling phases over excessive nesting.

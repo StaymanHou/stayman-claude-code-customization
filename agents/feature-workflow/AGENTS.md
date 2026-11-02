@@ -58,7 +58,7 @@ All must hold:
 Each phase goes through: `build → verify-auto → verify-self → verify-human → verify-codify`
 - verify-auto: automated tests and checks
 - verify-self: agent live-system observation (Playwright/curl) before human handoff
-- verify-human: manual walkthrough (can be skipped with human confirmation)
+- verify-human: alignment check — only questions whose answer is the operator's; zero such leaves → advances (auto in autopilot, one-line confirm otherwise)
 - verify-codify: write comprehensive tests codifying verified behavior
 After verify-codify, either advance to the next phase's build or proceed to ship.
 
@@ -92,7 +92,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F8 | build → verify-auto | Phase complete | forward |
 | F9 | verify-auto → build | Tests fail | back-loop |
 | F10 | verify-auto → verify-human | Tests pass | forward |
-| F11 | verify-human → verify-codify | Nothing to test (human confirms skip) | forward |
+| F11 | verify-human → verify-codify | Zero admissible leaves — nothing needs the operator (digest printed; auto in autopilot/fsd, one-line confirm otherwise) | forward |
 | F12 | verify-human → build | Human rejects | back-loop |
 | F13 | verify-human → verify-codify | Human approves | forward |
 | F14 | verify-codify → verify-human | New tests reveal issues | back-loop |
@@ -130,7 +130,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 3. **Enforce constraints:**
    - Back-loops must document what changed and why
    - Refactor → plan must be cleanup-only scope
-   - verify-human skip requires explicit human confirmation with reasoning
+   - verify-human advances with no leaves only under its zero-leaf rule — digest always printed; one-line confirm outside autopilot/fsd
 4. **Handle cross-level transitions:**
    - **SURFACE (F25, F26):** Follow surface mechanism rules
    - **REDIRECT (F22):** Pause build, send to research, plan return
@@ -172,7 +172,7 @@ Full policy tables for all workflows are in `workflow-system/product/transitions
 | `feature-build` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-verify-auto` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-verify-self` | PAUSE | AUTO | AUTO | AUTO |
-| `feature-verify-human` | PAUSE | **PAUSE** | **PAUSE** (await human) — or **AUTO-SKIP** when no integration boundary + verify-self all-PASS | **SKIP** |
+| `feature-verify-human` | PAUSE | **PAUSE** | **PAUSE** (await human) — or **AUTO-SKIP** when zero admissible leaves (every check agent-driven and agent-judged; digest printed) | **SKIP** |
 | `feature-verify-codify` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-ship` | PAUSE | AUTO | AUTO | AUTO |
 | `feature-review-quality` — F39 (clean / MINOR / Mode-3 MAJOR auto-backlogged) | PAUSE | AUTO | AUTO | **SKIP** (entire skill) |
@@ -205,7 +205,7 @@ Clean boundary = auto-chain (the norm); the `[GLOBAL]` capture write and mid-wor
 
 **SKIP** (verify-human in Mode 4): do not invoke `feature-verify-human` at all. Use the `verify-self` result as the acceptance gate and chain directly to `feature-verify-codify`.
 
-**AUTO-SKIP** (verify-human in Mode 3, conditional): invoke `feature-verify-human` as usual, but the skill itself checks an objective gate at §2 of `skills/feature-verify-human/SKILL.md` and emits `TRANSITION: F11` without prompting the human when **all four** of these hold: (a) `drive_mode` is `autopilot` or `fsd` in the WIP frontmatter, (b) the current phase's `verify-self` subtree is all-PASS (no `UNVERIFIED`/`FAILED`/`FAILED-cosmetic`/`NOT-STARTED` leaves), (c) the 5-condition integration-boundary check returns "no boundary," and (d) no Observable Outcome cites a consuming surface by name. The affirmation block is still printed in chat as the operator's read-time veto. When any gate fails (most commonly: boundary applies, or verify-self has a non-PASS leaf), the existing F11-with-confirmation flow runs as before. Mode 4 is unaffected — it still SKIPs the skill entirely. The full gate definition and the known probe/decision-artifact false-positive limitation live in `skills/feature-verify-human/SKILL.md` §2 → "Auto-skip gate."
+**AUTO-SKIP** (verify-human in Mode 3, conditional): invoke `feature-verify-human` as usual. The skill sorts every candidate check by admissibility (§2 of `skills/feature-verify-human/SKILL.md`): a leaf reaches the operator only when the answer is theirs — an operator-held expected result, a spec decision seen in action for the first time, a decision, something the agent genuinely cannot drive, or an out-of-fence state change. Everything else is agent-driven and listed in an "Already verified by agent" digest. When **zero** admissible leaves remain and `drive_mode` is `autopilot`/`fsd`, the skill prints the digest (the operator's read-time veto) and emits `TRANSITION: F11` without prompting — **except the feature-level floor**: on the feature's last phase, if every earlier phase also advanced with zero leaves, it adds one "see it in action" leaf (the main happy path end to end) and pauses; in `orchestrated` it asks one line ("Nothing here needs you — continue?"). An integration boundary no longer forces a pause — it obliges the digest to carry verify-self's captured run against the consuming surface. Mode 4 is unaffected — it still SKIPs the skill entirely.
 
 ### Per-phase loop discipline
 

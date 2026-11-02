@@ -122,6 +122,10 @@ Before writing the spec, check whether this feature depends on any 3rd-party ser
 Create `workflow-system/state/wip/<feature-name>.md` with this structure:
 
 ```markdown
+---
+drive_mode: <stepping | orchestrated | autopilot | fsd>
+---
+
 # Feature: <title>
 
 **Workflow:** feature
@@ -147,6 +151,8 @@ What are we solving?
 ## Open Questions
 - [ ] Any unknowns that need research
 ```
+
+Stamp `drive_mode:` from the active session mode (the mode picked at `/session-start` or `/session-restore`; `orchestrated` if invoked single-step with no session mode). `feature-plan` keeps this value and `feature-verify-human` reads it — without it an operator who chose autopilot is silently downgraded to Mode 2.
 
 ### 4. Evaluate Next Step
 - If there are open questions or unknowns → recommend `/feature-research` (F3)
