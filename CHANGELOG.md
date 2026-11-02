@@ -3,6 +3,7 @@
 ## 2026-09-29
 
 - **Task closed:** added a passive cross-workspace inbox (`workflow-system/inbox/`) to the per-project layout, so an agent in one workspace can drop a self-contained feature request, bug report, question, or note into another workspace for that workspace's agent to read when the operator asks.
+- **Task closed:** closed inbox messages are now archived to `workflow-system/inbox/archive/` with `closed`/`outcome`/`resolution` frontmatter (outcome `accepted`, `answered`, `declined`, or `duplicate`) instead of being deleted, so every cross-workspace request keeps a record of how it was settled.
 
 ## 2026-09-28
 

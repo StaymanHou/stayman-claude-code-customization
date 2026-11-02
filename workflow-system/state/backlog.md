@@ -23,6 +23,18 @@
 
 ## TODO
 
+## SURFACE-2026-11-02-DRIVE-MODE-PICKER-SELECT-UI-AND-CLAUDESK-SKIP
+
+- **Source:** inbox `2026-11-02-claudesk-drive-mode-picker.md` (Claudesk M16.5 WP5 task 5.8 — `SURFACE-2026-11-02-DRIVE-MODE-MENU-STILL-SHOWN-UNDER-A-CLAUDESK-MODE`)
+- **Target level:** feature (`/feature-plan`)
+- **Type:** feature-request
+- **Summary:** (1) Present the drive-mode pick in `session-start` step 3 and `session-restore` step 4b via `AskUserQuestion` (current/default mode first, wire strings unchanged) instead of "Type 1–4"; tours are our call. (2) When the context carries `Claudesk reports the drive mode for this workspace as <mode>.`, use that mode, present no picker, and say so in one line — live restores on 2026-11-02 read the value but still showed the menu.
+- **Open decisions (from the message):** Claudesk line vs `.session.md` `drive_mode:` precedence on restore (Claudesk leans: Claudesk wins); `tour:` pointer outranks the line; incident Mode-2 override still applies; whether `session-start`'s classification confirmation still needs a reply when the mode is preset.
+- **Done looks like:** no menu under Claudesk (mode named in one line); `AskUserQuestion` pick in a bare terminal; `check-structure.sh` pins on these steps updated; optional reply to the Claudesk inbox on ship.
+- **Order:** NEXT — operator booked it 2026-11-02 for the session after `verify-human-alignment-only` finalizes (it also edits `skills/session-start/SKILL.md`, which that feature touches).
+- **Priority:** high
+- **Status:** pending
+
 ## SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE
 
 - **Source:** global learning from `light-bot-remastered` M6 WP2 (schema and migrations), 2026-09-27. It was ported to `.claude/learnings/2026-09-27-verify-human-is-for-alignment-not-correctness.md`.
