@@ -7,6 +7,41 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 ---
 
 
+# verify-human-alignment-only — 2026-11-02
+
+> Ship commit `fd84fb4`. Review verdict 1 CRITICAL / 3 MAJOR / 4 MINOR. **Fixed in-feature (F40 refactor):** the CRITICAL (F12 rows in `transitions.md` + `feature-workflow/AGENTS.md` still said only "human rejects"), MAJOR-1 (legacy `Playwright MCP not available — check manually` UNVERIFIED wording with no home in verify-human's routing → now the `no harness — …; buildable:` form), MAJOR-2 (floor 5a read a zero-leaf marker 5b never wrote → 5b now writes `— zero admissible leaves (F11)`), MINOR verify-auto evidence-recording step moved into the Procedure, MINOR `arch.md` `updated:`. The three below remain open.
+
+## SURFACE-2026-11-02-QUALITY-SECTION-EXTRACTOR-TRIPLICATED
+
+- **Source:** feature:review-quality (verify-human-alignment-only)
+- **Type:** tech-debt (test-harness duplication)
+- **Summary:** `tests/check-structure.sh` has three copies of the section-window extractor + fail-closed preconditions: `[Phase 20]` (~L2983–3036), `[Phase 21]` (~L3140–3190) inline their own, and `[Phase 23]`'s `check_section_anchors` (~L3447–3476) is the general one. All three count the END boundary file-wide rather than *after* the start line, so an end heading moved above the start still lets the window run to EOF.
+- **Context:** The seventh guard-nothing mechanism was found precisely because one copy lacked a guard; with three copies the next hardening has to land three times.
+- **Suggested action (hypothesis — verify before writing):** route `[Phase 20]`/`[Phase 21]` through `check_section_anchors`, and scope its end-boundary precondition to lines after the start match. Re-run the 56-case sweeps for all three phases plus an "end heading moved above start" mutation. Invoke `/test-assertion-review` first.
+- **Priority:** medium
+- **Status:** pending
+
+## SURFACE-2026-11-02-QUALITY-BOUNDARY-SCENARIOS-FIXTURE-BLIND
+
+- **Source:** feature:review-quality (verify-human-alignment-only)
+- **Type:** tech-debt (scenario confound)
+- **Summary:** `F-boundary-human`, `F-verify-human-boundary-digest-advances` and `F-verify-human-auto-skip-fires` (`tests/scenarios/feature.yaml`) depend on fixture contents but do not name the WIP path in their prompt, unlike the four `F-vh-*` scenarios fixed in the same commit — the model cannot list `workflow-system/state/wip/` under the harness, so a run can pass without ever seeing the fixture.
+- **Context:** Observed live 2026-11-02 on auto-skip-fires: 3/6 first-attempt, and none of the 6 first attempts named the fixture path (one guessed F13 from the prose alone). Same root cause as SURFACE-2026-09-29-SONNET-NARRATES-INSTEAD-OF-READING-FIXTURE; the harness-level fix there (auto-append the WIP path when `fixtures.wip` is set) would cover these too and is preferable to per-scenario patching.
+- **Suggested action (hypothesis — verify before writing):** prefer the harness-level fix; if done per-scenario, check the fixture names don't recite the answer (`feature-verify-human-boundary-no-evidence.md` does) and re-measure n≥6.
+- **Priority:** low
+- **Status:** pending
+
+## SURFACE-2026-11-02-QUALITY-VERIFY-HUMAN-STEP2-DENSE
+
+- **Source:** feature:review-quality (verify-human-alignment-only)
+- **Type:** tech-debt (prose maintainability)
+- **Summary:** `skills/feature-verify-human/SKILL.md` §2 Step 2 is one ~250-word paragraph with four branches (verify-self incomplete → F12; boundary detection; UNVERIFIED exception; gap handling run-now vs F12).
+- **Context:** The Steps 1–5 restructure fixed the ordering; Step 2 is where the next edit is likeliest to mis-scope.
+- **Suggested action (hypothesis — verify before writing):** split into one bullet per branch without changing wording; `[Phase 24]` anchors and the 9 verify-human scenarios must stay green (bootstrap-skip: measure via `run-tests.sh`).
+- **Priority:** low
+- **Status:** pending
+
+
 # mockup-artifact-for-uiux-decisions — 2026-07-28
 
 > Ship commit `6dcd525`. Review verdict 0 CRITICAL / 2 MAJOR / 3 MINOR. **Both MAJORs were FIXED IN-FEATURE**, not backlogged (see the WIP's `## Code-Quality Review` → Disposition, archived with the feature): MAJOR-1 was a missing `sec_end` fail-closed precondition that let the section-scoped pointer pin silently degrade to a file-wide grep — it falsified a guarantee `[Phase 20]`'s own comment block asserts, and the mutation sweep structurally could not catch it. MAJOR-2 added a drift pin across the three statements of the trigger contract. The 3 MINORs below remain open.

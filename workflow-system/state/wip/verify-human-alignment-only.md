@@ -242,10 +242,10 @@ Evidence behind the refinement: of 18 real catches in the annotated sample — 8
     - No integration boundary — phase adds isolated new test artifacts and docs only
 
 ## Current Node
-- **Path:** Feature > review-quality
-- **Active scope:** review-quality (ship baseline = this commit)
+- **Path:** Feature > finalize
+- **Active scope:** finalize (refactor complete)
 - **Blocked:** none
-- **Unvisited:** review-quality → finalize
+- **Unvisited:** finalize
 - **Open discoveries:** P1.5/P1.6 add the git-write prohibition to both observe-only subagents — resolves the prompt-level half of SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE (credit at finalize)
 
 ## Test Triage — F3 (feature:spec → research when unknowns exist)
@@ -277,6 +277,43 @@ Classification: Flaky test — failure unrelated to new code; inconsistent acros
 Confidence: high
 Evidence: batch run 2026-09-29-155456 FAIL (2 attempts); re-run 3× → FLAKY, PASS, PASS; across the session its first-attempt rate is ~3–5/6 with every run passing within 2 attempts; transition is F11 in every recorded run (the behaviour is right; only the digest heading is missing).
 Action: none to code or test. Residual logged as SURFACE-2026-09-29-VERIFY-HUMAN-DIGEST-FORMAT-ADHERENCE.
+
+## Code-Quality Review
+
+## Code-Quality Review — verify-human-alignment-only
+
+### Strengths
+- F11's trigger rewrite is consistent across every surface that states it (transitions.md, feature-workflow AGENTS.md, session-start, verify-human cheat-sheet, root CLAUDE.md); no "no integration boundary + verify-self all-PASS" wording survives in live prompts.
+- `check_section_anchors` ([Phase 23]) applies the seventh guard-nothing mechanism by design — fail-closed on missing file and on both boundaries, per-anchor isolation, line-start anchors that reject a field deletion with prose left behind.
+- Scenarios follow the prompt-leakage lesson: one neutral conditional prompt, neutral fixture names (`notif-prefs-a..d`) because the path is in the prompt, load-bearing `contains_required`, discrimination against pre-feature prose (0/12). Zero-leaf fixtures keep a `Phase 2 NOT-STARTED` node, so auto-skip-fires doubles as a floor negative control.
+- Runner mutation fence and reviewer read-only-`Bash` rule are minimal, incident-justified, and section-pinned.
+- Rules carry their evidence base inline (727 checklists, 14/15 skipped-gate defects, synthetic-vs-real input); `TEST_DUMP_DIR` is a minimal opt-in diagnosability hook.
+
+### Issues
+**CRITICAL**
+- [workflow-system/product/transitions.md:338, agents/feature-workflow/AGENTS.md:96] F12's trigger changed (verify-human §2 Step 2 now emits F12 agent-initiated: verify-self NOT-STARTED / BLOCKING-failed / missing consuming-surface evidence) but both state-machine tables still say only "human rejects"; only arch.md mentions the new trigger. — Three-location sync rule violated; dispatch unaffected (F12 AUTO either way); fix is two table cells.
+
+**MAJOR**
+- [skills/feature-verify-self/SKILL.md:160, agents/feature-verify-self-runner/AGENTS.md:98-100] Playwright-unavailable fallback still writes `UNVERIFIED: Playwright MCP not available — check manually` / `could not verify this browser outcome`, outside the new `undrivable` / `no harness` forms that verify-human Step 2 and §3 recognise. — A legacy-format leaf has no home → Step 2 catch-all → F12 → build can't fix a missing tool → loop; "check manually" contradicts the no-handover rule.
+- [skills/feature-verify-human/SKILL.md:77-81, tests/fixtures/wip/notif-prefs-d.md:28] The floor (5a) needs to know earlier phases advanced with zero leaves, but 5b never says to record that; the F-vh-floor fixture uses an annotation the procedure never writes. — Floor must infer from "`[x]` with no children", ambiguous with legacy skips/hand edits; the scenario tests a WIP shape the skill doesn't produce. Fix: 5b writes a canonical marker that 5a reads.
+- [tests/check-structure.sh:3447-3476 (also 2983-3036, 3140-3190)] `check_section_anchors` is the third copy of the section-window extractor ([Phase 20], [Phase 21] each inline their own); all three count the end boundary file-wide, not after the start line, so an end heading moved above the start still lets the window run to EOF. — Next hardening has to land three times; consolidate and scope the end precondition to after-start.
+
+**MINOR**
+- [tests/scenarios/feature.yaml:1446, 1815] `F-boundary-human` and `F-verify-human-boundary-digest-advances` are fixture-dependent but don't name the WIP path, unlike the four F-vh-* scenarios in the same commit.
+- [skills/feature-verify-auto/SKILL.md:49] The record-evidence instruction sits in the pre-Procedure examples block; the Procedure's tree update only says mark `verify-auto` `[x]`, while verify-human Step 1 assumes every leaf carries `evidence:`.
+- [skills/feature-verify-human/SKILL.md:55] Step 2 is one ~250-word paragraph with four branches; a bullet per branch would be easier to maintain.
+- [workflow-system/product/arch.md:4] `updated: 2026-09-29` / "Revision 2026-09-29" predate the 2026-11-02 commit.
+
+### Assessment
+A well-reasoned, carefully tested redesign that leaves the codebase better: it replaces a rule-by-category gate with a rule-by-who-holds-the-answer, backed by mined evidence, hardened structural pins, and both-directions behavioral scenarios. The gaps are at the edges of the new contract — F12's new trigger reached only the skill and arch.md; the UNVERIFIED-format change left a legacy annotation verify-human cannot place; the floor reads a marker no step writes; the new test helper is a third copy of shared logic. Each is a small edit.
+
+### Disposition (F40 refactor, 2026-11-02)
+- **Fixed:** CRITICAL F12 rows (transitions.md:338, feature-workflow AGENTS.md:96 — now name the §2 Step 2 agent-initiated trigger); MAJOR-1 Playwright fallback → `UNVERIFIED: no harness — …; buildable:` in verify-self SKILL.md + runner AGENTS.md (+ arch.md:221 design-property line); MAJOR-2 verify-human 5b writes `— zero admissible leaves (F11)`, 5a reads it (legacy: `[x]` with no child leaves); MINOR verify-auto Procedure now records `evidence:` per check; MINOR arch.md `updated: 2026-11-02`.
+- **Backlogged:** MAJOR-3 extractor triplication (medium); MINOR boundary scenarios fixture-blind (low); MINOR Step 2 density (low) — `backlog-quality-findings.md` → `# verify-human-alignment-only — 2026-11-02`, pointer in `backlog.md`.
+- **Re-verify:** check-structure 607 PASS / 1 FAIL (baseline); frontmatter parses (4 files); floor + zero-leaf scenarios re-run ×6 (haiku): **F-vh-floor 6/6 first-attempt**; F-verify-human-auto-skip-fires 3/6 first-attempt, 5/6 within retries — matches its recorded ~3–5/6 baseline (Test Triage above); the misses are fixture-blind (no attempt names the fixture path; R2 guessed F13 from the prose alone), logged on SURFACE-2026-11-02-QUALITY-BOUNDARY-SCENARIOS-FIXTURE-BLIND.
+
+### If you disagree
+Edit this section and mark a finding `[DISMISSED]` before `feature-finalize` archives the WIP.
 
 ## Discoveries
 - [SURFACED-2026-09-29] feature-spec — arch.md exceeds size guard (474 lines), truncated to headings. Consider summarizing.

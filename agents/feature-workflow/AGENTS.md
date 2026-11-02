@@ -93,7 +93,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F9 | verify-auto → build | Tests fail | back-loop |
 | F10 | verify-auto → verify-human | Tests pass | forward |
 | F11 | verify-human → verify-codify | Zero admissible leaves — nothing needs the operator (digest printed; auto in autopilot/fsd, one-line confirm otherwise) | forward |
-| F12 | verify-human → build | Human rejects | back-loop |
+| F12 | verify-human → build | Human rejects, or verify-self incomplete (§2 Step 2: not run, BLOCKING failure, missing consuming-surface evidence) | back-loop |
 | F13 | verify-human → verify-codify | Human approves | forward |
 | F14 | verify-codify → verify-human | New tests reveal issues | back-loop |
 | F15 | verify-codify → build | More phases remain | forward |

@@ -95,7 +95,7 @@ After the result block, stop. Do not narrate, do not summarize, do not suggest f
 
 ## Edge cases
 
-- **Playwright MCP unavailable, or a TOOL YOU NEED IS NOT IN YOUR TOOL LIST.** Fall back to `Bash`+`curl` for any HTTP outcomes. For a browser outcome you cannot execute, write `status: UNVERIFIED`, `severity: N/A`, `detail: <the specific tool or capability that was missing> — could not verify this browser outcome`. Do not silently skip.
+- **Playwright MCP unavailable, or a TOOL YOU NEED IS NOT IN YOUR TOOL LIST.** Fall back to `Bash`+`curl` for any HTTP outcomes. For a browser outcome you cannot execute, write `status: UNVERIFIED`, `severity: N/A`, `detail: no harness — <the specific tool or capability that was missing>; buildable: yes (<how>) | no` (the form below). Do not silently skip.
 
   **State the UNVERIFIED reason in one of two forms:** `undrivable — <physical/hardware, operator's own account or files, unreachable system, operator-only facts, feel, taste without reference, multi-day use>` or `no harness — <what is missing>; buildable: yes (<how>) | no`.
 

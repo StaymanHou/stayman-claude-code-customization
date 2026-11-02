@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-09-29
+updated: 2026-11-02
 ---
 
 # Architecture
@@ -218,7 +218,7 @@ updated: <YYYY-MM-DD>
 
 - **Re-verify gate lives in `feature-build`, not `feature-verify-auto`:** When build re-enters after a human rejection, it must self-verify before handing back. This gate belongs at build exit, not verify-auto entry — because the agent doing the fix knows exactly what it changed and should immediately verify the specific failed items, not re-run the full suite.
 
-- **Playwright MCP falls back gracefully:** Skills check whether Playwright MCP is available. If not, they fall back to curl for HTTP checks and note which browser checks could not be completed. The human checklist for those items is annotated "agent could not verify — check manually." No hard failure if MCP is absent.
+- **Playwright MCP falls back gracefully:** Skills check whether Playwright MCP is available. If not, they fall back to curl for HTTP checks and note which browser checks could not be completed. Those items are recorded `UNVERIFIED: no harness — …; buildable: …` and reach verify-human as kind (d) "Needs you to run" (superseded wording "check manually" retired 2026-11-02). No hard failure if MCP is absent.
 
 ---
 

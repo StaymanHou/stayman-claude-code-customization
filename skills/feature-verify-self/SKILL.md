@@ -157,7 +157,7 @@ Read the `result` block from the subagent's output. For each outcome:
 
 **Record the evidence line on every leaf** (`— evidence: <command → exit/status, key output line>`). verify-human builds its "Already verified by agent" digest from these lines, so a PASS leaf without evidence cannot be shown to the operator.
 
-**Playwright unavailable:** If the subagent errors on Playwright tools, fall back to curl-only for HTTP outcomes. Annotate browser outcomes as `<!-- status: UNVERIFIED: Playwright MCP not available — check manually -->` — only after the escape hatch (`browser_run_code_unsafe`, a dev webview, a pty) was actually tried. These items ARE surfaced to verify-human.
+**Playwright unavailable:** If the subagent errors on Playwright tools, fall back to curl-only for HTTP outcomes. Annotate browser outcomes as `<!-- status: UNVERIFIED: no harness — Playwright MCP not available (escape hatch tried: <what>); buildable: yes (enable the Playwright MCP server) -->` — only after the escape hatch (`browser_run_code_unsafe`, a dev webview, a pty) was actually tried. verify-human surfaces these as kind (d) "Needs you to run", carrying the `buildable:` note.
 
 #### In-place fix shortcut (BLOCKING-fail handling — narrow exception)
 

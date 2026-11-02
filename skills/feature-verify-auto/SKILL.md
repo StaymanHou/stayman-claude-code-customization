@@ -63,7 +63,7 @@ Concrete examples of appropriate verify-auto checks:
 ### 3. Evaluate Results
 
 **All tests pass (F10):**
-- Update WIP tree: mark `verify-auto` node `[x]`, update `## Current Node`
+- Update WIP tree: mark `verify-auto` node `[x]` with an `— evidence:` line per check (command → exit code, key output line) — verify-human's digest is built from it — and update `## Current Node`
 - Tell user to run `/feature-verify-self <dev-url>` for live-system self-verification (user must supply the URL)
 
 **Tests fail (F9):**

@@ -335,7 +335,7 @@ Terminal: finalize or refactor (both → auto-trigger reflect); reproduce → te
 | F10b | verify-self | verify-human | All blocking outcomes pass (cosmetic issues noted) |
 | F9b | verify-self | build | Back-loop: blocking observable outcome failed |
 | F11 | verify-human | verify-codify | Zero admissible leaves — nothing needs the operator (every check agent-driven and agent-judged; digest printed). Modes 1–2 confirm in one line; Mode 3 auto-advances without prompt — except the **feature-level floor** (last phase of a feature whose every phase was zero-leaf gets one "see it in action" leaf). See verify-human SKILL.md §2 "Zero-leaf rule" (Step 5a is the feature-level floor) |
-| F12 | verify-human | build | Back-loop: human rejects |
+| F12 | verify-human | build | Back-loop: human rejects, or verify-self incomplete (verify-human §2 Step 2 — not run, a BLOCKING failure, or missing consuming-surface evidence) |
 | F13 | verify-human | verify-codify | Human approves happy path |
 | F14 | verify-codify | verify-human | Back-loop: new tests reveal issues human missed |
 | F15 | verify-codify | build | Tests written, more phases remain (advance to next phase) |
