@@ -5,7 +5,7 @@ drive_mode: autopilot
 # Feature: verify-human is for alignment — route self-drivable checks upstream, present the evidence
 
 **Workflow:** feature
-**State:** ship (complete)
+**State:** Completed 2026-11-02
 **Created:** 2026-09-29
 **Entry:** spec (complex feature)
 **Absorbs:** `SURFACE-2026-08-02-VERIFY-HUMAN-ASKS-HUMAN-TO-RUN-MECHANICAL-CHECKS` + `SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE`
@@ -242,10 +242,10 @@ Evidence behind the refinement: of 18 real catches in the annotated sample — 8
     - No integration boundary — phase adds isolated new test artifacts and docs only
 
 ## Current Node
-- **Path:** Feature > finalize
-- **Active scope:** finalize (refactor complete)
+- **Path:** Feature > Completed
+- **Active scope:** none
 - **Blocked:** none
-- **Unvisited:** finalize
+- **Unvisited:** (none)
 - **Open discoveries:** P1.5/P1.6 add the git-write prohibition to both observe-only subagents — resolves the prompt-level half of SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE (credit at finalize)
 
 ## Test Triage — F3 (feature:spec → research when unknowns exist)
@@ -314,6 +314,14 @@ A well-reasoned, carefully tested redesign that leaves the codebase better: it r
 
 ### If you disagree
 Edit this section and mark a finding `[DISMISSED]` before `feature-finalize` archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** verify-human's job is *alignment*, not correctness — the mined corpus (727 checklists) showed RUN-CMD items never produced a catch, while the real catches were operator-held (visual vs reference, own data, decisions) and mostly on the happy path. The old gate routed on "did verify-self happen to cover it", not "does the answer belong to the operator". Spec approval is also not informed consent (Q5): the first in-action sight of a spec default is a leaf in its own right.
+- **Assumptions that held:** the two-axis routing (can the agent drive it × who holds the expected result); the digest as read-time veto; the zero-leaf rule replacing both the boundary mandate and the 4-gate auto-skip; the declared-only dev/test mutation fence. The operator used Phases 1–2 live for a month and was "pretty happy with it".
+- **Assumptions that were wrong:** (1) that scenario-harness runs see their fixture — the model cannot list `workflow-system/state/wip/` (no Glob, Read EISDIR, shell forbidden), so fixture-dependent scenarios were partly guessing from prose; naming the path fixed it (1/24 → 24/24), and naming it forces neutral fixture names. (2) "Only F11's trigger changes" — F12 gained an agent-initiated trigger too, missed in two tables (review CRITICAL). (3) The floor could infer zero-leaf history from the tree — it needed an explicit marker. (4) A green scenario on the new prose is enough — F-vh-decision passed the *old* prose 2/5 until it also required the digest heading.
+- **Approach delta:** Phase 2 grew Q5–Q9 amendments after an operator-requested second evidence pass (happy path first, agent-chosen expectations as Decisions, stricter verify-self, feature-level floor) and an ordered Steps 1–5 rewrite. Phase 3 resumed after a 34-day gap; the operator simplified its verify sequence on the strength of live use. Review-quality found 1 CRITICAL / 3 MAJOR / 4 MINOR → F40 refactor fixed five, backlogged three.
+
+**Feature complete:** verify-human is now an alignment gate — the operator sees a digest of what the agent already verified and is asked only what they alone can answer (does this match what you meant, which option, what the agent cannot drive or may not run); phases with nothing for them advance on their own in autopilot. Live in every project since 2026-09-29 via the `~/.claude/skills` symlinks; shipped `fd84fb4`, refactor `2c03691`. Requester = operator — closure notice for self-record.
 
 ## Discoveries
 - [SURFACED-2026-09-29] feature-spec — arch.md exceeds size guard (474 lines), truncated to headings. Consider summarizing.

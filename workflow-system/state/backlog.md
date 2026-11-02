@@ -34,6 +34,7 @@
 - **Order:** NEXT — operator booked it 2026-11-02 for the session after `verify-human-alignment-only` finalizes (it also edits `skills/session-start/SKILL.md`, which that feature touches).
 - **Priority:** high
 - **Status:** pending
+- **Session Handoff — 2026-11-02:** handed off as the next session's work. See `workflow-system/state/.session.md` to restore.
 
 ## SURFACE-2026-09-29-VERIFY-HUMAN-DIGEST-FORMAT-ADHERENCE
 
@@ -83,25 +84,6 @@
   - Report what was reaped in chat (read-time veto), and skip silently when nothing is found.
   - Check macOS specifics (Playwright's Chromium profile dirs, `tauri dev` child trees: node + cargo + the app binary).
 - **Priority:** medium
-- **Status:** pending
-
-## SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE
-
-- **Source:** global learning from `light-bot-remastered` M6 WP2 (schema and migrations), 2026-09-27. It was ported to `.claude/learnings/2026-09-27-verify-human-is-for-alignment-not-correctness.md`.
-- **Target level:** feature. **Fold it into the same `/feature-spec` as `SURFACE-2026-08-02-VERIFY-HUMAN-ASKS-HUMAN-TO-RUN-MECHANICAL-CHECKS`** rather than running it as a separate feature. The two overlap on `feature-verify-human` §2/§3 and would conflict if built apart.
-- **Type:** design gap plus operator-stated rule (a real-run instance of the 08-02 defect)
-- **Summary:** A real verify-human checklist asked the operator to run `npm run check` and paste the tail, run `migrations apply` and paste the output, and run `create-class` in a real terminal to confirm the PIN didn't echo. Two of those three repeated checks that verify-auto or verify-self had **already** run. Only after handing the TTY check to the human did the agent try to drive it through a `script` pty. The operator then stated the rule: *"if something is self-drivable by you, you should drive it during verify-self or verify-auto. Never surface a leaf like this unless the output / behavior is to be verified by human not for correctness, but for alignment of the expectation and spec."*
-- **What this adds to the 08-02 item:**
-  1. **The first operator-stated answer to 08-02's "load-bearing distinction."** A verify-human leaf is admissible only if its answer is an **alignment** judgment ("is this the behaviour, wording, format or tradeoff you meant?"). Any pass/fail fact the agent can observe is inadmissible. This supports 08-02's *present-the-evidence* direction: verify-human shows the captured result (command, exit code, key output line) as context for the alignment question and **never re-asks** for a check an earlier stage already ran.
-  2. **A stage-ownership rule that 08-02 does not cover:** a correctness check belongs to the cheapest stage that can observe it. **verify-auto** owns deterministic checks of the changed code and config, *including the consuming config surface* (e.g. `npm run check` after a tsconfig edit). **verify-self** owns running-system behaviour: CLI under real argv/stdin/TTY, `curl` against the consuming endpoint, a migration applied through the real tool, Playwright.
-  3. **verify-self scope:** "not Playwright-shaped" is never a reason to defer to a human. Drive TTY prompts through a pty, typing each input only after its prompt appears, so the check measures no-echo and not buffered input. `UNVERIFIED → human` is reserved for things the agent genuinely can't drive (physical hardware, a real classroom, the operator's own account). This maps onto 08-02's "agent-blocked, yes by necessity" row.
-  4. **`feature-plan` authoring:** every correctness outcome must be written so the agent can drive it, awkward ones included, and human-judgment items must be kept separate from Observable Outcomes and labelled as alignment questions. 08-02 doesn't touch `feature-plan`.
-- **Context:** The learning's proposed rewrite of the §2 boundary mandate ("integration boundary ⇒ **verify-self** captures a run against the consuming surface; verify-human may show it and ask about intent") is the same move as 08-02's suggested action (b). The two items agree on direction. `light-bot-remastered` isn't in 08-02's surveyed corpus list, so this session is **one more corpus instance** for 08-02's required log-mining first step. It's evidence for that step, not a replacement for it.
-- **Suggested action:** these are hypotheses to check against the code before editing.
-  - Carry items 2–4 into the 08-02 spec as additional scope.
-  - Check the pty technique against the verify-self-runner's **observe-only contract** (cf. `SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE`). Driving a CLI that writes state is not observe-only.
-  - Check **portability**: `script -qec` is util-linux (GNU) syntax, and macOS BSD `script` takes a different form (`script -q /dev/null <cmd>`). The light-bot case ran inside a Linux dev image, so the skill prose must not hard-code one form.
-- **Priority:** medium-high (same as 08-02, which it amplifies)
 - **Status:** pending
 
 ## SURFACE-2026-09-21-CAPTURE-SLICE-FACEBOOK-PATTERN-FALSE-POSITIVE
@@ -161,46 +143,6 @@
     bug by default** — one record per line means line counts and occurrence counts almost
     never agree.
 
-## SURFACE-2026-08-02-VERIFY-HUMAN-ASKS-HUMAN-TO-RUN-MECHANICAL-CHECKS
-
-- **Source:** operator (session-start, 2026-08-02) — direct request, not a workflow-run discovery
-- **Target level:** feature (needs a spec — the deliverable is a **category taxonomy** plus a redistribution of work across two skills; it is not a single edit)
-- **Type:** design gap (wrong division of labor between `feature-verify-self` and `feature-verify-human`)
-- **Summary:** `feature-verify-human` asks the operator to **run** things whose outcome is deterministic and agent-observable — e2e command invocations, endpoint calls, exit codes, output diffs. When the question is "does this command produce this output," there is no human judgment in the loop: the agent should **run it and present the captured outcome** for the operator to read, rather than hand over a copy-paste checklist. Genuine human verification should be reserved for the categories where the operator's judgment is actually the instrument (UI/UX feel, product-intent fit, acceptability of a tradeoff). **The requested deliverable is the debate itself:** enumerate what verify-human is currently asking for, sort it into categories, decide per-category whether a human is required, and **front-load every non-human category into `feature-verify-self`** where it is not already there.
-
-- **Grounding (read before designing — the current split is subtler than "no filter exists"):**
-  1. **A pre-filter already exists and is not the problem.** `skills/feature-verify-human/SKILL.md` §3 has a "Pre-filter from verify-self" table: a verify-self `[x]` PASS is **EXCLUDED entirely** from the human checklist. So the mechanism for routing work away from the human is already built. The defect is the *key*: the filter keys on **whether verify-self happened to cover it**, not on **whether the check is human-judgment-shaped**. Anything verify-self did not cover falls through to the human by default — the fallthrough is the bug, and the fix is a category-based routing rule upstream of this table.
-  2. **The integration-boundary rule actively mandates the failure mode.** §2 line 57: when a boundary applies, the F11 skip path is forbidden and the checklist *MUST* include "a recorded `curl` (or equivalent CLI invocation) against the consuming surface, with the response captured… Phrase the item so the human can copy-paste-run it." That is the paradigm case: a deterministic command with a deterministic output, handed to the human to execute. The rule's *intent* is right (never close a boundary phase on "looks fine" — require a captured response); its *implementation* picks the wrong executor. **Preserve the intent, move the execution:** the agent runs it, captures the response, and presents it — the operator's role becomes *reading and ratifying the captured evidence*, not producing it. Note this also removes the main reason a boundary phase cannot auto-advance.
-  3. **`feature-verify-self` already has the machinery.** It spawns `feature-verify-self-runner` (`agents/feature-verify-self-runner/AGENTS.md`), which holds Playwright + `Bash` + `Read`/`Grep` — it can already run curl, CLI commands, and exit-code checks. Front-loading is a **routing** change, not a new capability. Respect the observe-only contract (cf. `SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE`).
-  4. **Interaction with the auto-skip gate.** §2's four-gate auto-skip (Mode 3+) and its known probe/decision-artifact false positive (line 86) both partly exist to route around this same problem from the other direction. A category taxonomy may **subsume or simplify** those gates — check before layering a fifth gate on top. Also interacts with `SURFACE-2026-07-28-WIP-TEMPLATE-OMITS-DRIVE-MODE-FRONTMATTER` (gate (a) never fires today).
-
-- **Starting straw-man taxonomy (a debate input, NOT a decision — expect it to be wrong in places):**
-  | Category | Human required? | Where it should run |
-  |---|---|---|
-  | Deterministic command → output/exit code (curl, CLI, script) | **No** — agent runs, presents captured output | verify-self; operator reads the evidence |
-  | Automated assertion (test passes, structural pin holds) | **No** | already verify-auto — should never reach a human |
-  | Presence/shape of a rendered element (selector exists, status is 200, page not blank) | **No** — Playwright-observable | verify-self |
-  | **Visual/aesthetic quality** (spacing, hierarchy, "does this look right") | **Yes** | verify-human |
-  | **Interaction feel** (flow, latency, affordance, is-this-confusing) | **Yes** | verify-human |
-  | **Product-intent fit** ("is this what I actually asked for") | **Yes** | verify-human |
-  | **Acceptability of a known tradeoff / cosmetic failure** | **Yes** — the operator is the decider | verify-human |
-  | Decision-artifact ACK (probe results, retrospect, baselines) | **Yes** — this is the line-86 false-positive class | verify-human |
-  | Agent-blocked (Playwright unavailable, no credentials, external system) | **Yes, by necessity** — not by category | verify-human, annotated as today |
-  The load-bearing distinction to nail down in the debate: **"the agent cannot determine this"** vs. **"the agent can determine this but the operator must ratify it."** These are different, and the second should become *present-the-evidence*, not *ask-the-human-to-go-get-it*.
-
-- **⚠️ REQUIRED FIRST STEP — operator-specified 2026-08-02, do not skip or reorder.** The taxonomy must be derived from **evidence, not from reasoning about the SKILL.md**. Before any spec/design work: **mine the raw session logs for a wide variety of verify-human checklist items that the skill has actually proposed in real runs, then walk through and review them WITH the operator.** The straw-man table below is a *debate input written from the prose*, and deriving the categories from the prose that produced the defect would just re-encode the defect's own assumptions. The real corpus is the ground truth for what verify-human actually asks humans to do.
-  - **Corpus is confirmed present and rich (surveyed 2026-08-02):** **309 session logs across 8+ projects** contain a `Manual Verification` block — `claudesk` (110), `my-claude-code-customization` (50), `replicator-1-0` (45), `neo-stayman-assistant` (44), `google-newsroom-intelligence-engine` (36), `my-hermes-agent` (10), `turn-based-ai-test-proto-1` (8), plus strays.
-  - **Sample ACROSS projects, not just this repo — this is the load-bearing sampling rule.** This repo's own features are largely prose/skill-editing, so its verify-human items skew toward doc-review and structural-pin ratification. The UI/UX and e2e-command cases the taxonomy most needs to classify correctly live in the *app* projects (claudesk, replicator, neo-stayman-assistant, the newsroom engine). A sample drawn only from `my-claude-code-customization` would produce a taxonomy that is wrong exactly where it matters most.
-  - **Also sample the checklist's own sections,** which are a free pre-existing partition to test the taxonomy against: `### Happy Path`, `### Edge Cases`, `### Blocked`, `### Agent could not verify (check manually)`. And deliberately include **boundary-mandated `curl` items** (§2 line 57) and **`UNVERIFIED` annotated items** — those are the two hypothesized-miscategorized classes; a sample missing them cannot test the hypothesis.
-  - **Method + footguns:** follow `.claude/memory/reference_session-log-mining-gotchas.md` — project slug dirs begin with `-`, so unqualified `grep`/`ls` **silently fail-empty** (looks like "no matches," is a broken invocation); use absolute paths after a `--` guard or `find -print0 | xargs -0`. Extract the assistant-authored checklist blocks, not raw string-greps.
-  - **Deliverable of this step:** a reviewed, operator-annotated inventory of real items → *then* the categories are induced from it. Expect the straw-man to be wrong in places; that is the point of doing it this way.
-
-- **Suggested action (hypothesis — verify against both SKILL.md files before writing):** run `/feature-spec`, whose **first phase is the log-mining + joint review above**. Settle the taxonomy with the operator from that evidence (that is the explicit ask), then (a) add a category-routing rule to `feature-verify-human` §2/§3 upstream of the existing pre-filter table, (b) rewrite the §2 boundary mandate so the **agent** executes the boundary probe and presents captured output, (c) extend `feature-verify-self` to run the front-loaded categories and record their captured evidence in the WIP tree, (d) re-check whether the four-gate auto-skip simplifies. Structural pins in `tests/check-structure.sh` + scenarios per the usual discipline; run `/test-assertion-review` before writing assertions.
-- **Risk to weigh in the debate:** over-routing. Removing a human gate is hard to reverse in practice — the operator stops seeing a class of output and does not notice it stopped. Prefer *present-the-evidence* (operator still reads, just does not execute) over *silently skip* wherever the two are close. The known-limitation note at line 86 is precedent for what a mis-route costs.
-- **Related (2026-09-27):** `SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE` has a real-run instance from `light-bot-remastered` and an **operator-stated rule** (verify-human is for alignment, not correctness). It extends this item's scope to verify-auto ownership, pty-driven verify-self checks, and `feature-plan` outcome authoring. Build both in one spec.
-- **Priority:** medium-high (touches every feature's verify loop in every project using this system; the operator-facing friction is recurring, and the current rule mandates the friction rather than merely permitting it)
-- **Status:** pending
-
 ## SURFACE-2026-07-28-UTIL-OPTION-MOCKUP-SHAPE-UNPINNED
 
 - **Source:** feature:verify-codify (mockup-artifact-for-uiux-decisions, Phase 2)
@@ -216,37 +158,20 @@
 
 - **Source:** feature:verify-human (mockup-artifact-for-uiux-decisions, Phase 1)
 - **Target level:** task
-- **Type:** gap (two skills disagree about a file's shape)
-- **Summary:** `feature-plan`'s WIP template (`skills/feature-plan/SKILL.md` §4) creates the WIP file with **no YAML frontmatter block at all** — it opens with `# Feature: <Name>` and uses `**Key:** value` lines. But `feature-verify-human`'s auto-skip gate (a) reads `drive_mode` **from YAML frontmatter**, and specifies: *"If frontmatter has no `drive_mode` field, treat as Mode 2 (orchestrated) and do NOT auto-skip."*
-- **Context:** The operator selects a drive mode at `/session-start` (or `/session-restore`), but nothing writes it into the WIP file. Every feature therefore reaches verify-human with gate (a) failing, and **an operator who explicitly chose autopilot is silently downgraded to Mode 2** for the rest of the feature. Observed live 2026-07-28: operator selected `autopilot`, WIP had no frontmatter, the gate would have prompted for a manual skip-confirmation it was designed to elide. Worked around in-flight by hand-adding `drive_mode: autopilot`.
-- **Why it is invisible:** the failure mode is *extra friction*, not an error. Nothing breaks; the workflow just quietly asks for confirmations the operator already opted out of. Easy to misread as "autopilot doesn't do much."
-- **Suggested action (hypothesis — verify against the skills before writing):** have `feature-plan` §4 (and `feature-spec` §3, which creates the WIP on the complex path) stamp a YAML frontmatter block containing `drive_mode:` at file creation, sourced from the active session mode. Check whether `task-plan` / `incident-report` have the same split before fixing only the feature path. Consider a structural pin that the WIP template and the auto-skip gate agree on the field's location.
-- **Priority:** medium (affects every feature in every project using this workflow system; degrades an operator-selected setting)
+- **Type:** gap
+- **Summary:** *(Rewritten 2026-11-02 — partially resolved.)* The feature path is fixed: `feature-plan` §4 and `feature-spec` §3 now stamp `drive_mode:` frontmatter (verify-human-alignment-only, pinned by `[Phase 23]`). **Remaining open:** check whether `task-plan` and `incident-report` WIP templates need the same stamp — i.e. whether any task/incident skill reads `drive_mode` from WIP frontmatter (e.g. a `task-verify` or `incident-*` gate). Deliberately out of scope for the feature.
+- **Suggested action (hypothesis — verify before writing):** `grep -n drive_mode skills/task-*/SKILL.md skills/incident-*/SKILL.md`; if nothing reads it, close this as not-needed; if something does, stamp it in the creating skill as the feature path does.
+- **Priority:** low
 - **Status:** pending
 
 ## SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE
 - **Source:** feature:verify-self (tour-state-survives-session-boundary / WP7o, Phase 4)
 - **Target level:** task
-- **Type:** gap (contract violation — observed once, self-reported, no data lost)
-- **Priority:** medium
-- **What happened:** a `feature-verify-self-runner` subagent, which is contractually **observe-only**, ran
-  `git stash push` as an investigative probe. This briefly cleared the entire working tree — 14 modified + 5
-  untracked paths, none of it committed. The subagent caught it immediately, ran `git stash pop`, restored
-  everything verbatim, and **self-reported the violation** in its result block. The tree was independently
-  verified intact afterwards (19 entries, 0 stashes).
-- **Why it matters:** the near-miss was total. Had the pop failed, or had the agent not noticed, an entire
-  uncommitted feature would have been sitting in a stash with no record of it in the parent's context. The
-  runner's own agent definition establishes it as observe-only, but the **tool surface does not enforce it** —
-  `Bash` is granted (correctly; it needs `curl`, `grep`, test runners), and nothing distinguishes a read probe
-  from a destructive one.
-- **Cheap fix direction:** add an explicit prohibition to `agents/feature-verify-self-runner/AGENTS.md` — no
-  `git stash`/`checkout`/`reset`/`clean`, no writes of any kind; to compare against a hypothetical, pipe a
-  string to the matcher (`echo "..." | grep -cE '...'`) rather than mutating a file. The same clause likely
-  belongs in `agents/code-quality-reviewer/AGENTS.md`, which is also observe-only but *does* have `Bash`.
-  Worth checking whether a structural pin can assert the prohibition text in both.
-- **Note:** the parent skill (`feature-verify-self`) already tells the *orchestrator* the subagent is
-  observe-only; the gap is that the instruction is not restated **inside the subagent's own definition**, which
-  is the only prompt the subagent actually reads.
+- **Type:** gap
+- **Priority:** low
+- **Summary:** *(Rewritten 2026-11-02 — partially resolved.)* The prompt-level fix landed: `agents/feature-verify-self-runner/AGENTS.md` (`## Mutation fence`) and `agents/code-quality-reviewer/AGENTS.md` now prohibit `git stash`/`checkout`/`reset`/`clean`/`commit` and writes outside declared dev/test steps, pinned by `[Phase 23]` (verify-human-alignment-only). **Remaining open:** the tool surface still does not *enforce* observe-only — both subagents hold `Bash`, and a prompt cannot stop a destructive probe the way a hook or a narrowed tool list could. Mechanical enforcement was explicitly out of scope.
+- **Suggested action (hypothesis — verify before writing):** evaluate a `PreToolUse` hook scoped to these subagents that rejects mutating git subcommands, against the cost of maintaining it; close as accepted-risk if the prompt-level fence holds in practice.
+- **Status:** pending
 
 ## SURFACE-2026-07-27-TOUR-MARKER-NOT-READ-WHEN-POINTER-DELETED
 - **Source:** feature:verify-codify (tour-state-survives-session-boundary / WP7o, Phase 4 — found by the behavioral scenarios the operator asked for mid-session)
@@ -652,16 +577,6 @@ Buried 2026-06-12:
 - **Context:** `/util-prune-claude-md` is the designated remedy (extracts bulky bullets to `docs/lessons/<topic>.md` or `arch.md`). Deliberately not run during the feature — pruning is a whole-file editorial pass over unrelated conventions, and it is operator-triggered by design.
 - **Suggested action:** run `/util-prune-claude-md`. Two of this feature's three new bullets are strong extraction candidates: the **anchor-scoping rule** and the **first-try-green discrimination-test rule** are both self-contained enough for `docs/lessons/`.
 - **Priority:** medium
-- **Status:** pending
-
-## SURFACE-2026-07-29-WIP-DRIVE-MODE-FRONTMATTER-BLOCKS-AUTOSKIP
-- **Source:** feature:verify-human (grilling-elicitation-discipline) — observed live
-- **Target level:** task
-- **Type:** bug
-- **Summary:** `feature-verify-human`'s Mode-3 auto-skip gate is **unreachable on every feature planned by `feature-plan`**, because gate (a) requires `drive_mode:` in the WIP frontmatter and neither `feature-plan` §4 nor `feature-spec` §3 stamps it. Observed live: gates (b), (c), (d) were all clean, the operator had selected autopilot *in chat*, and the skill still PAUSEd — correctly, per its own fail-closed rule.
-- **Context:** Duplicates/overlaps the existing `SURFACE-2026-07-28-WIP-TEMPLATE-OMITS-DRIVE-MODE-FRONTMATTER`; recorded here as a **live confirmation** with the concrete manifestation rather than as a second item. The fail-closed behavior is right; the template gap is what defeats the intent.
-- **Suggested action:** merge into the existing SURFACE as corroborating evidence rather than tracking separately.
-- **Priority:** low
 - **Status:** pending
 
 ## SURFACE-2026-07-29-PRODUCT-ARCH-CONFIRM-THE-SEAMS-PASS

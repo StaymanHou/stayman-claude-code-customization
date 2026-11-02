@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-02
+
+- **Feature shipped:** verify-human is now an alignment gate: it prints a digest of everything the agent already drove and asks the operator only what they alone can answer (operator-held expectations, spec decisions seen in action, decisions, undrivable or out-of-fence steps), advancing on its own in autopilot when nothing needs them.
+- **Backlog resolved:** SURFACE-2026-08-02-VERIFY-HUMAN-ASKS-HUMAN-TO-RUN-MECHANICAL-CHECKS — verify-human no longer hands the operator commands to run; agent-drivable checks are driven upstream and shown in the digest.
+- **Backlog resolved:** SURFACE-2026-09-27-VERIFY-HUMAN-ALIGNMENT-NOT-CORRECTNESS-RULE — the alignment-not-correctness rule is now verify-human §2's five-source admissibility procedure.
+- **Backlog resolved:** SURFACE-2026-07-29-WIP-DRIVE-MODE-FRONTMATTER-BLOCKS-AUTOSKIP — feature-plan and feature-spec now stamp `drive_mode:` frontmatter, so the autopilot zero-leaf advance is reachable.
+- **Backlog resolved:** SURFACE-2026-07-28-WIP-TEMPLATE-OMITS-DRIVE-MODE-FRONTMATTER — the feature WIP templates now carry `drive_mode:` frontmatter (task/incident templates left open in the backlog).
+- **Backlog resolved:** SURFACE-2026-07-27-VERIFY-SELF-RUNNER-MUTATED-WORKING-TREE — the verify-self runner and code-quality reviewer now carry an explicit git/write prohibition, pinned in check-structure (tool-level enforcement left open in the backlog).
+
 ## 2026-09-29
 
 - **Task closed:** added a passive cross-workspace inbox (`workflow-system/inbox/`) to the per-project layout, so an agent in one workspace can drop a self-contained feature request, bug report, question, or note into another workspace for that workspace's agent to read when the operator asks.
