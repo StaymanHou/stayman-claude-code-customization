@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-03
+
+- **Feature shipped:** Under Claudesk, `/session-start` and `/session-restore` take the workspace's reported drive mode and show no mode pick, `/session-handoff` writes a `drive_mode: from-claudesk` deferral marker instead of a snapshot, and bare terminals (and tour replays) pick the mode through an `AskUserQuestion` select with the numbered menu as fallback.
+- **Backlog resolved:** SURFACE-2026-11-02-DRIVE-MODE-PICKER-SELECT-UI-AND-CLAUDESK-SKIP — closed by the drive-mode-picker-select-ui feature (Claudesk M16.5 WP5 task 5.8).
+
 ## 2026-11-02
 
 - **Feature shipped:** verify-human is now an alignment gate: it prints a digest of everything the agent already drove and asks the operator only what they alone can answer (operator-held expectations, spec decisions seen in action, decisions, undrivable or out-of-fence steps), advancing on its own in autopilot when nothing needs them.

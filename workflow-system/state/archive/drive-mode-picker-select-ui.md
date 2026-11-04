@@ -5,7 +5,8 @@ drive_mode: fsd
 # Feature: Drive-mode picker — select UI, and skip it under Claudesk
 
 **Workflow:** feature
-**State:** ship (complete)
+**State:** finalize (complete)
+**Completed:** 2026-11-03 (ship commit `6160eb0`, local)
 **Created:** 2026-11-03
 **Source:** backlog `SURFACE-2026-11-02-DRIVE-MODE-PICKER-SELECT-UI-AND-CLAUDESK-SKIP` ← inbox `workflow-system/inbox/archive/2026-11-02-claudesk-drive-mode-picker.md` (Claudesk M16.5 WP5 task 5.8)
 
@@ -236,3 +237,14 @@ Action: no change; added to `SURFACE-2026-11-03-SCENARIO-SWEEP-PREEXISTING-FAILU
 - [BUILD-2026-11-03] P3.2 — check-structure 618/1: narration probe all PASS (anchors live in the arms, clean against session-reflect/handoff/capture); 2 new [Phase 25] replay-branch pins. Mutation sweep: 10/12 at first; the bare `AskUserQuestion` anchor survived deletion because the window's fallback sentence also names the tool (mechanism 4). Tightened to the instruction text, then 12/12 FAIL, clean 0.
 - [CODIFY-2026-11-03] Phase 3 — NEW T5-tour-replay-under-claudesk-line-still-asks-gear (tutorial.yaml): a replay under a Claudesk `fsd` line still presents the gear pick. Tour arms emit no TRANSITION, and verify.sh enforces `contains_required*` only on an ID match, so T5 is `contains_any` (SOFT_PASS) + a strict negative. A skipped pick has no gear-pick anchor → FAIL. Simulated: the real verify-self capture → SOFT_PASS; "line skips the pick" and "session-start phrasing" → FAIL. Live 3/3 SOFT_PASS ("Pick your gear"). Full `run-all.sh` sweep started (last-phase codify).
 - [SHIP-2026-11-03] Final verification: check-structure 618/1 after the arch.md as-built entry. The full `run-all.sh` sweep finished minutes earlier (5977s). The only scenario-affecting change since was S43's anchor widening (re-verified fresh 8/8), so a second ~100-min sweep was judged redundant. Committed locally; NOT pushed (see the drive-mode switch note).
+
+## Retrospect
+- **What changed in our understanding:** Claudesk's hook line was read for its *value* but never treated as *permission to skip*, and only an explicit rung in each skill fixes that (the 2026-11-02 failure, reproduced 0/3 on the pre-feature skills). The scenario harness was not hermetic: every suite launched from a Claudesk session injected the autopilot line into every scenario, so pre-2026-11-03 "green" baselines are not clean. `AskUserQuestion` does not exist under `claude --print`, so the harness can only ever exercise the numbered fallback, and the select UI is checkable only live (Claudesk ran that check).
+- **Assumptions that held:** the precedence ladder (tour > Claudesk > recorded > state_file > orchestrated; incident override on top), Claudesk's leans on all four open decisions, and the `from-claudesk` marker being safe for Claudesk (confirmed, Ask 3).
+- **Assumptions that were wrong:** (1) deleting one copy of a rule is a valid negative arm. S35 kept passing because the rule is restated in four other lines, so the negative arm became the pre-feature HEAD skill. (2) My anchors matched real model wording. Four times they missed a correct paraphrase (S38 filename dot, S43 ×2, the tour `AskUserQuestion` pin), each caught only by reading dumps or by mutation. (3) Every new scenario discriminates. S40 and S42 pass on the old skills too (common sense / the existing incident override), so they are regression guards. (4) I overwrote a tracked fixture (`notif-prefs-c.md`) by not checking the name, which faked an F-vh-decision "pre-existing" failure until it was restored.
+- **Approach delta:** P1.0 (harness `env -u CLAUDESK_DRIVE_MODE`) was added mid-build. P2.0 (handoff deferral marker) was added by the operator at P1 verify-human, with the marker shape the agent's choice at the operator's request. The operator switched to FSD at Phase 2 verify-self, so verify-human was skipped for Phases 2–3 and A4/A6 were taken at plan defaults for review. A new repo rule landed: full sweep only at the last phase's codify. The Phase 3 outcome `grep -c 'Type 1–4' → 0` was amended to 1 (fallback kept by design).
+
+## Closure (communicate)
+> **Feature complete:** Drive-mode picker (select UI + Claudesk skip) has shipped. Under Claudesk, `/session-start` and `/session-restore` now take the workspace's reported mode and show no mode pick, `/session-handoff` defers the mode to Claudesk with a `from-claudesk` marker, and bare terminals get an `AskUserQuestion` select. Verify it live in a Claudesk workspace (`/session-start` should name the mode once and ask only "Drive it?"); scenarios S35–S43 and T5 cover it in the harness.
+Requester = Claudesk workspace (inbox) + operator. The ship note goes to Claudesk's inbox; operator closure is the morning summary.
+
