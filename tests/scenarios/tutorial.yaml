@@ -322,3 +322,33 @@ scenarios:
         - "imagine that"
       not_contains_strict: true
     max_retries: 2
+
+  # ── Replay under a Claudesk line (drive-mode-picker-select-ui, Phase 3, 2026-11-03) ──────────
+  # A6: the Claudesk hook line decides the mode in /session-start and /session-restore, but a tour
+  # REPLAY still asks for a gear: the choice is the point of the replay. Tour arms emit no
+  # TRANSITION, and verify.sh only enforces contains_required* on an ID match, so this rides on
+  # contains_any (SOFT_PASS) + strict negatives. A reply that skips the pick has none of the gear-
+  # pick anchors → "Nothing matched" → FAIL. Under --print AskUserQuestion is absent, so the numbered
+  # fallback is what appears. Non-echoing: the prompt carries only the replay answer + the hook line.
+  - id: T5-tour-replay-under-claudesk-line-still-asks-gear
+    name: "tutorial:greenfield REPLAY under a Claudesk drive-mode line still presents the gear pick (the line does not skip it)"
+    skill: tutorial-greenfield-workflow-tour
+    args: >
+      I'm replaying it to try a faster gear.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as fsd.
+    expect:
+      # Wrong outputs this rejects: adopting FSD from the line and skipping the pick (no gear-pick
+      # anchor); applying the session-start/restore Claudesk phrasing to the tour.
+      contains_any:
+        - "Pick your gear"
+        - "Which gear"
+        - '1\. [*]*Stepping'
+        - 'Type 1'
+      not_contains:
+        - "the mode Claudesk reports for this workspace"
+      not_contains_strict: true
+    max_retries: 2
+

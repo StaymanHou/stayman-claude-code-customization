@@ -243,8 +243,13 @@ ${extra_prompt}"
     attempt=$((attempt + 1))
 
     # Invoke claude
+    # `env -u CLAUDESK_DRIVE_MODE`: when the suite is launched from a Claudesk-spawned session
+    # the var is inherited, and the user-level Claudesk UserPromptSubmit hook then injects
+    # "Claudesk reports the drive mode for this workspace as <mode>." into EVERY scenario —
+    # which session-start/session-restore honour by skipping the drive-mode pick. Scenarios
+    # must be hermetic: one that needs the line states it in system_prompt_extra instead.
     local output
-    output=$(cd "$tmpdir" && claude --print "/$skill $args" \
+    output=$(cd "$tmpdir" && env -u CLAUDESK_DRIVE_MODE claude --print "/$skill $args" \
       --output-format json \
       --model "$effective_model" \
       --max-budget-usd "${scenario_budget:-$MAX_BUDGET}" \

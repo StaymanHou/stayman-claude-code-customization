@@ -1120,6 +1120,13 @@ scenarios:
     skill: session-restore
     args: >
       Restore the session and get me back into it.
+    # Fixture path named per root CLAUDE.md (fixture-dependent scenarios must name it): without
+    # it the model narrates a hypothetical restore and never sees `tour:` (measured 2026-11-03:
+    # S31 2/3 on the pre-Claudesk-rung skill, 0/3 after — both purely unread-fixture artifacts).
+    system_prompt_extra: |
+      Reading files with the Read tool is allowed (it is not running a command): the handoff
+      pointer is `workflow-system/state/.session.md` and the work item it names is
+      `workflow-system/state/wip/tour-inner-work-finalized.md`.
     fixtures:
       claude_md: fixtures/CLAUDE.md
       session: fixtures/session/tour-greenfield-stepping.md
@@ -1133,12 +1140,17 @@ scenarios:
       # Non-echoing: the prompt says only "restore the session" — never "stepping", never "menu".
       # S6 is restore's normal exit (context restored, pointer consumed). On a tour pointer the
       # S15 "surfaced the mode menu" exit must NOT be taken — that is the leak this pins.
+      # TRIAGED 2026-11-03 (obsolete assertion, drive-mode-picker-select-ui): this scenario used to
+      # REQUIRE "stepping", but session-restore step 4 (same commit, ccfedac) says a tour restore
+      # names NO mode — so the requirement only passed when the model echoed the fixture's
+      # `drive_mode:` without following the rule; once the fixture path was named and the model
+      # read it, a correct reply failed (1/6). The scenario's intent — reject the July fall-through
+      # to the orchestrated default — is now asserted directly: any "orchestrated", or any
+      # "Restoring in <Mode>" line, is a leak.
       transition_id: S6
-      contains_required_any:
-        - "Stepping"
-        - "stepping"
       not_contains:
-        - "Orchestrated  standard policy"
+        - "orchestrated"
+        - "Restoring in [*]*Stepping"
         - "4  FSD"
         - "press Enter to keep current"
         - "TRANSITION: S15"
@@ -1150,6 +1162,13 @@ scenarios:
     skill: session-restore
     args: >
       Restore the session and get me back into it.
+    # Fixture path named per root CLAUDE.md (fixture-dependent scenarios must name it): without
+    # it the model narrates a hypothetical restore and never sees `tour:` (measured 2026-11-03:
+    # S31 2/3 on the pre-Claudesk-rung skill, 0/3 after — both purely unread-fixture artifacts).
+    system_prompt_extra: |
+      Reading files with the Read tool is allowed (it is not running a command): the handoff
+      pointer is `workflow-system/state/.session.md` and the work item it names is
+      `workflow-system/state/wip/feature-build-phase1-done.md`.
     fixtures:
       claude_md: fixtures/CLAUDE.md
       session: fixtures/session/no-drive-mode-plain.md
@@ -1168,6 +1187,275 @@ scenarios:
       contains_required_any:
         - "Orchestrated"
         - "orchestrated"
+    max_retries: 2
+
+  # ── Claudesk drive-mode line (drive-mode-picker-select-ui, Phase 1, 2026-11-03) ──────────
+  # When Claudesk spawns the session its UserPromptSubmit hook adds
+  #   "Claudesk reports the drive mode for this workspace as <mode>."
+  # to the context on every turn. session-restore step 4 rung 2 must then DECIDE the mode from
+  # it and step 4b must present no pick; a tour pointer (rung 1) and the incident override
+  # outrank it. Live failure 2026-11-02: two Claudesk restores read the value and showed the
+  # menu anyway.
+  # Relevance note (/test-assertion-review mechanism 1): production delivers the line as hook
+  # context; here it rides in system_prompt_extra with the same "UserPromptSubmit hook
+  # additional context:" framing, because the real hook only exists on machines with Claudesk
+  # installed — and run-tests.sh strips the inherited CLAUDESK_DRIVE_MODE so it cannot leak.
+  # Non-echoing: the prompt states only the environmental line, never the expected behavior.
+  - id: S35-claudesk-line-decides-restore-mode
+    name: "session:restore with a Claudesk drive-mode line uses that mode and presents no mode pick"
+    skill: session-restore
+    args: >
+      Restore the session and get me back into it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/autopilot-paused.md
+      wip: fixtures/wip/feature-build-phase1-done.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as fsd.
+      Reading files with the Read tool is allowed (it is not running a command): the handoff
+      pointer is `workflow-system/state/.session.md` and the work item it names is
+      `workflow-system/state/wip/feature-build-phase1-done.md`.
+    expect:
+      # Pointer records autopilot; the live Claudesk line says fsd. Wrong outputs this rejects:
+      # (a) the fallback menu printed anyway (the 2026-11-02 failure) — "press Enter to keep
+      # current" / "Orchestrated" (a correct reply lists no other mode); (b) the line ignored
+      # and the handoff mode restored — "Restoring in Autopilot"; (c) S15 taken.
+      transition_id: S6
+      contains_required_any:
+        - "FSD"
+      not_contains:
+        - "press Enter to keep current"
+        - "Orchestrated"
+        - "Restoring in [*]*Autopilot"
+        - "TRANSITION: S15"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S36-tour-pointer-outranks-claudesk-line
+    name: "session:restore on a tour pointer ignores the Claudesk drive-mode line, names no mode, shows no pick"
+    skill: session-restore
+    args: >
+      Restore the session and get me back into it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/tour-greenfield-stepping.md
+      wip: fixtures/wip/tour-inner-work-finalized.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as autopilot.
+      Reading files with the Read tool is allowed (it is not running a command): the handoff
+      pointer is `workflow-system/state/.session.md` and the work item it names is
+      `workflow-system/state/wip/tour-inner-work-finalized.md`.
+    expect:
+      # The tour rung outranks the Claudesk rung, and a tour restore names no mode at all.
+      # Wrong outputs this rejects: restoring in the Claudesk mode (any "autopilot" — the only
+      # source of that word here is the line, and naming it pre-empts the tour's reveal); the
+      # menu; S15.
+      transition_id: S6
+      not_contains:
+        - "autopilot"
+        - "press Enter to keep current"
+        - "4  FSD"
+        - "TRANSITION: S15"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S37-incident-override-outranks-claudesk-line
+    name: "session:restore of an incident under a Claudesk autopilot line restores Orchestrated and shows no pick"
+    skill: session-restore
+    args: >
+      Restore the session and get me back into it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/incident-handoff.md
+      wip: fixtures/wip/incident-triaged.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as autopilot.
+      Reading files with the Read tool is allowed (it is not running a command): the handoff
+      pointer is `workflow-system/state/.session.md` and the work item it names is
+      `workflow-system/state/wip/incident-triaged.md`.
+    expect:
+      # Pointer has no drive_mode, so "Orchestrated" can only come from the incident override
+      # (or the rung-5 default, which would ALSO print the menu — rejected below). Wrong outputs
+      # this rejects: "Restoring in Autopilot" (override ignored); the menu; S15.
+      transition_id: S6
+      contains_required_any:
+        - "Orchestrated"
+      not_contains:
+        - "press Enter to keep current"
+        - "Restoring in [*]*Autopilot"
+        - "TRANSITION: S15"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S38-claudesk-line-realigns-wip-drive-mode
+    name: "session:restore under a Claudesk line rewrites the WIP's recorded drive_mode to the Claudesk mode"
+    skill: session-restore
+    args: >
+      Restore the session and get me back into it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/notif-prefs-e-handoff.md
+      wip: fixtures/wip/notif-prefs-e.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as autopilot.
+      Reading files with the Read tool is allowed (it is not running a command): the handoff
+      pointer is `workflow-system/state/.session.md` and the work item it names is
+      `workflow-system/state/wip/notif-prefs-e.md`.
+    expect:
+      # Pointer AND WIP frontmatter record `stepping`; the live line says autopilot. Restore must
+      # say it rewrites the WIP's `drive_mode:` to autopilot (verify-human and the orchestrator
+      # read that field mid-run — a stale `stepping` silently downgrades the run). Codified
+      # 2026-11-03 from the live Claudesk check, where the real run did exactly this.
+      # Wrong outputs this rejects: restoring Autopilot without realigning the WIP (no
+      # "...autopilot" rewrite phrase); keeping Stepping; the menu; S15.
+      transition_id: S6
+      # Anchors are grep -i BREs: `drive_mode`, then at most 80 chars, then "to"/"become" +
+      # autopilot — bounded distance, NOT `[^.]*`, because the rewrite sentence names the WIP
+      # file (`notif-prefs-e.md` has a dot; the first anchor version scored real rewrites 3/6).
+      # Covers "update `drive_mode:` to `autopilot`", the live Claudesk run's "changed the
+      # `drive_mode:` field in the WIP file to `autopilot`", "`drive_mode:` in `….md` should
+      # become `autopilot`", and the literal written field.
+      contains_required_any:
+        - 'drive_mode.\{0,80\} to [`*]*autopilot'
+        - 'drive_mode.\{0,80\} become [`*]*autopilot'
+        - "drive_mode: autopilot"
+      not_contains:
+        - "press Enter to keep current"
+        - "Restoring in [*]*Stepping"
+        - "TRANSITION: S15"
+      not_contains_strict: true
+    max_retries: 2
+
+  # ── from-claudesk deferral marker (drive-mode-picker-select-ui, Phase 2 P2.0, 2026-11-03) ──
+  # Operator decision: under a Claudesk line, /session-handoff must NOT snapshot the mode into
+  # .session.md; it writes `drive_mode: from-claudesk` (+ self-explaining comment) so the next
+  # restore follows the live Claudesk mode. Non-echoing: prompts carry only the hook line and
+  # fixture paths, never "marker"/"from-claudesk".
+  - id: S39-handoff-under-claudesk-writes-deferral-marker
+    name: "session:handoff under a Claudesk line writes the from-claudesk deferral marker, not a literal mode"
+    skill: session-handoff
+    args: >
+      Hand off the session — I'll pick this up in a fresh session tomorrow.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/feature-autopilot-active.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as fsd.
+      Reading files with the Read tool is allowed (it is not running a command): the active work
+      item is `workflow-system/state/wip/feature-autopilot-active.md`.
+    expect:
+      # WIP records autopilot, the live line says fsd. Wrong outputs this rejects: a pointer with
+      # `drive_mode: autopilot` (the pre-feature WIP copy) or `drive_mode: fsd` (the literal
+      # snapshot the operator rejected) — neither contains the marker.
+      transition_id: S17
+      contains_required_any:
+        - "drive_mode: from-claudesk"
+    max_retries: 2
+
+  - id: S40-restore-marker-without-claudesk-line-falls-back
+    name: "session:restore of a from-claudesk pointer with NO Claudesk line uses the WIP's mode and offers the pick"
+    skill: session-restore
+    args: >
+      Restore the session and get me back into it.
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      session: fixtures/session/notif-prefs-f-handoff.md
+      wip: fixtures/wip/notif-prefs-e.md
+    system_prompt_extra: |
+      Reading files with the Read tool is allowed (it is not running a command): the handoff
+      pointer is `workflow-system/state/.session.md` and the work item it names is
+      `workflow-system/state/wip/notif-prefs-e.md`.
+    expect:
+      # A bare terminal (no hook line; the harness strips CLAUDESK_DRIVE_MODE). The pointer's
+      # drive_mode is the marker, the WIP records stepping → rung 3 skipped, rung 4 → Stepping is
+      # the CURRENT mode and the pick is offered (S15). Wrong outputs this rejects: falling to the
+      # orchestrated default ("Current: Orchestrated"), or treating the marker as the mode.
+      transition_id: S15
+      contains_required_any:
+        - 'Current: [*]*Stepping'
+        - 'Stepping[*]* (current)'
+    max_retries: 2
+
+  # ── session-start under a Claudesk line (drive-mode-picker-select-ui, Phase 2 P2.3, 2026-11-03) ──
+  # step 3: the line decides the mode → no mode pick / no list of the other modes; ONE
+  # confirmation of the classification remains (naming the mode); incidents still run Mode 2.
+  # Non-echoing: prompts carry only the hook line. Routing is not under test here (S1–S5 own it),
+  # so S41 accepts any feature/task classification exit.
+  - id: S41-start-under-claudesk-line-skips-mode-pick
+    name: "session:start with a Claudesk drive-mode line uses that mode, shows no mode pick, still confirms the workflow once"
+    skill: session-start
+    args: "Add a tooltip to the settings icon showing the keyboard shortcut Ctrl+K"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as fsd.
+    expect:
+      # Wrong outputs this rejects: the 1–4 menu (pre-feature; it would ALSO contain "FSD", so the
+      # negatives carry the discrimination); a list of the other modes; skipping the one
+      # classification confirmation ("Drive it" absent).
+      transition_id_any: [S1, S2, S3]
+      contains_required:
+        - "FSD"
+      contains_required_any:
+        - "Drive it"
+      not_contains:
+        - "Type 1"
+        - "1. Stepping"
+        - "Stepping"
+        - "press Enter for Autopilot"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S42-start-incident-under-claudesk-line-runs-orchestrated
+    name: "session:start of an incident under a Claudesk autopilot line drives it as Orchestrated with no mode pick"
+    skill: session-start
+    args: "Production is down! Users getting 500 errors on the main API"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    system_prompt_extra: |
+      UserPromptSubmit hook additional context: Claudesk reports the drive mode for this workspace as autopilot.
+    expect:
+      # Wrong outputs this rejects: driving the incident in Autopilot (override ignored — no
+      # "Orchestrated"); the 1–4 menu.
+      transition_id: S4
+      contains_required_any:
+        - "Orchestrated"
+      not_contains:
+        - "Type 1"
+        - "1. Stepping"
+        - "4. FSD"
+        - "press Enter for Autopilot"
+      not_contains_strict: true
+    max_retries: 2
+
+  - id: S43-start-without-claudesk-line-offers-mode-pick
+    name: "session:start with NO Claudesk line still offers the drive-mode pick (negative control for S41)"
+    skill: session-start
+    args: "Add a tooltip to the settings icon showing the keyboard shortcut Ctrl+K"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+    expect:
+      # Same request as S41 minus the hook line (and the harness strips CLAUDESK_DRIVE_MODE). The
+      # Claudesk rung must stay INERT: under `claude --print` AskUserQuestion is absent, so the
+      # numbered fallback menu must appear. Added at Phase 2 codify because S10 cannot serve as
+      # this control ("no stops" in its request makes the model pick FSD itself).
+      # Wrong outputs this rejects: driving straight on with no mode choice; applying the
+      # Claudesk rule without a line ("the mode Claudesk reports").
+      transition_id_any: [S1, S2, S3, S10]
+      # Anchors widened after the first version scored real menus 1/3: bold-tolerant numbering, and
+      # the pick described rather than printed ("Autopilot as default … Pick a drive mode").
+      contains_required_any:
+        - 'Type 1'
+        - '1\. [*]*Stepping'
+        - 'Autopilot (default)'
+        - 'Autopilot as default'
+        - 'Pick a drive mode'
+        - 'Which drive mode'
+        - 'ask for the drive mode'
+        - 'AskUserQuestion'   # stable signal: a no-line reply names the tool (or prints the menu); one that skips the pick has no reason to
+      not_contains:
+        - "the mode Claudesk reports"
+      not_contains_strict: true
     max_retries: 2
 
   # ⚠️ S33 + S34 are KNOWN-FAILING BY DESIGN (WP7o, 2026-07-27) — do NOT "fix" them by softening

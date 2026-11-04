@@ -3552,6 +3552,124 @@ grep_check "transitions.md F11 row names the feature-level floor" "workflow-syst
 grep_check "feature-workflow AGENTS.md AUTO-SKIP prose names the feature-level floor" "agents/feature-workflow/AGENTS.md" 'AUTO-SKIP.*except the feature-level floor' 1
 
 echo ""
+# [Phase 25] drive-mode-picker-select-ui — Claudesk line decides the mode; select-UI pick
+#
+# Why: on 2026-11-02 two Claudesk restores read "Claudesk reports the drive mode for this
+# workspace as <mode>." for its VALUE and then showed the menu anyway. The fix is an explicit
+# rung in session-restore step 4 plus a skip clause in 4b. These pins guard (a) the rung's
+# presence and its ORDER in the ladder (tour outranks Claudesk outranks the recorded handoff
+# mode — an order flip is the silent regression a presence-only pin accepts), (b) the 4b skip
+# clause and the AskUserQuestion pick + its non-interactive fallback, and (c) the harness
+# isolation that keeps an operator's inherited CLAUDESK_DRIVE_MODE out of every scenario.
+# Section windows reuse [Phase 23]'s check_section_anchors (both boundaries fail closed).
+echo "[Phase 25] drive-mode-picker-select-ui — Claudesk line + select-UI pick"
+
+P25_RESTORE_ANCHORS=(
+  'Claudesk reports the drive mode for this workspace as <mode>\.'
+  'such line, and only when `<mode>` is one of the wire strings'
+  'this rung decides the mode, and step 4b then presents no pick'
+  'Skip it too when the Claudesk line decided the mode'
+  'whatever rungs 2–5 found'
+  'AskUserQuestion'
+  'current mode first'
+  'press Enter to keep current'
+)
+check_section_anchors "session-restore steps 4/4b carry the Claudesk rung, the 4b skip, the incident override, and the AskUserQuestion pick + fallback" \
+  "skills/session-restore/SKILL.md" '^4\. [*][*]Restore context' '^5\. [*][*]Hand off' "${P25_RESTORE_ANCHORS[@]}"
+# NB: boundaries use `[*]`, not `\*` — check_section_anchors passes them through `awk -v`,
+# which processes backslash escapes, so `\*\*` reaches the regex as a bare `**` and the window
+# comes back EMPTY (every anchor then reports "missing", which at least fails closed).
+
+p25_restore="skills/session-restore/SKILL.md"
+if [ ! -f "$p25_restore" ]; then
+  check "session-restore mode ladder order: tour → Claudesk → .session.md" "fail" "$p25_restore does not exist — if it was renamed, update [Phase 25] deliberately"
+else
+  p25_l_tour=$(grep -nE '^   1\. \*\*`tour:` field present' "$p25_restore" | head -1 | cut -d: -f1)
+  p25_l_cdsk=$(grep -nE '^   2\. \*\*Claudesk line present' "$p25_restore" | head -1 | cut -d: -f1)
+  p25_l_sess=$(grep -nE '^   3\. `drive_mode` from `\.session\.md`' "$p25_restore" | head -1 | cut -d: -f1)
+  if [ -z "$p25_l_tour" ] || [ -z "$p25_l_cdsk" ] || [ -z "$p25_l_sess" ]; then
+    check "session-restore mode ladder order: tour → Claudesk → .session.md" "fail" \
+      "a ladder rung is missing or was reworded (tour=${p25_l_tour:-none} claudesk=${p25_l_cdsk:-none} session=${p25_l_sess:-none}) — re-anchor deliberately, never by deleting the pin"
+  elif [ "$p25_l_tour" -lt "$p25_l_cdsk" ] && [ "$p25_l_cdsk" -lt "$p25_l_sess" ]; then
+    check "session-restore mode ladder order: tour → Claudesk → .session.md" "pass"
+  else
+    check "session-restore mode ladder order: tour → Claudesk → .session.md" "fail" \
+      "rungs out of order (tour=$p25_l_tour claudesk=$p25_l_cdsk session=$p25_l_sess) — the tour pointer must outrank the Claudesk line, which must outrank the recorded handoff mode"
+  fi
+fi
+
+grep_check "run-tests.sh strips an inherited CLAUDESK_DRIVE_MODE before invoking claude (scenario hermeticity)" \
+  "tests/run-tests.sh" 'env -u CLAUDESK_DRIVE_MODE claude --print' 1
+grep_check "transitions.md S15 row scopes the mode pick to a bare terminal (Claudesk line / tour → S6)" \
+  "workflow-system/product/transitions.md" '^\| S15 \|.*Bare terminal only' 1
+
+# Phase 2 of the feature: session-start step 3 (same rule + one classification confirmation kept),
+# the session-handoff `from-claudesk` deferral marker (operator decision: never snapshot the
+# Claudesk mode into .session.md), and session-restore rung 3 treating the marker as "not a mode".
+P25_START_ANCHORS=(
+  'Claudesk reports the drive mode for this workspace as <mode>\.'
+  'this line decides the mode, and you present no mode pick'
+  'Still stop once to confirm the classification'
+  'Incident override still applies'
+  'AskUserQuestion'
+  'Autopilot first'
+  'Type 1–4'
+)
+check_section_anchors "session-start step 3 carries the Claudesk rule, the kept classification confirmation, the incident override, and the AskUserQuestion pick + fallback" \
+  "skills/session-start/SKILL.md" '^### 3\. Confirm and select drive mode' '^### 4\. Drive the workflow' "${P25_START_ANCHORS[@]}"
+
+P25_HANDOFF_ANCHORS=(
+  "Where the pointer.s .drive_mode:. comes from"
+  'drive_mode: from-claudesk  # not a mode'
+  'Copy the marker [*][*]and its comment'
+  "Leave the WIP.s own .drive_mode:. literal"
+)
+check_section_anchors "session-handoff step 2 writes the from-claudesk deferral marker (not a literal mode) under a Claudesk line" \
+  "skills/session-handoff/SKILL.md" '^2\. [*][*]Write .workflow-system/state/\.session\.md.' '^   [*][*]Tour-driven handoffs' "${P25_HANDOFF_ANCHORS[@]}"
+
+p25_handoff="skills/session-handoff/SKILL.md"
+if [ ! -f "$p25_handoff" ]; then
+  check "session-handoff drive_mode source order: tour → incident → Claudesk marker → WIP" "fail" "$p25_handoff does not exist — if it was renamed, update [Phase 25] deliberately"
+else
+  p25_h_tour=$(grep -nE '^   1\. [*][*]A tour-driven handoff' "$p25_handoff" | head -1 | cut -d: -f1)
+  p25_h_inc=$(grep -nE '^   2\. [*][*]An incident' "$p25_handoff" | head -1 | cut -d: -f1)
+  p25_h_cdsk=$(grep -nE '^   3\. [*][*]The Claudesk line is in your context' "$p25_handoff" | head -1 | cut -d: -f1)
+  p25_h_wip=$(grep -nE '^   4\. [*][*]Otherwise' "$p25_handoff" | head -1 | cut -d: -f1)
+  if [ -z "$p25_h_tour" ] || [ -z "$p25_h_inc" ] || [ -z "$p25_h_cdsk" ] || [ -z "$p25_h_wip" ]; then
+    check "session-handoff drive_mode source order: tour → incident → Claudesk marker → WIP" "fail" \
+      "a source rung is missing or was reworded (tour=${p25_h_tour:-none} incident=${p25_h_inc:-none} claudesk=${p25_h_cdsk:-none} wip=${p25_h_wip:-none}) — re-anchor deliberately"
+  elif [ "$p25_h_tour" -lt "$p25_h_inc" ] && [ "$p25_h_inc" -lt "$p25_h_cdsk" ] && [ "$p25_h_cdsk" -lt "$p25_h_wip" ]; then
+    check "session-handoff drive_mode source order: tour → incident → Claudesk marker → WIP" "pass"
+  else
+    check "session-handoff drive_mode source order: tour → incident → Claudesk marker → WIP" "fail" \
+      "rungs out of order (tour=$p25_h_tour incident=$p25_h_inc claudesk=$p25_h_cdsk wip=$p25_h_wip) — a tour/incident handoff must keep its literal mode ahead of the marker"
+  fi
+fi
+
+P25_RESTORE_MARKER_ANCHORS=( 'The value .from-claudesk. is not a mode' )
+check_section_anchors "session-restore rung 3 treats the from-claudesk marker as not-a-mode (falls through without the line)" \
+  "skills/session-restore/SKILL.md" '^4\. [*][*]Restore context' '^5\. [*][*]Hand off' "${P25_RESTORE_MARKER_ANCHORS[@]}"
+
+grep_check "transitions.md S17 row names the from-claudesk deferral marker" \
+  "workflow-system/product/transitions.md" '^\| S17 \|.*from-claudesk' 1
+
+# Phase 3 of the feature: each tutorial arm's REPLAY branch presents the gear pick with AskUserQuestion
+# (Autopilot first), keeps the numbered menu verbatim as the fallback (T3's first-run leak negatives and the
+# narration probe's "drive-mode menu" anchor read that copy), and is NOT skipped by a Claudesk line — the
+# gear choice is the lesson on a replay. Window: the replay branch only, so first-run copy cannot satisfy it.
+P25_TOUR_ANCHORS=(
+  'ask with the [*][*].AskUserQuestion.[*][*] tool'   # the instruction itself (bare token also hits the fallback sentence)
+  'Autopilot \(recommended\)'
+  'does not skip this pick'
+  'Drive mode is how much the workflow chains'
+  'Type 1–4'
+)
+for p25_arm in skills/tutorial-greenfield-workflow-tour/SKILL.md skills/tutorial-brownfield-workflow-tour/SKILL.md; do
+  check_section_anchors "$(basename "$(dirname "$p25_arm")") replay branch: AskUserQuestion pick (Autopilot first), numbered fallback kept, not skipped by a Claudesk line" \
+    "$p25_arm" '^[*][*]If REPLAY[*][*]' '^Record the chosen mode' "${P25_TOUR_ANCHORS[@]}"
+done
+
+echo ""
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

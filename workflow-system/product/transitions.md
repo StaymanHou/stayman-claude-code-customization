@@ -149,7 +149,10 @@ After any terminal-close (`feature-finalize` F19, `feature-refactor` F21, `task-
 
 #### Session-start prompt
 
-When `/session-start` confirms the work classification, it presents the mode choice before proceeding:
+When `/session-start` confirms the work classification, it settles the drive mode before proceeding:
+
+- **Claudesk line present** (`Claudesk reports the drive mode for this workspace as <mode>.`): that mode is used, **no mode pick is shown**, and one confirmation of the classification remains, naming the mode ("I'll drive the `<workflow>` workflow in **<Mode>**, the mode Claudesk reports for this workspace. Drive it?"). Incidents still run Mode 2.
+- **Bare terminal:** the pick is an `AskUserQuestion` select (header `Drive mode`, **Autopilot (default)** first, then Stepping / Orchestrated / FSD; the free-text "Other" covers "no → run the entry skill manually"). When the tool is absent (`claude --print`), it falls back to the numbered menu:
 
 ```
 I'll drive the <workflow> workflow. Which drive mode do you want?
@@ -473,9 +476,9 @@ Session entry skills (`session-start`, `session-restore`, `session-handoff`) are
 | S12 | session-start | (pause) | Mode 3 (Autopilot): pause only at verify-human |
 | S13 | session-start | (pause-after-each) | Mode 1 (Stepping): pause after every skill, tell user next slash command |
 | S14 | session-start | (skip+chain) | Mode 4 (FSD): skip verify-human, chain to verify-codify |
-| S15 | session-restore | (mode menu) | Surface `drive_mode` from `.session.md` and present change-mode menu |
+| S15 | session-restore | (mode menu) | Surface the active drive mode and present the change-mode pick (`AskUserQuestion`; numbered-list fallback when the tool is absent). Bare terminal only — when a `tour:` pointer or the Claudesk line (`Claudesk reports the drive mode for this workspace as <mode>.`) decides the mode, no pick is shown and restore exits `S6` |
 | S16 | session-restore | (mode change) | User selects different drive mode on restore — update WIP frontmatter |
-| S17 | session-handoff | (.session.md) | Write `drive_mode` from WIP frontmatter into `.session.md`. Now also a **chain target**: reached automatically via `S22`/`S23` at a clean workflow boundary (see below). |
+| S17 | session-handoff | (.session.md) | Write `drive_mode` into `.session.md`: a literal mode (tour-supplied; `orchestrated` for an incident; otherwise from the WIP frontmatter), or, under a Claudesk line, the deferral marker `drive_mode: from-claudesk` so restore follows the live Claudesk mode. Now also a **chain target**: reached automatically via `S22`/`S23` at a clean workflow boundary (see below). |
 | S18 | session-start | feature:reproduce | Classified as bug-shape feature (user describes undesirable behavior) — route to optional pre-spec/pre-plan red-green reproduction |
 | S20 | session-capture | (terminal) | Learning persisted: project-scope to `<proj-dir>/.claude/<dest>`, or global-scope drafted to the canonical `<proj-dir>/.claude/learnings/<date>-<slug>.md`; never `~/.claude/`. Git behavior keyed on the artifact tracking policy + project overrides, not gitignore inspection. (Skill renamed from `session-store-learning` in WP5/M9.) **Confirmation gate is now drive-mode-conditional** (see the `session-capture` meta-op row): autopilot/FSD + `[PROJECT]` scope auto-writes (surfaced as a read-time veto); `[GLOBAL]` scope keeps the confirm gate; Modes 1/2 unchanged. At a clean boundary, `S20` auto-chains onward to `S23` (→ `session-handoff`). |
 | S22 | reflect → session-handoff | (auto-chain) | **Session-boundary exit-chain, no-learning arm.** After a terminal-close → `reflect`, when reflect yields **nothing to persist**, auto-chain straight to `session-handoff`. Condition: clean workflow boundary (post-terminal reflect, no learning). Type: forward. **AUTO in all four drive modes.** The mid-workflow-ambiguous case is the narrow CONFIRM exception (a guard, not this edge — see the Drive-modes "Session-boundary exit chain" block). |

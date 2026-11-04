@@ -41,7 +41,7 @@ The discriminator is **workflow position**, not the trigger word: terminal bound
 
 When you finish, label your output with this ID:
 
-- **S17** — `.session.md` written (with `drive_mode:` if present in WIP frontmatter), state-file annotated, user told to use `/session-restore`
+- **S17** — `.session.md` written (with `drive_mode:` per its source rule: a literal mode, or the `from-claudesk` deferral marker under a Claudesk line), state-file annotated, user told to use `/session-restore`
 
 **Steps:**
 
@@ -61,7 +61,17 @@ When you finish, label your output with this ID:
 
 2. **Write `workflow-system/state/.session.md`** — this is a single-file session pointer (one active session per repo). Overwrite it each time:
 
-   Before writing, read the active WIP file's YAML frontmatter. If it contains a `drive_mode:` field, include it in the session pointer. If no `drive_mode` is present, omit the field entirely (do not default it).
+   **Where the pointer's `drive_mode:` comes from.** Take the first source that applies:
+   1. **A tour-driven handoff** → the literal mode the `tutorial-*` skill supplies (required; see "Tour-driven handoffs" below).
+   2. **An incident** (`workflow: incident`) → literal `orchestrated`. Incidents always run Mode 2.
+   3. **The Claudesk line is in your context**, i.e. `Claudesk reports the drive mode for this workspace as <mode>.` (most recent such line, `<mode>` one of `stepping` / `orchestrated` / `autopilot` / `fsd`) → write the **deferral marker**, not a mode:
+
+      ```yaml
+      drive_mode: from-claudesk  # not a mode: on restore, use the live "Claudesk reports the drive mode…" line; no line → use state_file's drive_mode
+      ```
+
+      Copy the marker **and its comment** exactly. The operator sets the mode per workspace in Claudesk and can change it at any time, so a literal mode here is a stale snapshot that the next session would obey over the live setting. The comment tells any reader, even one that has never seen this rule, what to do instead. Leave the WIP's own `drive_mode:` literal, because the orchestrator and `feature-verify-human` need a real mode mid-run, and `/session-restore` realigns it to the live Claudesk mode.
+   4. **Otherwise** → the active WIP file's `drive_mode:` from its YAML frontmatter, if present. If it is absent, omit the field entirely (do not default it).
 
    **Optional tour field.** One further field — `tour:` — is written **only** when a `tutorial-*` tour skill is driving this handoff as one of its own scripted beats; that skill supplies its value. It is **absent from every ordinary handoff** and must not be invented, defaulted, or inferred from the conversation. When it is absent, this skill behaves exactly as it always has. See "Tour-driven handoffs" below, which is the **schema of record** for the tour pointer.
 
@@ -72,7 +82,7 @@ workflow: <product|feature|task|incident>
 step: <current step name>
 resume_skill: /<workflow>-<step>
 state_file: <path to the active state file, e.g. workflow-system/state/wip/<feature>.md or workflow-system/product/roadmap.md>
-drive_mode: <stepping|orchestrated|autopilot|fsd>  # omit if WIP has no drive_mode
+drive_mode: <stepping|orchestrated|autopilot|fsd, or the from-claudesk marker>  # source: "Where the pointer's drive_mode comes from" above; omit if none applies
 ---
 
 # Session Handoff

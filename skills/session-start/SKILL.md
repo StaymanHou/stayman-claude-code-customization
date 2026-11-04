@@ -120,7 +120,26 @@ Classification outputs:
   **Decision rule (bug-shape):** if ambiguous, default to skipping reproduce. Do not ask a clarifying question — let the user explicitly invoke `/feature-reproduce` if they realize they need it. (Repo owner has self-disciplined to describe bugs explicitly when intended; ambiguous descriptions are treated as new-capability features.)
 
 ### 3. Confirm and select drive mode
-State your classification (1–2 sentences), then present the mode menu (the harness's Notification hook will fire automatically when you pause for the user's reply):
+State your classification (1–2 sentences). Then settle the drive mode. The harness's Notification hook fires automatically when you pause for the user's reply.
+
+**If Claudesk reports the mode, use it and present no mode pick.** When Claudesk spawns the session, its hook puts this line into your context on every user turn:
+`Claudesk reports the drive mode for this workspace as <mode>.`
+Use the **most recent** such line, and only when `<mode>` is one of the wire strings `stepping` / `orchestrated` / `autopilot` / `fsd`. Ignore any other value and use the pick below. The line is the operator's live per-workspace setting, and reading it for its value is not enough: **this line decides the mode, and you present no mode pick and no list of the other modes.** The operator changes the mode in Claudesk's workspace header, not here.
+- **Still stop once to confirm the classification**, naming the mode in the same line: "I'll drive the `<workflow>` workflow in **<Mode>**, the mode Claudesk reports for this workspace. Drive it?" Ask it with `AskUserQuestion` (options `Drive it` / `I'll run /<entry-skill> myself`), or as that plain one-line question when the tool is not available. This stop guards against a wrong workflow or a wrong backlog item, not against the mode.
+- **Incident override still applies:** for an incident, say "Claudesk reports **<Mode>**; incidents always run **Orchestrated**." and drive it as Mode 2 (see below).
+
+**Otherwise (a bare terminal, no Claudesk line), let the operator pick with the `AskUserQuestion` tool.** One question, header `Drive mode`, four options, **Autopilot first** as the default, then the rest in 1→4 order:
+
+| Label | Description |
+|---|---|
+| Autopilot (default) | Only pauses at verify-human (and auto-skips it when nothing needs you); everything else chains automatically |
+| Stepping | Pause after every skill; you confirm each transition |
+| Orchestrated | Standard pauses (spec, plan, verify-human, finalize) |
+| FSD | No pauses; verify-human skipped; runs to completion |
+
+The tool adds a free-text "Other" row. An "Other" reply of "no" (or "I'll do it myself") means the operator wants to run the entry skill manually (see below).
+
+**Fallback, when `AskUserQuestion` is not available** (a non-interactive `claude --print` run has no such tool): present the same choice as a numbered text menu:
 
 > I'll drive the `<workflow>` workflow. Which drive mode do you want?
 >
@@ -131,12 +150,13 @@ State your classification (1–2 sentences), then present the mode menu (the har
 >
 > (Type 1–4 — or just press Enter for Autopilot)
 
-**Interpreting the reply:**
-- "1" / "step" / "stepping" / "step-by-step" / "manual" → **Mode 1** (pause after every skill; hand control back after each step)
-- "2" / "orchestrated" → **Mode 2**
-- "3" / Enter / blank / "yes" / "autopilot" → **Mode 3**
-- "4" / "full" / "fsd" / "full-autopilot" / "no stops" / "end-to-end" / "drive it end-to-end" → **Mode 4**
-- "no" → tell the user which entry skill to run manually (e.g. `/feature-plan`). Stop. You're done.
+**Interpreting the reply** (a picked option, or typed text in the fallback):
+- "Stepping" / "1" / "step" / "stepping" / "step-by-step" / "manual" → **Mode 1** (pause after every skill; hand control back after each step)
+- "Orchestrated" / "2" / "orchestrated" → **Mode 2**
+- "Autopilot" / "3" / Enter / blank / "yes" / "autopilot" → **Mode 3**
+- "Drive it" / "yes" to the Claudesk confirmation → **the mode the Claudesk line reports** (Mode 2 for an incident)
+- "FSD" / "4" / "full" / "fsd" / "full-autopilot" / "no stops" / "end-to-end" / "drive it end-to-end" → **Mode 4**
+- "no" / "I'll run /<entry-skill> myself" → tell the user which entry skill to run manually (e.g. `/feature-plan`). Stop. You're done.
 
 **Mode 1 behaviour:** after each skill completes, summarise what was done and tell the user which slash command to run next. Do not invoke the next skill automatically.
 

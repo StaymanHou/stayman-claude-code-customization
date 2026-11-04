@@ -160,7 +160,7 @@ job here is **not** to set the mode — it's to make sure you don't spoil it:
 - **Do NOT present a drive-mode menu here, and do NOT mention that drive modes (autopilot/FSD) even
   exist.** The whole point of the first run is that the user *sees* the workflow pause and ask them
   (beat B) — the tunable-pauses reveal is saved for the Step-8 graduation, and naming faster gears
-  now would spoil it. Drive mode (a numbered menu the workflow itself presents) is the arm skill's
+  now would spoil it. Drive mode (a choice the workflow itself presents, as a select question or a numbered menu) is the arm skill's
   concern on entry, not this dispatcher's.
 
 (Stepping is the **workflow drive mode** — how the *workflow* chains its steps — which is distinct

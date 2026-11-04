@@ -49,8 +49,10 @@ the user do it for real, not by narrating it.
    - **First run** → default to **stepping**, and **NEVER mention that drive modes exist**
      until the Step-8 graduation reveal (revealing them early would spoil beat B — the
      visible human pause the whole tour is built around).
-   - **Replay** → present the standard **1–4 drive-mode menu** (same shape as
-     `/session-start`) and let the user pick autopilot/FSD.
+   - **Replay** → present the standard **drive-mode pick** (same shape as `/session-start`: an
+     `AskUserQuestion` select with Autopilot first, falling back to the numbered 1–4 menu) and let
+     the user pick autopilot/FSD. A Claudesk drive-mode line does **not** skip it, because on a replay
+     the gear choice is the lesson (2026-11-03, drive-mode-picker-select-ui).
    (Chosen over disk-state / marker-file discriminators for robustness — the tour is a
    deliberate narrated experience, so one question fits. Operator decision, 2026-07-22.)
 
@@ -87,11 +89,13 @@ the user do it for real, not by narrating it.
 
 ## Mode-switching, explained for the user
 
-Drive mode is **not a slash command** the user types — it is a **numbered menu the workflow
-presents** (`1 Stepping / 2 Orchestrated / 3 Autopilot / 4 FSD`; type 1–4 or Enter for the
-default). The two canonical places it is presented are `/session-start` (new work) and
-`/session-restore` (on restore). Because the tour's replay path enters the arm skill
-directly (bypassing both), **the arm skill itself must present that menu on the replay run**
+Drive mode is **not a slash command** the user types. It is a **choice the workflow presents**:
+an `AskUserQuestion` select (`Autopilot` first, then `Stepping / Orchestrated / FSD`), falling back to
+the numbered menu (`1 Stepping / 2 Orchestrated / 3 Autopilot / 4 FSD`; type 1–4 or Enter for the
+default) when the tool is unavailable. The two canonical places it is presented are `/session-start`
+(new work) and `/session-restore` (on restore). Both skip it when Claudesk reports the workspace's
+mode. Because the tour's replay path enters the arm skill directly (bypassing both), **the arm skill
+itself must present that pick on the replay run**, even under a Claudesk line
 (invariant 4). The first run never shows it (modes stay hidden until graduation).
 
 ## Why this doc exists

@@ -33,8 +33,29 @@
 - **Done looks like:** no menu under Claudesk (mode named in one line); `AskUserQuestion` pick in a bare terminal; `check-structure.sh` pins on these steps updated; optional reply to the Claudesk inbox on ship.
 - **Order:** NEXT — operator booked it 2026-11-02 for the session after `verify-human-alignment-only` finalizes (it also edits `skills/session-start/SKILL.md`, which that feature touches).
 - **Priority:** high
-- **Status:** pending
-- **Session Handoff — 2026-11-02:** handed off as the next session's work. See `workflow-system/state/.session.md` to restore.
+- **Status:** in-progress — WIP `workflow-system/state/wip/drive-mode-picker-select-ui.md` (planned 2026-11-03)
+
+## SURFACE-2026-11-03-MID-RUN-CLAUDESK-MODE-CHANGE-IGNORED
+
+- **Source:** feature-plan for `drive-mode-picker-select-ui` (2026-11-03)
+- **Target level:** task (`/task-plan`)
+- **Type:** gap
+- **Summary:** Claudesk re-sends `Claudesk reports the drive mode for this workspace as <mode>.` on every turn, and the operator can change it from the workspace header mid-run. `session-start`/`session-restore` will honor it at entry (feature `drive-mode-picker-select-ui`), but the orchestrator loop (session-start step 4.2 "re-read the active drive mode") reads only the WIP `drive_mode:`, so a mid-run header change is silently ignored. Decide whether the loop should follow a changed line (and rewrite the WIP) — likely confirm with Claudesk first.
+- **Priority:** medium
+- **Status:** open
+
+## SURFACE-2026-11-03-SCENARIO-SWEEP-PREEXISTING-FAILURES
+
+- **Source:** feature:verify-codify (drive-mode-picker-select-ui, Phase 1 full sweep)
+- **Target level:** task (`/util-backlog-paydown` candidate)
+- **Type:** tech-debt (test suite health)
+- **Summary:** The 2026-11-03 `run-all.sh` sweep (first one run hermetically, with `env -u CLAUDESK_DRIVE_MODE`) failed 10 scenarios outside the known-by-design S33/S34 (an 11th, F-vh-decision, was caused by a fixture overwrite in that same feature and passes 3/3 once the fixture was restored). In an n=3 A/B against the inherited Claudesk autopilot line, each one fails the same way with or without the line, so they were failing before this feature: F-verify-human-boundary-digest-advances, F-boundary-human, S14, T3-tour-first-run-hides-drive-modes-until-graduation, F16-order-flip, DP-capture-skips-bare-fact, S22, T2-tour-recommends-auto-permission-mode, S3 (sonnet, `found S1`). Ambiguous: F-verify-human-auto-skip-fires 0/3 hermetic vs 2/3 with the line (p≈0.4; its fixture already sets `drive_mode: autopilot`).
+- **Added 2026-11-03 (final sweep):** DP-consult-changes is flaky (FLAKY in the Phase 1 sweep; FAIL in the final sweep; re-run FAIL/PASS/FAIL) and untouched by the feature (`product-wbs` + stock fixture).
+- **Added 2026-11-03 (Phase 2 verify-self):** S12 is 0/3 single-attempt on both the current and the HEAD session-start (strict negatives match explanatory prose such as "I would not auto-chain to verify-codify"), and passed only within retries in the sweep. S10 is NOT a valid no-Claudesk-line menu control: its request says "no stops", so the model picks FSD from the request and never shows the menu (SOFT_PASS on both versions).
+- **Context:** Earlier "green" runs launched from a Claudesk session had the autopilot hook line injected into every scenario, so recorded PASSes before 2026-11-03 may not be hermetic baselines. Results: `tests/results/run-2026-11-03-120521-combined.json`; triage in the drive-mode-picker WIP/archive.
+- **Suggested action:** Re-baseline each at n≥6 (hermetic), read the dumps (`TEST_DUMP_DIR`), and split them into skill-prose adherence vs fixture/anchor defects. Do not soften assertions to get green.
+- **Priority:** medium
+- **Status:** open
 
 ## SURFACE-2026-09-29-VERIFY-HUMAN-DIGEST-FORMAT-ADHERENCE
 

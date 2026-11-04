@@ -442,6 +442,19 @@ There is **no notification hook** in the system. An earlier `notify-human` skill
 
 `/session-start` classifies, presents the drive-mode menu, then **drives the workflow in the current conversation** by reading the matching `agents/<workflow>-workflow/AGENTS.md` Orchestration Procedure and invoking each skill via the Skill tool. It does NOT spawn an Agent subagent. Rationale: the Agent tool is one-shot — a subagent that pauses for human input can't be resumed, which would force each human pause to respawn a fresh subagent and lose mid-step state. Keeps user dialogue continuous. Experimental subagent-per-step design parked in `workflow-system/product/transitions.md` → "Experiment: Subagent-Per-Step Orchestration" for future revisit if context growth becomes a problem.
 
+
+### Drive-mode source of truth — the Claudesk hook line (2026-11-03, `drive-mode-picker-select-ui`)
+
+When Claudesk spawns a session, its `UserPromptSubmit` hook adds `Claudesk reports the drive mode for this workspace as <mode>.` on every turn (a fact, by Claudesk's design: "a prohibition is correct at turn 1 and wrong at turn 60"). The skills own what that fact means:
+
+- **`/session-start` step 3 and `/session-restore` step 4/4b:** the most recent line with a valid wire string **decides** the mode and **no mode pick is shown**; the mode is named in one line. `/session-start` keeps one confirmation of the classified workflow. Restore realigns the WIP's `drive_mode:` to the live mode. Precedence on restore: `tour:` pointer > Claudesk line > `.session.md` > `state_file` > `orchestrated`; the incident override (Mode 2) outranks the line in both skills.
+- **`/session-handoff`:** under the line it writes the deferral marker `drive_mode: from-claudesk` (+ a self-explaining comment) instead of a literal mode, so a restore follows the operator's live per-workspace setting rather than a stale snapshot. Tour handoffs, incidents and no-line handoffs keep a literal mode. Claudesk confirmed nothing on its side parses the `.session.md` body.
+- **Bare terminal (no line):** the pick is an `AskUserQuestion` select (current/default mode first), falling back to the numbered menu where the tool is absent (`claude --print`, so every scenario-harness run).
+- **Tutorial tour replays** present the gear pick the same way and are **not** skipped by the line: the gear choice is the replay's lesson.
+- **Harness consequence:** `tests/run-tests.sh` runs `env -u CLAUDESK_DRIVE_MODE claude …`. Without it, a suite launched from a Claudesk session injects the line into every scenario.
+
+Pinned by `tests/check-structure.sh` `[Phase 25]`; behavior covered by `session.yaml` S35–S43 and `tutorial.yaml` T5. Not covered: a mid-run Claudesk mode change is ignored by the orchestrator loop (`SURFACE-2026-11-03-MID-RUN-CLAUDESK-MODE-CHANGE-IGNORED`).
+
 ---
 
 ## Revision 2026-05-02

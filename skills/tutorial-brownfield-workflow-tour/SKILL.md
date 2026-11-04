@@ -120,9 +120,16 @@ still never say the word.
 gear. First confirm their repo is back at the clean baseline (they should have `git stash`ed / restored
 before crossing the session boundary — see Step 8's replay invite; if they didn't, point them to do it
 now so the replay starts clean). Then **present the drive-mode menu yourself** — drive mode is a
-**numbered menu the workflow shows, not a slash command you type**, and because this replay path enters
+**choice the workflow presents (a select question, or a numbered menu), not a slash command you type**, and because this replay path enters
 you directly (bypassing `/session-start` and `/session-restore`, the two places that normally show it),
 *you* present it:
+
+Say the opening line, then ask with the **`AskUserQuestion`** tool: one question, header `Drive mode`,
+**Autopilot first** (label `Autopilot (recommended)`, the most instructive contrast with the stepping run they
+already saw), then Stepping, Orchestrated and FSD, with the one-line descriptions below. **A Claudesk drive-mode
+line does not skip this pick.** `/session-start` and `/session-restore` use that line instead of asking, but on a
+replay the gear choice *is* the lesson. When `AskUserQuestion` is not available, show the same choice as the
+numbered menu:
 
 > *"Great — replay it is. Drive mode is how much the workflow chains on its own between steps. Pick
 > your gear:*
