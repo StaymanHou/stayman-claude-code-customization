@@ -144,7 +144,7 @@ Tasks are simpler — no per-phase verification loop, no observable outcomes sec
 
 A per-project, durable product doc recording the operator's **design priors** — terse, transferable statements of how the operator resolves recurring *product-design* tradeoffs for this project, each paired with its *why*. Planning skills **consult** it to fill product-design gaps the operator's way; capture-checkpoint skills **propose** new priors (operator reviews before write). Priors are **directional and overridable**, never decisive — see "Design priors (GLOBAL)" in `CLAUDE.snippet.md` for the consult-weighting rules and capture discriminant.
 
-**This doc lives in *consuming* projects, never in this repo's own `workflow-system/product/`** — the skill repo ships the schema + skill contracts (behavior), not state (vision.md §6). Absent file = silent no-op at consult time. Created lazily on the first approved capture.
+**This doc lives in *consuming* projects.** The skill repo ships the schema + skill contracts (behavior), not *default* state (vision.md §6), so it never ships priors for others to inherit. **Exception (2026-11-04, operator):** this repo dogfoods the product workflow, so it keeps its **own** `workflow-system/product/design-priors.md` for its own planning runs. That file is this repo's state, not a template. Absent file = silent no-op at consult time. Created lazily on the first approved capture.
 
 ```markdown
 ---

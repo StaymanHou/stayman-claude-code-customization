@@ -14,6 +14,7 @@ This repo overrides the default artifact tracking MAP (`~/.claude/CLAUDE.md` →
 
 - **Track `<proj-dir>/.claude/learnings/`** — these are curated, durable lessons (the whole point of this repo), not drafts-to-port. They are committed, not parked.
 - **Track `<proj-dir>/.claude/memory/`** (+ `MEMORY.md`) — the auto-memory store is versioned here. Per the policy's PII clause, any individual memory carrying secrets/PII is redacted in place or added to `.gitignore` file-by-file (expected rare); the directory itself is tracked.
+- **Keep this repo's own `workflow-system/product/design-priors.md`** (operator, 2026-11-04). The repo dogfoods the product workflow, so its planning skills consult its own priors. This is a local exception to `arch.md`'s "priors live in consuming projects" rule, not a shipped default.
 
 All other MAP defaults apply unchanged (e.g. `<proj-dir>/.claude/settings.local.json` and `workflow-system/state/.session.md` stay ignored).
 
