@@ -26,8 +26,10 @@ You are in the **feature** workflow at the **ship** state.
 - Check for any TODO comments that should be resolved before shipping
 
 ### 2. Final Verification
-- Run the full test suite one last time
-- Ensure all linters and checks pass
+- **Full test suite: run it, or reuse the last phase's run.** Read the `Test scope:` line that `feature-verify-codify` recorded under the last phase's `verify-codify` leaf in the WIP:
+  - **`Test scope: full — …`, and nothing but §1's cleanup changed since that run** (removed scratch files, comments, docs; no source or test edit) → do **not** run the suite again. Cite the run instead: `Full suite: reused the last-phase codify run (<the scope line>, <its result>)`. On a slow suite this is the difference between one full run per feature and two.
+  - **Anything else** → run the full test suite now: the line says `nearby`, the line is missing (an older WIP), or code or tests changed after that run (including §1 removing debug code). **A line you have not actually read counts as missing.** Reuse rests on the recorded run, so never reuse on a guess about what the line says.
+- Ensure all linters and checks pass. These are fast; always run them.
 - Respect Docker rules from the project `CLAUDE.md`
 
 ### 3. Release Prep

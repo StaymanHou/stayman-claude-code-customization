@@ -1,6 +1,6 @@
 ---
 shape: runtime-registry
-updated: 2026-11-03
+updated: 2026-11-07
 ---
 
 
@@ -98,9 +98,10 @@ Per-project record of last-observed wall-clock runtimes for tracked long-running
   - 42s — 2026-07-27  <!-- WP7e Phase 4 — NEW `tutorial` group (4 scenarios: T1-T4), the first scenarios ever to target a `tutorial-*` skill. ~10s/scenario, the FASTEST group measured: light fixtures (claude_md only), no retries consumed. Result 0 PASS / **4 SOFT_PASS** / 0 FAIL — SOFT_PASS is the CORRECT terminal status here, not a degraded one: `tutorial-*` skills emit no transition (the invariant [Phase 19] pins), so the harness's structured-ID path can never fire and `contains_any` is the only reachable positive form. Same shape S33/R1/R3 already use. Cost ~$0.27/run. -->
 
 ## ./tests/run-all.sh
-- **Last:** 5977s (2026-11-03) — haiku pass 5180s (202 scenarios) + sonnet pass 272s (17) + overhead; exceeds the Bash max, run in background
+- **Last:** 6751s (2026-11-07) — 208 haiku + 17 sonnet scenarios (+6 new from codify-nearby-tests); exceeds the Bash max, run in background
 - **Use timeout:** 600000
 - **History:**
+  - 6751s — 2026-11-07  <!-- codify-nearby-tests last-phase sweep, run with PYENV_VERSION=3.12.11 (pyenv system python3 lacks PyYAML). 12 FAIL, all pre-existing. -->
   - 5977s — 2026-11-03
   - 6081s — 2026-11-03
 

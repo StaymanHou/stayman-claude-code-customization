@@ -23,6 +23,16 @@
 
 ## TODO
 
+## SURFACE-2026-11-07-RUN-TESTS-NEEDS-PYYAML-IN-RESOLVED-PYTHON3
+- **Source:** feature:build (codify-nearby-tests, P1.3)
+- **Target level:** task:plan
+- **Type:** bug
+- **Summary:** `tests/run-tests.sh` (via `tests/lib/verify.sh` `parse_scenario*`) shells out to whatever `python3` is first on PATH and dies with `ModuleNotFoundError: No module named 'yaml'` when pyenv `system` resolves to Homebrew python3, which has no PyYAML.
+- **Context:** Hit 2026-11-07. The run printed only its header and a traceback, then exited 1. `/usr/bin/python3` and pyenv `3.12.11` both have PyYAML 6.x. Workaround: `PYENV_VERSION=3.12.11 ./tests/run-tests.sh …`.
+- **Suggested action:** Fail fast with a clear message at harness start (probe `python3 -c 'import yaml'`), or resolve an interpreter that has PyYAML. Document the requirement next to the existing `claude`/`jq`/`bc` prerequisites in root `CLAUDE.md`.
+- **Priority:** low
+- **Status:** open
+
 ## SURFACE-2026-11-03-MID-RUN-CLAUDESK-MODE-CHANGE-IGNORED
 
 - **Source:** feature-plan for `drive-mode-picker-select-ui` (2026-11-03)

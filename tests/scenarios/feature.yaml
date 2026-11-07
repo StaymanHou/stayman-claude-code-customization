@@ -637,6 +637,115 @@ scenarios:
         - "/feature-build"
     max_retries: 2
 
+  # codify-nearby-tests (2026-11-07): verify-codify §3 test-scope decision.
+  # Only F15-codify-scope-nearby discriminates against the pre-change skill (which runs
+  # the full suite every phase). The two `full` scenarios are the SPECIFICITY arm: they
+  # must stay `full` on the new skill (a mutation of the last-phase clause flips the
+  # last-phase one). Prompts state environment facts only (phase status, runtime data),
+  # never the expected scope. Phase status is stated because under --print the model
+  # treats codify as a dry run and does not read the fixture (verify-self 2026-11-07:
+  # it guessed "not last" instead); the fixture path is still named.
+  - id: F15-codify-scope-nearby
+    name: "feature:verify-codify runs nearby tests on a non-final phase of a long suite"
+    skill: feature-verify-codify
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-f.md
+    system_prompt_extra: |
+      The WIP file is workflow-system/state/wip/notif-prefs-f.md. Phase 1's
+      verify-human is approved; Phase 2 (Frontend Settings UI) has not started.
+      The project's runtimes.md registry contains:
+        ## docker compose exec app pytest
+        - **Last:** 1420s (2026-11-01)
+        - **Use timeout:** 600000
+      Decide which tests this codify runs and state it before running them.
+      Every test you run passes.
+    expect:
+      transition_id: F15
+      contains_required_any:
+        - "Test scope:[* ]*nearby"   # grep -qi BRE: tolerates `**Test scope:** nearby`
+      not_contains:
+        - "/feature-ship"
+    max_retries: 2
+
+  - id: F16-codify-scope-last-phase-full
+    name: "feature:verify-codify runs the full suite at the last phase even when it is long"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-g.md
+    system_prompt_extra: |
+      The WIP file is workflow-system/state/wip/notif-prefs-g.md. Phase 1 is
+      complete and Phase 2's verify-human is approved; the feature has no other
+      phases. The project's runtimes.md registry contains:
+        ## docker compose exec app pytest
+        - **Last:** 1420s (2026-11-01)
+        - **Use timeout:** 600000
+      Decide which tests this codify runs and state it before running them.
+      Every test you run passes.
+    expect:
+      transition_id: F16
+      contains_required_any:
+        - "Test scope:[* ]*full"   # grep -qi BRE: tolerates `**Test scope:** full`
+      not_contains:
+        - "/feature-build"
+        - "Test scope:[* ]*nearby"
+    max_retries: 2
+
+  - id: F15-codify-scope-no-data-full
+    name: "feature:verify-codify keeps the full suite on a non-final phase with no runtime data"
+    skill: feature-verify-codify
+    args: "phase 1"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-f.md
+    system_prompt_extra: |
+      The WIP file is workflow-system/state/wip/notif-prefs-f.md. Phase 1's
+      verify-human is approved; Phase 2 (Frontend Settings UI) has not started.
+      The project has no runtimes.md file, and its
+      CLAUDE.md says nothing about how long the test suite takes.
+      Decide which tests this codify runs and state it before running them.
+      Every test you run passes.
+    expect:
+      transition_id: F15
+      contains_required_any:
+        - "Test scope:[* ]*full"   # grep -qi BRE: tolerates `**Test scope:** full`
+      not_contains:
+        - "/feature-ship"
+        - "Test scope:[* ]*nearby"
+    max_retries: 2
+
+  # Late regression: the last-phase full run catches a break an EARLIER, already-[x]
+  # phase caused (§3b "Late regression at the last-phase full run"). The prompt states
+  # the failure and its cause as environment facts; it does not name the discovery tag.
+  - id: F16-codify-late-regression
+    name: "feature:verify-codify logs a late regression from an earlier phase and fixes it in the last phase"
+    skill: feature-verify-codify
+    args: "phase 2"
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-g.md
+    system_prompt_extra: |
+      The WIP file is workflow-system/state/wip/notif-prefs-g.md. Phase 1 is
+      complete and Phase 2's verify-human is approved; the feature has no other
+      phases. Phase 1's codify ran only the tests near its change. Running the
+      tests for this codify, one fails:
+        FAILED tests/services/test_digest_job.py::test_digest_skips_disabled_categories
+        AssertionError: digest included category "marketing" with enabled=False
+      You inspect it: the digest job still reads `user.notification_flags`, a
+      column that P1.1's migration replaced with the notification_preferences
+      table, and the job was never updated. The test is correct and the Phase 1
+      change broke it; the missing update is unambiguous.
+    expect:
+      transition_id: F16
+      contains_required_any:
+        - "LATE-REGRESSION"
+      not_contains:
+        - "/feature-build"
+    max_retries: 2
+
   # PP4: verify-codify triage gate scenarios
   - id: F16-triage-regression
     name: "feature:verify-codify auto-fixes high-confidence code regression"
@@ -885,6 +994,63 @@ scenarios:
       not_contains:
         - "/feature-review-quality"
         - "/feature-build"
+    max_retries: 2
+
+  # codify-nearby-tests Phase 2 (2026-11-07): feature-ship §2 reuses the last-phase codify
+  # full run instead of running the suite twice. Both scenarios share one fixture (its last
+  # phase records `Test scope: full — last phase`); only the cleanup facts differ. The
+  # control is the specificity arm: reuse must NOT fire once code changed after that run.
+  # The reuse scenario states the recorded scope line as an environment fact: under
+  # --print the model does not read the fixture (verify-self 2026-11-07, 1/3) and the
+  # skill rightly treats an unread line as missing. The expected action stays unstated.
+  - id: F38-ship-reuses-codify-full-run
+    name: "feature:ship reuses the last-phase codify full run when only cleanup changed"
+    skill: feature-ship
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-h.md
+    system_prompt_extra: |
+      The WIP file is workflow-system/state/wip/notif-prefs-h.md. All phases are
+      complete. Under the last phase's verify-codify leaf it records:
+        Test scope: full — last phase
+        — evidence: `docker compose exec app pytest` → exit 0, 412 passed in 1388s
+      Since the last phase's codify, the only changes are this ship's
+      cleanup: it deleted tmp/notes.txt and tmp/scratch.py, two untracked scratch
+      files. No source or test file changed. Linters pass.
+    expect:
+      transition_id: F38
+      contains_required_any:
+        - "Full suite:[* ]*reused"
+        - "reus[a-z]* the last.phase codify run"
+      not_contains:
+        - "/feature-finalize"
+    max_retries: 2
+
+  - id: F38-ship-reruns-after-code-change
+    name: "feature:ship re-runs the full suite when code changed after the codify run"
+    skill: feature-ship
+    fixtures:
+      claude_md: fixtures/CLAUDE.md
+      wip: fixtures/wip/notif-prefs-h.md
+    system_prompt_extra: |
+      The WIP file is workflow-system/state/wip/notif-prefs-h.md. All phases are
+      complete. Since the last phase's codify, this ship's cleanup removed two
+      leftover debug `print()` calls from app/services/user_service.py. Linters
+      pass. Every test you run passes.
+    expect:
+      transition_id: F38
+      # `pytest` alone cannot prove a re-run (the fixture's codify evidence line names
+      # pytest too), so the strict negatives carry the rejection. They match reuse
+      # CLAIMS only: past-tense "reused …" and a line-leading "Reusing …". A correct
+      # reply's "can't reuse" / "instead of reusing" does not match (verified via
+      # verify.sh, /test-assertion-review M6, 2026-11-07).
+      contains_required_any:
+        - "pytest"
+      not_contains:
+        - "Full suite:[* ]*reused"
+        - "reused the last.phase codify run"
+        - "^[-* ]*Reusing the last.phase codify run"
+      not_contains_strict: true
     max_retries: 2
 
   - id: F39

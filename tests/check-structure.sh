@@ -3670,6 +3670,56 @@ for p25_arm in skills/tutorial-greenfield-workflow-tour/SKILL.md skills/tutorial
 done
 
 echo ""
+# ───────────────────────────────────────────────────────────────────────────
+# [Phase 26] codify-nearby-tests — verify-codify §3 test scope (2026-11-07)
+#
+# Pins that codify §3 still runs the FULL suite at the last phase. That rule is the
+# whole safety argument for running only nearby tests on earlier phases: drop it and
+# a long-suite feature can ship without one full regression run. Also pins the
+# `Test scope: full — last phase` record line, which feature-ship reads to decide
+# whether to re-run the suite (a cross-skill contract).
+#
+# Reviewed against /test-assertion-review before writing:
+#   [M3] reuses [Phase 23]'s check_section_anchors: fails CLOSED on a missing file,
+#        start heading, AND end heading (a missing end widens the window to EOF);
+#   [M3] no emphasis markup in an anchor: `[*]*full[*]*` tolerates the bold being
+#        dropped instead of anchoring on `**full**`;
+#   [M5] wrong inputs that must FAIL: last-phase row flipped to nearby
+#        (`| Last phase | any | **nearby** — unconditionally…`); the row's
+#        `any` narrowed (`| Last phase | long |…`); the row moved below `### 3b.`;
+#        the record line deleted. Sweep results recorded in the feature's WIP.
+# ───────────────────────────────────────────────────────────────────────────
+echo "[Phase 26] codify-nearby-tests — verify-codify §3 test scope"
+
+P26_CODIFY_ANCHORS=(
+  '^\| Last phase \| any \| [*]*full[*]* — unconditionally'
+  '^- `Test scope: full — last phase`$'
+  'confirmed from the Work Tree that another phase remains, treat this as the last phase'
+)
+check_section_anchors "feature-verify-codify §3 runs the full suite at the last phase (unconfirmed → last) + records the scope line ship reads" \
+  "skills/feature-verify-codify/SKILL.md" '^### 3\. Run Tests' '^### 3b\. ' "${P26_CODIFY_ANCHORS[@]}"
+
+# Late-regression routing (§3b): the earlier phase is not reopened and the cause is
+# logged. Window = the subsection itself, both boundaries fail-closed via the helper.
+P26_LATE_ANCHORS=(
+  'Do not reopen or un-check the earlier phase'
+  '`\[LATE-REGRESSION-<YYYY-MM-DD>\] Phase <N>'
+)
+check_section_anchors "feature-verify-codify §3b routes a late regression into the last phase + logs it" \
+  "skills/feature-verify-codify/SKILL.md" '^#### Late regression at the last-phase full run' '^#### Triage artifact requirement' "${P26_LATE_ANCHORS[@]}"
+
+# Ship §2 — the consumer of codify's `Test scope:` line. Pins the reuse condition and
+# the unread-line fail-safe. The fail-safe is NOT covered by any scenario
+# (F38-ship-reuses-codify-full-run states the scope line as a fact, so deleting the
+# sentence leaves it green); this pin is its only guard.
+P26_SHIP_ANCHORS=(
+  'Test scope: full — …`, and nothing but §1.s cleanup changed since that run'
+  'A line you have not actually read counts as missing'
+)
+check_section_anchors "feature-ship §2 reuses only a recorded full run + treats an unread scope line as missing" \
+  "skills/feature-ship/SKILL.md" '^### 2\. Final Verification' '^### 3\. ' "${P26_SHIP_ANCHORS[@]}"
+
+echo ""
 # ── Summary ────────────────────────────────────────────────────────────────
 
 echo "=== Summary ==="

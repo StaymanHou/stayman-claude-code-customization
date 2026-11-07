@@ -1,7 +1,7 @@
 ---
 stage: arch
 state: complete
-updated: 2026-11-02
+updated: 2026-11-07
 ---
 
 # Architecture
@@ -230,6 +230,20 @@ updated: <YYYY-MM-DD>
 - Incident-workflow skills — unaffected.
 - `session-*` skills — unaffected. The Work Tree is carried transparently through pause/resume because it lives in the WIP file.
 - `install.sh` — no new files, no new symlinks needed for Phases 1–2.
+
+## Revision 2026-11-07
+
+### Codify test scope — nearby on non-final phases of a long suite, full at the last phase (feature `codify-nearby-tests`)
+
+Source: Claudesk inbox request `workflow-system/inbox/archive/2026-11-06-claudesk-codify-nearby-tests.md`. Before this, `feature-verify-codify` §3 ran the full suite on **every** phase and `feature-ship` §2 ran it once more. A long suite therefore cost its full runtime once per phase, plus one more run at ship.
+
+- **Scope decision (`feature-verify-codify` §3).** Step A: is this the last phase, decided from the Work Tree? An unconfirmed "another phase remains" counts as the last phase. Step B: is the suite long? The rungs are (1) a project root `CLAUDE.md` declaration, which wins in both directions; (2) the `runtimes.md` full-suite `**Last:**` total ≥ 300s; (3) neither → not long. Step C: last phase → **full** unconditionally; non-final + long → **nearby**; non-final + not long → **full**. "Nearby" = the tests this codify wrote or changed, existing tests covering the touched files (the runner's related-tests feature or path mapping), and fast whole-repo checks. If the nearby set can't be identified, run full.
+- **Recorded scope.** Codify writes a `Test scope: <nearby|full> — <reason>` line under the phase's `verify-codify` leaf. It is the contract `feature-ship` reads.
+- **Late regression (`feature-verify-codify` §3b).** A last-phase full-run failure caused by an earlier, already-`[x]` phase is triaged with the unchanged six-case table. The fix lands in the last phase, the earlier phase is not reopened, and a `[LATE-REGRESSION-<date>]` line goes to `## Discoveries`. **No new transition ID**; F14/F15/F16 keep their meaning.
+- **Ship reuse (`feature-ship` §2).** If the last phase recorded `Test scope: full` and only §1 cleanup changed since, ship cites that run instead of re-running. Otherwise it runs the full suite (scope `nearby`, line missing, or code/tests changed). Linters always run.
+- **Why the last-phase full run is unconditional.** It is the only full regression run a long-suite feature gets, so every shortcut on earlier phases depends on it. verify-self found that, without the Step A fail-safe, a model that cannot see the Work Tree guesses "not last" and skips it.
+- **This repo** declares itself long in root `CLAUDE.md` (the former local "full sweep only at the last phase" override, now an instance of the general rule).
+- **Pins:** `tests/check-structure.sh` `[Phase 26]`: §3 last-phase row, the Step A fail-safe and the `Test scope: full — last phase` record line; §3b late-regression subsection. Scenarios in `tests/scenarios/feature.yaml`: `F15-codify-scope-nearby`, `F16-codify-scope-last-phase-full`, `F15-codify-scope-no-data-full`, `F16-codify-late-regression`, `F38-ship-reuses-codify-full-run`, `F38-ship-reruns-after-code-change`.
 
 ## Revision 2026-09-29
 

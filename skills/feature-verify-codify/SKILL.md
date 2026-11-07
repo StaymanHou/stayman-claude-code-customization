@@ -61,8 +61,37 @@ This check shapes which tests you write. It does not change how codify completes
 
 Follow the project's testing conventions and framework.
 
-### 3. Run All Tests
-- Run the full test suite (not just new tests) to ensure no regressions
+### 3. Run Tests — decide the scope first
+
+Decide the **test scope** before running anything, then record it. The full suite is the regression net, but on a slow suite running it at every phase costs its whole runtime once per phase; this step runs it once, at the end, and keeps the earlier phases fast.
+
+**Step A — is this the last phase?** Decide it from the WIP's Work Tree, not from memory or the request. It is the last phase when no other phase is left un-`[x]`, i.e. this codify will exit F16. A single-phase feature is always on its last phase. **If you have not confirmed from the Work Tree that another phase remains, treat this as the last phase.** The full run is the safe default; guessing "not last" is how a feature ships without one.
+
+**Step B — is the suite long?** Take the first rung that applies:
+1. **The project's root `CLAUDE.md` declares it.** A line saying the full suite is long (or that codify runs nearby tests on non-final phases) → long; a line saying the opposite → not long. A declaration outranks the registry in both directions.
+2. **The runtime registry measures it.** In `<proj-root>/runtimes.md`, the command(s) that make up the full suite have a `**Last:**` runtime totalling **300s or more** → long.
+3. **Neither** → not long.
+
+**Step C — pick the scope:**
+
+| Phase | Suite | Scope |
+|---|---|---|
+| Last phase | any | **full** — unconditionally, however long the suite takes |
+| Not the last phase | long | **nearby** |
+| Not the last phase | not long | **full** |
+
+**Nearby** means: (1) the tests this codify wrote or changed; (2) the existing tests that cover the files this phase touched; (3) the project's fast whole-repo checks (lint, typecheck, structural checks) when they are short. For (2), use the runner's related-tests feature where it has one — e.g. `vitest related <files>`, `jest --findRelatedTests <files>`, `pytest <test paths>`, `cargo test <module>::`, `go test ./<pkg>/...`, `bundle exec rspec spec/<area>/` — and otherwise map by path and name. **If you cannot identify the nearby set with confidence, run the full suite instead.** Nearby is an optimization; full is always a correct fallback.
+
+**Record the scope** as one indented line directly under this phase's `verify-codify` leaf in the WIP, with its evidence:
+- `Test scope: nearby — long suite (<the runtimes.md entry or CLAUDE.md line>)`
+- `Test scope: full — last phase`
+- `Test scope: full — suite not long (<evidence, or "no runtime data">)`
+- `Test scope: full — nearby set not identifiable`
+
+`feature-ship` reads this line to decide whether it must re-run the full suite.
+
+Then run:
+- Run the tests in the chosen scope. For a full run, follow `~/.claude/CLAUDE.md` → "Long-running commands" (registry timeout; never start a second instance).
 - Respect Docker rules from the project `CLAUDE.md`
 
 ### 3b. Test Failure Triage
@@ -83,6 +112,13 @@ Follow the project's testing conventions and framework.
 **High confidence** means: the failure has exactly one plausible explanation, and you can state it in one sentence without hedging. If you are in any doubt, confidence is low/ambiguous.
 
 **Flaky detection:** if re-running the same test produces inconsistent results (passes on one run, fails on another), classify as flaky. Never modify code or tests to eliminate a flake — re-run and escalate.
+
+#### Late regression at the last-phase full run
+
+When earlier phases ran only nearby tests, the last phase's full run can fail on a test that an **earlier phase, already `[x]`,** broke. Triage it with the table above as usual; an older cause does not change the classification. Then:
+- **The fix lands in this (last) phase.** A high-confidence code regression is auto-fixed here; a low or ambiguous one writes the triage artifact and pauses, as for any failure.
+- **Do not reopen or un-check the earlier phase**, and do not invent a back-loop to it. There is no transition for this by design.
+- **Append to `## Discoveries`:** `[LATE-REGRESSION-<YYYY-MM-DD>] Phase <N> — <test> — <one-line cause>`, naming the phase that introduced it, so the cost of nearby-only runs stays visible.
 
 #### Triage artifact requirement
 
