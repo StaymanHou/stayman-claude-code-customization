@@ -23,6 +23,12 @@
 
 ## TODO
 
+## Code-quality findings — codify-nearby-tests (2026-11-07)
+- **Pointer:** 1 MAJOR + 2 MINOR auto-backlogged by feature-review-quality against ship commit ffaea3d (drive_mode=autopilot). MAJOR: codify's `Test scope:` line records the scope decision, not the run's outcome, so ship's reuse can certify a full run older than a §3b late-regression fix. MINORs: Step B rung-1 declaration has no fixed wording; arch/[Phase 26] docs omit the ship §2 pin. Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md) under `# codify-nearby-tests — 2026-11-07`.
+- **Priority:** medium (MAJOR) / low (MINORs)
+- **Status:** pending
+- **Pickup shape:** one small `/task-plan` covering all three (two skills' prose + `[Phase 26]` anchors + one ship scenario). **Verify against the code first (review-finding-actions-are-hypotheses).**
+
 ## SURFACE-2026-11-07-RUN-TESTS-NEEDS-PYYAML-IN-RESOLVED-PYTHON3
 - **Source:** feature:build (codify-nearby-tests, P1.3)
 - **Target level:** task:plan

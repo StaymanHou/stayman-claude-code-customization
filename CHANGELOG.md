@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-07
+
+- **Feature shipped:** `feature-verify-codify` now runs only the tests near the change on non-final phases when the project's suite is long (a root `CLAUDE.md` declaration, or `runtimes.md` ≥ 300s) and the full suite unconditionally at the last phase, and `feature-ship` reuses that last-phase full run instead of running the suite a second time.
+
 ## 2026-11-03
 
 - **Feature shipped:** Under Claudesk, `/session-start` and `/session-restore` take the workspace's reported drive mode and show no mode pick, `/session-handoff` writes a `drive_mode: from-claudesk` deferral marker instead of a snapshot, and bare terminals (and tour replays) pick the mode through an `AskUserQuestion` select with the numbered menu as fallback.

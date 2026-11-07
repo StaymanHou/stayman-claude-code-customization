@@ -7,6 +7,36 @@ Items are grouped by source feature. Within each group, each finding keeps the f
 ---
 
 
+# codify-nearby-tests — 2026-11-07
+
+> Ship commit `ffaea3d`. Review verdict 0 CRITICAL / 1 MAJOR / 2 MINOR; drive_mode=autopilot → all auto-backlogged (Case B). Verify each suggested action against the real code before applying (review-finding-actions-are-hypotheses).
+
+## SURFACE-2026-11-07-QUALITY-CODIFY-SCOPE-LINE-RECORDS-INTENT-NOT-OUTCOME
+- **Priority:** medium
+- **Severity:** MAJOR (feature-review-quality, ship ffaea3d)
+- **Finding:** `skills/feature-verify-codify/SKILL.md` §3 writes `Test scope:` when it DECIDES the scope, before running; it never records the run's result or whether code changed afterwards. `skills/feature-ship/SKILL.md` §2 reuse depends on both (its citation template asks for `<its result>`, and it checks only "nothing but §1 cleanup changed"). On the §3b late-regression path (full run fails → auto-fix → "then re-run", scope of the re-run unstated), the WIP still says `Test scope: full — last phase` while the last full run was red and code changed after it.
+- **Why it matters:** ship's reuse skips the only remaining full run, so it can certify a full run that predates the last code change.
+- **Suggested action (HYPOTHESIS — verify against the code):** either (a) codify records the outcome in the line (`Test scope: full — last phase — <result>`, plus `full re-run after fix` when §3b fixed something), and ship reuses only a line carrying a green full-scope result; or (b) §3b requires the re-run after a late-regression fix to be the full suite. (a) also lets ship's citation be filled from the record rather than an incidental evidence line.
+- **Pickup shape:** small skill-prose change in two skills + extend `[Phase 26]` anchors + one ship scenario (recorded red / fixed-after → re-run). `/task-plan` or bundle into `/util-backlog-paydown`.
+
+## SURFACE-2026-11-07-QUALITY-STEP-B-DECLARATION-HAS-NO-FIXED-WORDING
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship ffaea3d)
+- **Finding:** `skills/feature-verify-codify/SKILL.md` §3 Step B rung 1 accepts any root-`CLAUDE.md` line "saying the full suite is long (or the opposite)"; rung 1 outranks the registry both ways, so whether it fires depends on how the model reads arbitrary phrasing.
+- **Why it matters:** the strongest rung is a judgment call rather than a checkable contract.
+- **Suggested action (HYPOTHESIS — verify against the code):** name a fixed phrase (e.g. `Full test suite: long` / `Full test suite: short`) and have this repo's root `CLAUDE.md` bullet carry it.
+- **Pickup shape:** trivial prose edit + one `CLAUDE.md` line; bundle with the MAJOR above.
+
+## SURFACE-2026-11-07-QUALITY-PHASE26-DOCS-OMIT-SHIP-PIN
+- **Priority:** low
+- **Severity:** MINOR (feature-review-quality, ship ffaea3d)
+- **Finding:** `workflow-system/product/arch.md` Revision 2026-11-07 `Pins:` bullet and the `[Phase 26]` header comment in `tests/check-structure.sh` describe only the codify §3/§3b anchors, not the ship §2 pin (reuse condition + unread-line fallback) added at Phase 2 codify.
+- **Why it matters:** the docs under-state coverage; a reader would conclude the ship-side contract has no pin.
+- **Suggested action (HYPOTHESIS — verify against the code):** add the ship §2 pin to both descriptions (and its mutation list to the header comment).
+- **Pickup shape:** trivial docs-only edit; bundle with the above.
+
+---
+
 # verify-human-alignment-only — 2026-11-02
 
 > Ship commit `fd84fb4`. Review verdict 1 CRITICAL / 3 MAJOR / 4 MINOR. **Fixed in-feature (F40 refactor):** the CRITICAL (F12 rows in `transitions.md` + `feature-workflow/AGENTS.md` still said only "human rejects"), MAJOR-1 (legacy `Playwright MCP not available — check manually` UNVERIFIED wording with no home in verify-human's routing → now the `no harness — …; buildable:` form), MAJOR-2 (floor 5a read a zero-leaf marker 5b never wrote → 5b now writes `— zero admissible leaves (F11)`), MINOR verify-auto evidence-recording step moved into the Procedure, MINOR `arch.md` `updated:`. The three below remain open.

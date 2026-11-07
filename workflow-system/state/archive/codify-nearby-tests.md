@@ -5,7 +5,7 @@ drive_mode: autopilot
 # Feature: Codify runs nearby tests per phase, full suite once at the last phase
 
 **Workflow:** feature
-**State:** ship (complete)
+**State:** Completed (2026-11-07)
 **Created:** 2026-11-06
 **Entry:** spec (complex feature)
 **Source:** inbox `workflow-system/inbox/2026-11-06-claudesk-codify-nearby-tests.md` (Claudesk feature-request; Claudesk-side record `SURFACE-2026-11-06-CODIFY-RUNS-THE-FULL-SUITE-EVERY-PHASE`)
@@ -162,10 +162,10 @@ Problem statement unchanged (2026-11-07, Phase 2 F9b re-entry) — ship reuse is
     — evidence: full sweep `PYENV_VERSION=3.12.11 ./tests/run-all.sh` → 6751s, haiku 154 PASS / 42 SOFT / 11 FAIL / 1 FLAKY (208), sonnet 15 PASS / 1 FAIL / 1 FLAKY (17). All 12 FAILs are in the known pre-existing set (see ## Test Triage). All 6 new scenarios + every other codify/ship scenario PASS except F16-order-flip (pre-existing, A/B below).
 
 ## Current Node
-- **Path:** Feature > ship
-- **Active scope:** ship
+- **Path:** Feature > finalize
+- **Active scope:** finalize (review-quality complete: 0 CRITICAL / 1 MAJOR / 2 MINOR, auto-backlogged)
 - **Blocked:** none
-- **Unvisited:** ship → review-quality → finalize
+- **Unvisited:** finalize
 - **Open discoveries:** none
 
 ## Plan Notes
@@ -179,6 +179,44 @@ Classification: Flaky test / pre-existing failure — unrelated to this feature'
 Confidence: high
 Evidence: every failing ID is already recorded in SURFACE-2026-11-03-SCENARIO-SWEEP-PREEXISTING-FAILURES (F-boundary-human, F-verify-human-boundary-digest-advances, S14, T3-tour-first-run-hides-drive-modes-until-graduation, F16-order-flip, S22, S3 [sonnet]; DP-consult-changes flaky; S12 0/3 on HEAD; F-verify-human-auto-skip-fires ambiguous) or is deliberately-failing evidence (S33, S34). Only F16-order-flip exercises a skill this feature changed (feature-verify-codify): A/B n=3 → new 0/3, HEAD 0/3, identical failure ("FAILED strict not_contains: /feature-finalize").
 Action: none — no code or test modified; failures stay tracked under the existing backlog SURFACE.
+
+## Code-Quality Review
+
+## Code-Quality Review — codify-nearby-tests
+
+> Ship commit `ffaea3d`. Verdict 0 CRITICAL / 1 MAJOR / 2 MINOR. drive_mode=autopilot → MAJOR + MINORs auto-backlogged (`backlog-quality-findings.md` → `# codify-nearby-tests — 2026-11-07`).
+
+### Strengths
+- Every new decision point falls back to the safe side in the same direction (unconfirmed last phase → full; unidentifiable nearby set → full; unread scope line at ship → run the suite), and the prose says why.
+- No new transition IDs: late-regression routing reuses F15/F16 and the six-case triage table.
+- `[Phase 26]` reuses `check_section_anchors` (both window boundaries fail closed) and pins the ship §2 unread-line fallback, which no scenario can cover.
+- Scenarios separate discrimination (nearby vs HEAD) from specificity (two `full` controls); neutral fixture names (`notif-prefs-f/g/h`); prompts do not recite the expected scope.
+- The root `CLAUDE.md` local override is now an instance of the general rule (the Step B rung-1 declaration), and the file shrank.
+
+### Issues
+**CRITICAL**
+- (none)
+
+**MAJOR**
+- [skills/feature-verify-codify/SKILL.md:85-89 / skills/feature-ship/SKILL.md:30] The `Test scope:` line records the scope DECISION, made before anything runs. Codify is never told to record the run's result or whether code changed after it, yet ship's reuse needs both (its citation template asks for `<its result>`). Worst case is the §3b late-regression path: the last-phase full run fails, the code is auto-fixed, and "then re-run" doesn't say whether the re-run is full. Ship's "nothing but §1 cleanup changed since" check can't see a code change made inside codify, so it could certify a full run older than the last code change. — Ship's reuse skips the only remaining full run. In this repo's dogfood run it worked only because an `— evidence:` line happened to be written.
+
+**MINOR**
+- [skills/feature-verify-codify/SKILL.md:71] Step B rung 1 accepts any root-`CLAUDE.md` line "saying the full suite is long (or the opposite)" with no fixed wording, and that line outranks the registry both ways, so whether the strongest rung fires depends on the model's reading. — A fixed phrase (like this repo's self-identifying line) would make it checkable.
+- [workflow-system/product/arch.md:246; tests/check-structure.sh:3674-3690] The arch `Pins:` bullet and the `[Phase 26]` header comment describe only the codify §3/§3b anchors, not the ship §2 pin added at Phase 2 codify. — Under-states coverage: a reader would conclude the ship-side contract has no pin.
+
+### Assessment
+Solid and readable. It turns a repo-local workaround into a general rule with a clear Step A/B/C table, every edge falls back to the full suite, there is no new state-machine surface, and the tests follow the repo's newer lessons. The one real gap is the codify→ship contract: the `Test scope:` line records intent, not outcome, and nothing says whether a fix inside codify voids the full run that ship's reuse depends on. The MINORs are doc accuracy and wording. Net positive, low debt.
+
+### If you disagree
+Operator: dismiss any finding by editing this section in the WIP and marking the line `[DISMISSED]` before `feature-finalize` archives the WIP.
+
+## Retrospect
+- **What changed in our understanding:** The rule's safety rests on "last phase?" being answered correctly, and a model that cannot see the Work Tree guesses "not last", which is the unsafe direction. Both skills needed an explicit "unconfirmed → the safe/full branch" fail-safe (codify Step A, ship's unread-line rule). The spec had covered only the nearby-set fallback.
+- **Assumptions that held:** No new transition IDs were needed; late regressions fit the existing triage table. The `Test scope:` line worked as the codify→ship contract. Neutral fixtures plus HEAD-arm discrimination gave clean signal (nearby 3/3 vs 0/3, late-regression 3/3 vs 0/3, ship reuse 3/3 vs 0/3).
+- **Assumptions that were wrong:** That naming the fixture path is enough for scenarios to read it. Under `--print` the model treated codify/ship as a dry run and read nothing, so both phases back-looped once (F9b) and the scenario prompts now state phase status and the recorded scope line as environment facts. The plan's row-deletion mutation did not discriminate (the model still inferred full); flipping the row did, at 2/3. And review-quality found the line records the scope *decision*, not the run's *outcome* (MAJOR, backlogged).
+- **Approach delta:** Two F9b back-loops added the two fail-safes. The Phase 2 control became "code changed after the codify run" instead of "recorded scope nearby" (impossible at a last phase). Added a `[Phase 26]` ship §2 pin at codify, since no scenario guards the unread-line rule. `/test-assertion-review` caught a real defect twice (an invalid BRE that failed correct output; a strict negative that let paraphrased reuse pass) and stopped one over-broad matcher. The environment needed `PYENV_VERSION=3.12.11` throughout (backlogged).
+
+**Feature complete:** codify-nearby-tests has shipped. `feature-verify-codify` now runs only the tests near each change on non-final phases of a long suite and the full suite once at the last phase, and `feature-ship` reuses that last full run instead of repeating it. See it in `skills/feature-verify-codify/SKILL.md` §3 and `skills/feature-ship/SKILL.md` §2 (commit `ffaea3d`). Requester = Claudesk workspace (inbox request, archived as accepted) via the operator; closure notice for self-record.
 
 ## Discoveries
 - [SHIP-2026-11-07] Full suite: reused the last-phase codify run (Test scope: full — last phase; run-all.sh 6751s, 12 FAIL all pre-existing per ## Test Triage). Only WIP + runtimes.md changed since. check-structure 621/1 (pre-existing settings drift).
