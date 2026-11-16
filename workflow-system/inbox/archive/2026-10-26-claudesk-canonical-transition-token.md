@@ -3,6 +3,9 @@ from: /Users/stayman/Personal/projects/claudesk
 kind: feature-request
 date: 2026-10-26
 summary: Ask the skills to emit the TRANSITION token in one canonical form (a bare last line), so a quoted token can never be read as a verdict
+closed: 2026-11-16
+outcome: accepted
+resolution: backlogged as SURFACE-2026-11-16-CANONICAL-TRANSITION-TOKEN-FINAL-LINE (low)
 ---
 
 # Emit `TRANSITION:` in one canonical form

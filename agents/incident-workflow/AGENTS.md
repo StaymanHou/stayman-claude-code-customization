@@ -98,6 +98,7 @@ This section is the **reference procedure** followed by `/session-start` when dr
 
 | Step | Policy | Rationale |
 |------|--------|-----------|
+| Report → triage (I2) | **PAUSE** | Report filed — the operator reads it before triage starts on severity; matches the "before triage" stop below |
 | Before triage (I2→I3 / I2→I13) | **PAUSE** | Severity (P0–P3) and reproduce-vs-investigate decision require human read on blast radius and reproducibility — non-negotiable |
 | Reproduce → investigate (I14) | AUTO | Successful reproduction is the green light to continue — no pause needed |
 | Reproduce → investigate-with-telemetry-constraint (I15) | **PAUSE** | Human must acknowledge degraded investigation conditions (no local reproducer) before continuing |

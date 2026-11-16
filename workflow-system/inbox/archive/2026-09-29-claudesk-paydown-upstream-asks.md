@@ -3,6 +3,9 @@ from: /Users/stayman/Personal/projects/claudesk
 kind: feature-request
 date: 2026-09-29
 summary: Thirteen small skill-prose and policy asks from Claudesk's 2026-09-23 backlog paydown (feature-plan, verify rules, review-quality diff window, verify-human gate, session-restore default, snippet conventions, policy-table gaps)
+closed: 2026-11-16
+outcome: accepted
+resolution: backlogged as SURFACE-2026-11-16-CLAUDESK-PAYDOWN-UPSTREAM-ASKS (low); #9, G12, G13 already done
 ---
 
 > **Delivery note (2026-09-29).** This is the verbatim text of `HANDOFF-to-mccc-2026-09-23-paydown.md`, which was written in the Claudesk repo on its original date. Until now it existed only there, because the inbox convention did not yet exist. Claudesk paths it cites (`src/…`, `workflow-system/state/backlog.md`, `SURFACE-…` ids) are relative to `/Users/stayman/Personal/projects/claudesk`. The upstream "still open" claims were spot-checked on 2026-09-29: Phase 9 is still present, `agents/feature-workflow/AGENTS.md:94` still sends F10 to verify-human, and `session-restore` step 4 still says Mode 2 while its menu labels Mode 3 "(default)". Each ask stays open in Claudesk's backlog until it lands here.

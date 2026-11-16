@@ -3,6 +3,9 @@ from: /Users/stayman/Personal/projects/claudesk
 kind: bug-report
 date: 2026-09-29
 summary: The four AGENTS.md feature-graph copies disagree with transitions.md; delete check-structure.sh Phase 9, which polices that duplication and is not catching it
+closed: 2026-11-16
+outcome: accepted
+resolution: fixed directly 2026-11-16: feature AGENTS.md graph synced to transitions.md (F10→verify-self, +F9b/F10b/F30, verify-self state); I2 = PAUSE row added to transitions.md + incident AGENTS.md. Phase 9 kept (it also pins the per-skill SKILL.md cheat-sheets, which are load-bearing)
 ---
 
 > **Delivery note (2026-09-29).** This is the verbatim text of `HANDOFF-to-mccc-m15-wp2.md`, which was written in the Claudesk repo on its original date. Until now it existed only there, because the inbox convention did not yet exist. Claudesk paths it cites (`src/…`, `workflow-system/state/backlog.md`, `SURFACE-…` ids) are relative to `/Users/stayman/Personal/projects/claudesk`. The upstream "still open" claims were spot-checked on 2026-09-29: Phase 9 is still present, `agents/feature-workflow/AGENTS.md:94` still sends F10 to verify-human, and `session-restore` step 4 still says Mode 2 while its menu labels Mode 3 "(default)". Each ask stays open in Claudesk's backlog until it lands here.

@@ -111,6 +111,7 @@ Incidents are always treated as **Mode 2 (Orchestrated)** regardless of the sele
 
 | Step | All modes |
 |------|-----------|
+| report → triage (I2) | PAUSE |
 | triage (I2→I3 / I2→I13) | PAUSE |
 | reproduce → investigate (I14) | AUTO |
 | reproduce → investigate-with-telemetry-constraint (I15) | PAUSE |

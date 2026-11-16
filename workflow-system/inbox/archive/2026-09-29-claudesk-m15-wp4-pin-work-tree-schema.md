@@ -3,6 +3,9 @@ from: /Users/stayman/Personal/projects/claudesk
 kind: feature-request
 date: 2026-09-29
 summary: Add a check-structure.sh phase pinning the Work Tree schema so Claudesk's WIP-file parser reads a contract rather than guessing
+closed: 2026-11-16
+outcome: accepted
+resolution: parked as SURFACE-2026-11-16-PIN-WORK-TREE-SCHEMA-FOR-CLAUDESK (backlog MAYBE); revisit when making the agent more autonomous
 ---
 
 > **Delivery note (2026-09-29).** This is the verbatim text of `HANDOFF-to-mccc-m15-wp4.md`, which was written in the Claudesk repo on its original date. Until now it existed only there, because the inbox convention did not yet exist. Claudesk paths it cites (`src/…`, `workflow-system/state/backlog.md`, `SURFACE-…` ids) are relative to `/Users/stayman/Personal/projects/claudesk`. The upstream "still open" claims were spot-checked on 2026-09-29: Phase 9 is still present, `agents/feature-workflow/AGENTS.md:94` still sends F10 to verify-human, and `session-restore` step 4 still says Mode 2 while its menu labels Mode 3 "(default)". Each ask stays open in Claudesk's backlog until it lands here.

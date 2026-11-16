@@ -23,6 +23,23 @@
 
 ## TODO
 
+## SURFACE-2026-11-16-CLAUDESK-PAYDOWN-UPSTREAM-ASKS
+- **Source:** inbox [`archive/2026-09-29-claudesk-paydown-upstream-asks.md`](../inbox/archive/2026-09-29-claudesk-paydown-upstream-asks.md) (Claudesk, 13 asks)
+- **Target level:** task (pick asks individually; none blocks current use)
+- **Type:** gap (skill-prose rules + one diff-window bug)
+- **Summary:** Claudesk's 2026-09-23 paydown asks, still open: A1–4 (`feature-plan`/`feature-spec` plan-time rules: an outcome names a surface its own phase builds; expected-failure gate when a phase breaks a consumer; delete-export + migrate in one phase, boot smoke in a live webview or real ESM linker; probe trigger covers already-installed deps), B5–6 (a refutation needs one live contradiction; reconcile an observable a verdict reversed), **C7 (`feature-review-quality` §1 `BASE_SHA^..SHIP_SHA` window is wrong or empty for a parked feature on `main`; fail loudly on an empty diff)**, D8 (verify-human gate (a) reads YAML `drive_mode` that prose-header WIPs lack), F10–11 (`CLAUDE.snippet.md`: superseded-text convention; delete-on-resolve rewrite REPLACES the body). Already done: #9 (session-restore default), G12 (I2 row, 2026-11-16), G13 (feature AGENTS.md graph, 2026-11-16).
+- **Suggested action:** C7 is the only live-behavior bug, so take it first if any. Verify each ask against current skill text before editing (review-finding-actions-are-hypotheses).
+- **Priority:** low (operator 2026-11-16: "not affecting my usage right now")
+
+## SURFACE-2026-11-16-CANONICAL-TRANSITION-TOKEN-FINAL-LINE
+- **Source:** inbox [`archive/2026-10-26-claudesk-canonical-transition-token.md`](../inbox/archive/2026-10-26-claudesk-canonical-transition-token.md) (Claudesk)
+- **Target level:** task
+- **Type:** gap (emit-side contract)
+- **Summary:** Have every skill emit `TRANSITION: <id>` as a bare final line (no bold, no backticks, nothing after it), prose above. Claudesk's reader accepts the current forms and missed 2 of 478 recent verdicts written mid-sentence (`…, so TRANSITION: F30.`); the canonical form removes those misses and lets the reader tighten later.
+- **Suggested action:** edit each skill's emit instruction (+ `CLAUDE.snippet.md` if it carries the convention); optionally a `check-structure.sh` pin. Mechanical, ~48 files.
+- **Priority:** low
+
+
 ## Code-quality findings — codify-nearby-tests (2026-11-07)
 - **Pointer:** 1 MAJOR + 2 MINOR auto-backlogged by feature-review-quality against ship commit ffaea3d (drive_mode=autopilot). MAJOR: codify's `Test scope:` line records the scope decision, not the run's outcome, so ship's reuse can certify a full run older than a §3b late-regression fix. MINORs: Step B rung-1 declaration has no fixed wording; arch/[Phase 26] docs omit the ship §2 pin. Full bodies in [`backlog-quality-findings.md`](backlog-quality-findings.md) under `# codify-nearby-tests — 2026-11-07`.
 - **Priority:** medium (MAJOR) / low (MINORs)
@@ -362,7 +379,11 @@
 
 ## MAYBE
 
-_(no open items)_
+## SURFACE-2026-11-16-PIN-WORK-TREE-SCHEMA-FOR-CLAUDESK
+- **Source:** inbox [`archive/2026-09-29-claudesk-m15-wp4-pin-work-tree-schema.md`](../inbox/archive/2026-09-29-claudesk-m15-wp4-pin-work-tree-schema.md) (Claudesk M15 WP4)
+- **Summary:** Add a `check-structure.sh` phase pinning the Work Tree schema Claudesk's `parseWip()` reads for its phase-boundary recycle: phase lines `- [ ] Phase <N>: ` at column 0 (indented ones only inside HTML comments), the checkbox as the authority (not the status comment), exactly one `**Workflow:**` line valued `feature`/`task`/`incident` (not `product`).
+- **Parked (operator 2026-11-16):** the recycle is rarely used in practice. **Revisit trigger:** work that makes the agent more autonomous (where recycle would fire more often).
+- **Priority:** low
 
 ---
 

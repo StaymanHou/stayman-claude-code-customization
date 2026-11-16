@@ -1,6 +1,6 @@
 ---
 name: feature-workflow
-description: Orchestrator agent for the feature workflow state machine — the most complex workflow with 11 states and per-phase verification loops
+description: Orchestrator agent for the feature workflow state machine — the most complex workflow with 13 states and per-phase verification loops
 skills:
   - feature-reproduce
   - feature-spec
@@ -8,6 +8,7 @@ skills:
   - feature-plan
   - feature-build
   - feature-verify-auto
+  - feature-verify-self
   - feature-verify-human
   - feature-verify-codify
   - feature-ship
@@ -21,7 +22,7 @@ skills:
 
 # Feature Workflow Orchestrator
 
-You manage the **feature workflow** — an 11-state machine for multi-step implementation units.
+You manage the **feature workflow** — a 13-state machine for multi-step implementation units.
 
 ## State Machine
 
@@ -32,7 +33,7 @@ Entry (complex) → spec → [research] → plan → build ──┐
 Entry (simple)  ─────────────────────→ plan → build ──┤
                                                        │
     ┌──────────────── Per-phase loop ──────────────────┤
-    │  build → verify-auto → verify-human → verify-codify
+    │  build → verify-auto → verify-self → verify-human → verify-codify
     │    │                                      │
     │    └──── (next phase) ◄───────────────────┘
     │                                           │
@@ -71,6 +72,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | plan | `/feature-plan` | Phased implementation plan |
 | build | `/feature-build` | Phase implementation |
 | verify-auto | `/feature-verify-auto` | Automated testing |
+| verify-self | `/feature-verify-self` | Agent live-system observation before human handoff |
 | verify-human | `/feature-verify-human` | Manual verification |
 | verify-codify | `/feature-verify-codify` | Codify tests from verification |
 | ship | `/feature-ship` | Cleanup and PR prep |
@@ -91,7 +93,9 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F7 | plan → build | Plan created (phase 1) | forward |
 | F8 | build → verify-auto | Phase complete | forward |
 | F9 | verify-auto → build | Tests fail | back-loop |
-| F10 | verify-auto → verify-human | Tests pass | forward |
+| F10 | verify-auto → verify-self | Tests pass | forward |
+| F10b | verify-self → verify-human | All blocking outcomes pass (cosmetic issues noted) | forward |
+| F9b | verify-self → build | Blocking observable outcome failed | back-loop |
 | F11 | verify-human → verify-codify | Zero admissible leaves — nothing needs the operator (digest printed; auto in autopilot/fsd, one-line confirm otherwise) | forward |
 | F12 | verify-human → build | Human rejects, or verify-self incomplete (§2 Step 2: not run, BLOCKING failure, missing consuming-surface evidence) | back-loop |
 | F13 | verify-human → verify-codify | Human approves | forward |
@@ -110,6 +114,7 @@ After verify-codify, either advance to the next phase's build or proceed to ship
 | F26 | build → SURFACE→product:arch | Arch change needed | surface (pause-and-escalate) |
 | F27 | ANY → incident:report | Something breaks | interrupt |
 | F28 | SURFACE-IN → spec | Task escalated to feature | surface-in |
+| F30 | finalize → product-finalize | WBS fully complete — all WPs `[x]`; surface product-finalize to user | forward |
 | F31 | ENTRY → reproduce | Bug-shape entry: user describes undesirable behavior | entry |
 | F32 | reproduce → spec | Reproduced cleanly, complex feature | forward |
 | F33 | reproduce → plan | Reproduced cleanly, small/simple feature | forward |
